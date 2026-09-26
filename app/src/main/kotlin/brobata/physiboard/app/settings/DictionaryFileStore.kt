@@ -1,6 +1,8 @@
 package brobata.physiboard.app.settings
 
 import android.content.Context
+import android.content.Intent
+import brobata.physiboard.core.dict.DictionaryBroadcastActions
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.DictionaryManifestItem
 import brobata.physiboard.core.dict.DictionaryOrigin
@@ -54,20 +56,54 @@ class DictionaryFileStore(private val context: Context) {
 
     /** SS5.3 step 5: installs verified [bytes] into the downloaded tier with its sidecar. */
     suspend fun installDownloaded(item: DictionaryManifestItem, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            File(downloadedDir, "${item.languageCode}.pbd").writeBytes(bytes)
-            writeSidecar(File(downloadedDir, "${item.languageCode}.meta.json"), mapOf("origin" to "download", "sha256" to item.sha256, "bytes" to item.bytes.toString(), "manifestUpdatedAt" to item.updatedAt))
+        val ok = runCatching {
+            stageAtomically(downloadedDir, item.languageCode, bytes)
+            writeSidecar(
+                File(downloadedDir, "${item.languageCode}.meta.json"),
+                mapOf(
+                    "origin" to "download",
+                    "sha256" to item.sha256,
+                    "bytes" to item.bytes.toString(),
+                    "manifestUpdatedAt" to item.updatedAt,
+                    "installedAt" to System.currentTimeMillis().toString(),
+                ),
+            )
             true
         }.getOrDefault(false)
+        if (ok) notifyDictionaryChanged()
+        ok
     }
 
     /** SS5.6 step 4: installs an imported file (shadowing any bundled or downloaded copy of the same language). */
     suspend fun installImported(languageCode: String, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            File(importedDir, "$languageCode.pbd").writeBytes(bytes)
-            writeSidecar(File(importedDir, "$languageCode.meta.json"), mapOf("origin" to "import", "bytes" to bytes.size.toString()))
+        val ok = runCatching {
+            stageAtomically(importedDir, languageCode, bytes)
+            writeSidecar(
+                File(importedDir, "$languageCode.meta.json"),
+                mapOf("origin" to "import", "bytes" to bytes.size.toString(), "installedAt" to System.currentTimeMillis().toString()),
+            )
             true
         }.getOrDefault(false)
+        if (ok) notifyDictionaryChanged()
+        ok
+    }
+
+    /**
+     * SS3's "Staging": copies [bytes] to `<tier>/<lang>.pbd.part`, deletes any existing file, then
+     * renames the `.part` into place, so a process killed mid-write leaves a `.part` file and
+     * never a truncated dictionary. The `.part` file is removed if any step after the write fails.
+     */
+    private fun stageAtomically(dir: File, languageCode: String, bytes: ByteArray) {
+        val part = File(dir, "$languageCode.pbd.part")
+        val target = File(dir, "$languageCode.pbd")
+        try {
+            part.writeBytes(bytes)
+            target.delete()
+            if (!part.renameTo(target)) error("rename of $part to $target failed")
+        } catch (e: Exception) {
+            part.delete()
+            throw e
+        }
     }
 
     /** SS5.7: checks the imported tier first, then downloaded; a bundled file can never be uninstalled. */
@@ -83,6 +119,7 @@ class DictionaryFileStore(private val context: Context) {
         val deleted = runCatching { target.delete() }.getOrDefault(false)
         if (!deleted) return@withContext UninstallOutcome.FAILED
         sidecar.delete()
+        notifyDictionaryChanged()
         UninstallOutcome.SUCCESS
     }
 
@@ -102,6 +139,17 @@ class DictionaryFileStore(private val context: Context) {
     private fun writeSidecar(file: File, fields: Map<String, String>) {
         val obj = JsonObject(fields.mapValues { JsonPrimitive(it.value) })
         file.writeText(json.encodeToString(JsonObject.serializer(), obj))
+    }
+
+    /**
+     * spec SS17's Keep/Drop fix ("Per-process dictionary cache never invalidated | Fix | Reload
+     * on install, import, uninstall"): tells any running keyboard process to drop its cached
+     * dictionary for the affected language and reload it immediately, rather than waiting for the
+     * next process start (SS4.1's 2.x behavior, which SS17 explicitly overrides).
+     */
+    private fun notifyDictionaryChanged() {
+        val intent = Intent(DictionaryBroadcastActions.DICTIONARY_CHANGED).setPackage(context.packageName)
+        context.sendBroadcast(intent)
     }
 }
 

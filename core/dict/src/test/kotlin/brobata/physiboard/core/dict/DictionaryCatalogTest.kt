@@ -22,8 +22,14 @@ class DictionaryCatalogTest {
         val rows = DictionaryCatalog.merge(local, emptyList()) { it }
         val row = rows.single()
         assertEquals(DictionaryOrigin.DOWNLOADED, row.installedOrigin)
-        assertTrue("Imported" in row.badges)
         assertTrue(row.canUninstall)
+    }
+
+    @Test
+    fun `a downloaded file gets its own Downloaded badge, not Imported, per SS17's fix`() {
+        val local = listOf(LocalDictionaryFile("da_base.dict", "da", DictionaryOrigin.DOWNLOADED))
+        val row = DictionaryCatalog.merge(local, emptyList()) { it }.single()
+        assertEquals(setOf("Installed", "Downloaded"), row.badges)
     }
 
     @Test

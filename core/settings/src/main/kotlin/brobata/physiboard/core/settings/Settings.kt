@@ -288,7 +288,10 @@ data class ThemeLayoutOverride(val locale: String? = null, val layout: String? =
  * The strip, its theme and the caret badge. spec: settings-catalog.md SS2.6, status-bar.md.
  * Dropped: the `show_status_bar` and single-slot mirrors (the importer folds them in), the
  * software theme, the light/dark slots, assignment modes, drafts, the
- * preview scale, `modifier_indicator_mode`, the accessibility and debug rows, and `pastierina_*`.
+ * preview scale, `modifier_indicator_mode`, `accessibility_read_second_row_enabled` (its legacy
+ * modifier container is itself dropped, SS19), the debug row, and `pastierina_*`. The suggestion
+ * row's own two announcement settings (SS5.6, SS15, kept: "Accessibility announcement
+ * throttling") live here rather than a dedicated Accessibility screen, since 3.0 has none yet.
  *
  * [visibility] defaults to ALWAYS, not the asset's APPS: the catalogue (SS1.1, SS11 first row)
  * says a fresh install ends at ALWAYS because the impact stamp overwrote the asset, and SS13
@@ -310,6 +313,12 @@ data class StatusBarPrefs(
     val layoutOverrides: List<ThemeLayoutOverride> = emptyList(),
     /** `titan2_elite_rounded_corner_insets`, kept as the hidden preference status-bar.md SS9 allows. */
     val roundedCornerInsets: Boolean = true,
+    /** `accessibility_live_announcements_enabled`, spec SS5.6, SS15: default false. */
+    val accessibilityLiveAnnouncementsEnabled: Boolean = false,
+    /** `accessibility_suggestions_announcement_delay_ms`, spec SS5.6, SS15: default 500 ms. */
+    val accessibilitySuggestionsAnnouncementDelayMs: Long = 500,
+    /** `ime_overlay_debug_logging`, spec SS11, SS15: default false. */
+    val overlayDebugLoggingEnabled: Boolean = false,
 ) {
     companion object {
         /**

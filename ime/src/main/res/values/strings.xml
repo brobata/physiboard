@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ime_name">PhysiBoard</string>
+    <!-- dictionaries-languages.md SS8.1: the twelve base subtypes, in the spec's own order and labels. -->
     <string name="subtype_english">English</string>
+    <string name="subtype_italian">Italiano</string>
+    <string name="subtype_french">Français</string>
+    <string name="subtype_german">Deutsch</string>
+    <string name="subtype_polish">Polski</string>
+    <string name="subtype_danish">Dansk</string>
+    <string name="subtype_norwegian">Norsk</string>
+    <string name="subtype_spanish">Español</string>
+    <string name="subtype_portuguese">Português</string>
+    <string name="subtype_russian">Русский</string>
+    <string name="subtype_serbian">Српски</string>
+    <string name="subtype_ukrainian">Українська</string>
 </resources>

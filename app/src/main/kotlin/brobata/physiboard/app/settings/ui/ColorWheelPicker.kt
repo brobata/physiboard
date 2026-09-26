@@ -36,27 +36,34 @@ import kotlin.math.hypot
 import kotlin.math.min
 
 /**
- * The colour picker shared by the notification ring and (later) the cursor-modifier colours: nine
- * quick swatches, a hue/saturation disc with its own brightness slider (floored so it can never
- * go black), and the "too dark to see" caution. spec: device-backlight-ring.md SS5.4.
+ * The colour picker shared by the notification ring, the status bar theme (status-bar.md SS9.5)
+ * and (later) the cursor-modifier colours: quick swatches, a hue/saturation disc with its own
+ * brightness slider (floored so it can never go black), and the "too dark to see" caution. spec:
+ * device-backlight-ring.md SS5.4. [swatches] defaults to the ring's own nine; the shared
+ * [ColorPickerDialog] passes status-bar.md SS9.5's "union of every preset's... colours" instead,
+ * so this stays the one wheel implementation rather than a second one for the theme screen.
  */
 @Composable
-fun ColorWheelPicker(colorArgb: Int, onColorChange: (Int) -> Unit) {
+fun ColorWheelPicker(colorArgb: Int, swatches: List<Int> = SWATCHES, onColorChange: (Int) -> Unit) {
     // spec SS5.4: "the initial brightness of the current colour is raised to at least 0.35 when the wheel opens".
     var brightness by remember(colorArgb) { mutableFloatStateOf(initialBrightness(colorArgb)) }
     val hsv = remember(colorArgb) { FloatArray(3).also { AndroidColor.colorToHSV(colorArgb, it) } }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.padding(vertical = 8.dp)) {
-            SWATCHES.forEach { swatch ->
-                Box(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(Color(swatch))
-                        .clickable { onColorChange(swatch) },
-                )
+        // [swatches] empty means the caller (status-bar.md SS9.5's [ColorPickerDialog]) draws its
+        // own quick-pick grid instead of this single-row one, which is sized for the ring's nine.
+        if (swatches.isNotEmpty()) {
+            Row(modifier = Modifier.padding(vertical = 8.dp)) {
+                swatches.forEach { swatch ->
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(swatch))
+                            .clickable { onColorChange(swatch) },
+                    )
+                }
             }
         }
         HueSaturationDisc(hue = hsv[0], saturation = hsv[1]) { hue, saturation ->

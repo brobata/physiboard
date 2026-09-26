@@ -661,12 +661,45 @@ internal class KeyboardPipeline(
     // themed strip's job, out of scope here, see KeyboardSession/CandidatesStripView).
     // -----------------------------------------------------------------------------------------
 
+    /**
+     * spec: status-bar.md SS5.3, autocorrect-suggestions.md SS5: a word the "eye" button hid,
+     * scoped to the word being typed ("removes the word from the current list"). Keyed to
+     * [TextInputState.currentWord]'s own text so a fresh word never inherits a hide from the one
+     * before it; [hideSuggestion] is the only writer.
+     *
+     * SPEC GAP: autocorrect-suggestions.md SS5 also has hiding "forget[] the bigram" for a
+     * next-word suggestion, and describes back-filling from "starter words". Neither a next-word
+     * predictor nor a starter-word list exists anywhere in 3.0 yet (that whole subsystem is out of
+     * this task's scope); this hides the word from the current-word completion list only, and the
+     * "back-fill" happens for free because [suggestions] asks the ranker for one extra candidate
+     * per hidden word and re-takes the top three.
+     */
+    private var hiddenSuggestionsWord: String = ""
+    private val hiddenSuggestions = mutableSetOf<String>()
+
     fun suggestions(): List<RankedSuggestion> {
         if (!activeField.suggestionsAllowed) return emptyList()
         if (!settings.textInput.autocorrect.suggestionsEnabled) return emptyList()
         val word = textInputState.currentWord.word
         if (word.isEmpty()) return emptyList()
-        return SuggestionRanking.suggest(word, resources.dictionaries, resources.userWords, settings.textInput.rankingOptions)
+        if (!word.equals(hiddenSuggestionsWord, ignoreCase = true)) {
+            hiddenSuggestionsWord = word
+            hiddenSuggestions.clear()
+        }
+        if (hiddenSuggestions.isEmpty()) {
+            return SuggestionRanking.suggest(word, resources.dictionaries, resources.userWords, settings.textInput.rankingOptions)
+        }
+        val expanded = SuggestionRanking.suggest(word, resources.dictionaries, resources.userWords, settings.textInput.rankingOptions, limit = 3 + hiddenSuggestions.size)
+        return expanded.filterNot { candidate -> hiddenSuggestions.any { it.equals(candidate.word, ignoreCase = true) } }.take(3)
+    }
+
+    /** spec: status-bar.md SS5.3: the suggestion action mode's "eye" button. See [hiddenSuggestions]' own KDoc for what "hide" means in 3.0 today. */
+    fun hideSuggestion(word: String) {
+        if (!word.equals(hiddenSuggestionsWord, ignoreCase = true)) {
+            hiddenSuggestionsWord = word
+            hiddenSuggestions.clear()
+        }
+        hiddenSuggestions.add(word)
     }
 
     /** spec: autocorrect-suggestions.md SS5, SS6.11. A strip tap, kept out of the typing path. */

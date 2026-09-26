@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   app-shell.md SS23.6: auto backup and device transfer carry the settings store. 3.0 has one
-  preferences file (settings-catalog.md SS1.1), not the several 2.x split across, so there is
-  nothing here to exclude yet; a future persisted file (dictionaries, layouts) that should not
-  travel in a backup gets an <exclude> row here when it lands.
+  preferences file (settings-catalog.md SS1.1), not the several 2.x split across; a future
+  persisted file (dictionaries, layouts) that should not travel in a backup gets an <exclude> row
+  here when it lands.
+
+  dictionaries-languages.md SS13: "In the settings backup: ... the files `user_defaults.json` and
+  `locale_layout_mapping.json`. Not backed up: ... every dictionary file." `personal_dictionary.json`
+  (UserWordFileCodec's own SPEC GAP: 3.0 moved the personal dictionary from the preference row
+  `user_dictionary_entries`, which the datastore file above already carries, to its own file) is
+  added here for the same reason SS13 backs up the user's default-word edits: it is the user's own
+  content, not a dictionary.
 -->
 <full-backup-content>
     <include domain="file" path="datastore/physiboard_settings.preferences_pb" />
+    <include domain="file" path="user_defaults.json" />
+    <include domain="file" path="personal_dictionary.json" />
+    <include domain="file" path="locale_layout_mapping.json" />
 </full-backup-content>

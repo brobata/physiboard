@@ -1,6 +1,14 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -10,16 +18,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.ButtonRow
-import brobata.physiboard.app.settings.ui.ColorFieldRow
+import brobata.physiboard.app.settings.ui.ColorHex
+import brobata.physiboard.app.settings.ui.ColorPickerDialog
 import brobata.physiboard.app.settings.ui.IntClosedRange
 import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.core.settings.NamedTheme
 import brobata.physiboard.core.settings.StripTheme
+import brobata.physiboard.core.settings.StripThemePresets
 import kotlin.math.roundToInt
 
 /**
@@ -46,15 +61,15 @@ fun StripThemeScreen(onBack: () -> Unit) {
     SettingsScreenScaffold(title = "Customize colors", onBack = onBack) {
         RowList {
             item { ButtonRow(label = "Save theme", buttonText = "Save as...", onClick = { showSaveDialog = true }) }
-            item { ColorFieldRow("Background", theme().background) { v -> set { p -> p.copy(background = v) } } }
-            item { ColorFieldRow("Dividers", theme().divider) { v -> set { p -> p.copy(divider = v) } } }
-            item { ColorFieldRow("Text and icons", theme().textAndIcons) { v -> set { p -> p.copy(textAndIcons = v) } } }
-            item { ColorFieldRow("Accent", theme().accent) { v -> set { p -> p.copy(accent = v) } } }
-            item { ColorFieldRow("Suggestions", theme().suggestion) { v -> set { p -> p.copy(suggestion = v) } } }
-            item { ColorFieldRow("Status bar buttons", theme().statusBarButton) { v -> set { p -> p.copy(statusBarButton = v) } } }
-            item { ColorFieldRow("LED inactive", theme().ledInactive) { v -> set { p -> p.copy(ledInactive = v) } } }
-            item { ColorFieldRow("LED active", theme().ledActive) { v -> set { p -> p.copy(ledActive = v) } } }
-            item { ColorFieldRow("LED locked", theme().ledLocked) { v -> set { p -> p.copy(ledLocked = v) } } }
+            item { ThemeColorRow("Background", theme().background) { v -> set { p -> p.copy(background = v) } } }
+            item { ThemeColorRow("Dividers", theme().divider) { v -> set { p -> p.copy(divider = v) } } }
+            item { ThemeColorRow("Text and icons", theme().textAndIcons) { v -> set { p -> p.copy(textAndIcons = v) } } }
+            item { ThemeColorRow("Accent", theme().accent) { v -> set { p -> p.copy(accent = v) } } }
+            item { ThemeColorRow("Suggestions", theme().suggestion) { v -> set { p -> p.copy(suggestion = v) } } }
+            item { ThemeColorRow("Status bar buttons", theme().statusBarButton) { v -> set { p -> p.copy(statusBarButton = v) } } }
+            item { ThemeColorRow("LED inactive", theme().ledInactive) { v -> set { p -> p.copy(ledInactive = v) } } }
+            item { ThemeColorRow("LED active", theme().ledActive) { v -> set { p -> p.copy(ledActive = v) } } }
+            item { ThemeColorRow("LED locked", theme().ledLocked) { v -> set { p -> p.copy(ledLocked = v) } } }
             item {
                 IntRangeRow(
                     label = "Key corner radius",
@@ -115,5 +130,40 @@ fun StripThemeScreen(onBack: () -> Unit) {
             },
             dismissButton = { TextButton(onClick = { showSaveDialog = false }) { Text("Cancel") } },
         )
+    }
+}
+
+/**
+ * One of the fourteen colour rows (status-bar.md SS9.4 item 3): a swatch preview and the hex text,
+ * opening the shared [ColorPickerDialog] (SS9.5) rather than editing the hex inline.
+ */
+@Composable
+private fun ThemeColorRow(label: String, value: Int, onChange: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = MinTouchTarget).clickable { open = true }.padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1f))
+        Box(modifier = Modifier.padding(end = 8.dp).size(28.dp).clip(CircleShape).background(Color(value)))
+        Text(ColorHex.toHex(value))
+    }
+    if (open) {
+        ColorPickerDialog(
+            title = label,
+            initial = value,
+            swatches = ThemeSwatches.ALL,
+            onDismiss = { open = false },
+            onConfirm = { color -> onChange(color); open = false },
+        )
+    }
+}
+
+/** spec status-bar.md SS9.5: "the union of every preset's... colours, de-duplicated, for theme colors". 3.0's [StripTheme] keeps nine of the fields the 2.x presets had thirteen of (SS9.1's Keep/Drop); the union is taken over those nine. */
+private object ThemeSwatches {
+    val ALL: List<Int> by lazy {
+        StripThemePresets.ALL.flatMap { preset ->
+            with(preset.theme) { listOf(background, suggestion, statusBarButton, accent, textAndIcons, divider, ledInactive, ledActive, ledLocked) }
+        }.distinct()
     }
 }

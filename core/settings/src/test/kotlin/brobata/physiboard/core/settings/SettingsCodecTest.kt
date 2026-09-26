@@ -57,6 +57,8 @@ class SettingsCodecTest {
             theme = StripTheme.SLATE_DARK.copy(showLeds = true),
             savedThemes = listOf(NamedTheme("Mine", StripTheme.SLATE_DARK.copy(accent = 1))),
             roundedCornerInsets = false,
+            accessibilityLiveAnnouncementsEnabled = true, accessibilitySuggestionsAnnouncementDelayMs = 750,
+            overlayDebugLoggingEnabled = true,
         ),
         perApp = PerAppPrefs(
             exactTypingPackages = setOf("com.termux"), nudgePackages = setOf("com.example.nudge"), enterBehaviorEnabled = false,

@@ -14,12 +14,17 @@ import android.view.WindowInsets
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import brobata.physiboard.core.strip.BacklightNudge
+import brobata.physiboard.core.strip.BacklightNudgeVisibility
 import brobata.physiboard.core.strip.ClipboardBadge
 import brobata.physiboard.core.strip.LanguageLabel
 import brobata.physiboard.core.strip.LedLevel
 import brobata.physiboard.core.strip.LedRow
 import brobata.physiboard.core.strip.MicrophoneLevel
+import brobata.physiboard.core.strip.QuickActions
+import brobata.physiboard.core.strip.QuickActionsGeometry
 import brobata.physiboard.core.strip.Slot
+import brobata.physiboard.core.strip.SlotActionButton
 import brobata.physiboard.core.strip.SlotKind
 import brobata.physiboard.core.strip.SlotPosition
 import brobata.physiboard.core.strip.SlotTextSizeSp
@@ -29,6 +34,7 @@ import brobata.physiboard.core.strip.StripGeometry
 import brobata.physiboard.core.strip.StripModel
 import brobata.physiboard.core.strip.StripSide
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.core.strip.SuggestionAccessibility
 import brobata.physiboard.core.strip.SuggestionRow
 import brobata.physiboard.core.strip.SuggestionRowRules
 
@@ -54,15 +60,28 @@ internal class StatusBarView(
     private val theme: StripTheme,
     private val roundedCorners: Boolean,
     private val slotTextSize: SlotTextSizeSp,
+    /** spec SS6.4: the quick-actions row's own vertical padding is derived from the bar height, in dp (the constructor's other geometry is already in px). */
+    private val barHeightDp: Int,
     private val listener: Listener,
 ) : FrameLayout(context) {
 
     /** What the session hears. Every call arrives from a real touch on the strip, already guarded here. */
     interface Listener {
         fun onSlotTapped(slot: Slot)
-        fun onSlotLongPressed(slot: Slot)
+
+        /** spec SS5.3: long-pressing a suggestion; [buttons] is already [SuggestionRowRules.actionModeButtons]'s answer for this slot. */
+        fun onSlotLongPressed(position: SlotPosition, slot: Slot)
+        fun onSlotActionButtonTapped(position: SlotPosition, slot: Slot, action: SlotActionButton)
         fun onButtonTapped(button: StripButton)
         fun onButtonLongPressed(button: StripButton)
+
+        /** spec SS6.4: one of the overlay's nine mirrored buttons (the close button is [onQuickActionsClosed]). */
+        fun onQuickActionTapped(button: StripButton)
+        fun onQuickActionsClosed()
+
+        /** spec SS10: the pill or dot tapped (open Smart Backlight settings) or the pill's "✕" dismissed. */
+        fun onBacklightNudgeTapped()
+        fun onBacklightNudgeDismissed()
     }
 
     /** The collapsible root. spec SS3.4: hidden means "collapses to zero height", never a hidden window. */
@@ -72,17 +91,133 @@ internal class StatusBarView(
         clipChildren = true
     }
 
+    private val density = context.resources.displayMetrics.density
+    private fun dp(value: Int): Int = (value * density).toInt()
+
     private val rowFrame = FrameLayout(context)
     private val slotsRow = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
     }
-    private val slotViews: List<TextView> = List(SLOT_COUNT) { buildSlotView() }
-    private val fullWidthSlot: TextView = buildSlotView()
+
+    /** spec SS5.3: one cell per slot, its text swapped for the "eye"/"trash" action row while that slot is in action mode. */
+    private inner class SlotCell(val position: SlotPosition) {
+        var slot: Slot = Slot.EMPTY
+        val text: TextView = buildSlotView()
+        val eyeButton: TextView = buildActionModeButton("👁")
+        val trashButton: TextView = buildActionModeButton("🗑")
+        val actionRow: LinearLayout = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            visibility = GONE
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+        }
+        val root: FrameLayout = FrameLayout(context).apply {
+            addView(text, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+            addView(actionRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        }
+
+        init {
+            text.setOnClickListener {
+                if (actionModePosition != null) exitActionMode()
+                val current = slot
+                if (!current.isTappable) return@setOnClickListener
+                runCatching { listener.onSlotTapped(current) }.onFailure { error -> Log.e(TAG, "slot tap crashed", error) }
+            }
+            text.setOnLongClickListener {
+                val current = slot
+                if (!current.isTappable) return@setOnLongClickListener false
+                runCatching { listener.onSlotLongPressed(position, current) }.onFailure { error -> Log.e(TAG, "slot long press crashed", error) }
+                true
+            }
+            eyeButton.setOnClickListener {
+                runCatching { listener.onSlotActionButtonTapped(position, slot, SlotActionButton.HIDE_SUGGESTION) }.onFailure { error -> Log.e(TAG, "hide-suggestion tap crashed", error) }
+            }
+            trashButton.setOnClickListener {
+                runCatching { listener.onSlotActionButtonTapped(position, slot, SlotActionButton.DELETE_FROM_PERSONAL_DICTIONARY) }.onFailure { error -> Log.e(TAG, "delete-suggestion tap crashed", error) }
+            }
+        }
+
+        /** spec SS5.3: "its text is replaced by one or two icon buttons of equal width". */
+        fun showActionButtons(buttons: List<SlotActionButton>) {
+            actionRow.removeAllViews()
+            buttons.forEachIndexed { index, action ->
+                val button = if (action == SlotActionButton.HIDE_SUGGESTION) eyeButton else trashButton
+                val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+                if (index > 0) params.marginStart = dp(4)
+                actionRow.addView(button, params)
+            }
+            text.visibility = GONE
+            actionRow.visibility = VISIBLE
+        }
+
+        fun hideActionButtons() {
+            actionRow.visibility = GONE
+            text.visibility = VISIBLE
+        }
+    }
+
+    private val slotCells: List<SlotCell> = SlotPosition.entries.map { SlotCell(it) }
+    private var actionModePosition: SlotPosition? = null
+    private val fullWidthSlot: TextView = buildSlotView().apply {
+        setOnClickListener {
+            if (actionModePosition != null) exitActionMode()
+            val slot = tag as? Slot ?: return@setOnClickListener
+            if (!slot.isTappable) return@setOnClickListener
+            runCatching { listener.onSlotTapped(slot) }.onFailure { error -> Log.e(TAG, "slot tap crashed", error) }
+        }
+        // spec SS5.3's "add substitution" dialog on a long press of the add-word slot has no owning
+        // screen yet in 3.0 (SPEC GAP, out of this task's scope: SS5.3 covers a suggestion's long
+        // press only); left silent rather than guessed at.
+    }
     private val leftGroup = buildButtonGroup(Gravity.START)
     private val rightGroup = buildButtonGroup(Gravity.END)
     private val buttons: Map<StripButton, ButtonView> =
         StripButton.entries.filter { it != StripButton.NONE }.associateWith { ButtonView(it) }
+
+    // spec SS6.4: the hamburger's quick-actions overlay, "a full frame, hidden until opened", laid
+    // out inside this same window rather than a second `TYPE_APPLICATION_OVERLAY` (unlike the Sym
+    // pages, its content never grows past the bar's own height, so it needs no window of its own).
+    private val quickActionsClose: TextView = buildOverlayButton("✕") { listener.onQuickActionsClosed() }
+    private val quickActionButtons: Map<StripButton, TextView> =
+        QuickActions.ITEMS.associateWith { button -> buildOverlayButton(glyphFor(button)) { listener.onQuickActionTapped(button) } }
+    private val hamburgerOverlay: LinearLayout = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        visibility = GONE
+        isClickable = true
+        val verticalPadding = dp(QuickActionsGeometry.verticalPaddingDp(barHeightDp))
+        setPadding(0, verticalPadding, 0, verticalPadding)
+    }
+    private var quickActionsOpenState = false
+
+    // spec SS10: the smart-backlight-paused pill and dot, right-anchored just inside the right
+    // buttons.
+    private val backlightPillLabel = TextView(context).apply {
+        text = "⚡ " + BacklightNudge.PILL_TEXT.replaceFirst(", ", " — ")
+        setTextColor(Color.BLACK)
+        typeface = android.graphics.Typeface.MONOSPACE
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+    }
+    private val backlightPillClose = TextView(context).apply {
+        text = "✕"
+        setTextColor(Color.BLACK)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        setPadding(dp(6), 0, 0, 0)
+        setOnClickListener { runCatching { listener.onBacklightNudgeDismissed() }.onFailure { error -> Log.e(TAG, "backlight nudge dismiss crashed", error) } }
+    }
+    private val backlightPill: LinearLayout = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        visibility = GONE
+        background = GradientDrawable().apply { setColor(BACKLIGHT_AMBER); cornerRadius = dp(8).toFloat() }
+        setPadding(dp(9), dp(3), dp(6), dp(3))
+        addView(backlightPillLabel)
+        addView(backlightPillClose)
+        setOnClickListener { runCatching { listener.onBacklightNudgeTapped() }.onFailure { error -> Log.e(TAG, "backlight nudge tap crashed", error) } }
+    }
+    private val backlightDot: View = View(context).apply {
+        visibility = GONE
+        background = GradientDrawable().apply { setColor(BACKLIGHT_AMBER); shape = GradientDrawable.OVAL }
+        setOnClickListener { runCatching { listener.onBacklightNudgeTapped() }.onFailure { error -> Log.e(TAG, "backlight nudge tap crashed", error) } }
+    }
 
     private val ledRow = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -102,18 +237,40 @@ internal class StatusBarView(
     private var lastClipboardCount = 0
     private var bottomCornerRadiusPx: Int = geometry.bottomCornerFallbackPx
 
+    // spec SS5.6: the suggestion row's live announcements. `:ime` sets the two settings; the delay
+    // and the "any new update cancels a pending announcement" timer live here, next to the views
+    // they hide and re-expose.
+    var liveAnnouncementsEnabled: Boolean = false
+    var announcementDelayMs: Long = SuggestionAccessibility.DEFAULT_DELAY_MS
+
+    /** spec SS5.6: the current input style's layout id, for the language button's state description. */
+    var languageLayoutName: String = ""
+    private var lastAnnouncedSuggestions: String? = null
+    private var pendingAnnouncement: String? = null
+    private val reExposeSuggestionsRunnable = Runnable { reExposeSuggestions() }
+
     init {
         addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         rowFrame.addView(slotsRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         rowFrame.addView(leftGroup, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT, Gravity.START))
         rowFrame.addView(rightGroup, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT, Gravity.END))
+        // spec SS4's layer order: slots and buttons first, then the hamburger overlay "full frame,
+        // hidden until opened", then the backlight-paused pill and dot on top of everything.
+        rowFrame.addView(hamburgerOverlay, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        hamburgerOverlay.addView(quickActionsClose, quickActionsOverlayParams(first = true))
+        QuickActions.ITEMS.forEach { button -> hamburgerOverlay.addView(quickActionButtons.getValue(button), quickActionsOverlayParams(first = false)) }
+        rowFrame.addView(backlightPill, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.END or Gravity.CENTER_VERTICAL))
+        rowFrame.addView(backlightDot, LayoutParams(dp(BACKLIGHT_DOT_DP), dp(BACKLIGHT_DOT_DP), Gravity.END or Gravity.CENTER_VERTICAL))
         bar.addView(rowFrame, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, geometry.barHeightPx))
         ledViews.forEach(ledRow::addView)
         bar.addView(ledRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-        slotViews.forEach { slotsRow.addView(it, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)) }
+        slotCells.forEach { slotsRow.addView(it.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)) }
         slotsRow.addView(fullWidthSlot, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, SLOT_COUNT.toFloat()))
         applyBackground()
     }
+
+    private fun quickActionsOverlayParams(first: Boolean): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply { if (!first) marginStart = geometry.gapPx }
 
     // -----------------------------------------------------------------------------------------
     // Rendering
@@ -126,12 +283,77 @@ internal class StatusBarView(
                 slotsRow.alpha = 1f
                 return
             }
+            // spec SS5.3: "Action mode also ends when the slot contents change".
+            if (actionModePosition != null && model.row != lastModel?.row) exitActionMode()
             lastModel = model
             bar.visibility = if (model.footprint == StripFootprint.SHOWN) VISIBLE else GONE
             renderButtons(model)
             renderRow(model)
             renderLeds(model.leds)
         }.onFailure { error -> Log.e(TAG, "strip render crashed; keeping the last drawn strip", error) }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Action mode. spec SS5.3.
+    // -----------------------------------------------------------------------------------------
+
+    /** Enters action mode on [position] with [buttons] (already [SuggestionRowRules.actionModeButtons]'s answer); a caller passing an empty list is a no-op (SS17: "long press on an empty slot"). */
+    fun enterActionMode(position: SlotPosition, buttons: List<SlotActionButton>) {
+        if (buttons.isEmpty()) return
+        runCatching {
+            actionModePosition = position
+            slotCells[position.ordinal].showActionButtons(buttons)
+        }.onFailure { error -> Log.e(TAG, "enter action mode crashed", error) }
+    }
+
+    /** spec SS5.3: "Action mode also ends when... the field finishes, when the window hides, and before any tap on any slot." */
+    fun exitActionMode() {
+        val position = actionModePosition ?: return
+        runCatching {
+            actionModePosition = null
+            slotCells[position.ordinal].hideActionButtons()
+        }.onFailure { error -> Log.e(TAG, "exit action mode crashed", error) }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The hamburger's quick-actions overlay. spec SS6.4.
+    // -----------------------------------------------------------------------------------------
+
+    val quickActionsOpen: Boolean get() = quickActionsOpenState
+
+    fun setQuickActionsOpen(open: Boolean) {
+        runCatching {
+            if (quickActionsOpenState == open) return
+            quickActionsOpenState = open
+            hamburgerOverlay.visibility = if (open) VISIBLE else GONE
+            if (open) renderQuickActionsContent()
+        }.onFailure { error -> Log.e(TAG, "quick actions overlay crashed", error) }
+    }
+
+    /** spec SS6.4: "The overlay carries the clipboard count, microphone state and language text like the main buttons." */
+    private fun renderQuickActionsContent() {
+        val model = lastModel ?: return
+        quickActionButtons[StripButton.LANGUAGE]?.text = model.languageLabel
+        quickActionButtons[StripButton.CLIPBOARD]?.text = glyphFor(StripButton.CLIPBOARD) + (ClipboardBadge.text(model.clipboardCount)?.let { " $it" } ?: "")
+        quickActionButtons[StripButton.MICROPHONE]?.let { mic ->
+            mic.background = pressable(fill = if (model.dictationActive) MicrophoneLevel.INITIAL_RECORDING_COLOR else theme.button, corner = geometry.slotCornerPx)
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The smart-backlight-paused nudge. spec SS10.
+    // -----------------------------------------------------------------------------------------
+
+    fun renderBacklightNudge(visibility: BacklightNudgeVisibility) {
+        runCatching {
+            backlightPill.visibility = if (visibility == BacklightNudgeVisibility.PILL) VISIBLE else GONE
+            backlightDot.visibility = if (visibility == BacklightNudgeVisibility.DOT) VISIBLE else GONE
+            val model = lastModel ?: return
+            val rightCount = model.rightButtons.size
+            val inset = geometry.sideInsetPx(rightCount, model.isEdgeButton(StripSide.RIGHT, rightCount - 1, roundedCorners)) + dp(4)
+            (backlightPill.layoutParams as? LayoutParams)?.let { it.rightMargin = inset; backlightPill.layoutParams = it }
+            (backlightDot.layoutParams as? LayoutParams)?.let { it.rightMargin = inset; backlightDot.layoutParams = it }
+        }.onFailure { error -> Log.e(TAG, "backlight nudge render crashed", error) }
     }
 
     /** spec SS13: "the render cache is invalidated" when the window hides, so the next refresh draws even an unchanged snapshot. */
@@ -155,7 +377,7 @@ internal class StatusBarView(
     /** spec SS5.4: the pressed colour held for 160 ms on the slot a trackpad swipe or a tap committed. */
     fun flashSlot(position: SlotPosition) {
         runCatching {
-            val view = slotViews[position.ordinal]
+            val view = slotCells[position.ordinal].text
             view.isPressed = true
             view.postDelayed({ view.isPressed = false }, SuggestionRowRules.FLASH_MS)
         }.onFailure { error -> Log.e(TAG, "slot flash crashed", error) }
@@ -170,23 +392,65 @@ internal class StatusBarView(
         }
         slotsRow.requestLayout()
         when (val row = model.row) {
-            SuggestionRow.Hidden -> slotsRow.visibility = GONE
+            SuggestionRow.Hidden -> {
+                slotsRow.visibility = GONE
+                scheduleSuggestionAnnouncement(emptyList())
+            }
             is SuggestionRow.AddWordOnly -> {
                 slotsRow.visibility = VISIBLE
-                slotViews.forEach { it.visibility = GONE }
+                slotCells.forEach { it.root.visibility = GONE }
                 fullWidthSlot.visibility = VISIBLE
                 bindSlot(fullWidthSlot, Slot(row.word, SlotKind.ADD_WORD))
+                scheduleSuggestionAnnouncement(listOf(row.word))
             }
             is SuggestionRow.Slots -> {
                 slotsRow.visibility = VISIBLE
                 fullWidthSlot.visibility = GONE
-                SlotPosition.entries.forEachIndexed { index, position ->
-                    val view = slotViews[index]
-                    view.visibility = VISIBLE
-                    bindSlot(view, row[position])
+                slotCells.forEach { cell ->
+                    cell.root.visibility = VISIBLE
+                    cell.slot = row[cell.position]
+                    bindSlot(cell.text, cell.slot)
                 }
+                scheduleSuggestionAnnouncement(row.texts)
             }
         }
+    }
+
+    /**
+     * spec SS5.6: "hides its descendants from accessibility for [announcementDelayMs]... then
+     * re-exposes them and announces the non-blank slot texts... if they differ from the last
+     * announcement. Any new update cancels a pending announcement."
+     */
+    private fun scheduleSuggestionAnnouncement(slotTexts: List<String>) {
+        slotsRow.removeCallbacks(reExposeSuggestionsRunnable)
+        if (!SuggestionAccessibility.shouldSchedule(liveAnnouncementsEnabled, slotTexts)) {
+            setSuggestionsAccessibilityHidden(false)
+            pendingAnnouncement = null
+            return
+        }
+        val text = SuggestionAccessibility.announcementText(slotTexts)
+        if (!SuggestionAccessibility.isNewAnnouncement(text, lastAnnouncedSuggestions)) {
+            setSuggestionsAccessibilityHidden(false)
+            return
+        }
+        pendingAnnouncement = text
+        setSuggestionsAccessibilityHidden(true)
+        slotsRow.postDelayed(reExposeSuggestionsRunnable, SuggestionAccessibility.delayMs(announcementDelayMs))
+    }
+
+    private fun setSuggestionsAccessibilityHidden(hidden: Boolean) {
+        val mode = if (hidden) IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else IMPORTANT_FOR_ACCESSIBILITY_YES
+        slotCells.forEach { it.root.importantForAccessibility = mode }
+        fullWidthSlot.importantForAccessibility = mode
+    }
+
+    private fun reExposeSuggestions() {
+        setSuggestionsAccessibilityHidden(false)
+        pendingAnnouncement?.let { text ->
+            lastAnnouncedSuggestions = text
+            announceForAccessibility(text)
+        }
+        pendingAnnouncement = null
     }
 
     /** spec SS5.1: text centered, one line, ellipsized; the add-word candidate drawn with a "+" after the text. */
@@ -206,6 +470,7 @@ internal class StatusBarView(
         attachGroup(leftGroup, StripSide.LEFT, model)
         attachGroup(rightGroup, StripSide.RIGHT, model)
         buttons[StripButton.LANGUAGE]?.setGlyph(model.languageLabel)
+        buttons[StripButton.LANGUAGE]?.setStateDescription(SuggestionAccessibility.languageStateDescription(model.languageLabel, languageLayoutName))
         buttons[StripButton.CLIPBOARD]?.setBadge(model.clipboardCount, flash = ClipboardBadge.flashes(lastClipboardCount, model.clipboardCount))
         lastClipboardCount = model.clipboardCount
         buttons[StripButton.MICROPHONE]?.let { mic ->
@@ -253,9 +518,12 @@ internal class StatusBarView(
 
     override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
         runCatching {
+            val navBars = insets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars())
+            val cutout = insets.getInsetsIgnoringVisibility(WindowInsets.Type.displayCutout())
             val bars = insets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars() or WindowInsets.Type.displayCutout())
             val side = if (roundedCorners) bars else android.graphics.Insets.NONE
             bar.setPadding(side.left, 0, side.right, bars.bottom)
+            logInsetsOnce(navBars.bottom, cutout.bottom, bars.bottom)
             if (roundedCorners) {
                 val reported = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT)?.radius
                 bottomCornerRadiusPx = reported?.takeIf { it > 0 } ?: geometry.bottomCornerFallbackPx
@@ -263,6 +531,18 @@ internal class StatusBarView(
             }
         }.onFailure { error -> Log.e(TAG, "inset padding crashed", error) }
         return super.onApplyWindowInsets(insets)
+    }
+
+    /** spec SS11: `ime_overlay_debug_logging`, "logs the navigation, cutout and applied bottom padding once per distinct combination." */
+    var overlayDebugLoggingEnabled: Boolean = false
+    private var lastLoggedInsetsCombination: Triple<Int, Int, Int>? = null
+
+    private fun logInsetsOnce(navigationBottomPx: Int, cutoutBottomPx: Int, appliedBottomPaddingPx: Int) {
+        if (!overlayDebugLoggingEnabled) return
+        val combination = Triple(navigationBottomPx, cutoutBottomPx, appliedBottomPaddingPx)
+        if (combination == lastLoggedInsetsCombination) return
+        lastLoggedInsetsCombination = combination
+        Log.i(TAG, "insets: navigation=$navigationBottomPx cutout=$cutoutBottomPx appliedBottomPadding=$appliedBottomPaddingPx")
     }
 
     /** spec SS4: the bar's background "rounds its two bottom corners... the top corners stay square because the bar butts against the app". */
@@ -284,7 +564,12 @@ internal class StatusBarView(
         this.gravity = gravity or Gravity.CENTER_VERTICAL
     }
 
-    /** spec SS5.1: slot fill, 1 dp divider border, chrome-rounded corners, auto-sized centered text; SS5.3: the pressed colour is the accent. */
+    /**
+     * spec SS5.1: slot fill, 1 dp divider border, chrome-rounded corners, auto-sized centered
+     * text; SS5.3: the pressed colour is the accent. Carries no click behaviour of its own: every
+     * caller ([SlotCell] and [fullWidthSlot]) attaches its own listeners afterward, since a plain
+     * suggestion slot and the add-word slot commit differently and only the former has action mode.
+     */
     private fun buildSlotView(): TextView = TextView(context).apply {
         gravity = Gravity.CENTER
         maxLines = 1
@@ -293,15 +578,24 @@ internal class StatusBarView(
         setAutoSizeTextTypeUniformWithConfiguration(slotTextSize.minSp, slotTextSize.maxSp, 1, TypedValue.COMPLEX_UNIT_SP)
         setPadding(geometry.slotPaddingHorizontalPx, geometry.slotPaddingVerticalPx, geometry.slotPaddingHorizontalPx, geometry.slotPaddingVerticalPx)
         background = pressable(fill = theme.suggestion, corner = geometry.slotCornerPx)
-        setOnClickListener {
-            val slot = tag as? Slot ?: return@setOnClickListener
-            runCatching { listener.onSlotTapped(slot) }.onFailure { error -> Log.e(TAG, "slot tap crashed", error) }
-        }
-        setOnLongClickListener {
-            val slot = tag as? Slot ?: return@setOnLongClickListener false
-            runCatching { listener.onSlotLongPressed(slot) }.onFailure { error -> Log.e(TAG, "slot long press crashed", error) }
-            true
-        }
+    }
+
+    /** spec SS5.3: the action-mode "eye"/"trash" buttons, "equal width, 4 dp padding, 7 dp corners". */
+    private fun buildActionModeButton(glyph: String): TextView = TextView(context).apply {
+        text = glyph
+        gravity = Gravity.CENTER
+        setTextColor(theme.textAndIcons)
+        background = pressable(fill = theme.button, corner = dp(7).toFloat())
+    }
+
+    /** spec SS6.4: one of the quick-actions overlay's equal-width buttons, chrome-rounded like the row's own cells. */
+    private fun buildOverlayButton(glyph: String, onTap: () -> Unit): TextView = TextView(context).apply {
+        text = glyph
+        gravity = Gravity.CENTER
+        setTextColor(theme.textAndIcons)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, GLYPH_TEXT_SP)
+        background = pressable(fill = theme.button, corner = geometry.slotCornerPx)
+        setOnClickListener { onTap() }
     }
 
     /** spec SS6.2: theme fill, accent when pressed, 1 dp divider border, key-rounded corners (the edge button's outer bottom corner at 0.9 times the button). */
@@ -390,6 +684,11 @@ internal class StatusBarView(
             glyph.text = text
         }
 
+        /** spec SS5.6: "The language button is never a live region; its state description reads 'Language X, layout Y'." */
+        fun setStateDescription(text: String) {
+            stateDescription = text
+        }
+
         /** spec SS6.1: the count "hidden at zero"; a change to a different positive number flashes red, alpha 0 to 0.4 and back over 350 ms. */
         fun setBadge(count: Int, flash: Boolean) {
             val text = ClipboardBadge.text(count)
@@ -441,5 +740,9 @@ internal class StatusBarView(
         const val BADGE_TEXT_SP = 10f
         const val BADGE_MARGIN_PX = 4
         const val BADGE_NUDGE_PX = 4
+
+        /** spec SS10: the backlight-paused pill and dot, amber 0xFFFFB300. */
+        val BACKLIGHT_AMBER = 0xFFFFB300.toInt()
+        const val BACKLIGHT_DOT_DP = 9
     }
 }

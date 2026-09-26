@@ -83,12 +83,24 @@ the build script's own printed report makes it visible for a future language.
 
 ## The loader
 
-`:ime`'s `DictionaryAssetLoader` reads `dictionaries/<language>.pbd` from the app's assets on a
-background thread and calls `brobata.physiboard.core.dict.DictionaryIndex.fromPbdBytes`, which
-parses `.pbd` bytes into a queryable index or returns null for anything that is not a well-formed
-file (missing, truncated, wrong magic, checksum mismatch). The keyboard starts up and accepts
-keystrokes immediately with no dictionary loaded; `KeyboardSession` swaps
-`KeyboardPipeline.resources` in, on the main thread, once the background load actually produces
-an index. A missing or corrupt asset simply never calls back, so the keyboard keeps typing with
-no suggestions rather than crashing (`KeyboardSession`'s only bundled language today is English,
-`en`, for the same reason described above; see the `SPEC GAP` comment at its call site).
+`:ime`'s `DictionaryAssetLoader` resolves a language against the same three tiers
+`docs/spec/dictionaries-languages.md` SS3 describes (imported, then downloaded, then bundled),
+decided purely by `:core:dict`'s `DictionaryTierResolver` and read from wherever it points:
+`files/dictionaries/imported/<lang>.pbd`, `files/dictionaries/downloaded/<lang>.pbd` (both written
+by `:app`'s `DictionaryFileStore`), or the bundled `dictionaries/<lang>.pbd` asset. Whichever file
+resolves is read on a background thread and handed to
+`brobata.physiboard.core.dict.DictionaryIndex.fromPbdBytes`, which parses `.pbd` bytes into a
+queryable index or returns null for anything that is not a well-formed file (missing, truncated,
+wrong magic, checksum mismatch). The keyboard starts up and accepts keystrokes immediately with no
+dictionary loaded; `KeyboardSession` swaps `KeyboardPipeline.resources` in, on the main thread,
+once the background load actually produces an index. A missing or corrupt file simply never calls
+back, so the keyboard keeps typing with no suggestions rather than crashing.
+
+Installing, importing or uninstalling a dictionary on the settings screen (`DictionaryFileStore`)
+broadcasts `brobata.physiboard.ACTION_DICTIONARY_CHANGED` (package-internal,
+`:core:dict`'s `DictionaryBroadcastActions`); `KeyboardSession` reloads every dictionary it has
+loaded as soon as that arrives, so a newly installed dictionary is picked up immediately, without
+waiting for the keyboard process to restart (SS17's Keep/Drop: "Per-process dictionary cache never
+invalidated | Fix | Reload on install, import, uninstall"). Only English is bundled today, for the
+licensing reason described above, so switching to a style whose language is not `en` and has no
+downloaded or imported file loads no dictionary for it.

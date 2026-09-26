@@ -7,6 +7,8 @@ import brobata.physiboard.core.dict.LanguageCode
 import brobata.physiboard.core.dict.RuleSet
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.SymPageEntry
+import brobata.physiboard.core.keys.SymPageId
+import brobata.physiboard.core.keys.SymPagesConfig
 import brobata.physiboard.core.settings.AssistantAction
 import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.CorrectionPrefs
@@ -21,7 +23,9 @@ import brobata.physiboard.core.settings.StatusBarPrefs
 import brobata.physiboard.core.settings.StatusBarVisibility
 import brobata.physiboard.core.settings.StripTheme
 import brobata.physiboard.core.settings.SubstitutionSet
+import brobata.physiboard.core.settings.SymPage
 import brobata.physiboard.core.settings.SymPagePrefs
+import brobata.physiboard.core.settings.SymPagesConfig as StoredSymPagesConfig
 import brobata.physiboard.core.settings.ThemeLayoutOverride
 import brobata.physiboard.core.settings.TrackpadPrefs
 import brobata.physiboard.core.settings.TypingPrefs
@@ -129,6 +133,30 @@ class ImeSettingsTest {
         assertEquals(shipped.emojiPage, symbols.emojiPage)
         val unusable = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(customEmojiPage = mapOf("KEYCODE_1" to "x", "KEYCODE_Q" to ""))))
         assertEquals(shipped.emojiPage, unusable.emojiPage)
+    }
+
+    @Test
+    fun `sym_pages_config's enabled flags and cycle order overlay the shipped default`() {
+        val shipped = TitanLayouts.titan2EliteQwerty()
+        val stored = StoredSymPagesConfig(
+            emojiEnabled = true,
+            symbolsEnabled = false,
+            clipboardEnabled = true,
+            emojiPickerEnabled = false,
+            order = listOf(SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.SYMBOLS, SymPage.EMOJI_PICKER),
+        )
+        val layout = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(pages = stored)))
+        assertEquals(
+            SymPagesConfig(
+                emojiEnabled = true,
+                symbolsEnabled = false,
+                clipboardEnabled = true,
+                emojiPickerEnabled = false,
+                order = listOf(SymPageId.CLIPBOARD, SymPageId.EMOJI, SymPageId.SYMBOLS, SymPageId.EMOJI_PICKER),
+            ),
+            layout.symPagesConfig,
+        )
+        assertFalse(layout.symPagesConfig == shipped.symPagesConfig)
     }
 
     @Test

@@ -103,11 +103,20 @@ data class DictionaryRow(
     val manifestItem: DictionaryManifestItem?,
     val updatable: Boolean,
 ) {
-    /** SS6: "Installed" (any local file), "Imported" (any file in a writable tier), "Available online". */
+    /**
+     * SS17's Keep/Drop table (not SS6's prose, which records 2.x's own bug): "'Imported' badge on
+     * downloads | Fix | Label the tier correctly." A downloaded file gets its own "Downloaded"
+     * badge; only a file actually in the imported tier gets "Imported". "Installed" is any local
+     * file; "Available online" is in the manifest and not installed.
+     */
     val badges: Set<String>
         get() = buildSet {
             if (installed) add("Installed")
-            if (installedOrigin == DictionaryOrigin.IMPORTED || installedOrigin == DictionaryOrigin.DOWNLOADED) add("Imported")
+            when (installedOrigin) {
+                DictionaryOrigin.IMPORTED -> add("Imported")
+                DictionaryOrigin.DOWNLOADED -> add("Downloaded")
+                DictionaryOrigin.BUNDLED, null -> Unit
+            }
             if (!installed && manifestItem != null) add("Available online")
         }
 

@@ -2,6 +2,11 @@
 <!--
   PhysiBoard is a physical-keyboard keyboard: it asks the system not to show a
   software keyboard, and its visible surface is the strip above the app.
+
+  dictionaries-languages.md SS8.1: the twelve base subtypes, in the spec's own order. Android
+  enables the ones whose locale matches a system language implicitly, and lets the user enable
+  any of them by hand in system settings. `noSuggestions=true` (SS8.1's prose) is dropped per
+  SS17's Keep/Drop table ("noSuggestions=true on every base subtype | Drop | Never read").
 -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:supportsSwitchingToNextInputMethod="true">
@@ -9,6 +14,72 @@
         android:name="@string/subtype_english"
         android:label="@string/subtype_english"
         android:imeSubtypeLocale="en_US"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_italian"
+        android:label="@string/subtype_italian"
+        android:imeSubtypeLocale="it_IT"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_french"
+        android:label="@string/subtype_french"
+        android:imeSubtypeLocale="fr_FR"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_german"
+        android:label="@string/subtype_german"
+        android:imeSubtypeLocale="de_DE"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_polish"
+        android:label="@string/subtype_polish"
+        android:imeSubtypeLocale="pl_PL"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_danish"
+        android:label="@string/subtype_danish"
+        android:imeSubtypeLocale="da_DK"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_norwegian"
+        android:label="@string/subtype_norwegian"
+        android:imeSubtypeLocale="no_NO"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_spanish"
+        android:label="@string/subtype_spanish"
+        android:imeSubtypeLocale="es_ES"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_portuguese"
+        android:label="@string/subtype_portuguese"
+        android:imeSubtypeLocale="pt_PT"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_russian"
+        android:label="@string/subtype_russian"
+        android:imeSubtypeLocale="ru_RU"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_serbian"
+        android:label="@string/subtype_serbian"
+        android:imeSubtypeLocale="sr_RS"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:name="@string/subtype_ukrainian"
+        android:label="@string/subtype_ukrainian"
+        android:imeSubtypeLocale="uk_UA"
         android:imeSubtypeMode="keyboard"
         android:isAsciiCapable="true" />
 </input-method>

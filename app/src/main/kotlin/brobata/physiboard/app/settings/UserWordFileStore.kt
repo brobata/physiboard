@@ -2,6 +2,7 @@ package brobata.physiboard.app.settings
 
 import android.content.Context
 import android.content.Intent
+import brobata.physiboard.core.dict.DictionaryBroadcastActions
 import brobata.physiboard.core.dict.UserWordFileCodec
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordFrequency
@@ -59,12 +60,13 @@ class UserWordFileStore(private val context: Context) {
 
     /** autocorrect-suggestions.md SS6.1: "Settings screens announce changes with the broadcast `brobata.physiboard.ACTION_USER_DICTIONARY_UPDATED` (package-internal)." */
     private fun notifyUpdated() {
-        val intent = Intent(ACTION_USER_DICTIONARY_UPDATED).setPackage(context.packageName)
+        val intent = Intent(DictionaryBroadcastActions.USER_DICTIONARY_UPDATED).setPackage(context.packageName)
         context.sendBroadcast(intent)
     }
 
     companion object {
-        const val ACTION_USER_DICTIONARY_UPDATED: String = "brobata.physiboard.ACTION_USER_DICTIONARY_UPDATED"
+        /** Kept for source compatibility; the action itself now lives in `:core:dict` so `:ime` can share it. */
+        const val ACTION_USER_DICTIONARY_UPDATED: String = DictionaryBroadcastActions.USER_DICTIONARY_UPDATED
     }
 }
 

@@ -9,14 +9,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.ColorFieldRow
 import brobata.physiboard.app.settings.ui.DividerLabel
+import brobata.physiboard.app.settings.ui.KeyboardUiPreview
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.PerAppListKind
@@ -31,6 +38,8 @@ import brobata.physiboard.core.settings.StatusBarPrefs
 import brobata.physiboard.core.settings.StatusBarVisibility
 import brobata.physiboard.core.settings.StripTheme
 import brobata.physiboard.core.settings.StripThemePresets
+import brobata.physiboard.core.strip.ButtonSlots
+import brobata.physiboard.core.strip.StripSide
 
 /**
  * "Status Bar Theme" (settings-catalog.md SS9.2, status-bar.md SS9.4). The "Keyboard UI Preview"
@@ -45,6 +54,7 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val controller = LocalSettingsController.current
     val statusBar = controller.current.value.statusBar
     fun set(transform: (StatusBarPrefs) -> StatusBarPrefs) = controller.update { it.copy(statusBar = transform(it.statusBar)) }
+    var confirmReset by remember { mutableStateOf(false) }
 
     SettingsScreenScaffold(title = "Status Bar Theme", onBack = onBack) {
         RowList {
@@ -61,6 +71,8 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     },
                 )
             }
+            item { DividerLabel("Keyboard UI Preview") }
+            item { KeyboardUiPreview(statusBar.theme) }
             item {
                 SwitchRow("Show LEDs", checked = statusBar.theme.showLeds, onCheckedChange = { checked ->
                     set { p -> p.copy(theme = p.theme.copy(showLeds = checked)) }
@@ -104,10 +116,20 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             item {
                 SingleChoiceChipsRow(
                     label = "Bar height",
+                    description = "36 dp is below Android's minimum touch target size; pick it only if you type on the physical keys and just read the bar.",
                     options = listOf(36, 48, 56, 64),
                     optionLabel = { "$it dp" },
                     selected = statusBar.heightDp,
                     onSelect = { height -> set { p -> p.copy(heightDp = height) } },
+                )
+            }
+            item { DividerLabel("Accessibility") }
+            item {
+                SwitchRow(
+                    "Announce suggestions",
+                    description = "A screen reader speaks the suggestion row's words once they settle.",
+                    checked = statusBar.accessibilityLiveAnnouncementsEnabled,
+                    onCheckedChange = { checked -> set { p -> p.copy(accessibilityLiveAnnouncementsEnabled = checked) } },
                 )
             }
             item { DividerLabel("Modifiers") }
@@ -126,9 +148,35 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 ColorFieldRow("Locked colour", statusBar.caretBadgeLockedColor) { v -> set { p -> p.copy(caretBadgeLockedColor = v) } }
             }
             item {
-                ButtonRow(label = "Reset", buttonText = "Reset", onClick = { controller.update { it.copy(statusBar = StatusBarPrefs()) } })
+                ButtonRow(label = "Reset", buttonText = "Reset", onClick = { confirmReset = true })
             }
         }
+    }
+
+    // spec status-bar.md SS9.4 item 4, SS6.3, SS17: Reset "restores the slot defaults only"
+    // (`ButtonSlots.reset()`, hamburger left, emoji and microphone right); everything else on this
+    // page (visibility, apps, height, theme, colours, layout overrides) is left untouched, and the
+    // destructive action asks for confirmation first (the app's own convention: "Reset to Default"
+    // and the density "keep/revert" both confirm).
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Reset buttons?") },
+            text = { Text("Puts the left and right button slots back to Menu, and Emoji plus Microphone. Nothing else on this page changes.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val defaults = ButtonSlots.reset()
+                    set { p ->
+                        p.copy(
+                            leftButtons = defaults.ids(StripSide.LEFT).mapNotNull(BarButton::fromId),
+                            rightButtons = defaults.ids(StripSide.RIGHT).mapNotNull(BarButton::fromId),
+                        )
+                    }
+                    confirmReset = false
+                }) { Text("Reset") }
+            },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
+        )
     }
 }
 

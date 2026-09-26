@@ -104,6 +104,9 @@ dependencies {
     // The app shell as plain Kotlin (app-shell.md): update checker, what's-new note, launch
     // routing, first-run steps, the debug capture store, the backup codec.
     implementation(project(":core:shell"))
+    // status-bar.md SS9.4/SS6.3: the settings Reset button reuses `:core:strip`'s own
+    // `ButtonSlots.reset()` rather than re-deriving the slot defaults locally.
+    implementation(project(":core:strip"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     // The settings store (settings-catalog.md SS1, SS13 "one preference file with typed rows") and

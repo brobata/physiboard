@@ -93,4 +93,16 @@ class StripButtonTest {
         assertEquals(9, QuickActions.BUTTON_COUNT)
         assertTrue(QuickActions.CLOSES_ON_EVERY_REFRESH, "SS17: the overlay closes on any key press in hardware mode")
     }
+
+    @Test
+    fun `SS6_4 the quick-actions row keeps buttons at least 28 dp tall on every bar height`() {
+        assertEquals(8, QuickActionsGeometry.verticalPaddingDp(56))
+        assertEquals(8, QuickActionsGeometry.verticalPaddingDp(64))
+        assertEquals(8, QuickActionsGeometry.verticalPaddingDp(48))
+        assertEquals(4, QuickActionsGeometry.verticalPaddingDp(36))
+        StripGeometry.BAR_HEIGHT_OPTIONS_DP.forEach { barHeightDp ->
+            val padding = QuickActionsGeometry.verticalPaddingDp(barHeightDp)
+            assertTrue(barHeightDp - 2 * padding >= QuickActionsGeometry.MIN_BUTTON_HEIGHT_DP, "bar $barHeightDp dp")
+        }
+    }
 }

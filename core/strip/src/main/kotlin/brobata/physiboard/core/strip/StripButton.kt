@@ -107,4 +107,22 @@ object QuickActions {
 
     /** spec SS6.4 and SS17: in hardware mode (all of 3.0) "the overlay closes" on every refresh. Recorded, not fixed (SS19). */
     const val CLOSES_ON_EVERY_REFRESH: Boolean = true
+
+    /** spec SS6.4: "one close button plus the items, each of equal width", divided into this many equal-width columns with [BUTTON_COUNT] minus one gaps between them. */
+    val COLUMN_COUNT: Int get() = BUTTON_COUNT
+}
+
+/**
+ * The quick-actions row's own vertical padding, derived from the bar it fills. spec SS6.4: "the
+ * row takes up to 8 dp vertical padding but never leaves the buttons under 28 dp tall". [dp] is a
+ * plain dp number in and out, since the caller (StatusBarView) already has the Titan's px-per-dp.
+ */
+object QuickActionsGeometry {
+    const val MAX_VERTICAL_PADDING_DP: Int = 8
+    const val MIN_BUTTON_HEIGHT_DP: Int = 28
+
+    fun verticalPaddingDp(barHeightDp: Int): Int {
+        val roomForPadding = (barHeightDp - MIN_BUTTON_HEIGHT_DP) / 2
+        return MAX_VERTICAL_PADDING_DP.coerceAtMost(roomForPadding.coerceAtLeast(0))
+    }
 }

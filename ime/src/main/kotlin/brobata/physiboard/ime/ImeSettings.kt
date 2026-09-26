@@ -17,7 +17,9 @@ import brobata.physiboard.core.keys.LayerResolver
 import brobata.physiboard.core.keys.LayoutDescription
 import brobata.physiboard.core.keys.LongPressSettings
 import brobata.physiboard.core.keys.SymPageEntry
+import brobata.physiboard.core.keys.SymPageId
 import brobata.physiboard.core.keys.SymPageMap
+import brobata.physiboard.core.keys.SymPagesConfig
 import brobata.physiboard.core.pointer.caret.CaretBadgeSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
@@ -184,8 +186,30 @@ internal object ImeSettings {
     fun layout(base: LayoutDescription, s: Settings): LayoutDescription = base.copy(
         emojiPage = customSymPage(s.symPages.customEmojiPage) ?: base.emojiPage,
         symbolsPage = customSymPage(s.symPages.customSymbolsPage) ?: base.symbolsPage,
+        symPagesConfig = symPagesConfig(s.symPages.pages),
         longPress = LongPressSettings(mode = s.keys.longPressMode, thresholdMs = s.keys.longPressThresholdMs),
     )
+
+    /**
+     * spec: layers-sym-alt.md SS4.1, SS4.2: `sym_pages_config`'s enabled flags and cycle order
+     * overlay the device's shipped default, so the Sym key cycles the pages the user chose
+     * instead of always the hard-coded `:device:titan` order. [stored]'s order already went
+     * through [brobata.physiboard.core.settings.SettingsCodec]'s own dedup/append-missing pass.
+     */
+    private fun symPagesConfig(stored: brobata.physiboard.core.settings.SymPagesConfig): SymPagesConfig = SymPagesConfig(
+        emojiEnabled = stored.emojiEnabled,
+        symbolsEnabled = stored.symbolsEnabled,
+        clipboardEnabled = stored.clipboardEnabled,
+        emojiPickerEnabled = stored.emojiPickerEnabled,
+        order = stored.order.mapNotNull(::symPageId),
+    )
+
+    private fun symPageId(page: brobata.physiboard.core.settings.SymPage): SymPageId? = when (page) {
+        brobata.physiboard.core.settings.SymPage.EMOJI -> SymPageId.EMOJI
+        brobata.physiboard.core.settings.SymPage.SYMBOLS -> SymPageId.SYMBOLS
+        brobata.physiboard.core.settings.SymPage.CLIPBOARD -> SymPageId.CLIPBOARD
+        brobata.physiboard.core.settings.SymPage.EMOJI_PICKER -> SymPageId.EMOJI_PICKER
+    }
 
     private fun customSymPage(stored: Map<String, String>): SymPageMap? {
         val entries = stored.mapNotNull { (keycode, text) ->

@@ -1,7 +1,10 @@
 package brobata.physiboard.ime
 
+import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Rect
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -19,12 +22,17 @@ import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.InputMethodSubtype
+import androidx.core.content.ContextCompat
 import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.launcher.AssignableKeys
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
+import brobata.physiboard.core.dict.DictionaryBroadcastActions
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.LanguageCode
+import brobata.physiboard.core.dict.UserWordStore
+import brobata.physiboard.core.dict.WordSource
 import brobata.physiboard.core.keys.CharacterResolution
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
@@ -42,19 +50,30 @@ import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.speech.AssistantLaunch
 import brobata.physiboard.core.speech.AssistantRequest
+import brobata.physiboard.core.subtype.AdditionalSubtypeBuilder
 import brobata.physiboard.core.subtype.InputStyle
 import brobata.physiboard.core.subtype.InputStyleCatalog
 import brobata.physiboard.core.subtype.ShippedLayout
+import brobata.physiboard.core.strip.BacklightNudge
+import brobata.physiboard.core.strip.BacklightNudgeEpisode
+import brobata.physiboard.core.strip.BacklightNudgeMemory
+import brobata.physiboard.core.strip.BacklightNudgeVisibility
 import brobata.physiboard.core.strip.DipEffect
 import brobata.physiboard.core.strip.LanguageTapDebounce
 import brobata.physiboard.core.strip.Slot
+import brobata.physiboard.core.strip.SlotActionButton
 import brobata.physiboard.core.strip.SlotKind
+import brobata.physiboard.core.strip.SlotPosition
 import brobata.physiboard.core.strip.SlotTextSizeSp
 import brobata.physiboard.core.strip.StripAction
 import brobata.physiboard.core.strip.StripButton
 import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripGeometry
 import brobata.physiboard.core.strip.StripInsets
+import brobata.physiboard.core.strip.SuggestionRowRules
+import brobata.physiboard.core.strip.SurfaceTransitionOutcome
+import brobata.physiboard.core.strip.SurfaceTransitionRetry
+import brobata.physiboard.core.strip.SurfaceTransitionState
 import brobata.physiboard.core.strip.SymGridPage
 import brobata.physiboard.core.strip.TapHaptic
 import brobata.physiboard.core.strip.TouchableArea
@@ -266,10 +285,13 @@ internal class KeyboardSession(
      * service destroyed: timers cancelled".
      */
     fun onServiceDestroyed() {
+        runCatching { service.unregisterReceiver(dictionaryChangeReceiver) }.onFailure { error -> Log.e(TAG, "dictionary receiver teardown crashed", error) }
         settingsScope.cancel()
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         handler.removeCallbacks(dipReshowRunnable)
+        handler.removeCallbacksAndMessages(surfaceTransitionToken)
+        handler.removeCallbacks(backlightNudgeTimeoutRunnable)
         runCatching { trackpad.onKeyboardWindowHidden() }.onFailure { error -> Log.e(TAG, "trackpad teardown crashed", error) }
         runCatching { caretBadge.hide() }.onFailure { error -> Log.e(TAG, "caret badge teardown crashed", error) }
         dictationController.onServiceDestroyed()
@@ -286,11 +308,33 @@ internal class KeyboardSession(
     // so switching to a style whose language is not `en` simply loads no dictionary for it
     // (DictionaryAssetLoader's own KDoc: a missing asset is a silent, already-handled failure),
     // not a crash; bundling the other eighteen is a documented gap of its own, unrelated to this.
-    private val dictionaryLoader = DictionaryAssetLoader(service.assets, handler)
+    private val dictionaryLoader = DictionaryAssetLoader(service, handler)
 
     /** The loaded dictionaries by language, primary and extras alike; [rebuildDictionaries] hands the wanted ones to the pipeline, primary first. */
     private val loadedDictionaries = linkedMapOf<LanguageCode, DictionaryIndex>()
     private val dictionaryLoadsInFlight = mutableSetOf<LanguageCode>()
+
+    // spec dictionaries-languages.md SS7: the default and personal user words, loaded once at
+    // startup and reloaded whenever the Personal Dictionary screen (or the strip's own add-word,
+    // via [persistAddedWord]) changes them. `:core:text`'s `TextInputResources.userWords` is the
+    // only consumer; [UserWordFileLoader] only supplies the files and the background thread.
+    private val userWordLoader = UserWordFileLoader(service, handler)
+    private var userWordStore: UserWordStore = UserWordStore.empty()
+
+    /**
+     * spec SS17's Keep/Drop fix ("reload on install, import, uninstall") and SS7 ("...again
+     * whenever the broadcast `ACTION_USER_DICTIONARY_UPDATED` arrives"): the settings screens run
+     * in `:app`'s process, so the only way this process learns of a file it did not itself write
+     * is a package-internal broadcast. Registered in [init], unregistered in [onServiceDestroyed].
+     */
+    private val dictionaryChangeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                DictionaryBroadcastActions.DICTIONARY_CHANGED -> reloadAllDictionaries()
+                DictionaryBroadcastActions.USER_DICTIONARY_UPDATED -> loadUserWords()
+            }
+        }
+    }
 
     /**
      * spec: autocorrect-suggestions.md SS8.1: the bundled substitution rule sets, loaded once (a
@@ -323,6 +367,18 @@ internal class KeyboardSession(
         // thread" rule: the keyboard must accept keystrokes immediately, typing with no
         // suggestions, and only start suggesting once this background load lands.
         loadDictionary(primaryLanguage)
+        // spec dictionaries-languages.md SS7: the default and personal words load the same way,
+        // off the main thread, and are merged in the moment they land.
+        loadUserWords()
+        // spec SS8.3: "when the keyboard service is created", with whatever `custom_input_styles`
+        // the shipped defaults hold until the store's first emission (an empty array still
+        // replaces Android's previous additional set, per SS8.3's own note).
+        registerAdditionalSubtypes(Settings().languages.inputStyles)
+        val dictionaryChangeFilter = IntentFilter().apply {
+            addAction(DictionaryBroadcastActions.DICTIONARY_CHANGED)
+            addAction(DictionaryBroadcastActions.USER_DICTIONARY_UPDATED)
+        }
+        ContextCompat.registerReceiver(service, dictionaryChangeReceiver, dictionaryChangeFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         // The store is read the same way: the shipped defaults above stand until the first value
         // arrives, and every later emission re-applies live (settings-catalog.md SS1).
         // spec expansion-clipboard-pickers-launcher.md SS3.1: `clipboard_history_enabled` is read
@@ -359,6 +415,90 @@ internal class KeyboardSession(
     private fun rebuildDictionaries() {
         val wanted = (listOf(primaryLanguage) + extraLanguages).mapNotNull { loadedDictionaries[it] }
         if (wanted != pipeline.resources.dictionaries) pipeline.resources = pipeline.resources.copy(dictionaries = wanted)
+    }
+
+    /**
+     * spec SS17's Keep/Drop fix ("Per-process dictionary cache never invalidated | Fix | Reload
+     * on install, import, uninstall"): an install, import or uninstall on the settings screen
+     * cannot know which language changed from here (the broadcast carries none), and a dictionary
+     * is cheap enough to reload compared to typing with a stale one, so every cached dictionary is
+     * dropped and the ones this session actually wants (primary and extras) are loaded again at
+     * once, immediately, rather than waiting for the next field or the next process start.
+     */
+    private fun reloadAllDictionaries() {
+        loadedDictionaries.clear()
+        dictionaryLoadsInFlight.clear()
+        pipeline.resources = pipeline.resources.copy(dictionaries = emptyList())
+        loadDictionary(primaryLanguage)
+        extraLanguages.forEach(::loadDictionary)
+    }
+
+    /** spec SS7: loads the default and personal word files into [userWordStore] and the pipeline; reload is the same path a broadcast triggers. */
+    private fun loadUserWords() {
+        userWordLoader.loadAsync { store ->
+            userWordStore = store
+            pipeline.resources = pipeline.resources.copy(userWords = store)
+            refreshCandidatesStrip()
+        }
+    }
+
+    /**
+     * spec SS7: "a word added from the strip is merged into the primary dictionary at once".
+     * [KeyboardSession.onStripSlotTapped]'s add-word slot calls this after committing the text, so
+     * the word is a known word (protected from autocorrect, suggested back) before the next
+     * keystroke, and durable across a process restart.
+     */
+    private fun persistAddedWord(word: String) {
+        userWordStore = userWordStore.withPersonalWordAdded(word, System.currentTimeMillis())
+        pipeline.resources = pipeline.resources.copy(userWords = userWordStore)
+        userWordLoader.savePersonalAsync(userWordStore.personalWords())
+    }
+
+    /** [registerAdditionalSubtypes] only re-registers when `custom_input_styles` actually changed, matching SS8.3's own triggers rather than every settings emission. */
+    private var lastRegisteredInputStyles: List<String>? = null
+
+    /**
+     * spec SS8.1/SS8.3: hands Android the additional subtypes `custom_input_styles` describes, so
+     * the app's own input-style switching ([InputStyleCatalog]) and Android's keyboard picker,
+     * Settings > Languages entry and subtype-changed callback agree on the same set. Decided
+     * purely by [AdditionalSubtypeBuilder] (no android import there); this function only turns
+     * that decision into real [InputMethodSubtype] objects. Called at [init] ("when the keyboard
+     * service is created") and from [applySettings] whenever `custom_input_styles` changes; SS8.3's
+     * other triggers (the app process starting, an immediate re-registration from the Input
+     * Languages screen's own process, and the 500 ms explicitly-enabled-set rewrite on Android 14+)
+     * are not wired from here.
+     */
+    private fun registerAdditionalSubtypes(inputStyles: List<String>) {
+        if (inputStyles == lastRegisteredInputStyles) return
+        lastRegisteredInputStyles = inputStyles
+        runCatching {
+            val imm = service.getSystemService(InputMethodManager::class.java) ?: return
+            val subtypes = AdditionalSubtypeBuilder.build(inputStyles).map { spec ->
+                InputMethodSubtype.InputMethodSubtypeBuilder()
+                    .setSubtypeLocale(spec.locale)
+                    .setSubtypeMode("keyboard")
+                    .setSubtypeExtraValue(spec.extraValue)
+                    .setSubtypeId(spec.id)
+                    .setIsAsciiCapable(true)
+                    .build()
+            }.toTypedArray()
+            // SS8.3: "The whole array replaces Android's previous additional set, even when it is empty."
+            val imeId = ComponentName(service, service.javaClass).flattenToShortString()
+            imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+        }.onFailure { error -> Log.e(TAG, "subtype registration crashed", error) }
+    }
+
+    /**
+     * spec: status-bar.md SS5.3, autocorrect-suggestions.md SS5: the action-mode "trash" button.
+     * "Delete removes the word from the personal dictionary in every loaded dictionary" is one
+     * store update here, since 3.0 keeps a single shared [UserWordStore] rather than per-dictionary
+     * copies (`TextInputResources.userWords`' own contract); "forgets it as a next word everywhere"
+     * has no owner yet (see [KeyboardPipeline.hiddenSuggestions]' KDoc).
+     */
+    private fun deletePersonalWord(word: String) {
+        userWordStore = userWordStore.withPersonalWordRemoved(word)
+        pipeline.resources = pipeline.resources.copy(userWords = userWordStore)
+        userWordLoader.savePersonalAsync(userWordStore.personalWords())
     }
 
     /**
@@ -402,6 +542,9 @@ internal class KeyboardSession(
         loadDictionary(primaryLanguage)
         rebuildDictionaries()
         extraLanguages.forEach(::loadDictionary)
+        // spec SS8.3: "whenever `custom_input_styles` changes"; a no-op when it did not (the
+        // function's own equality guard).
+        registerAdditionalSubtypes(settings.languages.inputStyles)
         if (announceSwitch && settings.languages.toastOnLayoutSwitch) {
             runCatching {
                 val text = InputStyleCatalog.switchToastText(currentStyle, extraLanguages.map { it.value })
@@ -439,6 +582,13 @@ internal class KeyboardSession(
         quickLauncher.executor = commandExecutor
         tapHapticUseSystem = settings.feedback.tapHapticUseSystem
         tapHapticDurationMs = settings.feedback.tapHapticDurationMs
+        // spec SS5.6: the suggestion row's live announcements and their delay. `:core:strip`'s own
+        // [StripSettings] (`strip`, above) has no accessibility fields (SS9.1's Keep/Drop is about
+        // the strip's *theme*), so these two come straight off the raw store settings.
+        statusBar?.liveAnnouncementsEnabled = settings.statusBar.accessibilityLiveAnnouncementsEnabled
+        statusBar?.announcementDelayMs = settings.statusBar.accessibilitySuggestionsAnnouncementDelayMs
+        // spec SS11: `ime_overlay_debug_logging`.
+        statusBar?.overlayDebugLoggingEnabled = settings.statusBar.overlayDebugLoggingEnabled
     }
 
     /**
@@ -537,7 +687,7 @@ internal class KeyboardSession(
         } else {
             pipeline.onStartInput(field, profile.editorTrust, profile, openingText)
         }
-        service.setCandidatesViewShown(field.isReallyEditable)
+        requestCandidatesShown(field.isReallyEditable)
         currentPackageName = reportedPackage
         // spec expansion-clipboard-pickers-launcher.md SS6.2 A: the home screen path needs the foreground launcher.
         pipeline.foregroundIsHome = reportedPackage != null && reportedPackage in homePackages
@@ -568,7 +718,7 @@ internal class KeyboardSession(
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         pipeline.onFinishInput()
-        service.setCandidatesViewShown(false)
+        requestCandidatesShown(false)
         dictationController.onEditorFieldClosed()
         // spec: SS4.6, "forgotten and the badge hidden when the editor finishes".
         lastCaretGeometry = null
@@ -577,6 +727,10 @@ internal class KeyboardSession(
         handler.removeCallbacks(expansionRefreshRunnable)
         expansionPopup.hide()
         emojiPicker.onAppSelectionChanged()
+        // spec SS5.3: "Action mode also ends when... the field finishes"; SS6.4: "the overlay is
+        // also closed whenever the connection to the app changes".
+        statusBar?.exitActionMode()
+        closeQuickActions()
         syncSymPanels()
     }
 
@@ -593,6 +747,9 @@ internal class KeyboardSession(
             if (!pipeline.onWindowHidden(SystemClock.uptimeMillis())) return@runCatching
             trackpad.onKeyboardWindowHidden()
             statusBar?.invalidateRenderCache()
+            // spec SS5.3: "Action mode also ends when... the window hides"; SS6.4: the overlay too.
+            statusBar?.exitActionMode()
+            closeQuickActions()
             expansionPopup.hide()
             syncSymPanels()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
@@ -645,12 +802,65 @@ internal class KeyboardSession(
     private fun applyDipEffects(effects: List<DipEffect>) {
         effects.forEach { effect ->
             when (effect) {
+                // The dip's own hide is deliberately immediate (SS12.2 step 2: "the strip is hidden
+                // immediately"), not routed through [requestCandidatesShown]'s "next UI turn" post:
+                // D5 measured that even a 21 ms delay on the *re-show* half of the dip broke Teams'
+                // inset, so the dip keeps its own precise timing rather than sharing the general
+                // surface-transition safety net below.
                 DipEffect.HIDE_STRIP -> service.setCandidatesViewShown(false)
                 DipEffect.SHOW_STRIP -> {
                     service.setCandidatesViewShown(true)
                     handler.post { (statusBar?.parent as? View)?.visibility = View.VISIBLE }
                 }
             }
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The surface-transition retry safety net. spec: status-bar.md SS3.2, SS14, T39, T40.
+    // -----------------------------------------------------------------------------------------
+
+    /** Cancels a not-yet-run posted decision (SS3.2: "a later evaluation cancels any earlier posted one that has not run yet", T39), the same token-cancellation idiom [cursorUpdateToken] already uses. */
+    private val surfaceTransitionToken = Any()
+    private var surfaceTransitionState = SurfaceTransitionState()
+
+    /**
+     * spec SS3.2: posts the real `setCandidatesViewShown` call for the next UI turn rather than
+     * calling it from this stack, so a second evaluation that lands before the first one ran can
+     * cancel it outright (T39). A transition to shown is then checked against
+     * [StatusBarView.isRenderedOnScreen] and retried up to [SurfaceTransitionRetry.MAX_ATTEMPTS]
+     * times, [SurfaceTransitionRetry.INTERVAL_MS] apart, before it is abandoned (T40).
+     */
+    private fun requestCandidatesShown(shown: Boolean) {
+        handler.removeCallbacksAndMessages(surfaceTransitionToken)
+        surfaceTransitionState = SurfaceTransitionState()
+        handler.postDelayed({ performCandidatesShown(shown) }, surfaceTransitionToken, 0L)
+    }
+
+    private fun performCandidatesShown(shown: Boolean) {
+        runCatching { service.setCandidatesViewShown(shown) }.onFailure { error -> Log.e(TAG, "candidates view shown crashed", error) }
+        if (!shown) return
+        // spec SS3.2: "one turn after that forces the enclosing container back to visible".
+        handler.postDelayed({
+            runCatching { (statusBar?.parent as? View)?.visibility = View.VISIBLE }
+                .onFailure { error -> Log.e(TAG, "container visibility fix crashed", error) }
+            checkSurfaceTransition(shown = true)
+        }, surfaceTransitionToken, 0L)
+    }
+
+    private fun checkSurfaceTransition(shown: Boolean) {
+        val rendered = statusBar?.isRenderedOnScreen() ?: false
+        val (nextState, outcome) = SurfaceTransitionRetry.onCheck(surfaceTransitionState, requestedShown = shown, actuallyRendered = rendered)
+        surfaceTransitionState = nextState
+        when (outcome) {
+            SurfaceTransitionOutcome.SATISFIED -> Unit
+            SurfaceTransitionOutcome.RETRY -> handler.postDelayed({ checkSurfaceTransition(shown) }, surfaceTransitionToken, SurfaceTransitionRetry.INTERVAL_MS)
+            // spec T40: "abandoned; requested-shown state set to what is actually rendered". There is
+            // no separate "requested-shown" flag in this class to roll back (the platform's own
+            // `isInputViewShown`/candidates state is that record); the abandon itself, giving up on
+            // further retries, is what keeps this class from spinning forever on a surface Android
+            // never actually renders.
+            SurfaceTransitionOutcome.ABANDONED -> Unit
         }
     }
 
@@ -807,6 +1017,12 @@ internal class KeyboardSession(
      * that no unit test in this project runs against for real.
      */
     fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
+        // spec SS6.4: "The close button and the hardware Back key close it." Consumed outright,
+        // like the close button, rather than falling through to nav mode or the app.
+        if (quickActionsOpen && event.keyCode == KeyEvent.KEYCODE_BACK) {
+            if (event.action == KeyEvent.ACTION_UP) closeQuickActions()
+            return@runCatching true
+        }
         // spec expansion-clipboard-pickers-launcher.md SS4.5: while page 4's search captures, hardware keys type into it.
         if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalizeStroke(event)?.key)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
@@ -1324,6 +1540,7 @@ internal class KeyboardSession(
             theme = strip.theme,
             roundedCorners = strip.roundedCorners,
             slotTextSize = SlotTextSizeSp.forScale(strip.theme.suggestionsHeightScale),
+            barHeightDp = strip.barHeightDp,
             listener = stripListener,
         )
         statusBar = view
@@ -1336,14 +1553,61 @@ internal class KeyboardSession(
     private val stripListener = object : StatusBarView.Listener {
         override fun onSlotTapped(slot: Slot) = onStripSlotTapped(slot)
 
-        /** SPEC GAP / missing module: action mode (SS5.3) needs the personal dictionary's hide/delete, which has no owner yet; a long press does nothing visible. */
-        override fun onSlotLongPressed(slot: Slot) = Unit
+        /**
+         * spec status-bar.md SS5.3: enters action mode with the eye (always) and trash (only when
+         * the word is already a personal word, dictionaries-languages.md SS7's [UserWordStore])
+         * buttons [SuggestionRowRules.actionModeButtons] computes for this slot.
+         */
+        override fun onSlotLongPressed(position: SlotPosition, slot: Slot) {
+            runCatching {
+                if (!slot.isTappable) return@runCatching
+                val personal = userWordStore.sourceOf(slot.text) == WordSource.PERSONAL
+                val buttons = SuggestionRowRules.actionModeButtons(slot, wordInPersonalDictionary = personal)
+                if (buttons.isEmpty()) return@runCatching
+                performSlotTapHaptic()
+                statusBar?.enterActionMode(position, buttons)
+            }.onFailure { error -> Log.e(TAG, "slot long press crashed", error) }
+        }
+
+        /** spec status-bar.md SS5.3, autocorrect-suggestions.md SS5: the action row's eye (hide) and trash (forget from the personal dictionary) buttons. */
+        override fun onSlotActionButtonTapped(position: SlotPosition, slot: Slot, action: SlotActionButton) {
+            runCatching {
+                when (action) {
+                    SlotActionButton.HIDE_SUGGESTION -> pipeline.hideSuggestion(slot.text)
+                    SlotActionButton.DELETE_FROM_PERSONAL_DICTIONARY -> deletePersonalWord(slot.text)
+                }
+                refreshCandidatesStrip()
+            }.onFailure { error -> Log.e(TAG, "slot action button crashed", error) }
+        }
 
         override fun onButtonTapped(button: StripButton) = onStripButtonTapped(button)
         override fun onButtonLongPressed(button: StripButton) = performStripAction(button.longPress, button)
+
+        /** spec SS6.4: "Tapping any item closes the overlay and performs the action." */
+        override fun onQuickActionTapped(button: StripButton) {
+            closeQuickActions()
+            onStripButtonTapped(button)
+        }
+
+        /** spec SS6.4: "The close button and the hardware Back key close it." */
+        override fun onQuickActionsClosed() = closeQuickActions()
+
+        override fun onBacklightNudgeTapped() = openOwnApp()
+
+        /** spec SS10: "tapping '✕' collapses it." */
+        override fun onBacklightNudgeDismissed() {
+            backlightNudgeMemory = BacklightNudgeEpisode.onDismissed(backlightNudgeMemory)
+            handler.removeCallbacks(backlightNudgeTimeoutRunnable)
+            statusBar?.renderBacklightNudge(BacklightNudgeVisibility.HIDDEN)
+        }
     }
 
-    /** spec SS5.3: a suggestion "is committed through the same path as accepting it from the keyboard"; the add-word and expansion taps have no owning module yet and are accepted as suggestions rather than dropped. */
+    /**
+     * spec SS5.3: a suggestion "is committed through the same path as accepting it from the
+     * keyboard"; the expansion tap has no owning module yet and is accepted as a suggestion rather
+     * than dropped. dictionaries-languages.md SS7: an [SlotKind.ADD_WORD] tap additionally makes
+     * the word a real personal word ([persistAddedWord]), not just typed text.
+     */
     private fun onStripSlotTapped(slot: Slot) {
         runCatching {
             if (slot.kind == SlotKind.EMPTY) return@runCatching
@@ -1362,6 +1626,7 @@ internal class KeyboardSession(
             val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = true, fallbackCursorAbsolute = lastReportedSelStart)
             val result = pipeline.onAcceptSuggestion(slot.text, readout.snapshot)
             applyResult(ic, result, readout)
+            if (slot.kind == SlotKind.ADD_WORD) persistAddedWord(slot.text)
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "slot tap crashed", error) }
     }
@@ -1374,7 +1639,14 @@ internal class KeyboardSession(
         }
     }
 
-    /** spec SS6.1: the tap haptic, the "latched layer released first" rule, then the action. */
+    /**
+     * spec SS6.1: the tap haptic, the "latched layer released first" rule, then the action. The
+     * hamburger button is special-cased: [refreshCandidatesStrip] is what SS6.4/SS17 mean by "in
+     * hardware mode, on every strip refresh" the overlay closes, so calling it right after this
+     * same tap opened the overlay would close it before the user ever saw it. Every other button
+     * (including one tapped from inside the overlay itself, via [StatusBarView.Listener.onQuickActionTapped])
+     * still refreshes as before.
+     */
     private fun onStripButtonTapped(button: StripButton) {
         runCatching {
             when (button.haptic) {
@@ -1383,7 +1655,7 @@ internal class KeyboardSession(
             }
             if (button.releasesLatchedLayerFirst) pipeline.releaseLatchedLayersForStripButton()
             performStripAction(button.tap, button)
-            refreshCandidatesStrip()
+            if (button != StripButton.HAMBURGER) refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "${button.id} tap crashed", error) }
     }
 
@@ -1416,8 +1688,27 @@ internal class KeyboardSession(
                 pipeline.toggleSymPage(action.page)
                 syncSymPanels()
             }
-            StripAction.OpenQuickActions -> DiagnosticLog.i(TAG) { "quick actions overlay not built yet (placeholder)" }
+            StripAction.OpenQuickActions -> toggleQuickActions()
         }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The hamburger's quick-actions overlay. spec: status-bar.md SS6.1, SS6.4, SS17.
+    // -----------------------------------------------------------------------------------------
+
+    /** True only in this class; [StripModel.quickActionsOpen] is always false by design (its own KDoc) since it is recomputed fresh on every refresh. */
+    private var quickActionsOpen = false
+
+    private fun toggleQuickActions() {
+        quickActionsOpen = !quickActionsOpen
+        statusBar?.setQuickActionsOpen(quickActionsOpen)
+    }
+
+    /** spec SS6.4: the close button, any mirrored action, the hardware Back key, an app-connection change, or (via [refreshCandidatesStrip]) any other refresh. */
+    private fun closeQuickActions() {
+        if (!quickActionsOpen) return
+        quickActionsOpen = false
+        statusBar?.setQuickActionsOpen(false)
     }
 
     /** spec SS6.1: "Sends Ctrl+Z to the app" / "Sends Ctrl+Y", as a down and up pair the app interprets. */
@@ -1443,6 +1734,8 @@ internal class KeyboardSession(
      * nothing changed, and both are guarded so a strip bug never reaches the keystroke.
      */
     private fun refreshCandidatesStrip() {
+        // spec SS6.4, SS17: "in hardware mode, on every strip refresh" the overlay closes.
+        closeQuickActions()
         statusBar?.let { view ->
             runCatching {
                 view.render(
@@ -1454,11 +1747,56 @@ internal class KeyboardSession(
                         clipboardOverlayOpen = clipboardPanel.isShown,
                     ),
                 )
+                view.languageLayoutName = currentStyle.layoutId
             }.onFailure { error -> Log.e(TAG, "strip refresh crashed", error) }
         }
         runCatching { refreshExpansionPopup() }.onFailure { error -> Log.e(TAG, "expansion popup crashed", error) }
         refreshCaretBadge()
         retryCursorUpdateOnRefresh()
+        refreshBacklightNudge()
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The smart-backlight-paused nudge. spec: status-bar.md SS10, SS14.
+    // -----------------------------------------------------------------------------------------
+
+    private var backlightNudgeMemory = BacklightNudgeMemory()
+    private val backlightNudgeTimeoutRunnable = Runnable { onBacklightNudgeTimeout() }
+
+    private fun refreshBacklightNudge() {
+        runCatching {
+            val settings = lastSettings
+            val (next, visibility) = BacklightNudgeEpisode.onRefresh(
+                backlightNudgeMemory,
+                enabled = settings.device.smartBacklightEnabled,
+                applied = settings.captures.smartBacklightApplied,
+                nowMs = SystemClock.uptimeMillis(),
+            )
+            val justAppeared = backlightNudgeMemory.shownAtMs == null && next.shownAtMs != null
+            backlightNudgeMemory = next
+            if (justAppeared) {
+                handler.removeCallbacks(backlightNudgeTimeoutRunnable)
+                handler.postDelayed(backlightNudgeTimeoutRunnable, BacklightNudge.AUTO_COLLAPSE_MS)
+            } else if (visibility == BacklightNudgeVisibility.HIDDEN) {
+                handler.removeCallbacks(backlightNudgeTimeoutRunnable)
+            }
+            statusBar?.renderBacklightNudge(visibility)
+        }.onFailure { error -> Log.e(TAG, "backlight nudge refresh crashed", error) }
+    }
+
+    /** spec SS10, SS14: "collapses on its own to a... dot after 4000 ms", independent of any refresh. */
+    private fun onBacklightNudgeTimeout() {
+        runCatching {
+            backlightNudgeMemory = BacklightNudgeEpisode.onTimeoutElapsed(backlightNudgeMemory)
+            val settings = lastSettings
+            val visibility = BacklightNudge.visibility(
+                enabled = settings.device.smartBacklightEnabled,
+                applied = settings.captures.smartBacklightApplied,
+                dismissedByUser = backlightNudgeMemory.dismissedByUser,
+                collapsedToDot = backlightNudgeMemory.collapsedToDot,
+            )
+            statusBar?.renderBacklightNudge(visibility)
+        }.onFailure { error -> Log.e(TAG, "backlight nudge timeout crashed", error) }
     }
 
     /**
