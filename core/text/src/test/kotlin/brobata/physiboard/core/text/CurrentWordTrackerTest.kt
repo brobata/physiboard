@@ -7,6 +7,11 @@ import kotlin.test.assertEquals
 class CurrentWordTrackerTest {
 
     @Test
+    fun `SS1_2 cursor-move debounce is 120ms, not a setting`() {
+        assertEquals(120L, CurrentWordTracker.CURSOR_MOVE_DEBOUNCE_MS)
+    }
+
+    @Test
     fun `T1 tracks two characters`() {
         var t = CurrentWordTracker.empty()
         t = t.onCharacterCommitted('H')

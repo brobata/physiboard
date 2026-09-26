@@ -21,6 +21,9 @@ dependencies {
     api(project(":core:keys"))
     api(project(":core:text"))
     api(project(":core:pointer"))
+    // FeedbackPrefs.typingSoundMode reuses TypingSoundMode rather than parsing its own copy of
+    // "off"/"click"/"typewriter" (settings-catalog.md SS2.13).
+    api(project(":core:actions"))
     // Only the JSON tree API is used (no compiler plugin): the catalogue's JSON-shaped rows
     // (sym pages, Enter overrides, themes, snippets, ring colours) are parsed and written by hand.
     implementation(libs.kotlinx.serialization.json)

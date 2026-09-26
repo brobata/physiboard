@@ -1,6 +1,9 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
+import brobata.physiboard.core.pointer.keyboardswipe.TrackpadGestureProvider
 import brobata.physiboard.core.pointer.trackpad.ActivationMode
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
 import brobata.physiboard.core.settings.JsonRows.boolean
@@ -137,6 +140,16 @@ object SettingsKeys {
     const val TRACKPAD_STEP = "screen_trackpad_step_px"
     const val TRACKPAD_HINT = "screen_trackpad_show_hint"
 
+    // SS3.7 keyboard-surface swipe (trackpad-caret-nav.md)
+    const val KEYBOARD_SWIPE_ENABLED = "trackpad_gestures_enabled"
+    const val KEYBOARD_SWIPE_PROVIDER = "trackpad_provider"
+    const val KEYBOARD_SWIPE_THRESHOLD = "trackpad_swipe_threshold"
+    const val KEYBOARD_SWIPE_SUGGESTION_THRESHOLD = "trackpad_suggestion_swipe_threshold"
+    const val KEYBOARD_SWIPE_DELETE_THRESHOLD = "trackpad_delete_swipe_threshold"
+    const val KEYBOARD_SWIPE_ADD_WORD = "trackpad_gesture_add_word_enabled"
+    const val KEYBOARD_SWIPE_ADD_WORD_FULL_WIDTH = "trackpad_gesture_add_word_full_width_enabled"
+    const val SWIPE_TO_DELETE_PROVIDER = "swipe_to_delete_provider"
+
     // SS2.10 device
     const val SMART_BACKLIGHT = "smart_backlight_enabled"
     const val RING_ENABLED = "notification_ring_enabled"
@@ -176,6 +189,8 @@ object SettingsKeys {
     // SS2.13 feedback
     const val TAP_HAPTIC_USE_SYSTEM = "tap_haptic_use_system"
     const val TAP_HAPTIC_DURATION = "tap_haptic_duration_ms"
+    const val TYPING_SOUND_MODE = "typing_sound_mode"
+    const val TYPING_SOUND_OUTPUT_MODE = "typing_sound_output_mode"
 
     // SS2.15 shell
     const val TUTORIAL_COMPLETED = "tutorial_completed"
@@ -221,6 +236,7 @@ object SettingsCodec {
         writePerApp(settings.perApp)
         writeDictation(settings.dictation)
         writeTrackpad(settings.trackpad)
+        writeKeyboardSwipe(settings.keyboardSwipe)
         writeDevice(settings.device)
         writeExpansion(settings.expansion)
         writeLauncher(settings.launcher)
@@ -241,6 +257,7 @@ object SettingsCodec {
             perApp = readPerApp(r),
             dictation = readDictation(r),
             trackpad = readTrackpad(r),
+            keyboardSwipe = readKeyboardSwipe(r),
             device = readDevice(r),
             expansion = readExpansion(r),
             launcher = readLauncher(r),
@@ -567,6 +584,36 @@ object SettingsCodec {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // Keyboard-surface swipe (SS3.7)
+    // ---------------------------------------------------------------------------------------------
+
+    private fun MutableMap<String, String>.writeKeyboardSwipe(k: KeyboardSwipePrefs) {
+        put(SettingsKeys.KEYBOARD_SWIPE_ENABLED, k.gesturesEnabled.toString())
+        put(SettingsKeys.KEYBOARD_SWIPE_PROVIDER, k.provider.preferenceValue)
+        put(SettingsKeys.KEYBOARD_SWIPE_THRESHOLD, k.swipeThresholdPx.toString())
+        k.suggestionSwipeThresholdPx?.let { put(SettingsKeys.KEYBOARD_SWIPE_SUGGESTION_THRESHOLD, it.toString()) }
+        k.deleteSwipeThresholdPx?.let { put(SettingsKeys.KEYBOARD_SWIPE_DELETE_THRESHOLD, it.toString()) }
+        put(SettingsKeys.KEYBOARD_SWIPE_ADD_WORD, k.gestureAddWordEnabled.toString())
+        put(SettingsKeys.KEYBOARD_SWIPE_ADD_WORD_FULL_WIDTH, k.gestureAddWordFullWidthEnabled.toString())
+        put(SettingsKeys.SWIPE_TO_DELETE_PROVIDER, k.swipeToDeleteProvider.preferenceValue)
+    }
+
+    /** spec SS3.7: every threshold is "float 120..750"; [suggestionSwipeThresholdPx]/[deleteSwipeThresholdPx] fall back to the legacy value when unset. */
+    private fun readKeyboardSwipe(r: FlatReader): KeyboardSwipePrefs {
+        val d = KeyboardSwipePrefs()
+        return KeyboardSwipePrefs(
+            gesturesEnabled = r.bool(SettingsKeys.KEYBOARD_SWIPE_ENABLED, d.gesturesEnabled),
+            provider = TrackpadGestureProvider.fromPreference(r.string(SettingsKeys.KEYBOARD_SWIPE_PROVIDER)),
+            swipeThresholdPx = (r.float(SettingsKeys.KEYBOARD_SWIPE_THRESHOLD) ?: d.swipeThresholdPx).coerceIn(120f, 750f),
+            suggestionSwipeThresholdPx = r.float(SettingsKeys.KEYBOARD_SWIPE_SUGGESTION_THRESHOLD)?.coerceIn(120f, 750f),
+            deleteSwipeThresholdPx = r.float(SettingsKeys.KEYBOARD_SWIPE_DELETE_THRESHOLD)?.coerceIn(120f, 750f),
+            gestureAddWordEnabled = r.bool(SettingsKeys.KEYBOARD_SWIPE_ADD_WORD, d.gestureAddWordEnabled),
+            gestureAddWordFullWidthEnabled = r.bool(SettingsKeys.KEYBOARD_SWIPE_ADD_WORD_FULL_WIDTH, d.gestureAddWordFullWidthEnabled),
+            swipeToDeleteProvider = SwipeToDeleteProvider.fromPreference(r.string(SettingsKeys.SWIPE_TO_DELETE_PROVIDER)),
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Device (SS2.10)
     // ---------------------------------------------------------------------------------------------
 
@@ -689,6 +736,8 @@ object SettingsCodec {
     private fun MutableMap<String, String>.writeFeedback(f: FeedbackPrefs) {
         put(SettingsKeys.TAP_HAPTIC_USE_SYSTEM, f.tapHapticUseSystem.toString())
         put(SettingsKeys.TAP_HAPTIC_DURATION, f.tapHapticDurationMs.toString())
+        put(SettingsKeys.TYPING_SOUND_MODE, f.typingSoundMode.storedValue)
+        put(SettingsKeys.TYPING_SOUND_OUTPUT_MODE, f.typingSoundOutputMode.storedValue)
     }
 
     private fun readFeedback(r: FlatReader): FeedbackPrefs {
@@ -696,6 +745,8 @@ object SettingsCodec {
         return FeedbackPrefs(
             tapHapticUseSystem = r.bool(SettingsKeys.TAP_HAPTIC_USE_SYSTEM, d.tapHapticUseSystem),
             tapHapticDurationMs = r.long(SettingsKeys.TAP_HAPTIC_DURATION, d.tapHapticDurationMs, 5L..80L),
+            typingSoundMode = TypingSoundMode.fromStored(r.string(SettingsKeys.TYPING_SOUND_MODE)),
+            typingSoundOutputMode = TypingSoundOutputMode.fromStored(r.string(SettingsKeys.TYPING_SOUND_OUTPUT_MODE)),
         )
     }
 

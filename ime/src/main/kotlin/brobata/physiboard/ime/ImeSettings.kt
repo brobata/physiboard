@@ -22,6 +22,7 @@ import brobata.physiboard.core.keys.SymPageId
 import brobata.physiboard.core.keys.SymPageMap
 import brobata.physiboard.core.keys.SymPagesConfig
 import brobata.physiboard.core.pointer.caret.CaretBadgeSettings
+import brobata.physiboard.core.pointer.keyboardswipe.KeyboardSwipeSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
@@ -285,9 +286,11 @@ internal object ImeSettings {
      * of it, en, es, fr, de, pl, otherwise en"; each code's set is the bundled set overlaid with
      * the user's `auto_correct_custom_<code>` rules, and a code outside the bundled seven with
      * custom rules is its own set. [bundled] is keyed by code; `:ime` fills it from
-     * [RuleSetAssetLoader], today only with `en` (`it`, `es`, `fr`, `de`, `pl` are documented
-     * gaps: the spec's own bundled rule text is not something a clean-room author can reproduce
-     * from first knowledge the way the English rules could be).
+     * [RuleSetAssetLoader] with `en`, `it` and `fr`. `es`, `de` and `pl` remain empty per SS8.1
+     * ("empty" is itself the spec's own shipped content for those three). `x-pastiera` (2.x's
+     * hidden "Recipes" set) is dropped for 3.0 per SS18's "fix or drop" item: [SettingsCodec]
+     * already strips it from an imported `auto_correct_enabled_languages` value, so no bundled
+     * `x-pastiera` asset ships and no code path re-adds it.
      */
     fun ruleSets(s: Settings, systemLanguage: String, bundled: Map<String, RuleSet> = emptyMap()): List<RuleSet> {
         val chosen = s.correction.textReplacementLanguages.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
@@ -353,6 +356,19 @@ internal object ImeSettings {
 
     fun trackpadGesture(s: Settings): TrackpadGestureSettings =
         TrackpadGestureSettings(horizontalStepPx = s.trackpad.stepPx.toFloat(), showHint = s.trackpad.showHint)
+
+    /** spec: trackpad-caret-nav.md SS3.7, the keyboard-surface swipe (a different gesture than [trackpadGesture]'s screen trackpad). */
+    fun keyboardSwipeSettings(s: Settings): KeyboardSwipeSettings = KeyboardSwipeSettings(
+        gesturesEnabled = s.keyboardSwipe.gesturesEnabled,
+        provider = s.keyboardSwipe.provider,
+        legacyThresholdPx = s.keyboardSwipe.swipeThresholdPx,
+        suggestionThresholdPx = s.keyboardSwipe.suggestionSwipeThresholdPx,
+        deleteThresholdPx = s.keyboardSwipe.deleteSwipeThresholdPx,
+        swipeToDelete = s.typing.swipeToDelete,
+        swipeToDeleteProvider = s.keyboardSwipe.swipeToDeleteProvider,
+        addWordEnabled = s.keyboardSwipe.gestureAddWordEnabled,
+        addWordFullWidthEnabled = s.keyboardSwipe.gestureAddWordFullWidthEnabled,
+    )
 
     /**
      * spec: dictation.md SS6.3, SS13: the pause and the segmented-session switch; SS4.2: masking

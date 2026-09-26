@@ -1,6 +1,9 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
+import brobata.physiboard.core.pointer.keyboardswipe.TrackpadGestureProvider
 import brobata.physiboard.core.pointer.trackpad.ActivationMode
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
 import brobata.physiboard.core.text.DashStyle
@@ -38,6 +41,7 @@ data class Settings(
     val perApp: PerAppPrefs = PerAppPrefs(),
     val dictation: DictationPrefs = DictationPrefs(),
     val trackpad: TrackpadPrefs = TrackpadPrefs(),
+    val keyboardSwipe: KeyboardSwipePrefs = KeyboardSwipePrefs(),
     val device: DevicePrefs = DevicePrefs(),
     val expansion: ExpansionPrefs = ExpansionPrefs(),
     val launcher: LauncherPrefs = LauncherPrefs(),
@@ -456,6 +460,25 @@ data class TrackpadPrefs(
     val showHint: Boolean = true,
 )
 
+/**
+ * The keyboard-surface swipe (upstream "trackpad gestures"), a different gesture on a different
+ * surface than [TrackpadPrefs]'s screen trackpad. spec: trackpad-caret-nav.md SS3.7: "None of
+ * these has a screen in 2.x; they are listed because the keyboard still reads them and backup
+ * carries them." `:core:pointer`'s `KeyboardSwipeSettings` is the pure type these values feed.
+ */
+data class KeyboardSwipePrefs(
+    val gesturesEnabled: Boolean = false,
+    val provider: TrackpadGestureProvider = TrackpadGestureProvider.NATIVE_IME,
+    val swipeThresholdPx: Float = 500f,
+    /** `trackpad_suggestion_swipe_threshold`; null means "use [swipeThresholdPx]" (SS3.7: "the legacy value, else 500"). */
+    val suggestionSwipeThresholdPx: Float? = null,
+    /** `trackpad_delete_swipe_threshold`; null means "use [swipeThresholdPx]". */
+    val deleteSwipeThresholdPx: Float? = null,
+    val gestureAddWordEnabled: Boolean = true,
+    val gestureAddWordFullWidthEnabled: Boolean = true,
+    val swipeToDeleteProvider: SwipeToDeleteProvider = SwipeToDeleteProvider.NATIVE_IME,
+)
+
 /** `notification_ring_brightness`. spec: device-backlight-ring.md SS5. */
 enum class RingBrightness(val storedValue: String) {
     DIM("DIM"), NORMAL("NORMAL"), BRIGHT("BRIGHT");
@@ -551,14 +574,29 @@ data class LauncherPrefs(
 )
 
 /**
- * Sound and haptics. spec: settings-catalog.md SS2.13. Typing sounds, the output mode and the
- * custom pack rows are dropped (expansion-clipboard-pickers-launcher.md Keep/Drop: undecided,
- * and the pack import is unreachable); the dictation cue lives in [DictationPrefs].
+ * Sound and haptics. spec: settings-catalog.md SS2.13. `typing_sound_mode` and
+ * `typing_sound_output_mode` are carried (expansion-clipboard-pickers-launcher.md SS9.1, SS9.3);
+ * the custom-pack import fields (`typing_sound_custom_file_name`,
+ * `typing_sound_custom_display_name`, `typing_sound_updated_at`) are still dropped, since 3.0 has
+ * no pack-import flow, matching how `custom` is reachable in 2.x only through the preference
+ * itself or a restored backup ("hidden to declutter", SS9.1). The dictation cue lives in
+ * [DictationPrefs].
  */
 data class FeedbackPrefs(
     val tapHapticUseSystem: Boolean = true,
     val tapHapticDurationMs: Long = 25,
+    val typingSoundMode: TypingSoundMode = TypingSoundMode.OFF,
+    val typingSoundOutputMode: TypingSoundOutputMode = TypingSoundOutputMode.MEDIA,
 )
+
+/** `typing_sound_output_mode`. spec: settings-catalog.md SS2.13; "anything else reads as `media`". */
+enum class TypingSoundOutputMode(val storedValue: String) {
+    MEDIA("media"), SYSTEM("system"), NOTIFICATION("notification");
+
+    companion object {
+        fun fromStored(value: String?): TypingSoundOutputMode = entries.firstOrNull { it.storedValue == value } ?: MEDIA
+    }
+}
 
 /** The app shell's own markers (settings-catalog.md SS2.15) that must survive a reinstall. The migration and baseline markers are 2.x-only. */
 data class ShellState(

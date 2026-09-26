@@ -149,6 +149,14 @@ data class TextInputResult(
      * alone, exactly like every other request this pipeline handles, so those never set this.
      */
     val enterDelivery: EnterIntent? = null,
+    /**
+     * Non-null only when a word boundary actually ran [BoundaryEngine.evaluate] this call: the
+     * debug capture record `:ime` should write (app-shell.md SS10.2, SS11; autocorrect-
+     * suggestions.md SS7.2, "each attempt is recorded"). `:ime` fills in `before`/`after` from
+     * [BoundaryOutcome.Replaced] itself, since this bundle already carries no more than the
+     * decision's own facts.
+     */
+    val autocorrectDebug: BoundaryDebugInfo? = null,
 )
 
 /**
@@ -238,12 +246,19 @@ object TextInputPipeline {
         resources: TextInputResources,
         settings: TextInputSettingsBundle,
         memory: AutocorrectMemory,
-    ): Pair<AutocorrectMemory, BoundaryOutcome> {
+    ): BoundaryEvaluation {
+        val trigger = BoundaryDebugInfo.triggerFor(boundaryChar)
         // spec: autocorrect-suggestions.md SS7.4 (a restricted field gets "no rule, no case repair,
         // no correction; a boundary is committed as typed") and text-input.md SS3's "Autocorrect"
         // column, which [FieldContext.autocorrectAllowed] encodes: the engine is not consulted at
         // all, for Space, Enter and boundary punctuation alike, since 3.0 has one engine (SS18 W4).
-        if (!field.autocorrectAllowed) return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
+        // spec SS7.2 step 2's "no input connection" and this drift-guard both mean the same thing
+        // to the debug capture: the engine could not safely be consulted at all this keystroke.
+        val noInputConnection = BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "not_applicable", reason = "no_input_connection", boundaryChar = boundaryChar)
+        if (!field.autocorrectAllowed) {
+            val restricted = BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "not_applicable", reason = "auto_replace_disabled", boundaryChar = boundaryChar)
+            return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, restricted)
+        }
         // spec autocorrect-suggestions.md SS7.2 step 3 wants 32 characters of context before the
         // word; the window has to carry the word itself as well, or the drift check can never see
         // the word it is comparing and every boundary on a word longer than the window reads as a
@@ -254,7 +269,7 @@ object TextInputPipeline {
                 trackedWord, editorWindow!!, boundaryChar, resources.ruleSets, resources.dictionaries, resources.userWords,
                 settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, memory,
             )
-            DriftCheck.Unavailable, DriftCheck.Disagreed -> memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
+            DriftCheck.Unavailable, DriftCheck.Disagreed -> BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, noInputConnection)
         }
     }
 
@@ -514,9 +529,9 @@ object TextInputPipeline {
 
         if (allowBoundaryHandoff && ch in WordChars.BOUNDARY_PUNCTUATION) {
             val trackedWord = newState.currentWord.word
-            val (memory, outcome) = evaluateBoundarySafely(trackedWord, field, editor, trust, ch, resources, settings, newState.autocorrectMemory)
-            newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
-            return when (outcome) {
+            val evaluation = evaluateBoundarySafely(trackedWord, field, editor, trust, ch, resources, settings, newState.autocorrectMemory)
+            newState = newState.copy(autocorrectMemory = evaluation.memory, currentWord = CurrentWordTracker.empty())
+            return when (val outcome = evaluation.outcome) {
                 is BoundaryOutcome.Replaced -> {
                     // spec: text-input.md SS14 (this module's single boundary path). ch is already
                     // committed as the field's last character, so the word plus that boundary is
@@ -527,9 +542,9 @@ object TextInputPipeline {
                         EditorOp.Haptic,
                         EditorOp.CommitText(ch.toString()),
                     )
-                    TextInputResult(ops, newState)
+                    TextInputResult(ops, newState, autocorrectDebug = evaluation.debug)
                 }
-                BoundaryOutcome.CommitPlain -> TextInputResult(precedingOps, newState)
+                BoundaryOutcome.CommitPlain -> TextInputResult(precedingOps, newState, autocorrectDebug = evaluation.debug)
             }
         }
 
@@ -643,8 +658,9 @@ object TextInputPipeline {
         // typed space insert one"), which is what let a second, deliberate Space press find a
         // trailing space and commit nothing at all.
         val trackedWord = newState.currentWord.word
-        val (memory, outcome) = evaluateBoundarySafely(trackedWord, field, editor, trust, ' ', resources, settings, newState.autocorrectMemory)
-        newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
+        val evaluation = evaluateBoundarySafely(trackedWord, field, editor, trust, ' ', resources, settings, newState.autocorrectMemory)
+        val outcome = evaluation.outcome
+        newState = newState.copy(autocorrectMemory = evaluation.memory, currentWord = CurrentWordTracker.empty())
 
         val ops = mutableListOf<EditorOp>()
         var replacementEndsInApostrophe = false
@@ -671,7 +687,7 @@ object TextInputPipeline {
         // A replacement means the current word was not blank, so whatever justCommittedSentenceEnd
         // was remembering predates a real word and is no longer "the mark right before this space".
         val stillApplies = sentenceEndPending && outcome !is BoundaryOutcome.Replaced
-        return finishWithCapReevaluation(ops, newState, field, settings, textBefore, stillApplies)
+        return finishWithCapReevaluation(ops, newState, field, settings, textBefore, stillApplies, autocorrectDebug = evaluation.debug)
     }
 
     /**
@@ -697,12 +713,13 @@ object TextInputPipeline {
         settings: TextInputSettingsBundle,
         textBefore: String?,
         knownSentenceEndPending: Boolean = false,
+        autocorrectDebug: BoundaryDebugInfo? = null,
     ): TextInputResult {
         val projected = textBefore?.let { projectText(it, ops) }
         val (capState, decision) = AutoCapitalization.evaluate(state.autoCap, field, settings.autoCap, projected, knownSentenceEndPending = knownSentenceEndPending)
         // Consumed either way: this decision is the one place justCommittedSentenceEnd's fact gets
         // used, and it is stale for any keystroke after this one regardless of the outcome.
-        return TextInputResult(ops, state.copy(autoCap = capState, justCommittedSentenceEnd = false), decision)
+        return TextInputResult(ops, state.copy(autoCap = capState, justCommittedSentenceEnd = false), decision, autocorrectDebug = autocorrectDebug)
     }
 
     // ---------------------------------------------------------------------------------------
@@ -749,8 +766,9 @@ object TextInputPipeline {
         val textBefore = editor.contextTextBeforeCursor(trust, state.currentWord.word)
         val trackedWord = newState.currentWord.word
 
-        val (memory, outcome) = evaluateBoundarySafely(trackedWord, field, editor, trust, '\n', resources, settings, newState.autocorrectMemory)
-        newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty(), autoSpacePending = false)
+        val evaluation = evaluateBoundarySafely(trackedWord, field, editor, trust, '\n', resources, settings, newState.autocorrectMemory)
+        val outcome = evaluation.outcome
+        newState = newState.copy(autocorrectMemory = evaluation.memory, currentWord = CurrentWordTracker.empty(), autoSpacePending = false)
 
         val ops = mutableListOf<EditorOp>(EditorOp.FinishComposing)
         when (outcome) {
@@ -765,7 +783,7 @@ object TextInputPipeline {
 
         val projected = textBefore?.let { projectText(it, ops.filter { op -> op !is EditorOp.FinishComposing }) }
         val (capState, decision) = AutoCapitalization.evaluate(newState.autoCap, field, settings.autoCap, projected)
-        return TextInputResult(ops, newState.copy(autoCap = capState), decision)
+        return TextInputResult(ops, newState.copy(autoCap = capState), decision, autocorrectDebug = evaluation.debug)
     }
 
     /** spec: per-app-behavior.md SS3.4 "Newline": finish composing, commit "\n", auto-cap, reset the suggestion context. No autocorrect/boundary engine, unlike [handleGenericEnter]. */

@@ -77,4 +77,18 @@ class BackspaceTest {
         assertEquals(true, undo.memory.isRejected("teh"))
         assertEquals("teh", undo.addWordCandidate)
     }
+
+    @Test
+    fun `T77b undoing a replacement of an apostrophe word also rejects its root`() {
+        // spec: autocorrect-suggestions.md SS7.5 step 3: undoing "dell'amico" (which corrected
+        // "dell'amivo") must also reject "amivo", the apostrophe root, not just the whole word.
+        val memory = AutocorrectMemory().afterReplacement("dell'amivo", "dell'amico")
+        val decision = Backspace.decide(
+            hasSelection = false, shiftHeld = false, altActive = false, noAlternatives,
+            charsBeforeCursor = 11, memory, undoTextBeforeCursor = "dell'amico ",
+        )
+        val undo = (decision as Backspace.Decision.Undo).result
+        assertEquals(true, undo.memory.isRejected("dell'amivo"))
+        assertEquals(true, undo.memory.isRejected("amivo"))
+    }
 }

@@ -1,5 +1,6 @@
 package brobata.physiboard.ime
 
+import brobata.physiboard.core.shell.AutocorrectionRecord
 import brobata.physiboard.core.shell.ImeContextSnapshot
 import brobata.physiboard.core.shell.KeyboardEventRecord
 
@@ -16,6 +17,13 @@ interface DebugCaptureSink {
 
     /** spec SS10.7: recorded every time the keyboard attaches to a field, so a bug report describes the app being used. */
     fun reportFieldAttach(snapshot: ImeContextSnapshot, isPhysiBoardOwnPackage: Boolean)
+
+    /**
+     * spec app-shell.md SS11, autocorrect-suggestions.md SS7.2 ("each attempt is recorded in the
+     * debug capture with its outcome"): forwarded to the store's fixed-capacity autocorrection
+     * ring buffer regardless of whether Diagnostics is open.
+     */
+    fun recordAutocorrection(record: AutocorrectionRecord)
 }
 
 /** Implemented by the `Application` so [PhysiBoardInputMethodService] can find the sink through its application context. */

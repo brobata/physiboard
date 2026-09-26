@@ -52,14 +52,16 @@ object DictNormalization {
         }
     }
 
-    private fun straightenApostrophes(word: String): String {
+    /** Exposed (not `private`) so [NgramPrefix] can reuse the same first two folding steps. */
+    internal fun straightenApostrophes(word: String): String {
         if (CURLY_APOSTROPHES.none { it in word }) return word
         return buildString(word.length) {
             for (ch in word) append(if (ch in CURLY_APOSTROPHES) '\'' else ch)
         }
     }
 
-    private fun foldLigatures(word: String): String = word
+    /** Exposed (not `private`) so [NgramPrefix] can reuse the same ligature-folding step. */
+    internal fun foldLigatures(word: String): String = word
         .replace("œ", "oe").replace("Œ", "oe")
         .replace("æ", "ae").replace("Æ", "ae")
         .replace("ĳ", "ij").replace("Ĳ", "ij")

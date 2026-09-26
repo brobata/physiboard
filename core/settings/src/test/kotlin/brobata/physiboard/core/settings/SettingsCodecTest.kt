@@ -1,6 +1,9 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
+import brobata.physiboard.core.pointer.keyboardswipe.TrackpadGestureProvider
 import brobata.physiboard.core.pointer.trackpad.ActivationMode
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
 import brobata.physiboard.core.text.DashStyle
@@ -74,6 +77,11 @@ class SettingsCodecTest {
             symLongPressAssistant = true, sideKeyAssistant = true, assistantAction = AssistantAction.HANDS_FREE,
         ),
         trackpad = TrackpadPrefs(enabled = true, triggerKey = TriggerKey.SHIFT_EITHER, activation = ActivationMode.DOUBLE_TAP, stepPx = 48, showHint = false),
+        keyboardSwipe = KeyboardSwipePrefs(
+            gesturesEnabled = true, provider = TrackpadGestureProvider.SHIZUKU, swipeThresholdPx = 300f,
+            suggestionSwipeThresholdPx = 200f, deleteSwipeThresholdPx = 250f, gestureAddWordEnabled = false,
+            gestureAddWordFullWidthEnabled = false, swipeToDeleteProvider = SwipeToDeleteProvider.TITAN2_KEYCODE,
+        ),
         device = DevicePrefs(
             smartBacklightEnabled = false, ringEnabled = false, ringMinutes = 30, ringBrightness = RingBrightness.BRIGHT,
             ringShowIcons = true, ringKeyboardDark = false, ringDefaultColor = 0xFF123456.toInt(),
@@ -89,7 +97,10 @@ class SettingsCodecTest {
             typoTolerantRanking = false, symShortcutsEnabled = false, homeScreenShortcutsEnabled = true,
             assignedKeysJson = """{"62":{"type":"quick_launcher"}}""", commandCustomizationsJson = """{"app:x":{"favorite":true}}""",
         ),
-        feedback = FeedbackPrefs(tapHapticUseSystem = false, tapHapticDurationMs = 40),
+        feedback = FeedbackPrefs(
+            tapHapticUseSystem = false, tapHapticDurationMs = 40,
+            typingSoundMode = TypingSoundMode.TYPEWRITER, typingSoundOutputMode = TypingSoundOutputMode.NOTIFICATION,
+        ),
         shell = ShellState(tutorialCompleted = true, lastSeenWhatsNewVersion = "3.0.0", dismissedReleases = listOf("v3.0.1", "v3.0.2"), untestedDeviceNoticeSeen = true),
         captures = DeviceCaptures(
             fnCtrlPrevCaptured = true, fnCtrlPrevEnable = 1, fnCtrlPrevFunction = 7, sideKeyOriginalCaptured = true,
@@ -188,6 +199,55 @@ class SettingsCodecTest {
         assertEquals(SnippetPresentation.FLOATING_POPUP, s.expansion.presentation)
         assertEquals("!", s.expansion.snippetPrefix)
         assertEquals(MessagingPreset.APP_DEFAULT, s.perApp.enterPreset)
+    }
+
+    @Test
+    fun `keyboard swipe provider fields fall back on an unknown value, spec trackpad SS3_7`() {
+        val s = SettingsCodec.fromMap(
+            mapOf(SettingsKeys.KEYBOARD_SWIPE_PROVIDER to "bogus", SettingsKeys.SWIPE_TO_DELETE_PROVIDER to "bogus"),
+        )
+        assertEquals(TrackpadGestureProvider.NATIVE_IME, s.keyboardSwipe.provider)
+        assertEquals(SwipeToDeleteProvider.NATIVE_IME, s.keyboardSwipe.swipeToDeleteProvider)
+    }
+
+    @Test
+    fun `an unset suggestion or delete swipe threshold falls back to the legacy value, spec trackpad SS3_7`() {
+        val s = SettingsCodec.fromMap(mapOf(SettingsKeys.KEYBOARD_SWIPE_THRESHOLD to "300"))
+        assertEquals(300f, s.keyboardSwipe.swipeThresholdPx)
+        assertNull(s.keyboardSwipe.suggestionSwipeThresholdPx)
+        assertNull(s.keyboardSwipe.deleteSwipeThresholdPx)
+    }
+
+    @Test
+    fun `keyboard swipe thresholds are clamped 120 to 750 on read, spec trackpad SS3_7`() {
+        val s = SettingsCodec.fromMap(
+            mapOf(
+                SettingsKeys.KEYBOARD_SWIPE_THRESHOLD to "10000",
+                SettingsKeys.KEYBOARD_SWIPE_SUGGESTION_THRESHOLD to "1",
+                SettingsKeys.KEYBOARD_SWIPE_DELETE_THRESHOLD to "1",
+            ),
+        )
+        assertEquals(750f, s.keyboardSwipe.swipeThresholdPx)
+        assertEquals(120f, s.keyboardSwipe.suggestionSwipeThresholdPx)
+        assertEquals(120f, s.keyboardSwipe.deleteSwipeThresholdPx)
+    }
+
+    @Test
+    fun `typing sound mode and output mode fall back on an unknown value, spec expansion SS9_1`() {
+        val s = SettingsCodec.fromMap(
+            mapOf(SettingsKeys.TYPING_SOUND_MODE to "bogus", SettingsKeys.TYPING_SOUND_OUTPUT_MODE to "bogus"),
+        )
+        assertEquals(TypingSoundMode.OFF, s.feedback.typingSoundMode)
+        assertEquals(TypingSoundOutputMode.MEDIA, s.feedback.typingSoundOutputMode)
+    }
+
+    @Test
+    fun `typing sound mode and output mode round trip when set`() {
+        val s = SettingsCodec.fromMap(
+            mapOf(SettingsKeys.TYPING_SOUND_MODE to "click", SettingsKeys.TYPING_SOUND_OUTPUT_MODE to "system"),
+        )
+        assertEquals(TypingSoundMode.CLICK, s.feedback.typingSoundMode)
+        assertEquals(TypingSoundOutputMode.SYSTEM, s.feedback.typingSoundOutputMode)
     }
 
     @Test

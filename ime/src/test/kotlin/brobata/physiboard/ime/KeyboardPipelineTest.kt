@@ -339,6 +339,26 @@ class KeyboardPipelineTest {
     }
 
     @Test
+    fun `a genuine typo correction on Space is forwarded as a commit for the debug capture`() {
+        // spec app-shell.md SS11, autocorrect-suggestions.md SS7.2: "each attempt is recorded in
+        // the debug capture with its outcome"; this is the seam KeyboardSession reads to do that.
+        val dictionary = DictionaryIndex.build(LanguageCode.of("en")!!, listOf(WordFrequency("weird", 200)))
+        val pipeline = KeyboardPipeline(layout = layout, resources = TextInputResources(dictionaries = listOf(dictionary)))
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+
+        for (c in "wierd") step(pipeline, editor, letter(c.uppercaseChar()))
+        val result = step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+
+        val debug = assertNotNull(result.autocorrectDebug)
+        assertEquals("commit", debug.type)
+        assertEquals("space", debug.trigger)
+        assertEquals("applied", debug.outcome)
+        assertEquals("wierd", debug.before)
+        assertEquals("weird", debug.after)
+    }
+
+    @Test
     fun `a normal field can surface a ranked suggestion for the word in progress`() {
         val dictionary = DictionaryIndex.build(LanguageCode.of("en")!!, listOf(WordFrequency("hello", 200)))
         val pipeline = KeyboardPipeline(layout = layout, resources = TextInputResources(dictionaries = listOf(dictionary)))

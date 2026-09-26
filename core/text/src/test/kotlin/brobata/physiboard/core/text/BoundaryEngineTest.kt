@@ -87,6 +87,63 @@ class BoundaryEngineTest {
         assertEquals(BoundaryOutcome.CommitPlain, outcome)
     }
 
+    // --- debug capture (app-shell.md SS11, autocorrect-suggestions.md SS7.2, SS9) ---
+
+    @Test
+    fun `a blank word records an attempt, not_applicable, empty_word`() {
+        val evaluation = evaluate("", ' ', dictionaries = listOf(dict("hello" to 100)))
+        assertEquals(BoundaryDebugInfo(type = "attempt", trigger = "space", outcome = "not_applicable", reason = "empty_word"), evaluation.debug)
+    }
+
+    @Test
+    fun `a known word records a skip, not a commit, with the refusal reason`() {
+        val evaluation = evaluate(
+            "that",
+            ' ',
+            dictionaries = listOf(dict("trat" to 255, "that" to 100)),
+            settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1),
+        )
+        assertEquals("attempt", evaluation.debug.type)
+        assertEquals("skipped", evaluation.debug.outcome)
+        assertEquals("known_word", evaluation.debug.reason)
+    }
+
+    @Test
+    fun `a primary case repair commit records type commit, outcome applied, source PRIMARY_CASE`() {
+        val evaluation = evaluate(
+            "problem",
+            ' ',
+            dictionaries = listOf(dict("Problem" to 220, "problemlos" to 255)),
+            settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true),
+        )
+        assertEquals(
+            BoundaryDebugInfo(type = "commit", trigger = "space", outcome = "applied", reason = "", before = "problem", after = "Problem", source = "PRIMARY_CASE"),
+            evaluation.debug,
+        )
+    }
+
+    @Test
+    fun `a text-replacement commit records source TEXT_REPLACEMENT and trigger enter`() {
+        val rule = RuleSet("en", null, mapOf("dont" to "don't"))
+        val evaluation = evaluate("dont", '\n', dictionaries = emptyList(), ruleSets = listOf(rule), settings = AutocorrectSettings(autoCorrectEnabled = true))
+        assertEquals("commit", evaluation.debug.type)
+        assertEquals("applied", evaluation.debug.outcome)
+        assertEquals("enter", evaluation.debug.trigger)
+        assertEquals("TEXT_REPLACEMENT", evaluation.debug.source)
+    }
+
+    @Test
+    fun `auto-replace disabled records a not_applicable auto_replace_disabled attempt`() {
+        val evaluation = evaluate("xyzzy", ' ', dictionaries = emptyList(), settings = AutocorrectSettings(autoCorrectEnabled = false, autoReplaceOnSpaceEnter = false))
+        assertEquals(BoundaryDebugInfo(type = "attempt", trigger = "space", outcome = "not_applicable", reason = "auto_replace_disabled"), evaluation.debug)
+    }
+
+    @Test
+    fun `no candidate at all records skipped no_suggestion`() {
+        val evaluation = evaluate("xyzzy", ' ', dictionaries = emptyList(), settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true))
+        assertEquals(BoundaryDebugInfo(type = "attempt", trigger = "space", outcome = "skipped", reason = "no_suggestion", before = "xyzzy"), evaluation.debug)
+    }
+
     @Test
     fun `a hard boundary before the cursor blocks correction`() {
         val (_, outcome) = BoundaryEngine.evaluate(

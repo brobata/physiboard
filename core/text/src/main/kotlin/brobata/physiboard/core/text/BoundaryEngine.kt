@@ -22,6 +22,49 @@ sealed class BoundaryOutcome {
 }
 
 /**
+ * What one boundary attempt should write to the debug capture. spec: autocorrect-suggestions.md
+ * SS7.2 ("Each attempt is recorded in the debug capture (section 12) with its outcome") and SS9's
+ * outcome/reason vocabulary; app-shell.md SS11 ("Autocorrection rows carry type (commit or
+ * attempt), trigger, a source string, outcome (applied, skipped, not_applicable), before, after,
+ * reason, distance and kind"). [before]/[after] are filled in by the caller from
+ * [BoundaryOutcome.Replaced] (empty for a non-replacement, matching the "pure noise" row SS11
+ * describes: an `auto_replace_disabled` attempt with blank before/after). `kind` is left for a
+ * future caller; this module has nothing further to say about it.
+ */
+data class BoundaryDebugInfo(
+    val type: String,
+    val trigger: String,
+    val outcome: String,
+    val reason: String,
+    val before: String = "",
+    val after: String = "",
+    val source: String? = null,
+    val distance: Int? = null,
+    /**
+     * The literal boundary character this evaluation ran for (`' '`, `'\n'`, or a boundary
+     * punctuation mark). spec: SS4, "next-word context" needs to tell a soft boundary (Space,
+     * comma, semicolon, colon) from a hard one (a period, Enter, or anything else); the `trigger`
+     * string alone collapses every punctuation mark to `other`.
+     */
+    val boundaryChar: Char = ' ',
+) {
+    companion object {
+        /** spec app-shell.md SS11: `space`, `enter`, `suggestion_tap`, `other`; a boundary evaluation is never `suggestion_tap`. */
+        fun triggerFor(boundaryChar: Char): String = when (boundaryChar) {
+            ' ' -> "space"
+            '\n' -> "enter"
+            else -> "other"
+        }
+
+        /** spec: SS4, "After a 'soft' boundary (Space, comma, semicolon or colon)". Every other boundary (a period, Enter, `!`, `?`, ...) is hard. */
+        fun isSoftBoundary(boundaryChar: Char): Boolean = boundaryChar == ' ' || boundaryChar == ',' || boundaryChar == ';' || boundaryChar == ':'
+    }
+}
+
+/** [BoundaryEngine.evaluate]'s full result: the outcome the caller acts on, plus what it should record. */
+data class BoundaryEvaluation(val memory: AutocorrectMemory, val outcome: BoundaryOutcome, val debug: BoundaryDebugInfo)
+
+/**
  * The single boundary engine 3.0 uses in place of 2.x's two parallel engines (spec: autocorrect-
  * suggestions.md SS18, "collapse the three boundary paths ... into one"). Implements
  * autocorrect-suggestions.md SS7.2's order of operations from "text replacement" onward; the
@@ -48,18 +91,31 @@ object BoundaryEngine {
         rankingOptions: RankingOptions,
         lengthChangeAllowance: Int,
         memory: AutocorrectMemory,
-    ): Pair<AutocorrectMemory, BoundaryOutcome> {
+    ): BoundaryEvaluation {
+        val trigger = BoundaryDebugInfo.triggerFor(boundaryChar)
+        // spec app-shell.md SS11/T28: the one row this store treats as pure noise is an
+        // `auto_replace_disabled` attempt with blank before and after, so that reason alone omits
+        // them; every other attempt carries the typed word, which is useful even when nothing ran.
+        fun attempt(reason: String, before: String = trackedWord) =
+            BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "not_applicable", reason = reason, before = before, boundaryChar = boundaryChar)
+        fun skipped(reason: String, distance: Int? = null) =
+            BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "skipped", reason = reason, before = trackedWord, distance = distance, boundaryChar = boundaryChar)
+        fun applied(source: String, after: String, distance: Int? = null) = BoundaryDebugInfo(
+            type = "commit", trigger = trigger, outcome = "applied", reason = "", before = trackedWord, after = after,
+            source = source, distance = distance, boundaryChar = boundaryChar,
+        )
+
         // spec: SS7.5, "the undo memory is cleared ... when a boundary passes without a
         // replacement": a blank word and a hard boundary are both boundaries that pass without one.
         if (trackedWord.isBlank()) {
-            return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
+            return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, attempt("empty_word", before = ""))
         }
         // [trackedWord] folds apostrophes to the straight one (CurrentWordTracker); the field holds
         // the key as pressed, so the comparison folds the window the same way (WordChars.straightenAll),
         // exactly as DriftCheck does, or a curly apostrophe would keep the word inside the scan.
         val textBeforeWord = if (WordChars.straightenAll(textBeforeCursor32).endsWith(trackedWord)) textBeforeCursor32.dropLast(trackedWord.length) else textBeforeCursor32
         if (hasHardBoundaryBeforeCursor(textBeforeWord)) {
-            return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
+            return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, attempt("hard_boundary_before_cursor"))
         }
 
         fun isKnown(word: String): Boolean = dictionaries.any { it.contains(word) } || userWords.isKnown(word)
@@ -75,12 +131,16 @@ object BoundaryEngine {
                 )
                 val candidate = match.replacement.takeIf { !isKnown(it) }
                 val newMemory = memory.afterReplacement(match.matchedText, match.replacement)
-                return newMemory to BoundaryOutcome.Replaced(ops, match.matchedText, match.replacement, candidate)
+                val debug = BoundaryDebugInfo(
+                    type = "commit", trigger = trigger, outcome = "applied", reason = "",
+                    before = match.matchedText, after = match.replacement, source = "TEXT_REPLACEMENT", boundaryChar = boundaryChar,
+                )
+                return BoundaryEvaluation(newMemory, BoundaryOutcome.Replaced(ops, match.matchedText, match.replacement, candidate), debug)
             }
         }
 
         if (!settings.autoReplaceOnSpaceEnter) {
-            return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
+            return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, attempt("auto_replace_disabled", before = ""))
         }
 
         val primaryDict = dictionaries.firstOrNull()
@@ -89,7 +149,7 @@ object BoundaryEngine {
             if (repaired != null) {
                 val ops = listOf(EditorOp.DeleteSurrounding(trackedWord.length, 0), EditorOp.CommitText(repaired), EditorOp.Haptic)
                 val newMemory = memory.afterReplacement(trackedWord, repaired)
-                return newMemory to BoundaryOutcome.Replaced(ops, trackedWord, repaired, addWordCandidate = null)
+                return BoundaryEvaluation(newMemory, BoundaryOutcome.Replaced(ops, trackedWord, repaired, addWordCandidate = null), applied("PRIMARY_CASE", repaired))
             }
         }
 
@@ -98,15 +158,23 @@ object BoundaryEngine {
         if (top != null) {
             val facts = buildFacts(trackedWord, top, suggestions.getOrNull(1), dictionaries, userWords, memory)
             val decision = AutocorrectDecision.evaluate(facts, settings.maxAutoReplaceDistance, lengthChangeAllowance)
-            if (decision is AutocorrectOutcome.Commit) {
-                val ops = listOf(EditorOp.DeleteSurrounding(trackedWord.length, 0), EditorOp.CommitText(decision.recased), EditorOp.Haptic)
-                val candidate = decision.recased.takeIf { !isKnown(it) }
-                val newMemory = memory.afterReplacement(trackedWord, decision.recased)
-                return newMemory to BoundaryOutcome.Replaced(ops, trackedWord, decision.recased, candidate)
+            when (decision) {
+                is AutocorrectOutcome.Commit -> {
+                    val ops = listOf(EditorOp.DeleteSurrounding(trackedWord.length, 0), EditorOp.CommitText(decision.recased), EditorOp.Haptic)
+                    val candidate = decision.recased.takeIf { !isKnown(it) }
+                    val newMemory = memory.afterReplacement(trackedWord, decision.recased)
+                    return BoundaryEvaluation(newMemory, BoundaryOutcome.Replaced(ops, trackedWord, decision.recased, candidate), applied(top.source.name, decision.recased, top.distance))
+                }
+                AutocorrectOutcome.SameReplacement -> {
+                    return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, attempt("same_replacement"))
+                }
+                is AutocorrectOutcome.Refuse -> {
+                    return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, skipped(decision.reason.name.lowercase(), top.distance))
+                }
             }
         }
 
-        return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
+        return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, skipped("no_suggestion"))
     }
 
     /**

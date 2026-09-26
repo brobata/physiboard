@@ -98,8 +98,10 @@ class RuleSetCodecTest {
         assertEquals("it's", match.replacement)
     }
 
-    private fun shippedAssetBody(): String? = repoRoot()
-        ?.resolve("ime/src/main/assets/common/autocorrect/auto_corrections_en.json")
+    private fun shippedAssetBody(): String? = shippedAssetBody("en")
+
+    private fun shippedAssetBody(code: String): String? = repoRoot()
+        ?.resolve("ime/src/main/assets/common/autocorrect/auto_corrections_$code.json")
         ?.takeIf { it.isFile }
         ?.readText()
 
@@ -111,5 +113,87 @@ class RuleSetCodecTest {
             dir = dir.parentFile
         }
         return null
+    }
+
+    // --- the shipped it.json and fr.json (autocorrect-suggestions.md SS8.1, SS18 gap) ---
+
+    private val shippedItalian: RuleSet? by lazy { shippedAssetBody("it")?.let { RuleSetCodec.parse("it", it) } }
+    private val shippedFrench: RuleSet? by lazy { shippedAssetBody("fr")?.let { RuleSetCodec.parse("fr", it) } }
+
+    @Test
+    fun `T-the shipped Italian rule set parses and has the two-word elisions and accent repairs`() {
+        val ruleSet = assertNotNull(
+            shippedItalian,
+            "ime/src/main/assets/common/autocorrect/auto_corrections_it.json is missing or failed to parse",
+        )
+        assertEquals("it", ruleSet.code)
+        // spec: SS8.1's `it` row, minus `forza juve -> forza napoli` (SS18: "Drop, upstream joke rule").
+        assertEquals("cos'è", ruleSet.rules["cos e"])
+        assertEquals("dov'è", ruleSet.rules["dov e"])
+        assertEquals("chi è", ruleSet.rules["chi e"])
+        assertEquals("c'ho", ruleSet.rules["c ho"])
+        assertEquals("qual è", ruleSet.rules["qual'è"])
+        assertEquals("perché", ruleSet.rules["perche"])
+        assertEquals("perché", ruleSet.rules["perchè"])
+        assertEquals("così", ruleSet.rules["cosi"])
+        assertEquals("già", ruleSet.rules["gia"])
+        assertEquals("più", ruleSet.rules["piu"])
+        assertEquals(null, ruleSet.rules["forza juve"])
+    }
+
+    @Test
+    fun `T-the shipped Italian set turns 'perche ' into 'perché ' through SubstitutionMatcher`() {
+        val ruleSet = assertNotNull(shippedItalian)
+        val match = assertNotNull(SubstitutionMatcher.match("perche ", listOf(ruleSet), isKnownWord = { false }))
+        assertEquals("perché", match.replacement)
+    }
+
+    @Test
+    fun `T-the shipped Italian set turns 'cos e ' into cos'è through the two-word sequence path`() {
+        val ruleSet = assertNotNull(shippedItalian)
+        val match = assertNotNull(SubstitutionMatcher.match("cos e ", listOf(ruleSet), isKnownWord = { false }))
+        assertEquals("cos'è", match.replacement)
+    }
+
+    @Test
+    fun `T-the shipped French rule set parses and has apostrophe and accent repairs`() {
+        val ruleSet = assertNotNull(
+            shippedFrench,
+            "ime/src/main/assets/common/autocorrect/auto_corrections_fr.json is missing or failed to parse",
+        )
+        assertEquals("fr", ruleSet.code)
+        // spec: SS8.1's `fr` row examples, quoted verbatim: `etre -> être`, `jai -> j'ai`,
+        // `coeur -> cœur` (not authored: no safe unambiguous typo owns that spelling; see the
+        // ligature-free entries actually shipped), `ct -> c'était` (not shipped: too short and
+        // ambiguous with the abbreviation "ct"), and SS9's T30 pairs.
+        assertEquals("être", ruleSet.rules["etre"])
+        assertEquals("j'ai", ruleSet.rules["jai"])
+        assertEquals("j'espère", ruleSet.rules["jespere"])
+        assertEquals("c'est-à-dire", ruleSet.rules["cestadire"])
+        assertEquals("lui-même", ruleSet.rules["luimeme"])
+        assertEquals("l'eau", ruleSet.rules["leau"])
+        assertEquals("Noël", ruleSet.rules["noel"])
+        assertEquals("ça", ruleSet.rules["ca"])
+        // Deliberately absent: common valid words that would collide (SS10, "never overwrite a
+        // correctly spelled word"). `la` ("the"/"her") is not turned into `là` ("there"), and `a`
+        // (verb "has") is not turned into `à` (preposition): both pairs are genuinely ambiguous,
+        // unlike `ca -> ça` which SS8.1's own T27 sanctions.
+        assertEquals(null, ruleSet.rules["la"])
+        assertEquals(null, ruleSet.rules["a"])
+        assertEquals(null, ruleSet.rules["ou"])
+    }
+
+    @Test
+    fun `T-the shipped French set turns 'Ca ' into 'Ça ' through SubstitutionMatcher, casing from the trigger`() {
+        val ruleSet = assertNotNull(shippedFrench)
+        val match = assertNotNull(SubstitutionMatcher.match("Ca ", listOf(ruleSet), isKnownWord = { true }))
+        assertEquals("Ça", match.replacement)
+    }
+
+    @Test
+    fun `T-the shipped French set turns 'jespere ' into j'espère`() {
+        val ruleSet = assertNotNull(shippedFrench)
+        val match = assertNotNull(SubstitutionMatcher.match("jespere ", listOf(ruleSet), isKnownWord = { false }))
+        assertEquals("j'espère", match.replacement)
     }
 }

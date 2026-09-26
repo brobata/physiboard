@@ -283,8 +283,8 @@ class LegacyImportTest {
             "alt_character_layer_binding" to "emoji", "restore_sym_page" to 1, "keyboard_theme_software" to "{}", "keyboard_theme_assignment_mode_hardware" to "fixed",
             "keyboard_theme_light_hardware" to "{}", "keyboard_theme_drafts" to "[]", "keyboard_theme_preview_viewport_scale" to 1.2f,
             "pastierina_mode_active" to true, "pastierina_mode_override" to "x",
-            "software_keyboard_mode_runtime_override" to "force_hardware", "quick_launcher_default_assigned" to true, "trackpad_gestures_enabled" to true, "trackpad_provider" to "shizuku",
-            "typing_sound_mode" to "click", "quick_launcher_width_percent" to 80, "quick_launcher_animation_duration_ms" to 200, "command_surface_sources" to "{}",
+            "software_keyboard_mode_runtime_override" to "force_hardware", "quick_launcher_default_assigned" to true,
+            "quick_launcher_width_percent" to 80, "quick_launcher_animation_duration_ms" to 200, "command_surface_sources" to "{}",
             "impact_defaults_applied" to true, "prefs_migrated_v2" to true, "v2_migration_notice_seen" to true, "settings_baseline_version" to 1,
             "alt_shift_default_initialized" to true, "nav_mode_default_mappings_version" to 3, "variations_updated" to 1L,
             "hardware_bar_height_migrated" to true, "clicks_button_mode" to "x", "static_variation_bar_preset" to "x", "status_bar_variations_visible" to true,
@@ -294,6 +294,22 @@ class LegacyImportTest {
         assertEquals(Settings(), r.settings)
         assertEquals(dropped.keys, r.ignored)
         assertTrue(r.carried.isEmpty())
+    }
+
+    @Test
+    fun `the keyboard-surface swipe rows are carried, not dropped, spec trackpad SS3_7`() {
+        val r = LegacyImport.import(mapOf("trackpad_gestures_enabled" to true, "trackpad_provider" to "shizuku"))
+        assertTrue(r.settings.keyboardSwipe.gesturesEnabled)
+        assertEquals(brobata.physiboard.core.pointer.keyboardswipe.TrackpadGestureProvider.SHIZUKU, r.settings.keyboardSwipe.provider)
+        assertTrue(r.carried.containsAll(setOf("trackpad_gestures_enabled", "trackpad_provider")))
+    }
+
+    @Test
+    fun `typing sound mode and output mode are carried, spec expansion SS9_1`() {
+        val r = LegacyImport.import(mapOf("typing_sound_mode" to "typewriter", "typing_sound_output_mode" to "system"))
+        assertEquals(brobata.physiboard.core.actions.feedback.TypingSoundMode.TYPEWRITER, r.settings.feedback.typingSoundMode)
+        assertEquals(TypingSoundOutputMode.SYSTEM, r.settings.feedback.typingSoundOutputMode)
+        assertTrue(r.carried.containsAll(setOf("typing_sound_mode", "typing_sound_output_mode")))
     }
 
     @Test

@@ -7,15 +7,18 @@ import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
+import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.settings.HapticStrength
 
 /**
- * "Sound & Haptics" (settings-catalog.md SS9.2, SS9.4). "Typing Sounds" (the chooser, custom
- * packs and output mode) is dropped from [brobata.physiboard.core.settings.FeedbackPrefs] for
- * 3.0 (settings-catalog.md SS13: "undecided on typing sounds and packs"; the pack import path is
- * unreachable in 2.x). The two dictation rows point here, not at Voice, correcting the drift
- * settings-catalog.md SS8 calls out.
+ * "Sound & Haptics" (settings-catalog.md SS9.2, SS9.4). "Typing Sounds" carries
+ * `typing_sound_mode` (expansion-clipboard-pickers-launcher.md SS9.1, SS9.3): the dropdown offers
+ * Off, Keyboard click and Typewriter; the `custom` pack and the output-mode row stay hidden, as
+ * 2.x itself hides them ("hidden to declutter", SS9.1), since there is no pack-import flow in
+ * 3.0. The two dictation rows point here, not at Voice, correcting the drift settings-catalog.md
+ * SS8 calls out.
  */
 @Composable
 fun SoundHapticsScreen(onBack: () -> Unit) {
@@ -26,6 +29,15 @@ fun SoundHapticsScreen(onBack: () -> Unit) {
 
     SettingsScreenScaffold(title = "Sound & Haptics", onBack = onBack) {
         RowList {
+            item {
+                SingleChoiceDropdownRow(
+                    label = "Typing Sounds",
+                    options = listOf(TypingSoundMode.OFF, TypingSoundMode.CLICK, TypingSoundMode.TYPEWRITER),
+                    optionLabel = ::typingSoundModeLabel,
+                    selected = feedback.typingSoundMode,
+                    onSelect = { mode -> controller.update { it.copy(feedback = it.feedback.copy(typingSoundMode = mode)) } },
+                )
+            }
             item {
                 SwitchRow(
                     "Tap vibration",
@@ -64,6 +76,13 @@ fun SoundHapticsScreen(onBack: () -> Unit) {
             }
         }
     }
+}
+
+/** SS9.3: "Off, Keyboard click, Typewriter (the custom entry is hidden)". */
+private fun typingSoundModeLabel(mode: TypingSoundMode): String = when (mode) {
+    TypingSoundMode.OFF -> "Off"
+    TypingSoundMode.CLICK -> "Keyboard click"
+    TypingSoundMode.TYPEWRITER -> "Typewriter"
 }
 
 private fun hapticStrengthLabel(strength: HapticStrength): String = when (strength) {

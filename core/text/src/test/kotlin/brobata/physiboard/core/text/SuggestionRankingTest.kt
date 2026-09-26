@@ -36,6 +36,19 @@ class SuggestionRankingTest {
     }
 
     @Test
+    fun `T9 accent matching surfaces perche to perche accented, and the toggle can turn it back off`() {
+        val index = dict("perché" to 200)
+        val on = SuggestionRanking.suggest("perche", listOf(index), UserWordStore.empty(), RankingOptions(accentMatchingEnabled = true))
+        assertEquals("perché", on.firstOrNull()?.word)
+
+        // spec: SS3.4, `accent_matching_enabled` gates the accent-tolerant lookup; every fuzzy
+        // query already runs on an accent-stripped key, so with the setting off an
+        // accent-only variant (same dictionary key, different spelling) is filtered back out.
+        val off = SuggestionRanking.suggest("perche", listOf(index), UserWordStore.empty(), RankingOptions(accentMatchingEnabled = false))
+        assertTrue(off.none { it.word == "perché" }, "accent matching off should not surface an accent-only variant")
+    }
+
+    @Test
     fun `effective frequency maps the 0-255 raw scale monotonically`() {
         val low = SuggestionRanking.effectiveFrequency(30)
         val high = SuggestionRanking.effectiveFrequency(222)

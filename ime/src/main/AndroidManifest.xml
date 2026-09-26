@@ -18,6 +18,11 @@
          user grant it from the system's per-app permission screen. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Touch-screen-awake: spec trackpad-caret-nav.md SS6. A screen-bright wake lock pulses on
+         every touch down on the keyboard's own chrome so the display's timeout does not fire
+         mid-typing; there is no preference for this, it is always on. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application>
         <service
             android:name="brobata.physiboard.ime.PhysiBoardInputMethodService"

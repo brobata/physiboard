@@ -8,6 +8,7 @@ import android.graphics.drawable.StateListDrawable
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.RoundedCorner
 import android.view.View
 import android.view.WindowInsets
@@ -510,6 +511,38 @@ internal class StatusBarView(
                 },
             )
         }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Touch-screen-awake. spec: trackpad-caret-nav.md SS6.
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * spec: trackpad-caret-nav.md SS6: invoked on "every touch down (action down only; moves and
+     * ups do nothing) on the keyboard's chrome layout, that is the strip and everything drawn in
+     * the keyboard window". A settable callback rather than a [Listener] method, because this is
+     * not something the strip was tapped *for*: it fires for every down anywhere in the chrome,
+     * including ones a child button goes on to handle, and no strip decision reads it.
+     */
+    var onChromeTouchDown: (() -> Unit)? = null
+
+    /** spec SS6: any held pulse is released "when the chrome layout is detached from its window". */
+    var onChromeDetached: (() -> Unit)? = null
+
+    /**
+     * spec SS6: the pulse is taken at the root of the chrome, so a down a child view goes on to
+     * consume still counts as the user touching the keyboard. The event itself is never altered.
+     */
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            runCatching { onChromeTouchDown?.invoke() }.onFailure { error -> Log.e(TAG, "touch-awake pulse crashed", error) }
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    override fun onDetachedFromWindow() {
+        runCatching { onChromeDetached?.invoke() }.onFailure { error -> Log.e(TAG, "touch-awake release crashed", error) }
+        super.onDetachedFromWindow()
     }
 
     // -----------------------------------------------------------------------------------------

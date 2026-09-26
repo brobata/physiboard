@@ -9,6 +9,7 @@ import brobata.physiboard.app.shell.AppDebugCaptureStore
 import brobata.physiboard.app.shell.AppLocaleApplier
 import brobata.physiboard.app.shell.UpdateCheckScheduler
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.core.shell.AutocorrectionRecord
 import brobata.physiboard.core.shell.GithubChecks
 import brobata.physiboard.core.shell.ImeContextSnapshot
 import brobata.physiboard.core.shell.KeyboardEventRecord
@@ -72,6 +73,7 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
         override fun report(event: KeyboardEventRecord) = AppDebugCaptureStore.instance.reportKeyboardEvent(event)
         override fun reportFieldAttach(snapshot: ImeContextSnapshot, isPhysiBoardOwnPackage: Boolean) =
             AppDebugCaptureStore.instance.recordFieldAttach(snapshot, isPhysiBoardOwnPackage)
+        override fun recordAutocorrection(record: AutocorrectionRecord) = AppDebugCaptureStore.instance.recordAutocorrection(record)
     }
 
     /**

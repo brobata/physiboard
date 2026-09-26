@@ -43,7 +43,11 @@ object Backspace {
             }
         }
         if (undoTextBeforeCursor != null) {
-            val undo = AutocorrectUndo.attempt(autocorrectMemory, undoTextBeforeCursor)
+            // spec: autocorrect-suggestions.md SS7.5 step 3, "the original word, lowercased, and
+            // its apostrophe root if any, are added to the rejected set" (SS3.3's split, e.g.
+            // `dell'amivo` rejected once must also reject `amivo`'s own correction path).
+            val apostropheRoot = autocorrectMemory.lastReplacement?.original?.let { ApostropheSplit.split(it)?.root }
+            val undo = AutocorrectUndo.attempt(autocorrectMemory, undoTextBeforeCursor, apostropheRoot)
             if (undo != null) return Decision.Undo(undo)
         }
         return Decision.FallThrough

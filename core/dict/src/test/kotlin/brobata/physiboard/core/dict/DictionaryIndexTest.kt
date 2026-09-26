@@ -122,4 +122,21 @@ class DictionaryIndexTest {
         assertEquals(0, empty.prefixLookup("a", 10, prefixResults))
         assertEquals(0, empty.neighbours("a", 2, 10, neighbourResults))
     }
+
+    @Test
+    fun `T-topByFrequency returns the highest-frequency spelling per key, most frequent first`() {
+        // spec: autocorrect-suggestions.md SS4's starter words, "the top 48 entries by effective
+        // frequency across the primary dictionary". "café"/"Café" share one key; only the more
+        // frequent spelling (Café, 90) should represent it.
+        val results = mutableListOf<WordFrequency>()
+        index.topByFrequency(3, results)
+        assertEquals(listOf("a" to 1000, "dog" to 600, "cat" to 500), results.map { it.word to it.frequency })
+    }
+
+    @Test
+    fun `T-topByFrequency on an empty dictionary returns nothing`() {
+        val empty = DictionaryIndex.build(language, emptyList())
+        val results = mutableListOf<WordFrequency>()
+        assertEquals(0, empty.topByFrequency(10, results))
+    }
 }

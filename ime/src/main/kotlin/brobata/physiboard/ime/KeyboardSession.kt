@@ -26,7 +26,10 @@ import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import androidx.core.content.ContextCompat
 import brobata.physiboard.core.actions.clipboard.Clip
+import brobata.physiboard.core.actions.feedback.SoundGroup
 import brobata.physiboard.core.actions.feedback.TapVibration
+import brobata.physiboard.core.actions.feedback.TypingSoundMode
+import brobata.physiboard.core.actions.feedback.TypingSounds
 import brobata.physiboard.core.actions.launcher.AssignableKeys
 import brobata.physiboard.core.actions.picker.AddSubstitutionSheet
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
@@ -51,11 +54,22 @@ import brobata.physiboard.core.pointer.caret.CursorAnchorReport
 import brobata.physiboard.core.pointer.caret.CursorUpdateRequestPolicy
 import brobata.physiboard.core.pointer.caret.CursorUpdateRequestState
 import brobata.physiboard.core.pointer.caret.CursorUpdateRetrySchedule
+import brobata.physiboard.core.pointer.keyboardswipe.FirmwareSwipeKeycode
+import brobata.physiboard.core.pointer.keyboardswipe.FirmwareSwipeResult
+import brobata.physiboard.core.pointer.keyboardswipe.KeyboardSwipeSettings
+import brobata.physiboard.core.pointer.keyboardswipe.KeyboardSwipeUpDecision
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeEvaluation
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeSlot
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeThird
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeUpAction
+import brobata.physiboard.core.pointer.keyboardswipe.SwipeUpGate
 import brobata.physiboard.core.pointer.navmode.NavModeTransition
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.core.settings.TypingSoundOutputMode
+import brobata.physiboard.core.shell.AutocorrectionRecord
 import brobata.physiboard.core.shell.ImeContextSnapshot
 import brobata.physiboard.core.shell.KeyboardEventRecord
 import brobata.physiboard.core.speech.AssistantLaunch
@@ -80,6 +94,7 @@ import brobata.physiboard.core.strip.StripButton
 import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripGeometry
 import brobata.physiboard.core.strip.StripInsets
+import brobata.physiboard.core.strip.SuggestionRow
 import brobata.physiboard.core.strip.SuggestionRowRules
 import brobata.physiboard.core.strip.SurfaceTransitionOutcome
 import brobata.physiboard.core.strip.SurfaceTransitionRetry
@@ -89,12 +104,16 @@ import brobata.physiboard.core.strip.TapHaptic
 import brobata.physiboard.core.strip.TouchableArea
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AppProfileResolver
+import brobata.physiboard.core.text.BoundaryDebugInfo
+import brobata.physiboard.core.text.CurrentWordTracker
 import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.EnterOverride
 import brobata.physiboard.core.text.EnterOverrideResolver
 import brobata.physiboard.core.text.MessagingPreset
+import brobata.physiboard.device.titan.DeviceIdentity
 import brobata.physiboard.device.titan.KeyNormalizer
 import brobata.physiboard.device.titan.TitanLayouts
+import brobata.physiboard.device.titan.VendorKeyCodes
 import brobata.physiboard.ime.actions.AndroidCommandCatalog
 import brobata.physiboard.ime.actions.ClipboardHistoryController
 import brobata.physiboard.ime.actions.ClipboardPanelController
@@ -105,7 +124,9 @@ import brobata.physiboard.ime.actions.ExpansionPopupController
 import brobata.physiboard.ime.actions.LauncherKeysController
 import brobata.physiboard.ime.actions.QuickLauncherController
 import brobata.physiboard.ime.actions.SymGridPanelController
+import brobata.physiboard.ime.actions.TypingSoundPlayer
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
+import brobata.physiboard.ime.pointer.KeyboardSwipeController
 import brobata.physiboard.ime.pointer.TrackpadOverlayController
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -202,6 +223,19 @@ internal class KeyboardSession(
         replayTriggerDownAndUp = ::replayPendingTrackpadDownAndUp,
     )
 
+    // -----------------------------------------------------------------------------------------
+    // The keyboard-surface swipe (upstream "trackpad gestures"), a different gesture on a
+    // different surface than the screen trackpad above. spec: trackpad-caret-nav.md SS3. Off by
+    // default (SS3.7); [applySettings] feeds the live preference values in.
+    // -----------------------------------------------------------------------------------------
+
+    private val keyboardSwipe = KeyboardSwipeController(
+        settings = KeyboardSwipeSettings(),
+        isEligibleDevice = {
+            DeviceIdentity.isTitan2EliteQwerty(Build.BRAND, Build.MANUFACTURER, Build.MODEL, Build.DEVICE, Build.PRODUCT, Build.BOARD, Build.DISPLAY)
+        },
+    )
+
     /**
      * The trigger-down [interceptForTrackpad] swallowed, kept only so [replayPendingTrackpadDown]
      * and [replayPendingTrackpadDownAndUp] have a stroke to replay. spec: SS2.3, "the raw event is
@@ -213,6 +247,13 @@ internal class KeyboardSession(
 
     /** The up event [interceptForTrackpad] is currently deciding about, reused as-is for a down-and-up replay. */
     private var pendingTrackpadUpEvent: KeyEvent? = null
+
+    // -----------------------------------------------------------------------------------------
+    // Touch-screen-awake. spec: trackpad-caret-nav.md SS6. No preference; wired unconditionally
+    // to the candidates view (the "chrome layout") in [onCreateCandidatesView].
+    // -----------------------------------------------------------------------------------------
+
+    private val touchAwakeLock = TouchAwakeLock(service)
 
     // -----------------------------------------------------------------------------------------
     // Caret badge. spec: trackpad-caret-nav.md SS4. `caret_modifier_badge`'s baseline default is
@@ -267,6 +308,14 @@ internal class KeyboardSession(
     private var tapHapticUseSystem = true
     private var tapHapticDurationMs = TapVibration.DEFAULT_DURATION_MS
 
+    /**
+     * spec: expansion-clipboard-pickers-launcher.md SS9.1. Rebuilt in [applySettings] whenever
+     * `typing_sound_mode` or `typing_sound_output_mode` changes, released in [onServiceDestroyed].
+     */
+    private var typingSoundPlayer: TypingSoundPlayer? = null
+    private var typingSoundMode = TypingSoundMode.OFF
+    private var typingSoundOutputMode = TypingSoundOutputMode.MEDIA
+
     private fun layoutText(key: KeyId, uppercase: Boolean): String? =
         CharacterResolution.layoutOrDefaultCharacter(key, uppercase, tapIndex = 0, pipeline.layout.baseLayout)
 
@@ -278,6 +327,13 @@ internal class KeyboardSession(
 
     /** Groups every scheduled cursor-update retry so [onStartInput]/[onFinishInput] can cancel them all in one call. */
     private val cursorUpdateToken = Any()
+
+    /**
+     * spec: autocorrect-suggestions.md SS1.2: "The cursor moves ... 120 ms debounce; a second
+     * move within 120 ms cancels the first read." Groups the tracker resync so a second selection
+     * change arriving before the delay elapses cancels the pending one rather than both running.
+     */
+    private val selectionSyncToken = Any()
 
     // spec: dictation.md. `:core:speech` holds the session's own rules; this class only owns the
     // two facts only `:ime` can supply: which field is current, and whether a key reaching the
@@ -302,6 +358,7 @@ internal class KeyboardSession(
         settingsScope.cancel()
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
+        handler.removeCallbacksAndMessages(selectionSyncToken)
         handler.removeCallbacks(dipReshowRunnable)
         handler.removeCallbacksAndMessages(surfaceTransitionToken)
         handler.removeCallbacks(backlightNudgeTimeoutRunnable)
@@ -317,6 +374,8 @@ internal class KeyboardSession(
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
         launcherKeys.onServiceDestroyed()
+        // spec: expansion-clipboard-pickers-launcher.md SS9.1: "released when the service is destroyed".
+        runCatching { typingSoundPlayer?.release() }.onFailure { error -> Log.e(TAG, "typing sound player teardown crashed", error) }
     }
 
     // spec dictionaries-languages.md SS8.7: [primaryLanguage] names which dictionary to load, from
@@ -336,6 +395,13 @@ internal class KeyboardSession(
     // only consumer; [UserWordFileLoader] only supplies the files and the background thread.
     private val userWordLoader = UserWordFileLoader(service, handler)
     private var userWordStore: UserWordStore = UserWordStore.empty()
+
+    /**
+     * spec: autocorrect-suggestions.md SS4: `user_ngrams.db`'s persistence, loaded once at startup
+     * and merged into [pipeline]'s own in-memory overlay ([KeyboardPipeline.onNgramStoreLoaded]);
+     * every learn from then on writes through [KeyboardPipeline.onBigramLearned] below.
+     */
+    private val ngramLoader = UserNgramLoader(service, handler)
 
     /**
      * spec SS17's Keep/Drop fix ("reload on install, import, uninstall") and SS7 ("...again
@@ -397,6 +463,11 @@ internal class KeyboardSession(
         // spec dictionaries-languages.md SS7: the default and personal words load the same way,
         // off the main thread, and are merged in the moment they land.
         loadUserWords()
+        // spec SS4: `user_ngrams.db`'s rows, loaded the same way and merged into whatever this
+        // session has already learned before the load lands ([NgramStore.mergedWith]).
+        pipeline.onBigramLearned = { locale, prefix, nextWord -> ngramLoader.learnAsync(locale, prefix, nextWord, System.currentTimeMillis()) }
+        pipeline.onBigramForgotten = { locale, prefix, nextWord -> ngramLoader.forgetAsync(locale, prefix, nextWord) }
+        ngramLoader.loadAsync { rows -> pipeline.onNgramStoreLoaded(rows) }
         // spec SS8.3: "when the keyboard service is created", with whatever `custom_input_styles`
         // the shipped defaults hold until the store's first emission (an empty array still
         // replaces Android's previous additional set, per SS8.3's own note).
@@ -478,7 +549,22 @@ internal class KeyboardSession(
     private fun persistAddedWord(word: String) {
         userWordStore = userWordStore.withPersonalWordAdded(word, System.currentTimeMillis())
         pipeline.resources = pipeline.resources.copy(userWords = userWordStore)
-        userWordLoader.savePersonalAsync(userWordStore.personalWords())
+        userWordLoader.savePersonalAsync(userWordStore.personalWords(), ::reportPersonalWordSaveResult)
+    }
+
+    /**
+     * spec: autocorrect-suggestions.md SS6.3's "save failed" surfacing, applied to the strip's own
+     * add/delete path: the word already looks added in this session (the in-memory store update is
+     * immediate and unconditional), so a silent write failure would otherwise mean the addition is
+     * gone the next time the process restarts with nobody told. Reported the same way this class
+     * already surfaces the layout-switch toast (line ~593).
+     */
+    private fun reportPersonalWordSaveResult(saved: Boolean) {
+        if (saved) return
+        Log.e(TAG, "personal dictionary save failed")
+        runCatching {
+            android.widget.Toast.makeText(service, "Personal dictionary: save failed", android.widget.Toast.LENGTH_SHORT).show()
+        }.onFailure { error -> Log.e(TAG, "personal dictionary save-failed toast crashed", error) }
     }
 
     /** [registerAdditionalSubtypes] only re-registers when `custom_input_styles` actually changed, matching SS8.3's own triggers rather than every settings emission. */
@@ -520,12 +606,14 @@ internal class KeyboardSession(
      * "Delete removes the word from the personal dictionary in every loaded dictionary" is one
      * store update here, since 3.0 keeps a single shared [UserWordStore] rather than per-dictionary
      * copies (`TextInputResources.userWords`' own contract); "forgets it as a next word everywhere"
-     * has no owner yet (see [KeyboardPipeline.hiddenSuggestions]' KDoc).
+     * (SS4, SS5) is [KeyboardPipeline.forgetWordAsNextWordEverywhere].
      */
     private fun deletePersonalWord(word: String) {
         userWordStore = userWordStore.withPersonalWordRemoved(word)
         pipeline.resources = pipeline.resources.copy(userWords = userWordStore)
-        userWordLoader.savePersonalAsync(userWordStore.personalWords())
+        userWordLoader.savePersonalAsync(userWordStore.personalWords(), ::reportPersonalWordSaveResult)
+        pipeline.forgetWordAsNextWordEverywhere(word)
+        ngramLoader.forgetEverywhereAsync(word)
     }
 
     /**
@@ -598,6 +686,7 @@ internal class KeyboardSession(
         assistantRequest = ImeSettings.assistantRequest(settings)
         trackpad.activationSettings = ImeSettings.trackpadActivation(settings)
         trackpad.gestureSettings = ImeSettings.trackpadGesture(settings)
+        keyboardSwipe.settings = ImeSettings.keyboardSwipeSettings(settings)
         appProfiles = ImeSettings.appProfiles(settings)
         enterOverrides = ImeSettings.enterOverrides(settings)
         enterPreset = settings.perApp.enterPreset
@@ -616,6 +705,13 @@ internal class KeyboardSession(
         quickLauncher.executor = commandExecutor
         tapHapticUseSystem = settings.feedback.tapHapticUseSystem
         tapHapticDurationMs = settings.feedback.tapHapticDurationMs
+        // spec: expansion-clipboard-pickers-launcher.md SS9.1: "rebuilt whenever ... changes".
+        if (settings.feedback.typingSoundMode != typingSoundMode || settings.feedback.typingSoundOutputMode != typingSoundOutputMode) {
+            typingSoundMode = settings.feedback.typingSoundMode
+            typingSoundOutputMode = settings.feedback.typingSoundOutputMode
+            runCatching { typingSoundPlayer?.release() }
+            typingSoundPlayer = if (typingSoundMode == TypingSoundMode.OFF) null else TypingSoundPlayer(service, typingSoundMode, typingSoundOutputMode)
+        }
         // spec SS5.6: the suggestion row's live announcements and their delay. `:core:strip`'s own
         // [StripSettings] (`strip`, above) has no accessibility fields (SS9.1's Keep/Drop is about
         // the strip's *theme*), so these two come straight off the raw store settings.
@@ -753,6 +849,7 @@ internal class KeyboardSession(
     fun onFinishInput() {
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
+        handler.removeCallbacksAndMessages(selectionSyncToken)
         pipeline.onFinishInput()
         requestCandidatesShown(false)
         dictationController.onEditorFieldClosed()
@@ -1023,12 +1120,20 @@ internal class KeyboardSession(
             }
         }
         runCatching {
-            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
-            DiagnosticLog.i(TAG) { "selection external: $oldSelStart->$newSelStart textBefore='${textBeforeCursor?.takeLast(12)}'" }
-            pipeline.onExternalSelectionChange(textBeforeCursor, selectionCollapsed = newSelStart == newSelEnd)
-            // spec SS4.5: the app's own caret moved between two captured keys, so capture drops.
+            // spec SS4.5: the app's own caret moved between two captured keys, so capture drops;
+            // this is not part of the tracker resync and stays immediate.
             emojiPicker.onAppSelectionChanged()
-            refreshCandidatesStrip()
+            // spec autocorrect-suggestions.md SS1.2: the tracker resync this triggers is debounced
+            // 120 ms, and a second selection change arriving first cancels the pending one, so the
+            // strip never re-syncs against a cursor position the user has already moved past.
+            val selectionCollapsed = newSelStart == newSelEnd
+            handler.removeCallbacksAndMessages(selectionSyncToken)
+            handler.postDelayed({
+                val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
+                DiagnosticLog.i(TAG) { "selection external: $oldSelStart->$newSelStart textBefore='${textBeforeCursor?.takeLast(12)}'" }
+                pipeline.onExternalSelectionChange(textBeforeCursor, selectionCollapsed = selectionCollapsed)
+                refreshCandidatesStrip()
+            }, selectionSyncToken, CurrentWordTracker.CURSOR_MOVE_DEBOUNCE_MS)
         }.onFailure { error -> Log.e(TAG, "onUpdateSelection crashed", error) }
     }
 
@@ -1064,6 +1169,7 @@ internal class KeyboardSession(
         }
         // spec expansion-clipboard-pickers-launcher.md SS4.5: while page 4's search captures, hardware keys type into it.
         if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalizeStroke(event)?.key)) return@runCatching true
+        if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
         processKeyStroke(stroke)
@@ -1107,6 +1213,29 @@ internal class KeyboardSession(
         EditorInfo.IME_ACTION_PREVIOUS -> "previous"
         EditorInfo.IME_ACTION_UNSPECIFIED -> "unspecified"
         else -> "none"
+    }
+
+    /**
+     * spec app-shell.md SS11, autocorrect-suggestions.md SS7.2: "each attempt is recorded in the
+     * debug capture with its outcome", regardless of whether Diagnostics is open. [debug] is
+     * `:core:text`'s own decision ([brobata.physiboard.core.text.BoundaryDebugInfo]); this only
+     * adds the wall-clock timestamp the pure module has no business knowing.
+     */
+    private fun reportAutocorrectionDebug(debug: BoundaryDebugInfo) {
+        val sink = debugCaptureSink ?: return
+        sink.recordAutocorrection(
+            AutocorrectionRecord(
+                atMs = SystemClock.uptimeMillis(),
+                type = debug.type,
+                trigger = debug.trigger,
+                source = debug.source.orEmpty(),
+                outcome = debug.outcome,
+                before = debug.before,
+                after = debug.after,
+                reason = debug.reason,
+                distance = debug.distance,
+            ),
+        )
     }
 
     /**
@@ -1172,6 +1301,12 @@ internal class KeyboardSession(
      */
     private fun processKeyStroke(stroke: KeyStroke): Boolean {
         val ic = service.currentInputConnection ?: return false
+        // spec: expansion-clipboard-pickers-launcher.md SS9.1: "on every hardware key down with
+        // repeat count 0 while an editable field is active" -- reaching this line already means an
+        // editor has an active InputConnection; [shouldPlay] itself only tests the repeat count.
+        if (stroke.edge == KeyEdge.DOWN && TypingSounds.shouldPlay(typingSoundMode, stroke.key, stroke.repeatCount, editableFieldActive = true)) {
+            typingSoundPlayer?.play(SoundGroup.forKey(stroke.key))
+        }
         val readout = ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
         val glyphBefore = pipeline.modifierGlyphInput()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
@@ -1186,6 +1321,9 @@ internal class KeyboardSession(
             DiagnosticLog.i(TAG) { "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops} dicts=${pipeline.resources.dictionaries.size} sugg=${runCatching { pipeline.suggestions().map { it.word } }.getOrDefault(emptyList())}" }
         }
         scheduleLongPressIfNeeded()
+        // spec app-shell.md SS11, autocorrect-suggestions.md SS7.2: "each attempt is recorded in
+        // the debug capture with its outcome", regardless of whether Diagnostics is open.
+        result.autocorrectDebug?.let(::reportAutocorrectionDebug)
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
         result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
         // spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on; none when it turns off."
@@ -1476,6 +1614,121 @@ internal class KeyboardSession(
      * replay -- if the trigger's own down is even still pending -- can only ever replay the
      * trigger's own stroke.
      */
+    /**
+     * spec: trackpad-caret-nav.md SS3.6: the vendor firmware's own swipe-to-delete keycodes (D5),
+     * independent of both providers above. Both edges of the two recognised keycodes are
+     * consumed so the raw event never reaches the pipeline or the app; only a down with repeat
+     * count 0 decides anything.
+     */
+    private fun interceptFirmwareSwipeKeycode(event: KeyEvent): Boolean {
+        val isFirmwareCode = event.keyCode == VendorKeyCodes.SWIPE_TO_DELETE_PRIMARY || event.keyCode == VendorKeyCodes.SWIPE_TO_DELETE_SECONDARY
+        if (!isFirmwareCode) return false
+        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0) return true
+        val ic = service.currentInputConnection ?: return true
+        val result = FirmwareSwipeKeycode.decide(
+            keycode = event.keyCode,
+            isFirmwareSwipeKeycode = true,
+            swipeToDelete = lastSettings.typing.swipeToDelete,
+            provider = lastSettings.keyboardSwipe.swipeToDeleteProvider,
+        )
+        if (result != FirmwareSwipeResult.DELETE_LAST_WORD) return true
+        val deleted = deleteLastWordBeforeCursor(ic)
+        if (deleted) refreshCandidatesStrip()
+        // spec SS3.6: "consumed when something was deleted, otherwise falls through".
+        return deleted
+    }
+
+    /**
+     * spec: trackpad-caret-nav.md SS3.5's last paragraph, SS3.6's shared delete: "up to 100
+     * characters are inspected; trailing whitespace is skipped, then the run of non-whitespace is
+     * removed." A literal, self-contained implementation against the raw text before the cursor,
+     * not `:core:text`'s richer word-boundary rules (out of this task's scope). The trailing
+     * whitespace between the deleted word and the cursor is deleted along with it and reinserted,
+     * since `InputConnection.deleteSurroundingText` only removes a run touching the cursor.
+     */
+    private fun deleteLastWordBeforeCursor(ic: InputConnection): Boolean {
+        val text = ic.getTextBeforeCursor(100, 0)?.toString() ?: return false
+        var end = text.length
+        while (end > 0 && text[end - 1].isWhitespace()) end--
+        var start = end
+        while (start > 0 && !text[start - 1].isWhitespace()) start--
+        if (start == end) return false
+        val trailing = text.substring(end)
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(text.length - start, 0)
+        if (trailing.isNotEmpty()) ic.commitText(trailing, 1)
+        ic.endBatchEdit()
+        return true
+    }
+
+    /** spec: trackpad-caret-nav.md SS3.3's evaluated result, from the [keyboardSwipe] native provider. */
+    private fun onKeyboardSwipeEvaluated(evaluation: SwipeEvaluation) {
+        when (evaluation) {
+            is SwipeEvaluation.Up -> onKeyboardSwipeUp(evaluation.third)
+            SwipeEvaluation.Left -> onKeyboardSwipeLeft()
+            SwipeEvaluation.Candidate, SwipeEvaluation.Debounced, SwipeEvaluation.None -> Unit
+        }
+    }
+
+    /**
+     * spec SS3.5, points 1 to 5. The gate and the add-word/slot decision are
+     * [KeyboardSwipeUpDecision]'s pure call; committing the result reuses [onStripSlotTapped],
+     * the exact path status-bar.md SS5.3 says a swipe's accept is "committed through".
+     */
+    private fun onKeyboardSwipeUp(third: SwipeThird) {
+        runCatching {
+            val model = pipeline.stripModel(
+                clipboardCount = clipboard.count,
+                dictationActive = dictationController.isActive,
+                dictionaryInstalled = pipeline.resources.dictionaries.isNotEmpty(),
+                subtypeLocale = currentStyle.locale,
+                clipboardOverlayOpen = clipboardPanel.isShown,
+            )
+            val row = model.row
+            // `:core:strip`'s own SuggestionRowRules.rowVisible already ANDs "Sym page 0, suggestions
+            // enabled, field allows suggestions" (plus no clipboard overlay, a dictionary loaded)
+            // into whether [row] is [SuggestionRow.Hidden] at all, so that one check stands in for
+            // SS3.5 point 2's first three conditions without re-deriving them here.
+            val rowVisible = row !is SuggestionRow.Hidden
+            val gate = SwipeUpGate(
+                symPageIsZero = rowVisible,
+                suggestionsEnabled = rowVisible,
+                fieldAllowsSuggestions = rowVisible,
+                suggestionVisible = row is SuggestionRow.Slots,
+                addWordCandidatePending = row is SuggestionRow.AddWordOnly || (row is SuggestionRow.Slots && row.left.kind == SlotKind.ADD_WORD),
+            )
+            val action = KeyboardSwipeUpDecision.decide(third, gate, keyboardSwipe.settings)
+            val slot = when (action) {
+                SwipeUpAction.Ignored -> return@runCatching
+                SwipeUpAction.AddWord -> when (row) {
+                    is SuggestionRow.AddWordOnly -> Slot(row.word, SlotKind.ADD_WORD)
+                    is SuggestionRow.Slots -> row.left
+                    SuggestionRow.Hidden -> return@runCatching
+                }
+                is SwipeUpAction.AcceptSlot -> (row as? SuggestionRow.Slots)?.get(action.slot.toSlotPosition()) ?: return@runCatching
+            }
+            if (!slot.isTappable) return@runCatching
+            // spec SS3.5 point 1: latched Shift/Alt cleared before anything is committed.
+            pipeline.releaseLatchedLayersForStripButton()
+            onStripSlotTapped(slot)
+        }.onFailure { error -> Log.e(TAG, "keyboard swipe up crashed", error) }
+    }
+
+    private fun SwipeSlot.toSlotPosition(): SlotPosition = when (this) {
+        SwipeSlot.LEFT -> SlotPosition.LEFT
+        SwipeSlot.CENTRE -> SlotPosition.CENTER
+        SwipeSlot.RIGHT -> SlotPosition.RIGHT
+    }
+
+    /** spec SS3.5's last paragraph: an accepted left swipe deletes the last word before the cursor. */
+    private fun onKeyboardSwipeLeft() {
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            pipeline.releaseLatchedLayersForStripButton()
+            if (deleteLastWordBeforeCursor(ic)) refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "keyboard swipe left crashed", error) }
+    }
+
     private fun interceptForTrackpad(event: KeyEvent): Boolean {
         if (!pipeline.settings.screenTrackpadEnabled) return false
         val trackpadKey = classifyTrackpadKey(event.keyCode)
@@ -1682,6 +1935,24 @@ internal class KeyboardSession(
             listener = stripListener,
         )
         statusBar = view
+        // spec trackpad-caret-nav.md SS3.3: "a generic-motion listener is attached to [the decor
+        // view]... whenever the editor starts, the keyboard window is shown, or the provider
+        // preference changes". [KeyboardSwipeController.accepts] re-reads the live settings and
+        // device eligibility on every event, so attaching it once here covers all three triggers.
+        view.setOnGenericMotionListener { _, event ->
+            if (!keyboardSwipe.accepts(event)) return@setOnGenericMotionListener false
+            onKeyboardSwipeEvaluated(keyboardSwipe.onGenericMotion(event))
+            true
+        }
+        // spec trackpad-caret-nav.md SS6: "every touch down... on the keyboard's chrome layout,
+        // that is the strip and everything drawn in the keyboard window" takes a pulse, and any
+        // held pulse is released when that layout leaves its window. These two hooks sit in
+        // StatusBarView's own dispatchTouchEvent/onDetachedFromWindow rather than in an
+        // OnTouchListener here, because a listener on the root is never consulted for a down a
+        // child view consumes: tapping a suggestion slot or a strip button, which is exactly the
+        // touch SS6 exists for, would leave the screen free to time out.
+        view.onChromeTouchDown = touchAwakeLock::onChromeTouchDown
+        view.onChromeDetached = touchAwakeLock::onChromeDetached
         refreshCandidatesStrip()
         return view
     }
@@ -1928,7 +2199,11 @@ internal class KeyboardSession(
                     pipeline.stripModel(
                         clipboardCount = clipboard.count, // spec expansion-clipboard-pickers-launcher.md SS3.4: the count is pushed on every refresh.
                         dictationActive = dictationController.isActive,
-                        dictionaryInstalled = pipeline.resources.dictionaries.isNotEmpty(),
+                        // spec: autocorrect-suggestions.md SS2 point 3, SS6.2: this must answer for the
+                    // *primary* dictionary specifically. `pipeline.resources.dictionaries.isNotEmpty()`
+                    // used to answer "any dictionary at all", which reports ready too early when an
+                    // additional suggestion language's load lands before the primary one's own.
+                    dictionaryInstalled = primaryLanguage in loadedDictionaries,
                         subtypeLocale = currentStyle.locale, // spec dictionaries-languages.md SS9.2: the language button's text follows the active input style.
                         clipboardOverlayOpen = clipboardPanel.isShown,
                     ),

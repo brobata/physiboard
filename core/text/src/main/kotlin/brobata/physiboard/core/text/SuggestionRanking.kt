@@ -60,9 +60,14 @@ object QwertyGrid {
  * // strips accents unconditionally before every lookup, so a query's accents are already gone
  * // by the time [DictionaryIndex.neighbours] runs the first (and only) fuzzy pass; a second pass
  * // on an already-unaccented key would search the identical key space. This ranking therefore
- * // does not run a distinct second pass; [RankingOptions.accentMatchingEnabled] is accepted for
- * // API completeness but has no additional effect here. SS3.4's single-letter elisions and
- * // single-letter variant sources (N = 1) are likewise not implemented: they are a handful of
+ * // does not run a distinct second pass. Instead, [RankingOptions.accentMatchingEnabled] gates
+ * // the one place accent tolerance actually shows up given that architecture: since every fuzzy
+ * // and completion lookup already runs on an accent-stripped key, a candidate that differs from
+ * // the typed word only by accents, case, or ligature folding (an "orthographic variant", spec
+ * // SS9's own term for the same relationship) is only surfaced when the setting is on; turning
+ * // it off restores accent sensitivity by filtering those candidates back out. SS3.4's
+ * // single-letter elisions and single-letter variant sources (N = 1) are likewise not
+ * // implemented: they are a handful of
  * // narrow-width special cases with no test in scope's mandate, and are left as a follow-up
  * // rather than guessed at.
  */
@@ -147,11 +152,21 @@ object SuggestionRanking {
         if (candidate == typedWord) return false
         if (n <= 2 && candidate.length == 1 && !candidate.equals(typedWord, ignoreCase = true)) return false
         if (n <= 2 && distance > 1) return false
+        if (!options.accentMatchingEnabled && isOrthographicVariant(typedWord, candidate)) return false
         if (options.useKeyboardProximity && distance > 0 && candidate.length == typedWord.length && isDistantSubstitution(typedWord, candidate)) {
             return false
         }
         return true
     }
+
+    /**
+     * Whether [candidate] differs from [typedWord] only by accent, case, or ligature folding
+     * (spec SS9's "orthographic variant"): same dictionary key, different spelling. spec: SS3.4's
+     * `accent_matching_enabled` gate, realised here since this module's fuzzy lookup already runs
+     * on an accent-stripped key (see the SPEC GAP note above [SuggestionRanking]).
+     */
+    private fun isOrthographicVariant(typedWord: String, candidate: String): Boolean =
+        candidate != typedWord && DictNormalization.normalizedKey(typedWord) == DictNormalization.normalizedKey(candidate)
 
     /** spec: SS3.5, "Distant substitution": same length, not a transposition, some differing pair more than 2.5 key-widths apart. */
     /**

@@ -62,6 +62,15 @@ data class CurrentWordTracker private constructor(val word: String, private val 
         /** spec: autocorrect-suggestions.md SS1.1, "The current word holds at most 48 characters." */
         const val DEFAULT_MAX_LENGTH: Int = 48
 
+        /**
+         * spec: autocorrect-suggestions.md SS1.2's cursor-move row: "120 ms debounce; a second
+         * move within 120 ms cancels the first read." Listed in SS13 as "not a setting", so this
+         * is the one place the value lives; the caller that owns the real clock ([syncedFrom]'s
+         * scheduling is `:ime`'s job, this module has no I/O) reads it from here rather than
+         * hard-coding its own copy.
+         */
+        const val CURSOR_MOVE_DEBOUNCE_MS: Long = 120
+
         fun empty(maxLength: Int = DEFAULT_MAX_LENGTH): CurrentWordTracker = CurrentWordTracker("", maxLength)
     }
 }

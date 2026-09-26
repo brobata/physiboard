@@ -85,6 +85,30 @@ class DictionaryIndex private constructor(
     }
 
     /**
+     * Appends up to [limit] of the highest-frequency entries in the whole dictionary, one per
+     * normalized key (that key's own most-frequent spelling), into [into]. Returns the number
+     * appended. Serves autocorrect-suggestions.md SS4's starter words: "the top 48 entries by
+     * effective frequency across the primary dictionary". Uses the same bounded-heap technique as
+     * [prefixLookup] so a caller does not pay for sorting the whole dictionary just to read off a
+     * small head.
+     */
+    fun topByFrequency(limit: Int, into: MutableList<WordFrequency>): Int {
+        if (limit <= 0) return 0
+        val worstFirst = java.util.PriorityQueue(limit + 1, BEST_FIRST.reversed())
+        for (group in normalizedKeys.indices) {
+            var bestIndex = groupOffsets[group]
+            for (i in groupOffsets[group] until groupOffsets[group + 1]) {
+                if (entryFrequencies[i] > entryFrequencies[bestIndex]) bestIndex = i
+            }
+            worstFirst.add(WordFrequency(entryWords[bestIndex], entryFrequencies[bestIndex]))
+            if (worstFirst.size > limit) worstFirst.poll()
+        }
+        val selected = worstFirst.toMutableList().apply { sortWith(BEST_FIRST) }
+        into.addAll(selected)
+        return selected.size
+    }
+
+    /**
      * Appends every entry under the exact normalized key of [word] (the case and accent
      * variants of one spelling, such as `perche`, `perché`, `Perché`), most frequent first, up
      * to [limit], into [into]. Returns the number appended. Serves the single-letter cases of

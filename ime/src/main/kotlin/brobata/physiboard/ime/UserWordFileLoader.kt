@@ -41,11 +41,15 @@ internal class UserWordFileLoader(
      * writes [personalWords] (the caller's already-updated [UserWordStore.personalWords]) back to
      * `personal_dictionary.json` so it survives a process restart and shows on the Personal
      * Dictionary screen. The in-memory store is updated by the caller immediately; this call only
-     * makes that change durable.
+     * makes that change durable. [onResult] (main thread) reports whether the write succeeded, the
+     * same "save failed" surfacing SS6.3 asks for on the Personal Dictionary screen's own edits, so
+     * a caller here is not left believing an addition survived a process restart when the file
+     * write actually failed (a full disk, a revoked permission, ...).
      */
-    fun savePersonalAsync(personalWords: List<PersonalWord>) {
+    fun savePersonalAsync(personalWords: List<PersonalWord>, onResult: (Boolean) -> Unit = {}) {
         Thread({
-            runCatching { writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(personalWords)) }
+            val ok = runCatching { writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(personalWords)) }.isSuccess
+            mainHandler.post { onResult(ok) }
         }, "physiboard-userwords-save").apply { isDaemon = true }.start()
     }
 

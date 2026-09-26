@@ -13,6 +13,9 @@ import brobata.physiboard.core.actions.snippets.SnippetExpansion
 import brobata.physiboard.core.actions.snippets.SnippetMatch
 import brobata.physiboard.core.actions.snippets.SnippetPresentation
 import brobata.physiboard.core.actions.snippets.SnippetSettings
+import brobata.physiboard.core.dict.Bigram
+import brobata.physiboard.core.dict.NgramPrefix
+import brobata.physiboard.core.dict.NgramStore
 import brobata.physiboard.core.keys.Action
 import brobata.physiboard.core.keys.AccidentalPressFilter
 import brobata.physiboard.core.keys.AccidentalPressFilterState
@@ -51,6 +54,7 @@ import brobata.physiboard.core.text.AddWordCandidate
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
 import brobata.physiboard.core.text.AutocorrectSettings
+import brobata.physiboard.core.text.BoundaryDebugInfo
 import brobata.physiboard.core.text.CapDecision
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
@@ -63,6 +67,7 @@ import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
 import brobata.physiboard.core.text.RankedSuggestion
 import brobata.physiboard.core.text.RankingOptions
+import brobata.physiboard.core.text.NextWordSuggestions
 import brobata.physiboard.core.text.SuggestionRanking
 import brobata.physiboard.core.text.TextInputPipeline
 import brobata.physiboard.core.text.TextInputRequest
@@ -184,6 +189,11 @@ data class PipelineResult(
      * API to call.
      */
     val navModeTransition: NavModeTransition? = null,
+    /**
+     * spec app-shell.md SS11, autocorrect-suggestions.md SS7.2: non-null only when this keystroke
+     * ran a word-boundary evaluation, so [KeyboardSession] can forward it to the debug capture.
+     */
+    val autocorrectDebug: BoundaryDebugInfo? = null,
 ) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
@@ -215,6 +225,32 @@ internal class KeyboardPipeline(
     private var modifierState = ModifierState()
     private var typingState = TypingSessionState()
     private var textInputState = TextInputState()
+    /**
+     * spec: autocorrect-suggestions.md SS4. The in-memory overlay a just-learned pair is visible
+     * through immediately, before `:ime` finishes persisting it to `user_ngrams.db`; [onBigramLearned]
+     * is `:ime`'s hook to queue that write off the main thread.
+     */
+    private var ngramStore: NgramStore = NgramStore.empty()
+
+    /** spec: SS4, "the next word is a sentence start" until a soft boundary completes a word. */
+    private var nextWordPrefixKey: String = NgramStore.SENTENCE_START
+
+    /** `:ime` supplies the loaded rows once at start and after every reload; see [KeyboardSession]. */
+    fun onNgramStoreLoaded(loaded: List<Bigram>) {
+        ngramStore = ngramStore.mergedWith(loaded)
+    }
+
+    /** spec: SS4. `:ime`'s seam to persist a newly learned pair off the main thread; a no-op until set. */
+    var onBigramLearned: (locale: String, prefix: String, nextWord: String) -> Unit = { _, _, _ -> }
+
+    /**
+     * spec: SS4, "deleting a user word forgets it as a next word under every prefix" (SS5:
+     * "forgets it as a next word everywhere"): the strip's delete button on a personal word.
+     */
+    fun forgetWordAsNextWordEverywhere(word: String) {
+        ngramStore = ngramStore.forgetEverywhere(word)
+    }
+
     /** spec: keys-and-modifiers.md SS10, SS10.3: "Filter memory clears on every start of input." */
     private var bounceFilterState = BounceFilterState()
     /** spec: keys-and-modifiers.md SS11: "state resets on start and finish of input and on any input device change." Input-device-change resets are `:ime`'s to add; no such callback exists yet in this milestone. */
@@ -846,8 +882,19 @@ internal class KeyboardPipeline(
         return expanded.filterNot { candidate -> hiddenSuggestions.any { it.equals(candidate.word, ignoreCase = true) } }.take(3)
     }
 
-    /** spec: status-bar.md SS5.3: the suggestion action mode's "eye" button. See [hiddenSuggestions]' own KDoc for what "hide" means in 3.0 today. */
+    /**
+     * spec: status-bar.md SS5.3: the suggestion action mode's "eye" button. See [hiddenSuggestions]'
+     * own KDoc for what "hide" means in 3.0 today. spec autocorrect-suggestions.md SS5: "for a
+     * next-word suggestion it also forgets the bigram", which this reaches through [onBigramForgotten]
+     * exactly the way a learn reaches [onBigramLearned].
+     */
     fun hideSuggestion(word: String) {
+        if (textInputState.currentWord.word.isEmpty()) {
+            val locale = resources.dictionaries.firstOrNull()?.language?.value ?: ImeSettings.DEFAULT_SUBTYPE_LOCALE
+            ngramStore = ngramStore.forget(locale, nextWordPrefixKey, word)
+            onBigramForgotten(locale, nextWordPrefixKey, word)
+            return
+        }
         if (!word.equals(hiddenSuggestionsWord, ignoreCase = true)) {
             hiddenSuggestionsWord = word
             hiddenSuggestions.clear()
@@ -855,12 +902,15 @@ internal class KeyboardPipeline(
         hiddenSuggestions.add(word)
     }
 
+    /** spec: SS4, SS5's next-word hide; a no-op until `:ime` sets it. */
+    var onBigramForgotten: (locale: String, prefix: String, nextWord: String) -> Unit = { _, _, _ -> }
+
     /** spec: autocorrect-suggestions.md SS5, SS6.11. A strip tap, kept out of the typing path. */
     fun onAcceptSuggestion(word: String, editor: EditorSnapshot): PipelineResult {
         val result = TextInputPipeline.handle(TextInputRequest.AcceptSuggestion(word), activeField, settings.textInput, resources, textInputState, editor)
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)
-        return toPipelineResult(result.ops, result.enterDelivery)
+        return toPipelineResult(result.ops, result.enterDelivery, result.autocorrectDebug)
     }
 
     // -----------------------------------------------------------------------------------------
@@ -891,7 +941,11 @@ internal class KeyboardPipeline(
     fun stripModel(clipboardCount: Int, dictationActive: Boolean, dictionaryInstalled: Boolean, subtypeLocale: String?, clipboardOverlayOpen: Boolean = false): StripModel {
         val inputs = StripInputs(
             packageName = currentPackageName,
-            suggestions = suggestions().map { it.word },
+            // spec: autocorrect-suggestions.md SS4: once the current word is empty, the strip
+            // shows next-word predictions (learned bigrams, then starter words) instead of going
+            // blank; typing any letter makes the current word non-empty again, which already
+            // switches back to ordinary current-word suggestions (SS4's own rule).
+            suggestions = if (textInputState.currentWord.word.isEmpty()) nextWordSuggestions() else suggestions().map { it.word },
             addWordCandidate = if (activeField.suggestionsAllowed && settings.textInput.autocorrect.suggestionsEnabled) {
                 AddWordCandidate.forCurrentWord(
                     word = textInputState.currentWord.word,
@@ -1072,14 +1126,53 @@ internal class KeyboardPipeline(
         val result = TextInputPipeline.handle(request, activeField, settings.textInput, resources, textInputState, editor, activeTrust, activeAppProfile)
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)
-        return toPipelineResult(result.ops, result.enterDelivery)
+        result.autocorrectDebug?.let(::learnNextWord)
+        return toPipelineResult(result.ops, result.enterDelivery, result.autocorrectDebug)
+    }
+
+    /**
+     * spec: autocorrect-suggestions.md SS4: "Every completed word is learned as 'previous word ->
+     * this word'"; "A period, Enter or any other hard boundary ... resets the context: the next
+     * word is a sentence start." [debug] is the same record [KeyboardSession] forwards to the
+     * debug capture; its `before`/`after` already carry exactly "the completed word (the
+     * replacement if one happened)" SS7.3 asks this to learn, so this reuses it rather than
+     * re-deriving the same fact a second way. A blank `before` (the `empty_word`,
+     * `auto_replace_disabled` and `no_input_connection` attempts) means no word boundary
+     * completed a word at all, so nothing is learned and the context is left exactly as it was.
+     */
+    private fun learnNextWord(debug: BoundaryDebugInfo) {
+        if (debug.before.isBlank()) return
+        val completedWord = debug.after.ifBlank { debug.before }
+        val locale = resources.dictionaries.firstOrNull()?.language?.value ?: ImeSettings.DEFAULT_SUBTYPE_LOCALE
+        val now = System.currentTimeMillis()
+        ngramStore = ngramStore.learn(locale, nextWordPrefixKey, completedWord, now)
+        onBigramLearned(locale, nextWordPrefixKey, completedWord)
+        nextWordPrefixKey = if (BoundaryDebugInfo.isSoftBoundary(debug.boundaryChar)) NgramPrefix.of(completedWord) else NgramStore.SENTENCE_START
+    }
+
+    /**
+     * spec: SS4. Predictions for the word about to be typed, shown once the current word is empty
+     * (a soft boundary just fired, or the cursor sits on empty space): learned bigrams for the
+     * current context first, then starter words. Casing follows the same modifier facts the strip
+     * already reads for other purposes (SS4: "shown lowercase, or with a leading capital when Caps
+     * Lock, Shift, one-shot Shift or the latched shift layer is active").
+     */
+    fun nextWordSuggestions(): List<String> {
+        if (!activeField.suggestionsAllowed) return emptyList()
+        if (!settings.textInput.autocorrect.suggestionsEnabled) return emptyList()
+        if (textInputState.currentWord.word.isNotEmpty()) return emptyList()
+        val locale = resources.dictionaries.firstOrNull()?.language?.value ?: ImeSettings.DEFAULT_SUBTYPE_LOCALE
+        val predictions = NextWordSuggestions.of(ngramStore, locale, nextWordPrefixKey, resources.dictionaries.firstOrNull(), resources.userWords)
+        val glyph = modifierGlyphInput()
+        val capitalize = glyph.capsLockOn || glyph.shiftOneShotArmed || glyph.shiftPhysicallyHeld
+        return predictions.map { if (capitalize) it.replaceFirstChar(Char::uppercaseChar) else it.lowercase() }
     }
 
     /** spec: text-input.md EditorOp.PassThroughKey KDoc: as the sole op it means "no text change; the caller decides", which for every producer in `:core:text` means "let the physical key through". [enterDelivery] carries per-app-behavior.md SS3.4's real `InputConnection` call forward to [KeyboardSession], which alone knows whether it was actually delivered; [consumed] is provisional in that case (see [PipelineResult]'s own KDoc). */
-    private fun toPipelineResult(ops: List<EditorOp>, enterDelivery: EnterIntent?): PipelineResult = when {
-        enterDelivery != null -> PipelineResult(ops, consumed = true, enterDelivery = enterDelivery)
-        ops.size == 1 && ops[0] == EditorOp.PassThroughKey -> PipelineResult.NOT_CONSUMED
-        else -> PipelineResult(ops, consumed = true)
+    private fun toPipelineResult(ops: List<EditorOp>, enterDelivery: EnterIntent?, autocorrectDebug: BoundaryDebugInfo? = null): PipelineResult = when {
+        enterDelivery != null -> PipelineResult(ops, consumed = true, enterDelivery = enterDelivery, autocorrectDebug = autocorrectDebug)
+        ops.size == 1 && ops[0] == EditorOp.PassThroughKey -> PipelineResult.NOT_CONSUMED.copy(autocorrectDebug = autocorrectDebug)
+        else -> PipelineResult(ops, consumed = true, autocorrectDebug = autocorrectDebug)
     }
 
     /**
