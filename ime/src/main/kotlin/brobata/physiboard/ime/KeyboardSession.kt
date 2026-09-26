@@ -18,6 +18,7 @@ import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
 import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.launcher.AssignableKeys
@@ -54,6 +55,7 @@ import brobata.physiboard.core.strip.StripButton
 import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripGeometry
 import brobata.physiboard.core.strip.StripInsets
+import brobata.physiboard.core.strip.SymGridPage
 import brobata.physiboard.core.strip.TapHaptic
 import brobata.physiboard.core.strip.TouchableArea
 import brobata.physiboard.core.text.AppProfile
@@ -73,6 +75,7 @@ import brobata.physiboard.ime.actions.EmojiPickerController
 import brobata.physiboard.ime.actions.ExpansionPopupController
 import brobata.physiboard.ime.actions.LauncherKeysController
 import brobata.physiboard.ime.actions.QuickLauncherController
+import brobata.physiboard.ime.actions.SymGridPanelController
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
 import brobata.physiboard.ime.pointer.TrackpadOverlayController
 import kotlinx.coroutines.MainScope
@@ -201,6 +204,8 @@ internal class KeyboardSession(
     private val clipboardPanel = ClipboardPanelController(service)
     private val emojiAssets = EmojiAssets(service.assets, handler, Build.VERSION.SDK_INT)
     private val emojiPicker = EmojiPickerController(service, handler, emojiAssets)
+    /** spec layers-sym-alt.md SS5.7: the on-screen grid for the Emoji (page 1) and Symbols (page 2) key layers. */
+    private val symGridPanel = SymGridPanelController(service)
     private var emojiPickerExpanded = false
     private var symAutoClose = true
     private var symAutoCloseOnTouch = true
@@ -269,7 +274,7 @@ internal class KeyboardSession(
         runCatching { caretBadge.hide() }.onFailure { error -> Log.e(TAG, "caret badge teardown crashed", error) }
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
-        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); quickLauncher.onServiceDestroyed() }
+        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
@@ -947,7 +952,34 @@ internal class KeyboardSession(
         refreshCandidatesStrip()
     }
 
-    /** Shows or hides the two panels to match the pipeline's open Sym page (0, 3 or 4). */
+    private val symGridListener = object : SymGridPanelController.Listener {
+        // spec SS5.4, SS5.7: the same `KeyboardPipeline.onKeyStroke` path a physical press of this
+        // letter takes while the page is open, so `trySymPageKey`'s commit, French spacing and
+        // `sym_auto_close` all run exactly as they do for the hardware key (`processKeyStroke`
+        // already calls `syncSymPanels`/`refreshCandidatesStrip` when it returns).
+        override fun onKeyTapped(letter: Char) {
+            runCatching {
+                val now = SystemClock.uptimeMillis()
+                val key = KeyId.Letter(letter)
+                processKeyStroke(KeyStroke(key = key, edge = KeyEdge.DOWN, repeatCount = 0, timeMs = now))
+                processKeyStroke(KeyStroke(key = key, edge = KeyEdge.UP, repeatCount = 0, timeMs = now))
+            }.onFailure { error -> Log.e(TAG, "sym grid key tap crashed", error) }
+        }
+
+        // spec SS5.7, SS5.8: opens the customisation screen; not built in this milestone (report GAP).
+        override fun onKeyLongPressed(letter: Char) = DiagnosticLog.i(TAG) { "sym grid: long press on '$letter' would open the customisation screen (not built yet)" }
+        override fun onPencil() = DiagnosticLog.i(TAG) { "sym grid: pencil would open the customisation screen (not built yet)" }
+
+        // spec SS5.7: "opens the system input-method picker."
+        override fun onGlobe() {
+            runCatching { service.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker() }
+                .onFailure { error -> Log.e(TAG, "sym grid globe crashed", error) }
+        }
+
+        override fun onClose() = closeSymPanel()
+    }
+
+    /** Shows or hides the clipboard panel, the emoji picker and the Emoji/Symbols key-layer grid to match the pipeline's open Sym page (0 through 4). */
     private fun syncSymPanels() {
         runCatching {
             val page = pipeline.currentSymPage
@@ -963,7 +995,30 @@ internal class KeyboardSession(
             } else {
                 emojiPicker.hide()
             }
+            val gridPage = SymGridPage.forPageNumber(page)
+            if (gridPage != null) {
+                symGridPanel.show(gridPage, symGridCharacters(gridPage), theme, stripHeightPx(), symGridListener)
+            } else {
+                symGridPanel.hide()
+            }
         }.onFailure { error -> Log.e(TAG, "sym panel sync crashed", error) }
+    }
+
+    /**
+     * spec SS5.7: the grid's per-key characters, from the same layout a physical key on this page
+     * reads (`ImeSettings.layout`'s custom-page merge, SS4.4). [ModifierState.shiftForcesUppercase]'s
+     * exact Caps-Lock-plus-held-Shift-means-lowercase override is not reproduced here (that state
+     * is private to `KeyboardPipeline`); the shipped Emoji and Symbols pages carry no uppercase
+     * entry at all (layers-sym-alt.md SS3.3), so this only matters for a custom page (SS4.4).
+     */
+    private fun symGridCharacters(page: SymGridPage): Map<Char, String> {
+        val glyph = pipeline.modifierGlyphInput()
+        val shiftEffective = glyph.capsLockOn || glyph.shiftOneShotArmed || glyph.shiftPhysicallyHeld
+        val map = when (page) {
+            SymGridPage.EMOJI -> pipeline.layout.emojiPage
+            SymGridPage.SYMBOLS -> pipeline.layout.symbolsPage
+        }
+        return CharacterResolution.symPageCharacters(map, shiftEffective)
     }
 
     private fun onClipboardChanged() {
@@ -1353,12 +1408,13 @@ internal class KeyboardSession(
                 }
             }
             StripAction.OpenSettings -> openOwnApp()
-            // spec layers-sym-alt.md SS4.3: the clipboard and emoji picker buttons open their page directly and toggle; the key layers still have no surface.
-            is StripAction.OpenSymPage -> if (action.page == brobata.physiboard.core.strip.SYM_PAGE_CLIPBOARD || action.page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
+            // spec layers-sym-alt.md SS4.3: every direct-open button (clipboard 3, emoji picker 4,
+            // symbols 2) opens its page and toggles; page 1 (the emoji key layer) has no button of
+            // its own in the catalogue (StripButton.kt's own note) and is reached only via the Sym
+            // key's cycle (SS4.2).
+            is StripAction.OpenSymPage -> {
                 pipeline.toggleSymPage(action.page)
                 syncSymPanels()
-            } else {
-                DiagnosticLog.i(TAG) { "${button.id}: Sym page ${action.page} has no surface yet (placeholder)" }
             }
             StripAction.OpenQuickActions -> DiagnosticLog.i(TAG) { "quick actions overlay not built yet (placeholder)" }
         }

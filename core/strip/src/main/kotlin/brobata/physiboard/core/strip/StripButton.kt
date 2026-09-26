@@ -29,7 +29,13 @@ sealed class StripAction {
     data class SendCtrlCombo(val letter: Char) : StripAction()
 }
 
-/** spec: layers-sym-alt.md's page numbers as status-bar.md SS6.1 cites them: symbols is page 2, clipboard 3, the emoji picker 4. */
+/**
+ * spec: layers-sym-alt.md's page numbers as status-bar.md SS6.1 cites them: the emoji key layer
+ * is page 1, symbols page 2, clipboard 3, the emoji picker 4. Page 1 has no catalogue button of
+ * its own (SS4.3's "emoji layer" direct-open button is not one of [StripButton]'s assignable
+ * slots); it is reached only through the Sym key's own cycle (SS4.2, SS5.2).
+ */
+const val SYM_PAGE_EMOJI: Int = 1
 const val SYM_PAGE_SYMBOLS: Int = 2
 const val SYM_PAGE_CLIPBOARD: Int = 3
 const val SYM_PAGE_EMOJI_PICKER: Int = 4

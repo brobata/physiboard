@@ -86,4 +86,17 @@ object CharacterResolution {
         entry ?: return null
         return if (shiftEffective) entry.uppercase ?: entry.lowercase else entry.lowercase
     }
+
+    /**
+     * Every letter key's character on one Sym key layer (the Emoji or Symbols page), by the
+     * QWERTY letter it prints on. spec: layers-sym-alt.md SS5.7, "the key's small letter label
+     * with the page character large": drawing the on-screen grid needs all 26 answers at once,
+     * where the physical-key path ([LayerResolver.trySymPageKey]) only ever asks for the one key
+     * that was pressed, through [symPageEntryText]. A letter absent from [page] (SS4.4, a custom
+     * map "keys absent from the custom map have no character on that page") is simply missing
+     * from the result, which is how a caller knows the key is not tappable (SS5.7, "Keys with no
+     * character are not tappable").
+     */
+    fun symPageCharacters(page: SymPageMap, shiftEffective: Boolean): Map<Char, String> =
+        ('A'..'Z').mapNotNull { letter -> symPageEntryText(page[KeyId.Letter(letter)], shiftEffective)?.let { letter to it } }.toMap()
 }
