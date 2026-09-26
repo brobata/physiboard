@@ -145,15 +145,23 @@ data class LanguagePrefs(
 
 /**
  * Keys and modifiers. spec: settings-catalog.md SS2.4, keys-and-modifiers.md SS18 and SS22. The
- * tap-latch and latch-stays-on-space rows, the bounce and overlap filters (no screen; "keep only
- * with a screen"), `fn_speech_scan_code` (hard-coded 251) and `alt_ctrl_speech_shortcut` (the
- * chord is removed) are dropped.
+ * tap-latch and latch-stays-on-space rows, `fn_speech_scan_code` (hard-coded 251) and
+ * `alt_ctrl_speech_shortcut` (the chord is removed) are dropped.
  *
  * SPEC GAP: `long_press_threshold` has two 2.x fallbacks (300 and 500, catalogue SS11) and the
  * keys document says "fix the 300/500 default mismatch, one default only" without naming it.
  * 500 is chosen: it is what the Alt/Sym layer (the reader that matters on a hardware keyboard)
  * used, what text-input.md's Keep/Drop cites ("threshold 500 ms"), and `:core:keys`'
  * `LongPressSettings` default.
+ *
+ * The bounce and accidental-press filters (keys-and-modifiers.md SS10, SS11) were left out of an
+ * earlier revision of this class on the reading that SS22 calls them "undecided... keep only with
+ * a screen", but `:core:keys`' `BounceFilter`/`AccidentalPressFilter` are fully implemented and
+ * tested either way and SS18 lists their preference keys as real settings rows regardless of
+ * screen ("Rows marked 'none' for screen have no user interface in 2.x... the values are still
+ * honoured, backed up, and restored"); a maintainer who already built and tested the filter would
+ * not leave them uncallable for want of a settings screen, so the fields are kept here (still with
+ * no dedicated screen, matching 2.x, until `:app` adds one).
  */
 data class KeyPrefs(
     val longPressMode: LongPressMode = LongPressMode.ALT,
@@ -162,6 +170,19 @@ data class KeyPrefs(
     val navModeCtrlHoldEnabled: Boolean = false,
     val layoutAwareCtrlShortcuts: Boolean = false,
     val symEditShortcuts: Boolean = true,
+    /** `nav_mode_mappings_updated`. spec: trackpad-caret-nav.md SS5.9: "any change makes the running keyboard reload the map" (`ctrl_key_mappings.json`, `:core:keys` `CtrlMappingCodec`). 0 means unset (never saved). */
+    val navModeMappingsUpdatedAtMs: Long = 0L,
+    /** `bounce_keys_enabled`. spec: keys-and-modifiers.md SS10. */
+    val bounceKeysEnabled: Boolean = false,
+    /** `bounce_keys_delay_ms`, clamped 20 to 500 by `:core:keys` `BounceKeySettings.clampedDelayMs`. */
+    val bounceKeysDelayMs: Long = 80,
+    val bounceKeysCharacterKeysEnabled: Boolean = true,
+    val bounceKeysModifierKeysEnabled: Boolean = false,
+    val bounceKeysSpaceEnabled: Boolean = true,
+    val bounceKeysEnterEnabled: Boolean = true,
+    val bounceKeysBackspaceEnabled: Boolean = true,
+    /** `overlapping_keys_enabled`. spec: keys-and-modifiers.md SS11. */
+    val overlappingKeysEnabled: Boolean = false,
 )
 
 /** The Sym pages 3.0 keeps. spec: layers-sym-alt.md Keep/Drop: the device page (5) is dropped. */

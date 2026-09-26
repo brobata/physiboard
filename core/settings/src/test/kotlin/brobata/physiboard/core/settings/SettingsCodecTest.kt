@@ -43,6 +43,9 @@ class SettingsCodecTest {
         keys = KeyPrefs(
             longPressMode = LongPressMode.VARIATIONS, longPressThresholdMs = 700, navModeEnabled = false,
             navModeCtrlHoldEnabled = true, layoutAwareCtrlShortcuts = true, symEditShortcuts = false,
+            navModeMappingsUpdatedAtMs = 1700000000000L, bounceKeysEnabled = true, bounceKeysDelayMs = 120,
+            bounceKeysCharacterKeysEnabled = false, bounceKeysModifierKeysEnabled = true, bounceKeysSpaceEnabled = false,
+            bounceKeysEnterEnabled = false, bounceKeysBackspaceEnabled = false, overlappingKeysEnabled = true,
         ),
         symPages = SymPagePrefs(
             pages = SymPagesConfig(emojiEnabled = true, symbolsEnabled = false, clipboardEnabled = true, emojiPickerEnabled = false,

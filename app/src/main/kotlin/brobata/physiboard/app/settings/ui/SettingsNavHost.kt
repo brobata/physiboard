@@ -53,6 +53,7 @@ import brobata.physiboard.app.settings.ui.screens.InputStylesScreen
 import brobata.physiboard.app.settings.ui.screens.SavedThemesScreen
 import brobata.physiboard.app.settings.ui.screens.ThemeLayoutOverridesScreen
 import brobata.physiboard.app.settings.ui.screens.ThemeLayoutOverrideEditScreen
+import brobata.physiboard.app.settings.ui.screens.CustomizeSymKeyboardScreen
 
 /**
  * The whole settings app as one push/pop stack (settings-catalog.md SS9.1, "a push/pop stack
@@ -167,6 +168,28 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
             arguments = listOf(navArgument("title") { type = NavType.StringType }),
         ) { entry ->
             PlaceholderScreen(title = entry.arguments?.getString("title").orEmpty(), onBack = ::back)
+        }
+
+        // layers-sym-alt.md SS5.9: "Customize SYM Keyboard"; the query args are only non-default
+        // when the keyboard itself opened this screen (SS5.8's intent extras).
+        composable(
+            Routes.CUSTOMIZE_SYM_KEYBOARD_PATTERN,
+            arguments = listOf(
+                navArgument("page") { type = NavType.IntType; defaultValue = 0 },
+                navArgument("keyCode") { type = NavType.IntType; defaultValue = -1 },
+                navArgument("openPicker") { type = NavType.BoolType; defaultValue = false },
+                navArgument("returnAfterPicker") { type = NavType.BoolType; defaultValue = false },
+            ),
+        ) { entry ->
+            val context = androidx.compose.ui.platform.LocalContext.current
+            CustomizeSymKeyboardScreen(
+                initialPage = entry.arguments?.getInt("page") ?: 0,
+                initialKeyCode = entry.arguments?.getInt("keyCode") ?: -1,
+                openPickerImmediately = entry.arguments?.getBoolean("openPicker") ?: false,
+                returnAfterPicker = entry.arguments?.getBoolean("returnAfterPicker") ?: false,
+                onBack = ::back,
+                onFinishActivity = { (context as? android.app.Activity)?.finish() },
+            )
         }
     }
 }

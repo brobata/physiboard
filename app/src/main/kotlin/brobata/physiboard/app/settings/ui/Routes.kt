@@ -62,6 +62,17 @@ object Routes {
     const val SAVED_THEMES = "saved_themes"
     const val THEME_LAYOUT_OVERRIDES = "theme_layout_overrides"
 
+    // layers-sym-alt.md SS5.9: "Customize SYM Keyboard". The four query args are only set when the
+    // keyboard itself opens this screen (SS5.8's pencil / long-press); plain in-app navigation uses
+    // [CUSTOMIZE_SYM_KEYBOARD] bare, which the pattern's own defaults answer as "no initial page".
+    const val CUSTOMIZE_SYM_KEYBOARD = "customize_sym_keyboard"
+    const val CUSTOMIZE_SYM_KEYBOARD_PATTERN =
+        "customize_sym_keyboard?page={page}&keyCode={keyCode}&openPicker={openPicker}&returnAfterPicker={returnAfterPicker}"
+
+    /** [page] is 1 (emoji) or 2 (symbols) to open that page's editor directly, else 0. spec SS5.8's intent extras. */
+    fun customizeSymKeyboard(page: Int = 0, keyCode: Int = -1, openPicker: Boolean = false, returnAfterPicker: Boolean = false) =
+        "customize_sym_keyboard?page=$page&keyCode=$keyCode&openPicker=$openPicker&returnAfterPicker=$returnAfterPicker"
+
     /** `theme_layout_overrides/{index}`; -1 adds a new override, else edits `layoutOverrides[index]`. */
     fun themeLayoutOverride(index: Int) = "theme_layout_overrides/$index"
     const val THEME_LAYOUT_OVERRIDE_PATTERN = "theme_layout_overrides/{index}"

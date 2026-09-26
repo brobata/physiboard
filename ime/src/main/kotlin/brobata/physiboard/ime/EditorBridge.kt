@@ -5,6 +5,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
@@ -77,6 +78,7 @@ internal fun InputConnection.applyEditorOps(
     cursorAbsolute: Int,
     sendSpaceKeyFallback: () -> Unit,
     haptic: () -> Unit,
+    dispatchMediaKey: (EditEffect) -> Unit = {},
 ) {
     if (ops.isEmpty()) return
     beginBatchEdit()
@@ -102,11 +104,52 @@ internal fun InputConnection.applyEditorOps(
                 EditorOp.SendSpaceKeyFallback -> sendSpaceKeyFallback()
                 EditorOp.Haptic -> haptic()
                 EditorOp.PassThroughKey -> Unit // KeyboardPipeline never lets this reach here alone; see toPipelineResult.
+                is EditorOp.SendKey -> sendEffectKeyEvent(op.effect, op.withShift, op.withCtrl)
+                is EditorOp.PerformEditorAction -> performContextMenuAction(EFFECT_TO_MENU_ID[op.effect] ?: continue)
+                is EditorOp.DispatchMediaKey -> dispatchMediaKey(op.effect)
             }
         }
     } finally {
         endBatchEdit()
     }
+}
+
+/** spec: keys-and-modifiers.md SS12.2's twelve `keycode` names, plus the two `page_start`/`page_end` and `line_home`/`line_end` pairs that share the same real keys. */
+private val EFFECT_TO_KEYCODE: Map<EditEffect, Int> = mapOf(
+    EditEffect.CURSOR_UP to KeyEvent.KEYCODE_DPAD_UP,
+    EditEffect.CURSOR_DOWN to KeyEvent.KEYCODE_DPAD_DOWN,
+    EditEffect.CURSOR_LEFT to KeyEvent.KEYCODE_DPAD_LEFT,
+    EditEffect.CURSOR_RIGHT to KeyEvent.KEYCODE_DPAD_RIGHT,
+    EditEffect.CURSOR_CENTER to KeyEvent.KEYCODE_DPAD_CENTER,
+    EditEffect.TAB to KeyEvent.KEYCODE_TAB,
+    EditEffect.ESCAPE to KeyEvent.KEYCODE_ESCAPE,
+    EditEffect.PAGE_UP to KeyEvent.KEYCODE_PAGE_UP,
+    EditEffect.PAGE_DOWN to KeyEvent.KEYCODE_PAGE_DOWN,
+    EditEffect.DELETE_CHAR_FORWARD to KeyEvent.KEYCODE_FORWARD_DEL,
+    EditEffect.LINE_HOME to KeyEvent.KEYCODE_MOVE_HOME,
+    EditEffect.LINE_END to KeyEvent.KEYCODE_MOVE_END,
+    // spec trackpad-caret-nav.md SS5.6/keys-and-modifiers.md SS7.3: page_start/page_end are Ctrl+Home/Ctrl+End on the same two keys.
+    EditEffect.PAGE_START to KeyEvent.KEYCODE_MOVE_HOME,
+    EditEffect.PAGE_END to KeyEvent.KEYCODE_MOVE_END,
+)
+
+/** spec SS7.3: "action copy/paste/cut/undo: the editor's context-menu action". */
+private val EFFECT_TO_MENU_ID: Map<EditEffect, Int> = mapOf(
+    EditEffect.COPY to android.R.id.copy,
+    EditEffect.PASTE to android.R.id.paste,
+    EditEffect.CUT to android.R.id.cut,
+    EditEffect.UNDO to android.R.id.undo,
+)
+
+/** spec: keys-and-modifiers.md SS7.3's `keycode` row: a real key down/up pair, [withShift]/[withCtrl] adding the matching meta bits. */
+private fun InputConnection.sendEffectKeyEvent(effect: EditEffect, withShift: Boolean, withCtrl: Boolean) {
+    val keyCode = EFFECT_TO_KEYCODE[effect] ?: return
+    var meta = 0
+    if (withShift) meta = meta or KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+    if (withCtrl) meta = meta or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+    val now = android.os.SystemClock.uptimeMillis()
+    sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
+    sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
 }
 
 /** spec: text-input.md EditorOp.SendSpaceKeyFallback KDoc: "sends a Space key down/up pair". */

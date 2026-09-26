@@ -157,7 +157,13 @@ fun FnLayerScreen(onBack: () -> Unit) {
                         label = "Revert Fn Layer mappings",
                         buttonText = "Revert",
                         onClick = {
-                            scope.launch(Dispatchers.IO) { mappings = mappingStore.revertToDefault() }
+                            scope.launch(Dispatchers.IO) {
+                                mappings = mappingStore.revertToDefault()
+                                // spec: trackpad-caret-nav.md SS5.8, SS5.9: "Revert to Default"
+                                // stamps `nav_mode_mappings_updated`, so the running keyboard
+                                // reloads the map it now shares with the shipped asset again.
+                                controller.update { it.copy(keys = it.keys.copy(navModeMappingsUpdatedAtMs = System.currentTimeMillis())) }
+                            }
                         },
                     )
                 }
@@ -180,7 +186,12 @@ fun FnLayerScreen(onBack: () -> Unit) {
             onSave = { mapping ->
                 val updated = mappings.copy(entries = mappings.entries + (KeyId.Letter(letter) to mapping))
                 mappings = updated
-                scope.launch(Dispatchers.IO) { mappingStore.save(updated) }
+                scope.launch(Dispatchers.IO) {
+                    mappingStore.save(updated)
+                    // spec: trackpad-caret-nav.md SS5.8, SS5.9: "Save... stamps
+                    // `nav_mode_mappings_updated`", the signal `:ime` reloads the map on.
+                    controller.update { it.copy(keys = it.keys.copy(navModeMappingsUpdatedAtMs = System.currentTimeMillis())) }
+                }
                 editingLetter = null
             },
         )

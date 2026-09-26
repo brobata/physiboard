@@ -17,6 +17,7 @@ import brobata.physiboard.app.settings.ui.PhysiBoardTheme
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SettingsApp
 import brobata.physiboard.app.settings.ui.rememberSettingsController
+import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.shell.LaunchDestination
 import brobata.physiboard.core.shell.LaunchRouting
 import kotlinx.coroutines.flow.first
@@ -42,6 +43,19 @@ class MainActivity : ComponentActivity() {
             val controller = rememberSettingsController(application.settingsSource.settings, application.settingsStore)
             var startDestination by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(Unit) {
+                // spec: layers-sym-alt.md SS5.8: the Sym grid's pencil and a key long-press open
+                // this activity straight at "Customize SYM Keyboard" (and its picker, for a long
+                // press) rather than the ordinary launch routing below.
+                val symExtras = intent?.extras
+                if (symExtras != null && symExtras.containsKey(SymCustomizationLink.EXTRA_INITIAL_SYM_PAGE)) {
+                    startDestination = Routes.customizeSymKeyboard(
+                        page = symExtras.getInt(SymCustomizationLink.EXTRA_INITIAL_SYM_PAGE, 0),
+                        keyCode = symExtras.getInt(SymCustomizationLink.EXTRA_INITIAL_SYM_KEY_CODE, -1),
+                        openPicker = symExtras.getBoolean(SymCustomizationLink.EXTRA_OPEN_SYM_PICKER, false),
+                        returnAfterPicker = symExtras.getBoolean(SymCustomizationLink.EXTRA_RETURN_AFTER_PICKER, false),
+                    )
+                    return@LaunchedEffect
+                }
                 val shell = application.settingsSource.settings.first().shell
                 startDestination = when (LaunchRouting.decide(shell.tutorialCompleted, shell.lastSeenWhatsNewVersion.ifBlank { null }, BuildConfig.VERSION_NAME)) {
                     LaunchDestination.SETUP -> Routes.SETUP

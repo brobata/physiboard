@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Rect
 import android.inputmethodservice.InputMethodService
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -27,6 +28,7 @@ import androidx.core.content.ContextCompat
 import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.launcher.AssignableKeys
+import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
 import brobata.physiboard.core.dict.DictionaryBroadcastActions
 import brobata.physiboard.core.dict.DictionaryIndex
@@ -34,16 +36,21 @@ import brobata.physiboard.core.dict.LanguageCode
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordSource
 import brobata.physiboard.core.keys.CharacterResolution
+import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyCommands
 import brobata.physiboard.core.keys.KeyStroke
+import brobata.physiboard.core.keys.ModifierIconState
+import brobata.physiboard.core.keys.StatusBarIcon
+import brobata.physiboard.core.keys.StatusBarModifierIcon
 import brobata.physiboard.core.pointer.caret.CaretGeometry
 import brobata.physiboard.core.pointer.caret.CaretUsability
 import brobata.physiboard.core.pointer.caret.CursorAnchorReport
 import brobata.physiboard.core.pointer.caret.CursorUpdateRequestPolicy
 import brobata.physiboard.core.pointer.caret.CursorUpdateRequestState
 import brobata.physiboard.core.pointer.caret.CursorUpdateRetrySchedule
+import brobata.physiboard.core.pointer.navmode.NavModeTransition
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
@@ -294,6 +301,9 @@ internal class KeyboardSession(
         handler.removeCallbacks(backlightNudgeTimeoutRunnable)
         runCatching { trackpad.onKeyboardWindowHidden() }.onFailure { error -> Log.e(TAG, "trackpad teardown crashed", error) }
         runCatching { caretBadge.hide() }.onFailure { error -> Log.e(TAG, "caret badge teardown crashed", error) }
+        // spec: trackpad-caret-nav.md SS5.7: the status icon is hidden "when the keyboard service is destroyed".
+        runCatching { service.hideStatusIcon() }.onFailure { error -> Log.e(TAG, "status icon teardown crashed", error) }
+        lastShownStatusIcon = StatusBarIcon.None
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
         runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); quickLauncher.onServiceDestroyed() }
@@ -343,6 +353,17 @@ internal class KeyboardSession(
      * documented gap ([ImeSettings.ruleSets]'s own KDoc).
      */
     private val bundledRuleSets = RuleSetAssetLoader(service.assets).loadAll(ImeSettings.BUNDLED_RULE_SET_CODES)
+
+    /**
+     * spec: trackpad-caret-nav.md SS5.4, SS5.9; keys-and-modifiers.md SS12: the Fn Layer map,
+     * loaded once from the user's private file (falling back to the shipped asset) and reloaded in
+     * [applySettings] whenever `nav_mode_mappings_updated` changes, which is what the Fn Layer
+     * screen's save and "Revert to Default" bump. [ctrlMappingLoader]'s own KDoc explains why
+     * `:app`'s identical `FnLayerMappingStore` cannot be reused directly.
+     */
+    private val ctrlMappingLoader = CtrlMappingFileLoader(service)
+    private var ctrlMappings: brobata.physiboard.core.keys.CtrlMappingTable = ctrlMappingLoader.load()
+    private var lastAppliedCtrlMappingsUpdatedAtMs: Long = -1L
 
     /** spec: dictionaries-languages.md SS8.4, the active style's extra suggestion languages (`input_style_suggestion_locales`). */
     private var extraLanguages: List<LanguageCode> = emptyList()
@@ -527,7 +548,14 @@ internal class KeyboardSession(
 
         val previousStrip = pipeline.settings.statusBar
         pipeline.settings = ImeSettings.keyboardSettings(settings, currentStyle.locale)
-        pipeline.layout = ImeSettings.layout(InputStyleCatalog.layoutFor(currentStyle, shippedLayouts) ?: pipeline.layout, settings)
+        // spec: trackpad-caret-nav.md SS5.9: "any change [to `nav_mode_mappings_updated`] makes
+        // the running keyboard reload the map" -- the Fn Layer screen's save and "Revert to
+        // Default" both bump it (see FnLayerMappingStore's write path in `:app`).
+        if (settings.keys.navModeMappingsUpdatedAtMs != lastAppliedCtrlMappingsUpdatedAtMs) {
+            lastAppliedCtrlMappingsUpdatedAtMs = settings.keys.navModeMappingsUpdatedAtMs
+            ctrlMappings = runCatching { ctrlMappingLoader.load() }.getOrDefault(ctrlMappings)
+        }
+        pipeline.layout = ImeSettings.layout(InputStyleCatalog.layoutFor(currentStyle, shippedLayouts) ?: pipeline.layout, settings, ctrlMappings)
         // spec: status-bar.md SS9 and SS4: the theme, bar height and corner insets are the view's
         // construction facts, so a change to any of them rebuilds the candidates view; every other
         // strip row (visibility, apps, slots, the dip list) is read on the next refresh.
@@ -1070,6 +1098,8 @@ internal class KeyboardSession(
         scheduleLongPressIfNeeded()
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
         result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
+        // spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on; none when it turns off."
+        if (result.navModeTransition == NavModeTransition.ENTERED) performHaptic(NAV_MODE_HAPTIC_MS)
         result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
         if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
         syncSymPanels()
@@ -1182,9 +1212,10 @@ internal class KeyboardSession(
             }.onFailure { error -> Log.e(TAG, "sym grid key tap crashed", error) }
         }
 
-        // spec SS5.7, SS5.8: opens the customisation screen; not built in this milestone (report GAP).
-        override fun onKeyLongPressed(letter: Char) = DiagnosticLog.i(TAG) { "sym grid: long press on '$letter' would open the customisation screen (not built yet)" }
-        override fun onPencil() = DiagnosticLog.i(TAG) { "sym grid: pencil would open the customisation screen (not built yet)" }
+        // spec SS5.7, SS5.8: opens "Customize SYM Keyboard" already on this page's editor; a long
+        // press also opens that letter's picker immediately and returns here when it closes.
+        override fun onKeyLongPressed(letter: Char) = openSymCustomization(letter)
+        override fun onPencil() = openSymCustomization(letter = null)
 
         // spec SS5.7: "opens the system input-method picker."
         override fun onGlobe() {
@@ -1295,6 +1326,22 @@ internal class KeyboardSession(
             else -> return false
         }
         return ic.performContextMenuAction(menuId)
+    }
+
+    /** spec keys-and-modifiers.md SS7.3: "media_play_pause/media_previous/media_next: the media key dispatched through the audio manager", for [EditorOp.DispatchMediaKey] (a Ctrl mapping or nav mode letter mapped to a media action). */
+    private fun dispatchMediaKey(effect: EditEffect) {
+        val keyCode = when (effect) {
+            EditEffect.MEDIA_PLAY_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+            EditEffect.MEDIA_PREVIOUS -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+            EditEffect.MEDIA_NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+            else -> return
+        }
+        val audio = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val now = SystemClock.uptimeMillis()
+        runCatching {
+            audio.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
+            audio.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
+        }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -1457,6 +1504,7 @@ internal class KeyboardSession(
                 cursorAbsolute = readout.cursorAbsolute,
                 sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
                 haptic = ::performHaptic,
+                dispatchMediaKey = ::dispatchMediaKey,
             )
         }
         // spec: the c440844 invariant. An edit this keyboard made to the text, or a key it handed
@@ -1728,6 +1776,27 @@ internal class KeyboardSession(
     }
 
     /**
+     * spec SS5.7, SS5.8: the pencil and a key long-press on the Sym grid overlay open "Customize
+     * SYM Keyboard" already on the open page's editor; with [letter] present the picker for that
+     * letter opens immediately and the screen finishes as soon as it closes. Same pattern as
+     * [openOwnApp]: a launch intent for this app's own activity, since `:ime` opens no activity of
+     * its own.
+     */
+    private fun openSymCustomization(letter: Char?) {
+        runCatching {
+            val intent = service.packageManager.getLaunchIntentForPackage(service.packageName) ?: return
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            intent.putExtra(SymCustomizationLink.EXTRA_INITIAL_SYM_PAGE, pipeline.currentSymPage)
+            if (letter != null) {
+                intent.putExtra(SymCustomizationLink.EXTRA_INITIAL_SYM_KEY_CODE, KeyEvent.KEYCODE_A + (letter.uppercaseChar() - 'A'))
+                intent.putExtra(SymCustomizationLink.EXTRA_OPEN_SYM_PICKER, true)
+                intent.putExtra(SymCustomizationLink.EXTRA_RETURN_AFTER_PICKER, true)
+            }
+            service.startActivity(intent)
+        }.onFailure { error -> Log.e(TAG, "sym customization open crashed", error) }
+    }
+
+    /**
      * spec: status-bar.md SS1's "refresh"; also trackpad-caret-nav.md SS4.6's "recomputes its items
      * on every strip refresh" for the caret badge and SS4.7's refresh-driven retry. On the typing
      * path: the model is a handful of allocations and [StatusBarView.render] returns at once when
@@ -1754,6 +1823,45 @@ internal class KeyboardSession(
         refreshCaretBadge()
         retryCursorUpdateOnRefresh()
         refreshBacklightNudge()
+        refreshStatusIcon()
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The system status bar's modifier/Sym/nav icon. spec: keys-and-modifiers.md SS13.1;
+    // trackpad-caret-nav.md SS5.7 ("nav mode wins the icon slot"). `StatusBarModifierIcon` (core/keys)
+    // decides which of the 28 states applies; this only maps that onto `InputMethodService`'s
+    // status icon slot and forced-on-screen exclusion, per the same section.
+    // -----------------------------------------------------------------------------------------
+
+    /** Last icon actually shown (or [StatusBarIcon.None] for hidden), so a same-icon refresh does not re-show it (spec: "Icon changes are deduplicated"). */
+    private var lastShownStatusIcon: StatusBarIcon = StatusBarIcon.None
+
+    /**
+     * SPEC GAP: SS13.1 lists 26 distinct icons, one per non-empty Shift/Ctrl/Alt combination, plus
+     * a Sym icon and a nav icon. This milestone ships one drawable
+     * ([R.drawable.ic_status_modifier]) for every [StatusBarIcon.Modifiers] combination, reused
+     * for [StatusBarIcon.Sym] and [StatusBarIcon.Nav] too: the icon's presence (and, for nav, its
+     * priority over the modifier icon) is real, but its 28 distinct pictures are not drawn.
+     * Authoring 26 hand-distinguishable icons is out of this task's scope; see the report.
+     */
+    private fun refreshStatusIcon() {
+        val glyph = pipeline.modifierGlyphInput()
+        val shift = StatusBarModifierIcon.shiftState(
+            value = when {
+                glyph.capsLockOn -> brobata.physiboard.core.keys.ShiftValue.CAPS
+                glyph.shiftOneShotArmed -> brobata.physiboard.core.keys.ShiftValue.ONE_SHOT
+                else -> brobata.physiboard.core.keys.ShiftValue.OFF
+            },
+            physicallyPressed = glyph.shiftPhysicallyHeld,
+        )
+        val ctrl = StatusBarModifierIcon.latchableState(glyph.ctrlLatchedNotNavMode, glyph.ctrlOneShotArmed, glyph.ctrlPhysicallyHeld)
+        val alt = StatusBarModifierIcon.latchableState(glyph.altLatched, glyph.altOneShotArmed, glyph.altPhysicallyHeld)
+        val icon = StatusBarModifierIcon.choose(shift, ctrl, alt, symPageOpen = glyph.symPageOpen, navModeActive = pipeline.navModeActive)
+        if (icon == lastShownStatusIcon) return
+        lastShownStatusIcon = icon
+        runCatching {
+            if (icon == StatusBarIcon.None) service.hideStatusIcon() else service.showStatusIcon(R.drawable.ic_status_modifier)
+        }.onFailure { error -> Log.e(TAG, "status icon refresh crashed", error) }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -1817,6 +1925,9 @@ internal class KeyboardSession(
 
         /** spec: status-bar.md SS6.1, "undo and redo give the 25 ms haptic instead". */
         const val STRIP_FIXED_HAPTIC_MS = 25L
+
+        /** spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on". */
+        const val NAV_MODE_HAPTIC_MS = 70L
 
         /** spec: text-input.md SS2's one unified 240-character read. */
         const val TEXT_BEFORE_CURSOR_READ = 240

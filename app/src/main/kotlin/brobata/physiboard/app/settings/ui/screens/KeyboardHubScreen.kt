@@ -23,6 +23,7 @@ private fun LazyListScope.keyboardHubRows(onNavigate: (String) -> Unit) {
     item { NavigateRow("Auto-correction", "Corrections, suggestions and the personal dictionary") { onNavigate(Routes.AUTO_CORRECTION) } }
     item { NavigateRow("Voice", "Hold Fn to dictate, and the assistant triggers") { onNavigate(Routes.VOICE) } }
     item { NavigateRow("Status Bar Theme", "Colours, LEDs, and which buttons sit on the bar") { onNavigate(Routes.STATUS_BAR_THEME) } }
+    item { NavigateRow("Customize SYM Keyboard", "Arrange, enable and edit the Sym key's Emoji and Symbols pages") { onNavigate(Routes.CUSTOMIZE_SYM_KEYBOARD) } }
     item { NavigateRow("Sound & Haptics", "Typing sounds and vibration") { onNavigate(Routes.SOUND_HAPTICS) } }
     item { NavigateRow("Exact typing", "For terminals, SSH and code: what you type is what goes in") { onNavigate(Routes.appPicker(PerAppListKind.EXACT_TYPING)) } }
     item { NavigateRow("Text box under the bar", "For apps like Teams that leave the text box hidden under the bar") { onNavigate(Routes.appPicker(PerAppListKind.TEXT_BOX_UNDER_BAR)) } }

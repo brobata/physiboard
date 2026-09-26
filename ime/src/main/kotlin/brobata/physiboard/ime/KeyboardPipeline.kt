@@ -14,6 +14,13 @@ import brobata.physiboard.core.actions.snippets.SnippetMatch
 import brobata.physiboard.core.actions.snippets.SnippetPresentation
 import brobata.physiboard.core.actions.snippets.SnippetSettings
 import brobata.physiboard.core.keys.Action
+import brobata.physiboard.core.keys.AccidentalPressFilter
+import brobata.physiboard.core.keys.AccidentalPressFilterState
+import brobata.physiboard.core.keys.AccidentalPressSettings
+import brobata.physiboard.core.keys.BounceFilter
+import brobata.physiboard.core.keys.BounceFilterState
+import brobata.physiboard.core.keys.BounceKeySettings
+import brobata.physiboard.core.keys.FilterVerdict
 import brobata.physiboard.core.keys.ControlKey
 import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.KeyEdge
@@ -28,6 +35,9 @@ import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
 import brobata.physiboard.core.keys.TypingSessionState
 import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
+import brobata.physiboard.core.pointer.navmode.NavModeEntry
+import brobata.physiboard.core.pointer.navmode.NavModeMap
+import brobata.physiboard.core.pointer.navmode.NavModeTransition
 import brobata.physiboard.core.strip.DipDecision
 import brobata.physiboard.core.strip.DipEffect
 import brobata.physiboard.core.strip.DipState
@@ -132,14 +142,15 @@ data class KeyboardSettings(
     val launcherShortcuts: LauncherShortcuts = LauncherShortcuts().applyDefault(defaultAlreadyAssigned = false).shortcuts,
     /**
      * `nav_mode_enabled`. spec: keys-and-modifiers.md SS15 point 3: with no field, a Ctrl key is
-     * nav mode's "when `nav_mode_enabled` (default true) or nav mode is active".
-     *
-     * SPEC GAP: nav mode's no-field entry (`:core:pointer`'s `NavModeEntry`), its Fn Layer key
-     * routing and its notification (trackpad-caret-nav.md SS5) have no owner in `:ime` yet, so
-     * this is carried for that owner and read by nothing today; [KeyboardPipeline.onKeyStroke]'s
-     * modifier branch is where the no-field Ctrl stroke would consult it.
+     * nav mode's "when `nav_mode_enabled` (default true) or nav mode is active". Consulted by
+     * [KeyboardPipeline.navModeCtrlIsOurConcern], the gate [KeyboardPipeline.onKeyStroke]'s own
+     * no-field Ctrl branch uses before handing the stroke to [NavModeEntry].
      */
     val navModeEnabled: Boolean = true,
+    /** spec: keys-and-modifiers.md SS10, the `bounce_keys_*` rows; run at the very top of [KeyboardPipeline.onKeyStroke], ahead of everything else. */
+    val bounceKeys: BounceKeySettings = BounceKeySettings(),
+    /** spec: keys-and-modifiers.md SS11, `overlapping_keys_enabled`. */
+    val overlappingKeys: AccidentalPressSettings = AccidentalPressSettings(),
 )
 
 /**
@@ -163,6 +174,13 @@ data class PipelineResult(
     val launcherKey: LauncherKeyDecision? = null,
     /** spec SS6.2 B: the Sym-armed mode just armed at this time; `:ime` schedules the toast and the disarm. */
     val powerModeArmedAtMs: Long? = null,
+    /**
+     * Non-null only for a Ctrl stroke with no field that [NavModeEntry] just latched or unlatched
+     * (trackpad-caret-nav.md SS5.2, SS5.7): `:ime` plays the 70 ms entry haptic and shows or hides
+     * the system status icon from this, since [KeyboardPipeline] itself has no haptic or status-bar
+     * API to call.
+     */
+    val navModeTransition: NavModeTransition? = null,
 ) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
@@ -194,6 +212,10 @@ internal class KeyboardPipeline(
     private var modifierState = ModifierState()
     private var typingState = TypingSessionState()
     private var textInputState = TextInputState()
+    /** spec: keys-and-modifiers.md SS10, SS10.3: "Filter memory clears on every start of input." */
+    private var bounceFilterState = BounceFilterState()
+    /** spec: keys-and-modifiers.md SS11: "state resets on start and finish of input and on any input device change." Input-device-change resets are `:ime`'s to add; no such callback exists yet in this milestone. */
+    private var accidentalPressFilterState = AccidentalPressFilterState()
     private var activeField = FieldContext(FieldKind.NOT_EDITABLE)
     private var activeTrust = EditorTrust.FULL
     private var activeAppProfile = AppProfile.default(null)
@@ -220,6 +242,9 @@ internal class KeyboardPipeline(
 
     /** spec layers-sym-alt.md SS5.2: the open Sym page (0 for none); `:ime` shows the clipboard and emoji panels for pages 3 and 4. */
     val currentSymPage: Int get() = modifierState.sym.currentPageNumber
+
+    /** spec: trackpad-caret-nav.md SS5.7: whether the status bar should show the nav mode icon instead of the modifier icon. */
+    val navModeActive: Boolean get() = modifierState.ctrl.latchFromNavMode
 
     /** spec layers-sym-alt.md SS4.3: a strip button opens its page "regardless of whether it is enabled in the cycle, and each one toggles". */
     fun toggleSymPage(page: Int) {
@@ -261,6 +286,7 @@ internal class KeyboardPipeline(
 
     private val ENTER_KEY = KeyId.Control(ControlKey.ENTER)
     private val SYM_KEY = KeyId.Modifier(ModifierKey.SYM)
+    private val CTRL_KEY = KeyId.Modifier(ModifierKey.CTRL)
 
     /** When a long press is armed, the wall-clock time (same basis as [KeyStroke.timeMs]) it fires at. spec: keys-and-modifiers.md SS8.3. */
     val pendingLongPressDeadlineMs: Long?
@@ -292,6 +318,9 @@ internal class KeyboardPipeline(
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
         expansion = ExpansionState.EMPTY
+        // spec: keys-and-modifiers.md SS10.1 ("Filter memory clears on every start of input"), SS11 ("state resets on start... of input").
+        bounceFilterState = BounceFilterState()
+        accidentalPressFilterState = AccidentalPressFilterState()
         if (AutoCapitalization.evaluateFieldStartCapsLock(field)) {
             applyCapDecision(CapDecision.EnableCapsLock)
             return
@@ -336,6 +365,8 @@ internal class KeyboardPipeline(
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
         expansion = ExpansionState.EMPTY
+        // spec: keys-and-modifiers.md SS11, "state resets on start and finish of input".
+        accidentalPressFilterState = AccidentalPressFilterState()
     }
 
     /**
@@ -522,7 +553,43 @@ internal class KeyboardPipeline(
         }
     }
 
+    /**
+     * spec: keys-and-modifiers.md SS1.3 steps 1-2, SS1.4 steps 1 and 3: the accidental-press
+     * filter, then the bounce filter, each on both key-down and key-up. Returns a consumed no-op
+     * the moment either filter rejects the stroke, or null when both accept it and the rest of
+     * [onKeyStroke] should run as usual.
+     */
+    private fun applyKeyFilters(stroke: KeyStroke): PipelineResult? {
+        val (afterAccidental, accidentalVerdict) = if (stroke.edge == KeyEdge.DOWN) {
+            AccidentalPressFilter.onKeyDown(accidentalPressFilterState, stroke, settings.overlappingKeys)
+        } else {
+            AccidentalPressFilter.onKeyUp(accidentalPressFilterState, stroke)
+        }
+        accidentalPressFilterState = afterAccidental
+        if (accidentalVerdict is FilterVerdict.Reject) return PipelineResult.CONSUMED_NO_OP
+
+        val (afterBounce, bounceVerdict) = if (stroke.edge == KeyEdge.DOWN) {
+            BounceFilter.onKeyDown(bounceFilterState, stroke, settings.bounceKeys)
+        } else {
+            BounceFilter.onKeyUp(bounceFilterState, stroke)
+        }
+        bounceFilterState = afterBounce
+        return if (bounceVerdict is FilterVerdict.Reject) PipelineResult.CONSUMED_NO_OP else null
+    }
+
     fun onKeyStroke(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult {
+        // spec: keys-and-modifiers.md SS1.3 steps 1-2: the accidental-press filter, then the
+        // bounce filter, "on the raw event, before anything else" -- ahead of every other stage,
+        // modifier keys included (SS10's own category table lists Shift/Ctrl/Alt/Sym).
+        applyKeyFilters(stroke)?.let { return it }
+
+        // spec: trackpad-caret-nav.md SS5.2 ("Entering and leaving"), keys-and-modifiers.md SS15
+        // point 3: with no field, Ctrl's own double-tap-to-latch dance belongs to nav mode, not the
+        // plain modifier machine, so this is checked ahead of the generic modifier branch below.
+        if (stroke.key == CTRL_KEY && !activeField.isReallyEditable && navModeCtrlIsOurConcern()) {
+            return onNavModeCtrlStroke(stroke)
+        }
+
         if (stroke.key is KeyId.Modifier) {
             val armed = if (stroke.key == SYM_KEY) powerModeOnSymDown(stroke) else null
             val action = dispatchModifier(stroke)
@@ -531,6 +598,8 @@ internal class KeyboardPipeline(
         }
 
         if (stroke.edge == KeyEdge.UP) {
+            // spec: keys-and-modifiers.md SS15 point 3, key-up: "Any key-up while nav mode is active is consumed."
+            if (!activeField.isReallyEditable && modifierState.ctrl.latchFromNavMode) return PipelineResult.CONSUMED_NO_OP
             val resolution = LayerResolver.resolveKeyUp(modifierState, typingState, stroke)
             modifierState = resolution.state
             typingState = resolution.typing
@@ -540,6 +609,13 @@ internal class KeyboardPipeline(
         // spec: keys-and-modifiers.md SS5.2, "for any other key with repeat count 0"; dispatch
         // convention documented on ModifierMachine.onOtherKeyDown.
         modifierState = ModifierMachine.onOtherKeyDown(modifierState, stroke)
+
+        // spec: trackpad-caret-nav.md SS5.5, keys-and-modifiers.md SS15 point 3: with no field and
+        // nav mode active, the Fn Layer map owns the key ahead of the launcher paths below (which
+        // all require "without a Ctrl latch"), so this runs first.
+        if (!activeField.isReallyEditable && modifierState.ctrl.latchFromNavMode) {
+            onNavModeMappedKeyDown(stroke, editor)?.let { return it }
+        }
 
         // spec expansion-clipboard-pickers-launcher.md SS6.2 A/B: with no editable field the
         // launcher paths own the 29 keys before anything else can pass them to the app.
@@ -589,6 +665,62 @@ internal class KeyboardPipeline(
         // keyboard made itself (dictation's c440844 invariant, see PipelineResult.appMayEditField).
         val appEdits = !result.consumed && AppliedEditAccounting.appEditsWithPassThrough(effectiveStroke.key, ctrlActive)
         return if (appEdits) result.copy(appMayEditField = true) else result
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Nav mode with no field. spec: trackpad-caret-nav.md SS5.2 (entry/exit), SS5.5 (the Fn Layer
+    // map). `:core:pointer`'s NavModeEntry/NavModeMap own the decision; this only threads the
+    // keyboard's own state and the loaded Fn Layer map ([layout.ctrlMappings]) into them.
+    // -----------------------------------------------------------------------------------------
+
+    /** spec: keys-and-modifiers.md SS15 point 3's own gate: nav mode owns a no-field Ctrl stroke only "when `nav_mode_enabled` (default true) or nav mode is active". */
+    private fun navModeCtrlIsOurConcern(): Boolean = settings.navModeEnabled || modifierState.ctrl.latchFromNavMode
+
+    /** spec SS5.2: the no-field Ctrl double-tap dance (first tap, latch, un-latch); every event is consumed. */
+    private fun onNavModeCtrlStroke(stroke: KeyStroke): PipelineResult {
+        val result = if (stroke.edge == KeyEdge.DOWN) {
+            NavModeEntry.onCtrlDown(modifierState, stroke, settings.modifier)
+        } else {
+            NavModeEntry.onCtrlUp(modifierState, stroke, settings.modifier)
+        }
+        modifierState = result.state
+        return PipelineResult(
+            emptyList(),
+            consumed = result.consumed,
+            navModeTransition = result.transition.takeIf { it != NavModeTransition.NONE },
+        )
+    }
+
+    /**
+     * spec SS5.5, "with no field" column: Enter is DPAD_CENTER (not part of the 26-letter map);
+     * any other key is looked up in [layout.ctrlMappings], the same table the in-field Ctrl
+     * mapping (`LayerResolver.resolveCtrlActive`) already reads, so a mapping means the same thing
+     * on both surfaces (keys-and-modifiers.md SS12). Null means the map does not claim the key, so
+     * the caller falls through to the launcher-shortcut steps SS15 lists next.
+     *
+     * By the time a real stroke reaches here `:ime` has already required a live `InputConnection`
+     * to call this pipeline at all (see [brobata.physiboard.ime.KeyboardSession.processKeyStroke]),
+     * so [hasInputConnection] is always true; [NavModeMap]'s own "no connection" branches exist for
+     * its unit tests and for callers this milestone does not have (a command with no field and no
+     * connection at all).
+     *
+     * SPEC GAP: a `native_ctrl` mapping resolves to [Action.ForwardAsCtrlCombo], which
+     * [applyAction] answers with [PipelineResult.NOT_CONSUMED] on the assumption the original
+     * event already carries Ctrl's meta bit (true for the in-field physical-combo case this action
+     * also represents). Here Ctrl is a latch, not a physical hold, so the raw stroke never carries
+     * that bit and the app sees the bare letter instead of a synthesized Ctrl+letter combo. The
+     * shipped default map has no `native_ctrl` entry, so this only affects a key a user has
+     * customised to that type; fixing it needs a `KeyId` to platform-keycode reverse map `:ime`
+     * does not have today (see [brobata.physiboard.device.titan.KeyNormalizer], forward-only).
+     */
+    private fun onNavModeMappedKeyDown(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult? {
+        val decision = if (stroke.key == ENTER_KEY) {
+            NavModeMap.resolveEnter(hasInputConnection = true)
+        } else {
+            NavModeMap.resolveLetterKeyDown(stroke.key, layout.ctrlMappings, hasInputConnection = true)
+        }
+        if (!decision.consumed) return null
+        return applyAction(decision.action, shiftHeld = stroke.meta.shift, altActive = false, editor)
     }
 
     /**

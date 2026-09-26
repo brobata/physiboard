@@ -1,0 +1,343 @@
+package brobata.physiboard.app.settings.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import brobata.physiboard.app.settings.ui.EmojiPickerDialog
+import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.MinTouchTarget
+import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.RowList
+import brobata.physiboard.app.settings.ui.SectionHeader
+import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
+import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
+import brobata.physiboard.core.keys.KeyId
+import brobata.physiboard.core.settings.SymPage
+import brobata.physiboard.core.settings.SymPagesConfig
+import brobata.physiboard.device.titan.TitanLayouts
+
+/**
+ * "Customize SYM Keyboard" (layers-sym-alt.md SS5.9): reorder and enable the Sym pages, the "Alt
+ * character layer" dead-end row (SS5.9's own note: "leads nowhere useful" since 2.0), the SYM
+ * behaviour switches, and the per-page editors reached by a pencil (SS5.9's last paragraph) or
+ * directly when the keyboard opens this screen for a picker (SS5.8's intent extras, [initialPage],
+ * [initialKeyCode], [openPickerImmediately], [returnAfterPicker]).
+ *
+ * The Device page (5) does not exist in 3.0 ([SymPage]'s own KDoc: dropped), so this screen's
+ * "Arrange SYM pages order" has four rows, not five, and no Device pencil or "under construction"
+ * badge.
+ */
+@Composable
+fun CustomizeSymKeyboardScreen(
+    initialPage: Int = 0,
+    initialKeyCode: Int = -1,
+    openPickerImmediately: Boolean = false,
+    returnAfterPicker: Boolean = false,
+    onBack: () -> Unit,
+    onFinishActivity: () -> Unit,
+) {
+    val controller = LocalSettingsController.current
+    val symPages = controller.current.value.symPages
+    val keys = controller.current.value.keys
+
+    var editingPage by remember { mutableStateOf(symPageForNumber(initialPage)) }
+    var showResetConfirm by remember { mutableStateOf(false) }
+    var pickerLetter by remember { mutableStateOf<Char?>(null) }
+    var pendingReturn by remember { mutableStateOf(false) }
+
+    // spec SS5.8: with OPEN_SYM_PICKER and RETURN_AFTER_PICKER both true and a key code present,
+    // "the picker opens immediately and the screen finishes as soon as the picker closes".
+    LaunchedEffect(Unit) {
+        if (openPickerImmediately && initialKeyCode >= 0) {
+            letterForKeyCode(initialKeyCode)?.let { letter ->
+                pickerLetter = letter
+                pendingReturn = returnAfterPicker
+            }
+        }
+    }
+
+    val page = editingPage
+    if (page == null) {
+        SettingsScreenScaffold(title = "Customize SYM Keyboard", onBack = onBack) {
+            RowList {
+                item { SectionHeader("Arrange SYM pages order") }
+                item {
+                    Text(
+                        "Drag or use the arrows to set the cycle order. The switch only controls whether an item appears in the cycle.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+                items(symPages.pages.order.size) { index ->
+                    val entry = symPages.pages.order[index]
+                    SymPageOrderRow(
+                        page = entry,
+                        enabled = enabledFor(symPages.pages, entry),
+                        canMoveUp = index > 0,
+                        canMoveDown = index < symPages.pages.order.lastIndex,
+                        onMoveUp = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index - 1)))) } },
+                        onMoveDown = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index + 1)))) } },
+                        onToggleEnabled = { checked -> controller.update { it.copy(symPages = it.symPages.copy(pages = withEnabled(it.symPages.pages, entry, checked))) } },
+                        onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS) ({ editingPage = entry }) else null,
+                    )
+                }
+                item {
+                    // spec SS5.9: opens the settings activity at the `modifiers` destination, which
+                    // "has no screen since the 2.0 settings rework, so the row leads nowhere useful".
+                    NavigateRow("Alt character layer", "Choose which SYM layer Alt uses in Modifier settings.") {}
+                }
+                item { SectionHeader("SYM behaviour and display") }
+                item {
+                    SwitchRow(
+                        label = "Sym+C/V/X/A: copy, paste, cut, select all",
+                        checked = keys.symEditShortcuts,
+                        onCheckedChange = { checked -> controller.update { it.copy(keys = it.keys.copy(symEditShortcuts = checked)) } },
+                    )
+                }
+                item {
+                    SwitchRow(
+                        label = "Auto-Close SYM Layout",
+                        checked = symPages.autoClose,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoClose = checked)) } },
+                    )
+                }
+                item {
+                    SwitchRow(
+                        label = "Also close after on-screen SYM keys",
+                        checked = symPages.autoCloseOnTouch,
+                        enabled = symPages.autoClose,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoCloseOnTouch = checked)) } },
+                    )
+                }
+                item { SectionHeader("Larger emoji picker") }
+                item {
+                    SwitchRow(
+                        label = "Larger emoji picker",
+                        description = "Use about 1.5x height for the emoji search page; other SYM pages keep their normal height.",
+                        checked = symPages.emojiPickerExpandedHeight,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(emojiPickerExpandedHeight = checked)) } },
+                    )
+                }
+            }
+        }
+    } else {
+        val isEmoji = page == SymPage.EMOJI
+        SettingsScreenScaffold(title = if (isEmoji) "Edit Emoji Layer" else "Edit Symbols Layer", onBack = { editingPage = null }) {
+            RowList {
+                item {
+                    SymEditGrid(
+                        characters = effectiveCharacters(isEmoji, symPages.customEmojiPage, symPages.customSymbolsPage),
+                        onKeyTapped = { letter -> pickerLetter = letter },
+                    )
+                }
+                item {
+                    TextButton(
+                        onClick = { showResetConfirm = true },
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    ) { Text("Reset to Default", color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        }
+    }
+
+    pickerLetter?.let { letter ->
+        fun close() {
+            pickerLetter = null
+            if (pendingReturn) {
+                pendingReturn = false
+                onFinishActivity()
+            }
+        }
+        val isEmoji = editingPage == SymPage.EMOJI
+        if (isEmoji) {
+            EmojiPickerDialog(
+                letter = letter,
+                onDismiss = { close() },
+                onChoose = { chosen ->
+                    controller.update { it.copy(symPages = it.symPages.copy(customEmojiPage = it.symPages.customEmojiPage + ("KEYCODE_$letter" to chosen))) }
+                    close()
+                },
+            )
+        } else {
+            UnicodeCharacterDialog(
+                letter = letter,
+                onDismiss = { close() },
+                onChoose = { chosen ->
+                    controller.update {
+                        val updated = if (chosen.isEmpty()) it.symPages.customSymbolsPage - "KEYCODE_$letter" else it.symPages.customSymbolsPage + ("KEYCODE_$letter" to chosen)
+                        it.copy(symPages = it.symPages.copy(customSymbolsPage = updated))
+                    }
+                    close()
+                },
+            )
+        }
+    }
+
+    if (showResetConfirm) {
+        val isEmoji = editingPage == SymPage.EMOJI
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = { Text("Reset to Default") },
+            text = { Text("Are you sure you want to reset all SYM mappings to default? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResetConfirm = false
+                    controller.update {
+                        if (isEmoji) it.copy(symPages = it.symPages.copy(customEmojiPage = emptyMap()))
+                        else it.copy(symPages = it.symPages.copy(customSymbolsPage = emptyMap()))
+                    }
+                }) { Text("Reset", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+private fun symPageForNumber(page: Int): SymPage? = when (page) {
+    1 -> SymPage.EMOJI
+    2 -> SymPage.SYMBOLS
+    else -> null
+}
+
+/** spec SS5.8's `INITIAL_SYM_KEY_CODE`: an Android `KeyEvent.KEYCODE_A`..`KEYCODE_Z` value (29..54). */
+private fun letterForKeyCode(keyCode: Int): Char? {
+    val a = android.view.KeyEvent.KEYCODE_A
+    val z = android.view.KeyEvent.KEYCODE_Z
+    if (keyCode !in a..z) return null
+    return 'A' + (keyCode - a)
+}
+
+private fun enabledFor(pages: SymPagesConfig, page: SymPage): Boolean = when (page) {
+    SymPage.EMOJI -> pages.emojiEnabled
+    SymPage.SYMBOLS -> pages.symbolsEnabled
+    SymPage.CLIPBOARD -> pages.clipboardEnabled
+    SymPage.EMOJI_PICKER -> pages.emojiPickerEnabled
+}
+
+private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean): SymPagesConfig = when (page) {
+    SymPage.EMOJI -> pages.copy(emojiEnabled = checked)
+    SymPage.SYMBOLS -> pages.copy(symbolsEnabled = checked)
+    SymPage.CLIPBOARD -> pages.copy(clipboardEnabled = checked)
+    SymPage.EMOJI_PICKER -> pages.copy(emojiPickerEnabled = checked)
+}
+
+private fun displayName(page: SymPage): String = when (page) {
+    SymPage.EMOJI -> "Emoji"
+    SymPage.SYMBOLS -> "Symbols"
+    SymPage.CLIPBOARD -> "Clipboard"
+    SymPage.EMOJI_PICKER -> "Emoji Picker"
+}
+
+/** spec SS5.9: "a kind label ('Key layer' or 'Panel')": pages 1 and 2 remap the letter keys, 3 and 4 are content panels. */
+private fun kindLabel(page: SymPage): String = if (page == SymPage.EMOJI || page == SymPage.SYMBOLS) "Key layer" else "Panel"
+
+@Composable
+private fun SymPageOrderRow(
+    page: SymPage,
+    enabled: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onToggleEnabled: (Boolean) -> Unit,
+    onEdit: (() -> Unit)?,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = MinTouchTarget).padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(displayName(page), style = MaterialTheme.typography.bodyLarge)
+            Text(kindLabel(page), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (onEdit != null) {
+            IconButton(onClick = onEdit, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) { Text("✏") }
+        }
+        IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {
+            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move up")
+        }
+        IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {
+            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move down")
+        }
+        Switch(checked = enabled, onCheckedChange = onToggleEnabled)
+    }
+}
+
+private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
+    if (to < 0 || to >= size || from == to) return this
+    val mutable = toMutableList()
+    val item = mutable.removeAt(from)
+    mutable.add(to, item)
+    return mutable
+}
+
+/**
+ * spec layers-sym-alt.md SS4.4: "it replaces the shipped page entirely (keys absent from the
+ * custom map have no character on that page)" once any custom entry exists; otherwise the shipped
+ * Titan 2 Elite table (`:device:titan`'s `TitanLayouts`) shows.
+ */
+private fun effectiveCharacters(isEmoji: Boolean, customEmoji: Map<String, String>, customSymbols: Map<String, String>): Map<Char, String> {
+    val custom = if (isEmoji) customEmoji else customSymbols
+    if (custom.isNotEmpty()) {
+        return ('A'..'Z').associateWith { letter -> custom["KEYCODE_$letter"].orEmpty() }
+    }
+    val shipped = TitanLayouts.titan2EliteQwerty()
+    val map = if (isEmoji) shipped.emojiPage else shipped.symbolsPage
+    return ('A'..'Z').associateWith { letter -> map[KeyId.Letter(letter)]?.lowercase.orEmpty() }
+}
+
+private val EDIT_GRID_ROWS: List<String> = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM")
+
+/** spec SS5.9: "the same geometry and Titan alignment as the live grid on a black background." A simplified Compose approximation, as [FnLayerKeyGrid] already is for the Fn Layer editor. */
+@Composable
+private fun SymEditGrid(characters: Map<Char, String>, onKeyTapped: (Char) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().background(Color.Black).padding(horizontal = 16.dp, vertical = 8.dp)) {
+        EDIT_GRID_ROWS.forEach { row ->
+            Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                row.forEach { letter ->
+                    Card(
+                        modifier = Modifier
+                            .padding(1.dp)
+                            .width(40.dp)
+                            .defaultMinSize(minHeight = 48.dp)
+                            .clickable { onKeyTapped(letter) },
+                    ) {
+                        Column(modifier = Modifier.padding(4.dp)) {
+                            Text(letter.toString(), style = MaterialTheme.typography.labelSmall)
+                            Text(characters[letter].orEmpty(), fontSize = 18.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

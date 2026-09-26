@@ -292,11 +292,45 @@ class ImeSettingsTest {
         assertFalse(ImeSettings.keyboardSettings(s.copy(trackpad = TrackpadPrefs(enabled = false, triggerKey = TriggerKey.SYM))).modifier.symIsTrackpadTrigger)
     }
 
+    /** spec: keys-and-modifiers.md SS10, SS11, SS18: the bounce and overlap filter rows, previously stored but read by nothing. */
+    @Test
+    fun `the bounce and overlap filter rows land in their own bundles`() {
+        val s = Settings(
+            keys = KeyPrefs(
+                bounceKeysEnabled = true, bounceKeysDelayMs = 120, bounceKeysCharacterKeysEnabled = false,
+                bounceKeysModifierKeysEnabled = true, bounceKeysSpaceEnabled = false, bounceKeysEnterEnabled = false,
+                bounceKeysBackspaceEnabled = false, overlappingKeysEnabled = true,
+            ),
+        )
+        val k = ImeSettings.keyboardSettings(s)
+        assertTrue(k.bounceKeys.enabled)
+        assertEquals(120L, k.bounceKeys.delayMs)
+        assertFalse(k.bounceKeys.characterKeysEnabled)
+        assertTrue(k.bounceKeys.modifierKeysEnabled)
+        assertFalse(k.bounceKeys.spaceEnabled)
+        assertFalse(k.bounceKeys.enterEnabled)
+        assertFalse(k.bounceKeys.backspaceEnabled)
+        assertTrue(k.overlappingKeys.enabled)
+    }
+
     @Test
     fun `the long-press mode and threshold ride on the layout`() {
         val layout = ImeSettings.layout(TitanLayouts.titan2EliteQwerty(), Settings(keys = KeyPrefs(longPressMode = LongPressMode.VARIATIONS, longPressThresholdMs = 700)))
         assertEquals(LongPressMode.VARIATIONS, layout.longPress.mode)
         assertEquals(700, layout.longPress.thresholdMs)
+    }
+
+    /** spec: trackpad-caret-nav.md SS5.4, SS5.9: a loaded Fn Layer map overrides the shipped default; with none loaded, the base layout's own default survives. */
+    @Test
+    fun `a loaded ctrl mapping table overrides the layout's shipped Fn Layer map`() {
+        val base = TitanLayouts.titan2EliteQwerty()
+        val custom = brobata.physiboard.core.keys.CtrlMappingTable(
+            mapOf(brobata.physiboard.core.keys.KeyId.Letter('Q') to brobata.physiboard.core.keys.CtrlMapping.NamedAction("copy")),
+        )
+        val withOverride = ImeSettings.layout(base, Settings(), ctrlMappings = custom)
+        assertEquals(custom, withOverride.ctrlMappings)
+        val withoutOverride = ImeSettings.layout(base, Settings())
+        assertEquals(base.ctrlMappings, withoutOverride.ctrlMappings)
     }
 
     @Test

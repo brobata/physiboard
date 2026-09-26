@@ -12,6 +12,7 @@ import brobata.physiboard.core.actions.snippets.SnippetSettings
 import brobata.physiboard.core.dict.ActiveLanguages
 import brobata.physiboard.core.dict.LanguageCode
 import brobata.physiboard.core.dict.RuleSet
+import brobata.physiboard.core.keys.CtrlMappingTable
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.LayerResolver
 import brobata.physiboard.core.keys.LayoutDescription
@@ -85,6 +86,16 @@ internal object ImeSettings {
                 ctrlSpaceLayoutSwitch = s.languages.ctrlSpaceLayoutSwitch,
             ),
             navModeEnabled = s.keys.navModeEnabled,
+            bounceKeys = brobata.physiboard.core.keys.BounceKeySettings(
+                enabled = s.keys.bounceKeysEnabled,
+                delayMs = s.keys.bounceKeysDelayMs,
+                characterKeysEnabled = s.keys.bounceKeysCharacterKeysEnabled,
+                modifierKeysEnabled = s.keys.bounceKeysModifierKeysEnabled,
+                spaceEnabled = s.keys.bounceKeysSpaceEnabled,
+                enterEnabled = s.keys.bounceKeysEnterEnabled,
+                backspaceEnabled = s.keys.bounceKeysBackspaceEnabled,
+            ),
+            overlappingKeys = brobata.physiboard.core.keys.AccidentalPressSettings(enabled = s.keys.overlappingKeysEnabled),
             statusBar = stripSettings(s, subtypeLocale),
             resolver = LayerResolver.LayerResolverSettings(
                 shiftBackspaceDelete = s.typing.shiftBackspaceDeletesForward,
@@ -182,12 +193,19 @@ internal object ImeSettings {
      * `:core:subtype`'s `InputStyleCatalog.layoutFor` (dictionaries-languages.md SS10); this
      * function only overlays the customizations every layout gets regardless of which style is
      * active.
+     *
+     * [ctrlMappings] is the Fn Layer map (keys-and-modifiers.md SS12, trackpad-caret-nav.md SS5.4,
+     * SS5.9): the user's `ctrl_key_mappings.json`, or the shipped asset when there is none. Loading
+     * that file is real I/O (`:ime`'s `CtrlMappingFileLoader`), so this pure function only takes
+     * the already-decoded table; null keeps [base]'s own shipped default, which is what every
+     * existing caller that has not loaded a file yet still gets.
      */
-    fun layout(base: LayoutDescription, s: Settings): LayoutDescription = base.copy(
+    fun layout(base: LayoutDescription, s: Settings, ctrlMappings: CtrlMappingTable? = null): LayoutDescription = base.copy(
         emojiPage = customSymPage(s.symPages.customEmojiPage) ?: base.emojiPage,
         symbolsPage = customSymPage(s.symPages.customSymbolsPage) ?: base.symbolsPage,
         symPagesConfig = symPagesConfig(s.symPages.pages),
         longPress = LongPressSettings(mode = s.keys.longPressMode, thresholdMs = s.keys.longPressThresholdMs),
+        ctrlMappings = ctrlMappings ?: base.ctrlMappings,
     )
 
     /**

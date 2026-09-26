@@ -1,5 +1,7 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.keys.EditEffect
+
 /**
  * One primitive change for the `:ime` module to make on a real `InputConnection`, or a request
  * that a physical key be sent through unchanged. This module never touches an editor itself: every
@@ -73,6 +75,23 @@ sealed class EditorOp {
      * the app.
      */
     object PassThroughKey : EditorOp()
+
+    /**
+     * Sends [effect]'s keycode to the app as a real key down/up pair, for a Ctrl mapping or nav
+     * mode keycode with no text-pipeline meaning of its own (a DPAD move, Tab, Escape, forward
+     * delete, or a page/line jump). spec: keys-and-modifiers.md SS7.3, SS12.2; trackpad-caret-nav.md
+     * SS5.5. [withShift] is "Shift meta is added when Shift is active" for the eight
+     * selection-aware navigation keys; [withCtrl] is [EditEffect.PAGE_START]/[EditEffect.PAGE_END]'s
+     * own "Ctrl+Home / Ctrl+End", distinct from [EditEffect.LINE_HOME]/[EditEffect.LINE_END]'s plain
+     * Home/End.
+     */
+    data class SendKey(val effect: EditEffect, val withShift: Boolean = false, val withCtrl: Boolean = false) : EditorOp()
+
+    /** Performs the editor's own copy/paste/cut/undo, the same action a long-press toolbar offers. spec: keys-and-modifiers.md SS7.3. */
+    data class PerformEditorAction(val effect: EditEffect) : EditorOp()
+
+    /** Dispatches a media key through the audio service rather than the text editor. spec: keys-and-modifiers.md SS7.3. */
+    data class DispatchMediaKey(val effect: EditEffect) : EditorOp()
 }
 
 /**

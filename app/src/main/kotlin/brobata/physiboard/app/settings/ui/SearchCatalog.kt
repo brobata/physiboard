@@ -80,6 +80,11 @@ object SearchCatalog {
         SearchEntry("Layout overrides", "Status Bar Theme", Routes.THEME_LAYOUT_OVERRIDES, "theme layout override locale language per-language"),
         SearchEntry("App overrides", "Enter key behaviour", Routes.appPicker(PerAppListKind.ENTER_OVERRIDES), "enter send method shortcut per app override"),
         SearchEntry("Configure Fn layer key mappings", "Fn Layer", Routes.FN_LAYER, "fn layer key grid mapping keycode action command"),
+        // layers-sym-alt.md SS5.9: "Customize SYM Keyboard".
+        SearchEntry("Customize SYM Keyboard", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym emoji symbols pages order edit auto-close picker"),
+        SearchEntry("Arrange SYM pages order", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym pages order emoji symbols clipboard picker cycle"),
+        SearchEntry("Auto-Close SYM Layout", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym auto close layout one-shot"),
+        SearchEntry("Larger emoji picker", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji picker height expanded larger sym"),
     )
 
     /** spec: SS8, "the trimmed query is a case-insensitive substring of the title, of the screen title, or of the keywords." Results keep catalogue order. */

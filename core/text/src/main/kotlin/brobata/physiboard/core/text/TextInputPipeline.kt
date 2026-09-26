@@ -341,8 +341,29 @@ object TextInputPipeline {
         EditEffect.EXPAND_SELECTION_RIGHT -> handleExpand(MoveDirection.RIGHT, wordWise = false, state, editor)
         EditEffect.EXPAND_SELECTION_WORD_LEFT -> handleExpand(MoveDirection.LEFT, wordWise = true, state, editor)
         EditEffect.EXPAND_SELECTION_WORD_RIGHT -> handleExpand(MoveDirection.RIGHT, wordWise = true, state, editor)
-        else -> TextInputResult(listOf(EditorOp.PassThroughKey), state)
+        // spec: keys-and-modifiers.md SS7.3's mapping table, the `keycode` row: "send that key's
+        // down and up to the editor; for the eight navigation keys, Shift meta is added when
+        // Shift is active"; trackpad-caret-nav.md SS5.5 same table, "with no field" column. These
+        // effects carry no text-pipeline meaning (no autocorrect, no auto-cap, no word tracking),
+        // so the whole answer is one [EditorOp.SendKey].
+        EditEffect.CURSOR_UP, EditEffect.CURSOR_DOWN, EditEffect.CURSOR_LEFT, EditEffect.CURSOR_RIGHT, EditEffect.CURSOR_CENTER,
+        EditEffect.TAB, EditEffect.ESCAPE, EditEffect.PAGE_UP, EditEffect.PAGE_DOWN, EditEffect.LINE_HOME, EditEffect.LINE_END,
+        EditEffect.DELETE_CHAR_FORWARD,
+        -> TextInputResult(listOf(EditorOp.SendKey(effect, withShift = shiftActive && effect in SHIFT_AWARE_NAV_EFFECTS)), state)
+        // spec SS7.3: "action page_start/page_end: send Ctrl+Home / Ctrl+End key down and up to
+        // the editor (with Shift meta when Shift is active)... Only inside a field".
+        EditEffect.PAGE_START, EditEffect.PAGE_END -> TextInputResult(listOf(EditorOp.SendKey(effect, withShift = shiftActive, withCtrl = true)), state)
+        // spec SS7.3: "action copy/paste/cut/undo: the editor's context-menu action".
+        EditEffect.COPY, EditEffect.PASTE, EditEffect.CUT, EditEffect.UNDO -> TextInputResult(listOf(EditorOp.PerformEditorAction(effect)), state)
+        // spec SS7.3: "action media_play_pause/media_previous/media_next: dispatch the media key through the audio service".
+        EditEffect.MEDIA_PLAY_PAUSE, EditEffect.MEDIA_PREVIOUS, EditEffect.MEDIA_NEXT -> TextInputResult(listOf(EditorOp.DispatchMediaKey(effect)), state)
     }
+
+    /** spec: keys-and-modifiers.md SS7.3, "the eight navigation keys": the four arrows, home, end, page up, page down. */
+    private val SHIFT_AWARE_NAV_EFFECTS = setOf(
+        EditEffect.CURSOR_UP, EditEffect.CURSOR_DOWN, EditEffect.CURSOR_LEFT, EditEffect.CURSOR_RIGHT,
+        EditEffect.LINE_HOME, EditEffect.LINE_END, EditEffect.PAGE_UP, EditEffect.PAGE_DOWN,
+    )
 
     // ---------------------------------------------------------------------------------------
     // An ordinary letter. spec: text-input.md SS5.1, SS5.5.

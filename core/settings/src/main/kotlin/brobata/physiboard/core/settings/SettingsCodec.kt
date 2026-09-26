@@ -75,6 +75,15 @@ object SettingsKeys {
     const val NAV_MODE_CTRL_HOLD = "nav_mode_ctrl_hold_enabled"
     const val LAYOUT_AWARE_CTRL = "layout_aware_ctrl_shortcuts"
     const val SYM_EDIT_SHORTCUTS = "sym_edit_shortcuts"
+    const val NAV_MODE_MAPPINGS_UPDATED = "nav_mode_mappings_updated"
+    const val BOUNCE_KEYS_ENABLED = "bounce_keys_enabled"
+    const val BOUNCE_KEYS_DELAY_MS = "bounce_keys_delay_ms"
+    const val BOUNCE_KEYS_CHARACTER_KEYS_ENABLED = "bounce_keys_character_keys_enabled"
+    const val BOUNCE_KEYS_MODIFIER_KEYS_ENABLED = "bounce_keys_modifier_keys_enabled"
+    const val BOUNCE_KEYS_SPACE_ENABLED = "bounce_keys_space_enabled"
+    const val BOUNCE_KEYS_ENTER_ENABLED = "bounce_keys_enter_enabled"
+    const val BOUNCE_KEYS_BACKSPACE_ENABLED = "bounce_keys_backspace_enabled"
+    const val OVERLAPPING_KEYS_ENABLED = "overlapping_keys_enabled"
 
     // SS2.5 sym
     const val SYM_PAGES_CONFIG = "sym_pages_config"
@@ -374,6 +383,15 @@ object SettingsCodec {
         put(SettingsKeys.NAV_MODE_CTRL_HOLD, k.navModeCtrlHoldEnabled.toString())
         put(SettingsKeys.LAYOUT_AWARE_CTRL, k.layoutAwareCtrlShortcuts.toString())
         put(SettingsKeys.SYM_EDIT_SHORTCUTS, k.symEditShortcuts.toString())
+        put(SettingsKeys.NAV_MODE_MAPPINGS_UPDATED, k.navModeMappingsUpdatedAtMs.toString())
+        put(SettingsKeys.BOUNCE_KEYS_ENABLED, k.bounceKeysEnabled.toString())
+        put(SettingsKeys.BOUNCE_KEYS_DELAY_MS, k.bounceKeysDelayMs.toString())
+        put(SettingsKeys.BOUNCE_KEYS_CHARACTER_KEYS_ENABLED, k.bounceKeysCharacterKeysEnabled.toString())
+        put(SettingsKeys.BOUNCE_KEYS_MODIFIER_KEYS_ENABLED, k.bounceKeysModifierKeysEnabled.toString())
+        put(SettingsKeys.BOUNCE_KEYS_SPACE_ENABLED, k.bounceKeysSpaceEnabled.toString())
+        put(SettingsKeys.BOUNCE_KEYS_ENTER_ENABLED, k.bounceKeysEnterEnabled.toString())
+        put(SettingsKeys.BOUNCE_KEYS_BACKSPACE_ENABLED, k.bounceKeysBackspaceEnabled.toString())
+        put(SettingsKeys.OVERLAPPING_KEYS_ENABLED, k.overlappingKeysEnabled.toString())
     }
 
     private fun readKeys(r: FlatReader): KeyPrefs {
@@ -385,6 +403,15 @@ object SettingsCodec {
             navModeCtrlHoldEnabled = r.bool(SettingsKeys.NAV_MODE_CTRL_HOLD, d.navModeCtrlHoldEnabled),
             layoutAwareCtrlShortcuts = r.bool(SettingsKeys.LAYOUT_AWARE_CTRL, d.layoutAwareCtrlShortcuts),
             symEditShortcuts = r.bool(SettingsKeys.SYM_EDIT_SHORTCUTS, d.symEditShortcuts),
+            navModeMappingsUpdatedAtMs = r.long(SettingsKeys.NAV_MODE_MAPPINGS_UPDATED, d.navModeMappingsUpdatedAtMs),
+            bounceKeysEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_ENABLED, d.bounceKeysEnabled),
+            bounceKeysDelayMs = r.long(SettingsKeys.BOUNCE_KEYS_DELAY_MS, d.bounceKeysDelayMs, 20L..500L),
+            bounceKeysCharacterKeysEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_CHARACTER_KEYS_ENABLED, d.bounceKeysCharacterKeysEnabled),
+            bounceKeysModifierKeysEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_MODIFIER_KEYS_ENABLED, d.bounceKeysModifierKeysEnabled),
+            bounceKeysSpaceEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_SPACE_ENABLED, d.bounceKeysSpaceEnabled),
+            bounceKeysEnterEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_ENTER_ENABLED, d.bounceKeysEnterEnabled),
+            bounceKeysBackspaceEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_BACKSPACE_ENABLED, d.bounceKeysBackspaceEnabled),
+            overlappingKeysEnabled = r.bool(SettingsKeys.OVERLAPPING_KEYS_ENABLED, d.overlappingKeysEnabled),
         )
     }
 

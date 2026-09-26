@@ -40,14 +40,30 @@ class LegacyImportTest {
         assertEquals(RingFit(12.5f, 1f, 45.9375f, 2f), r.settings.device.ringFit)
     }
 
+    /**
+     * spec: keys-and-modifiers.md SS10, SS11, SS18: "the values are still honoured, backed up, and
+     * restored" even with no 2.x settings screen. These three rows used to be treated as 2.x-only
+     * markers this importer drops; now that `:core:keys`' bounce/accidental-press filters and
+     * trackpad-caret-nav.md SS5.9's reload timestamp are wired into the running keyboard (see
+     * [KeyPrefs]), a user restoring a 2.x backup must keep whatever they had tuned.
+     */
+    @Test
+    fun `the bounce filter, overlap filter and Fn Layer reload timestamp carry over from a 2x backup`() {
+        val r = import("bounce_keys_enabled" to true, "bounce_keys_delay_ms" to 120L, "overlapping_keys_enabled" to true, "nav_mode_mappings_updated" to 1700000000000L)
+        assertTrue(r.settings.keys.bounceKeysEnabled)
+        assertEquals(120L, r.settings.keys.bounceKeysDelayMs)
+        assertTrue(r.settings.keys.overlappingKeysEnabled)
+        assertEquals(1700000000000L, r.settings.keys.navModeMappingsUpdatedAtMs)
+    }
+
     @Test
     fun `a wrong-typed value is read where it can be and defaulted where it cannot`() {
-        val r = import("status_bar_height_dp" to "48", "bounce_keys_delay_ms" to "120", "dictation_end_silence_ms" to "soon", "auto_capitalize_first_letter" to "maybe", "notification_ring_minutes" to 7.0)
+        val r = import("status_bar_height_dp" to "48", "shift_tap_latches" to "true", "dictation_end_silence_ms" to "soon", "auto_capitalize_first_letter" to "maybe", "notification_ring_minutes" to 7.0)
         assertEquals(48, r.settings.statusBar.heightDp)
         assertEquals(2000, r.settings.dictation.endSilenceMs)
         assertTrue(r.settings.typing.capitalizeAtTextStart)
         assertEquals(7, r.settings.device.ringMinutes)
-        assertTrue("bounce_keys_delay_ms" in r.ignored)
+        assertTrue("shift_tap_latches" in r.ignored)
     }
 
     @Test
@@ -262,7 +278,7 @@ class LegacyImportTest {
             "shift_tap_latches" to true, "alt_latch_stays_on_space" to true, "software_keyboard_mode" to "force_virtual",
             "software_keyboard_layout_style" to "compact", "modifier_indicator_mode" to "menu_bar", "physical_keyboard_currency_symbol" to "$",
             "auto_show_keyboard" to true, "mid_word_quote_to_apostrophe" to true, "alt_ctrl_speech_shortcut" to true, "fn_speech_scan_code" to 251,
-            "use_edit_type_ranking" to true, "bounce_keys_enabled" to true, "overlapping_keys_enabled" to true, "additional_ime_subtypes" to setOf("en_US:qwerty"),
+            "use_edit_type_ranking" to true, "additional_ime_subtypes" to setOf("en_US:qwerty"),
             "keyboard_layout_list" to "[]", "physical_keyboard_profile_override" to "titan2", "titan2_layout_enabled" to true, "global_variation_layout_override" to "x",
             "alt_character_layer_binding" to "emoji", "restore_sym_page" to 1, "keyboard_theme_software" to "{}", "keyboard_theme_assignment_mode_hardware" to "fixed",
             "keyboard_theme_light_hardware" to "{}", "keyboard_theme_drafts" to "[]", "keyboard_theme_preview_viewport_scale" to 1.2f,
@@ -270,7 +286,7 @@ class LegacyImportTest {
             "software_keyboard_mode_runtime_override" to "force_hardware", "quick_launcher_default_assigned" to true, "trackpad_gestures_enabled" to true, "trackpad_provider" to "shizuku",
             "typing_sound_mode" to "click", "quick_launcher_width_percent" to 80, "quick_launcher_animation_duration_ms" to 200, "command_surface_sources" to "{}",
             "impact_defaults_applied" to true, "prefs_migrated_v2" to true, "v2_migration_notice_seen" to true, "settings_baseline_version" to 1,
-            "alt_shift_default_initialized" to true, "nav_mode_default_mappings_version" to 3, "nav_mode_mappings_updated" to 1L, "variations_updated" to 1L,
+            "alt_shift_default_initialized" to true, "nav_mode_default_mappings_version" to 3, "variations_updated" to 1L,
             "hardware_bar_height_migrated" to true, "clicks_button_mode" to "x", "static_variation_bar_preset" to "x", "status_bar_variations_visible" to true,
             "privileged_backlight_ok" to true, "user_dictionary_entries" to "[]", "suggestion_debug_logging" to true, "toast_on_layout_switch_typo" to true,
         )
