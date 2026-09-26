@@ -521,17 +521,16 @@ internal class KeyboardSession(
         DiagnosticLog.i(TAG) { "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}" }
         ownEdit = null
         lastReportedSelStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
+        val openingText = initialTextBeforeCursor(info)
         if (restarting) {
             // spec: text-input.md line 85, 463, 497: a restart reclassifies and re-evaluates, but
             // does not wipe the word in progress; web fields restart input mid-word all the time.
-            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
-            pipeline.onRestartInput(field, profile.editorTrust, profile, textBeforeCursor)
+            pipeline.onRestartInput(field, profile.editorTrust, profile, openingText)
             // The pipeline keeps a pending long press across a restart (the key is still held);
             // the timer cancelled above is re-armed for it rather than leaving it to never fire.
             scheduleLongPressIfNeeded()
         } else {
-            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
-            pipeline.onStartInput(field, profile.editorTrust, profile, textBeforeCursor)
+            pipeline.onStartInput(field, profile.editorTrust, profile, openingText)
         }
         service.setCandidatesViewShown(field.isReallyEditable)
         currentPackageName = reportedPackage
@@ -544,6 +543,20 @@ internal class KeyboardSession(
         expansionPopup.hide()
         syncSymPanels()
         refreshCandidatesStrip()
+    }
+
+    /**
+     * The text before the cursor as a field opens. The input connection is usually not ready to
+     * answer a read this early: in Messages on the Titan (2026-09-25) it returned nothing at the
+     * compose field's start, so "capitalise at the start of the text" saw no evidence and the
+     * first letter of every message came out lower-case. The [EditorInfo] the platform has just
+     * handed over carries the same text with no call to the app at all, and when it carries none,
+     * its initial selection still says whether the cursor sits at the very start of the document.
+     */
+    private fun initialTextBeforeCursor(info: EditorInfo?): String? {
+        runCatching { info?.getInitialTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()?.let { return it }
+        runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()?.let { return it }
+        return if (info != null && info.initialSelStart <= 0 && info.initialSelEnd <= 0) "" else null
     }
 
     fun onFinishInput() {
