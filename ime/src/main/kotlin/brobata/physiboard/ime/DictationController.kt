@@ -23,6 +23,8 @@ import android.speech.SpeechRecognizer
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import brobata.physiboard.core.speech.DirectCommit
+import brobata.physiboard.core.speech.DirectCommitState
 import brobata.physiboard.core.speech.CuePattern
 import brobata.physiboard.core.speech.DictationCues
 import brobata.physiboard.core.speech.DictationEffect
@@ -138,6 +140,16 @@ internal class DictationController(
         if (session != null) dispatch(DictationEvent.EditorFieldClosed)
     }
 
+    /**
+     * False for a field that will draw dictation's staged words and never adopt them. The
+     * maintainer's web terminal did exactly that (2026-09-26): the sentence appeared inverted at
+     * the caret and none of it was ever committed. Set from the field the keyboard just
+     * classified; see [DirectCommit].
+     */
+    var composingAllowed: Boolean = true
+
+    private var directCommit = DirectCommitState()
+
     fun onEditorFieldOpened(ownerPackage: String?) {
         if (session != null) dispatch(DictationEvent.EditorFieldOpened(ownerPackage))
     }
@@ -188,7 +200,14 @@ internal class DictationController(
         // whole feature makes that can throw (a hostile or misbehaving editor), so it is the one
         // write wrapped; a failure here re-enters this same function once with EditorRejectedInsert,
         // safe because this class only ever runs on the main thread the IME already serialises on.
-        val wroteCleanly = runCatching { currentInputConnection()?.applyDictationTextOps(outcome.textOps) }.isSuccess
+        val textOps = if (composingAllowed) {
+            outcome.textOps
+        } else {
+            val translated = DirectCommit.translate(outcome.textOps, directCommit)
+            directCommit = translated.state
+            translated.ops
+        }
+        val wroteCleanly = runCatching { currentInputConnection()?.applyDictationTextOps(textOps) }.isSuccess
         outcome.effects.forEach(::applyEffect)
         rescheduleClock()
         if (!wroteCleanly) onEditorRejectedInsert()

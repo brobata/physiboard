@@ -23,6 +23,9 @@ sealed class DictationTextOp {
     /** Ends the current composing region, turning it into ordinary text without changing it. */
     object FinishComposing : DictationTextOp()
 
+    /** Deletes [count] characters before the cursor, so a direct commit can replace what the previous one left (see [DirectCommit]). */
+    data class DeleteBeforeCursor(val count: Int) : DictationTextOp()
+
     /** Commits [text] at the cursor directly, for the rare case nothing was composing to replace. */
     data class CommitText(val text: String) : DictationTextOp()
 }

@@ -960,6 +960,10 @@ internal class KeyboardSession(
         currentPackageName = reportedPackage
         // spec expansion-clipboard-pickers-launcher.md SS6.2 A: the home screen path needs the foreground launcher.
         pipeline.foregroundIsHome = reportedPackage != null && reportedPackage in homePackages
+        // A field that asked for no suggestions, or whose composing region cannot be trusted, is
+        // told dictation's words as plain commits: a web terminal drew the staged sentence and
+        // adopted none of it (2026-09-26). See DirectCommit.
+        dictationController.composingAllowed = profile.editorTrust.composingRegionAllowed && !field.appDisablesSuggestions
         dictationController.onEditorFieldOpened(reportedPackage)
         clipboard.onFieldStarted()
         // spec SS2.4: matches are cleared "on every start of input".

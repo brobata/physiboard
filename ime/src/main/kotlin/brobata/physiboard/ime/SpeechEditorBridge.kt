@@ -19,6 +19,7 @@ internal fun InputConnection.applyDictationTextOps(ops: List<DictationTextOp>) {
             when (op) {
                 is DictationTextOp.SetComposingText -> setComposingText(op.text, 1)
                 DictationTextOp.FinishComposing -> finishComposingText()
+                is DictationTextOp.DeleteBeforeCursor -> deleteSurroundingText(op.count, 0)
                 is DictationTextOp.CommitText -> commitText(op.text, 1)
             }
         }
