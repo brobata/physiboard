@@ -117,6 +117,16 @@ class AutoCapitalizationTest {
         val (_, second) = AutoCapitalization.evaluate(armed, normal, defaultSettings, null)
         assertEquals(CapDecision.ClearOneShot, second)
     }
+
+    /** The maintainer's terminal, a web field that asks for no suggestions, was capitalising its first word. */
+    @Test
+    fun `a field that wants no suggestions gets no automatic capital`() {
+        val terminal = FieldContext(FieldKind.NORMAL, appDisablesSuggestions = true)
+        assertEquals(CapDecision.Leave, AutoCapitalization.evaluate(AutoCapState.initial(), terminal, AutoCapSettings(), "").second)
+        assertEquals(CapDecision.Leave, AutoCapitalization.evaluate(AutoCapState.initial(), terminal, AutoCapSettings(), "done. ").second)
+        val ordinary = FieldContext(FieldKind.NORMAL)
+        assertEquals(CapDecision.ArmOneShot, AutoCapitalization.evaluate(AutoCapState.initial(), ordinary, AutoCapSettings(), "").second)
+    }
 }
 
 /** Test-only accessor mirroring what [AutoCapitalization.evaluate] already sets internally. */

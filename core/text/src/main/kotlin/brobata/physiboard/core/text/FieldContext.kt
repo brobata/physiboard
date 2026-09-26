@@ -66,6 +66,15 @@ data class FieldContext(
      * every other feature off while leaving auto-cap running.
      */
     val isEditableButNotReallyEditable: Boolean = false,
+    /**
+     * The app asked for no suggestions on this field (`TYPE_TEXT_FLAG_NO_SUGGESTIONS`, read
+     * before this keyboard sets the flag itself, text-input.md SS3). A field that says it wants
+     * no help with words is not asking for an automatic capital either: the maintainer's
+     * terminal, a web field carrying this flag, was having its first word capitalised
+     * (2026-09-26). The spec's numbered auto-cap cases all use fields without the flag and are
+     * unaffected.
+     */
+    val appDisablesSuggestions: Boolean = false,
 ) {
     /** spec: text-input.md SS3, "Restricted field": password, URL, email, filter, or a raw-mode app. */
     val isRestricted: Boolean

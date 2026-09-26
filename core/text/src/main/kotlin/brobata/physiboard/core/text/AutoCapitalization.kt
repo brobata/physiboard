@@ -119,6 +119,9 @@ object AutoCapitalization {
             }
         }
 
+        // A field that asked for no suggestions gets no automatic capital; see
+        // [FieldContext.appDisablesSuggestions].
+        if (field.appDisablesSuggestions) return clearIfOwnedByAutoCap(state)
         if (!field.autoCapAllowed(settings.capitalizeRestrictedFields)) {
             return clearIfOwnedByAutoCap(state)
         }

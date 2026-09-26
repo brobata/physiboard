@@ -216,6 +216,9 @@ internal fun classifyField(info: EditorInfo?, profile: AppProfile = AppProfile.d
         imeAction = imeActionOf(info),
         isMultiLine = inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0,
         isEditableButNotReallyEditable = isEditableButNotReallyEditable,
+        // Read before the keyboard sets the flag itself (text-input.md SS3 has the keyboard set
+        // it on every editable field it starts, and never read its own).
+        appDisablesSuggestions = inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS != 0,
     )
 }
 
