@@ -12,7 +12,12 @@ import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
+import android.content.IntentFilter
 import android.speech.RecognitionListener
+import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.inputmethod.InputConnection
@@ -30,6 +35,8 @@ import brobata.physiboard.core.speech.DictationStartFailureReason
 import brobata.physiboard.core.speech.DictationTextSettings
 import brobata.physiboard.core.speech.LanguageTagResolver
 import brobata.physiboard.core.speech.RecognizerRequestOptions
+import brobata.physiboard.core.speech.RecognizerResolution
+import brobata.physiboard.core.speech.RecognizerTarget
 import java.util.Locale
 
 /**
@@ -49,6 +56,8 @@ internal class DictationController(
 ) {
     private var session: DictationSession? = null
     private var recognizer: SpeechRecognizer? = null
+    /** The `dictation_engine` value [recognizer] was built for; drives the rebuild rule of spec SS2.6 step 4. */
+    private var recognizerEngineId: String? = null
     private var segmentedRefusalLatch: Boolean = false
     private var startPendingOwnerPackage: String? = null
 
@@ -56,11 +65,29 @@ internal class DictationController(
     var settings: DictationSettings = DictationSettings(androidApiLevel = Build.VERSION.SDK_INT)
     var textSettings: DictationTextSettings = DictationTextSettings()
 
-    /** SPEC GAP: no subtype module yet either; falls straight to the device locale (spec SS5.1 step 2). */
+    /** spec SS5.1 step 1: the active input style's locale string, kept current by [KeyboardSession.applySettings]; null falls straight to the device locale (SS5.1 step 2). */
     var subtypeLanguageTag: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private val clockRunnable = Runnable { dispatch(DictationEvent.ClockTick) }
+
+    /** spec SS10: answers [DictationPermissionActivity]'s package-restricted broadcast pair. */
+    private val permissionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val granted = intent.action == DictationPermissionActivity.ACTION_GRANTED
+            val pendingOwner = startPendingOwnerPackage
+            startPendingOwnerPackage = null
+            if (granted) trigger(pendingOwner)
+        }
+    }
+
+    init {
+        val filter = IntentFilter().apply {
+            addAction(DictationPermissionActivity.ACTION_GRANTED)
+            addAction(DictationPermissionActivity.ACTION_DENIED)
+        }
+        runCatching { ContextCompat.registerReceiver(service, permissionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED) }
+    }
 
     val isActive: Boolean get() = session?.active == true
 
@@ -88,16 +115,12 @@ internal class DictationController(
             return
         }
         // spec SS2.6 step 1 / SS10: remember the pending start, open the permission activity, and
-        // resume once the answer comes back. A trigger that arrives with a session already active
-        // needs no permission (it is asking to stop, and the mic is already open), but a session
-        // can only be active once a request has actually started, which itself required the
-        // permission, so this branch is reached only when nothing is running yet.
+        // resume once the answer comes back over [permissionReceiver]. A trigger that arrives with
+        // a session already active needs no permission (it is asking to stop, and the mic is
+        // already open), but a session can only be active once a request has actually started,
+        // which itself required the permission, so this branch is reached only when nothing is
+        // running yet.
         startPendingOwnerPackage = ownerPackage
-        DictationPermissionBridge.awaitResult { granted ->
-            val pendingOwner = startPendingOwnerPackage
-            startPendingOwnerPackage = null
-            if (granted) trigger(pendingOwner)
-        }
         val intent = Intent(service, DictationPermissionActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         }
@@ -138,6 +161,7 @@ internal class DictationController(
     fun onServiceDestroyed() {
         if (isActive) runCatching { onActiveChanged?.invoke(false) }
         handler.removeCallbacks(clockRunnable)
+        runCatching { service.unregisterReceiver(permissionReceiver) }
         runCatching { recognizer?.destroy() }
         recognizer = null
         session = null
@@ -233,12 +257,49 @@ internal class DictationController(
             }
     }
 
+    /**
+     * spec SS2.6 step 4, SS4.2: makes sure a recognizer exists for `dictation_engine`'s stored id.
+     * "If a recognizer exists for a different id, it is destroyed and the 'engine refuses
+     * segmented sessions' latch is cleared." "Any creation failure" falls to the system default;
+     * if that fails too, there is no recognizer and the caller reports the start failure.
+     */
     private fun ensureRecognizer(): SpeechRecognizer? {
-        recognizer?.let { return it }
+        val engineId = settings.engineId
+        recognizer?.let { if (recognizerEngineId == engineId) return it }
+        recognizer?.let { runCatching { it.destroy() } }
+        recognizer = null
+        recognizerEngineId = null
+        segmentedRefusalLatch = false
         if (!SpeechRecognizer.isRecognitionAvailable(service)) return null
+        val onDeviceAvailable = runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(service) }.getOrDefault(false)
+        val target = RecognizerResolution.resolve(engineId, onDeviceAvailable, ::isRecognitionServiceInstalled)
+        val created = createRecognizer(target) ?: if (target != RecognizerTarget.SystemDefault) createRecognizer(RecognizerTarget.SystemDefault) else null
+        recognizer = created
+        recognizerEngineId = if (created != null) engineId else null
+        return created
+    }
+
+    private fun createRecognizer(target: RecognizerTarget): SpeechRecognizer? = runCatching {
+        val created = when (target) {
+            RecognizerTarget.SystemDefault -> SpeechRecognizer.createSpeechRecognizer(service)
+            RecognizerTarget.OnDevice -> SpeechRecognizer.createOnDeviceSpeechRecognizer(service)
+            is RecognizerTarget.Component -> {
+                val component = ComponentName.unflattenFromString(target.flattenedName) ?: return@runCatching null
+                SpeechRecognizer.createSpeechRecognizer(service, component)
+            }
+        }
+        created?.apply { setRecognitionListener(recognitionListener) }
+    }.getOrNull()
+
+    /** spec SS4.2's "`package/class` still installed as a recognition service" test. */
+    private fun isRecognitionServiceInstalled(flattenedName: String): Boolean {
+        val component = ComponentName.unflattenFromString(flattenedName) ?: return false
         return runCatching {
-            SpeechRecognizer.createSpeechRecognizer(service).apply { setRecognitionListener(recognitionListener) }
-        }.getOrNull()?.also { recognizer = it }
+            service.packageManager.queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE), 0).any {
+                val info = it.serviceInfo ?: return@any false
+                info.packageName == component.packageName && info.name == component.className
+            }
+        }.getOrDefault(false)
     }
 
     /** spec SS5, SS5.1. */

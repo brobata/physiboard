@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- dictation.md SS11.3: AssistantTriggerActivity's own theme, "transparent window, no
+         preview window, no animations, no dim", which is what stops PhysiBoard's screens flashing
+         on the way through the trampoline (D12). -->
+    <style name="Theme.PhysiBoard.AssistantTrigger" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

@@ -128,8 +128,11 @@ fun SwitchRow(
     label: String,
     description: String? = null,
     // spec: per-app-behavior.md SS6.1, "an optional web-app note in the primary colour (up to two
-    // lines) when the screen supplies one" (the exact-typing list's WebAPK rows, SS4.3).
+    // lines) when the screen supplies one" (the exact-typing list's WebAPK rows, SS4.3);
+    // device-backlight-ring.md SS5.7.4 wants the same slot in the error colour instead
+    // ("Unavailable until the phone has been paired once..."), hence [noteIsError].
     note: String? = null,
+    noteIsError: Boolean = false,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
@@ -145,7 +148,8 @@ fun SwitchRow(
         Column(modifier = Modifier.weight(1f)) {
             RowLabel(label, description)
             if (note != null) {
-                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                val color = if (noteIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                Text(note, style = MaterialTheme.typography.bodySmall, color = color)
             }
         }
         Switch(checked = checked, onCheckedChange = if (enabled) onCheckedChange else null, enabled = enabled)
@@ -273,15 +277,24 @@ fun IntRangeRow(
     range: IntClosedRange,
     step: Int = 1,
     valueLabel: (Int) -> String = { it.toString() },
+    // device-backlight-ring.md SS5.7.3: "the value is saved when the drag ends", unlike every
+    // other slider here which writes on every tick; false keeps every existing caller unchanged.
+    commitOnRelease: Boolean = false,
     onValueChange: (Int) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         RowLabel(label, description)
-        Text(valueLabel(value), style = MaterialTheme.typography.bodyMedium)
+        var dragValue by remember(value) { mutableStateOf(value) }
+        val shown = if (commitOnRelease) dragValue else value
+        Text(valueLabel(shown), style = MaterialTheme.typography.bodyMedium)
         val steps = if (step <= 1) 0 else ((range.last - range.first) / step) - 1
         Slider(
-            value = value.toFloat(),
-            onValueChange = { onValueChange(snapToStep(it.toInt(), range, step)) },
+            value = shown.toFloat(),
+            onValueChange = { raw ->
+                val snapped = snapToStep(raw.toInt(), range, step)
+                if (commitOnRelease) dragValue = snapped else onValueChange(snapped)
+            },
+            onValueChangeFinished = { if (commitOnRelease) onValueChange(dragValue) },
             valueRange = range.first.toFloat()..range.last.toFloat(),
             steps = steps.coerceAtLeast(0),
             modifier = Modifier.defaultMinSize(minHeight = MinTouchTarget),

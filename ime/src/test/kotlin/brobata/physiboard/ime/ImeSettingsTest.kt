@@ -229,6 +229,13 @@ class ImeSettingsTest {
     }
 
     @Test
+    fun `the stored speech engine id reaches the dictation bundle`() {
+        assertEquals("", ImeSettings.dictationSettings(Settings(), androidApiLevel = 33).engineId)
+        val chosen = ImeSettings.dictationSettings(Settings(dictation = DictationPrefs(engine = "com.example/.Service")), androidApiLevel = 33)
+        assertEquals("com.example/.Service", chosen.engineId)
+    }
+
+    @Test
     fun `the trackpad gate follows the store and is off by default`() {
         assertFalse(ImeSettings.keyboardSettings(Settings()).screenTrackpadEnabled)
         assertTrue(ImeSettings.keyboardSettings(Settings(trackpad = TrackpadPrefs(enabled = true))).screenTrackpadEnabled)

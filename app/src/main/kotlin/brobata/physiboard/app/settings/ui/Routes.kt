@@ -64,6 +64,11 @@ object Routes {
     const val SAVED_THEMES = "saved_themes"
     const val THEME_LAYOUT_OVERRIDES = "theme_layout_overrides"
 
+    // layers-sym-alt.md SS9.6, SS9.7: the Keyboard Layout screen and its layout viewer.
+    const val KEYBOARD_LAYOUT = "keyboard_layout"
+    fun layoutViewer(layoutId: String) = "layout_viewer/${android.net.Uri.encode(layoutId)}"
+    const val LAYOUT_VIEWER_PATTERN = "layout_viewer/{layoutId}"
+
     // layers-sym-alt.md SS5.9: "Customize SYM Keyboard". The four query args are only set when the
     // keyboard itself opens this screen (SS5.8's pencil / long-press); plain in-app navigation uses
     // [CUSTOMIZE_SYM_KEYBOARD] bare, which the pattern's own defaults answer as "no initial page".

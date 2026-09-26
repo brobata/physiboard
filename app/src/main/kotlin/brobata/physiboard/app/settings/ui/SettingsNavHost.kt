@@ -51,6 +51,8 @@ import brobata.physiboard.app.settings.ui.screens.SystemTweaksScreen
 import brobata.physiboard.app.settings.ui.screens.PersonalDictionaryScreen
 import brobata.physiboard.app.settings.ui.screens.InstalledDictionariesScreen
 import brobata.physiboard.app.settings.ui.screens.InputStylesScreen
+import brobata.physiboard.app.settings.ui.screens.KeyboardLayoutScreen
+import brobata.physiboard.app.settings.ui.screens.LayoutViewerScreen
 import brobata.physiboard.app.settings.ui.screens.SavedThemesScreen
 import brobata.physiboard.app.settings.ui.screens.ThemeLayoutOverridesScreen
 import brobata.physiboard.app.settings.ui.screens.ThemeLayoutOverrideEditScreen
@@ -100,9 +102,11 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
 
         // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
         composable(Routes.SMART_BACKLIGHT) { SmartBacklightScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
-        composable(Routes.REMOVE_BLOAT) { RemoveBloatScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
-        composable(Routes.SCREEN_DENSITY) { ScreenDensityScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
-        composable(Routes.SYSTEM_TWEAKS) { SystemTweaksScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
+        // spec: broker-privileged-toolbox.md SS3, SS12.1: "that button navigates to the Smart
+        // keyboard backlight screen", not the hub these three previously sent it to.
+        composable(Routes.REMOVE_BLOAT) { RemoveBloatScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.SMART_BACKLIGHT) }) }
+        composable(Routes.SCREEN_DENSITY) { ScreenDensityScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.SMART_BACKLIGHT) }) }
+        composable(Routes.SYSTEM_TWEAKS) { SystemTweaksScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.SMART_BACKLIGHT) }) }
         composable(Routes.NOTIFICATION_RING) {
             NotificationRingScreen(onBack = ::back, onNavigateFit = { navigate(Routes.RING_FIT) }, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) })
         }
@@ -135,6 +139,14 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         composable(Routes.PERSONAL_DICTIONARY) { PersonalDictionaryScreen(onBack = ::back) }
         composable(Routes.INSTALLED_DICTIONARIES) { InstalledDictionariesScreen(onBack = ::back) }
         composable(Routes.INPUT_STYLES) { InputStylesScreen(onBack = ::back) }
+        // layers-sym-alt.md SS9.6, SS9.7: the Keyboard Layout screen and its layout viewer.
+        composable(Routes.KEYBOARD_LAYOUT) { KeyboardLayoutScreen(onBack = ::back, onView = { layoutId -> navigate(Routes.layoutViewer(layoutId)) }) }
+        composable(
+            Routes.LAYOUT_VIEWER_PATTERN,
+            arguments = listOf(navArgument("layoutId") { type = NavType.StringType }),
+        ) { entry ->
+            LayoutViewerScreen(layoutId = entry.arguments?.getString("layoutId").orEmpty(), onBack = ::back)
+        }
         composable(Routes.SAVED_THEMES) { SavedThemesScreen(onBack = ::back) }
         composable(Routes.THEME_LAYOUT_OVERRIDES) { ThemeLayoutOverridesScreen(onBack = ::back, onOpen = { index -> navigate(Routes.themeLayoutOverride(index)) }) }
         composable(

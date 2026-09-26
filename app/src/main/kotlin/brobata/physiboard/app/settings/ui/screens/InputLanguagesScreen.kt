@@ -31,10 +31,9 @@ private fun appLanguageLabel(tag: String): String = when (tag) {
 
 /**
  * "Input Languages" (settings-catalog.md SS9.2, dictionaries-languages.md). "Installed
- * dictionaries" (SS6) and "Manage input styles" (the input style list, SS8.2, add/edit/delete/
- * hide/show and its per-style "Suggestion dictionaries") each navigate to their own list editor.
- * [LanguagePrefs.keyboardLayout] stays unbound here: SS8.2 only ever sets it through a custom
- * input style's own layout picker, which [InputStylesScreen] owns, not this screen's rows.
+ * dictionaries" (SS6), "Manage input styles" (the input style list, SS8.2, add/edit/delete/
+ * hide/show and its per-style "Suggestion dictionaries") and "Keyboard Layout" (layers-sym-alt.md
+ * SS9.6, the standalone `keyboard_layout` picker) each navigate to their own screen.
  * `toast_on_layout_switch` sits in the same "Layout Switch Shortcuts" group in
  * dictionaries-languages.md SS13, but settings-catalog.md's own screen map (SS9.2, the map this
  * module mirrors) never lists it as a row, so it stays unbound too.
@@ -52,6 +51,9 @@ fun InputLanguagesScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
             }
             item {
                 NavigateRow("Manage input styles", "Add, edit or hide the languages and layouts you type in") { onNavigate(Routes.INPUT_STYLES) }
+            }
+            item {
+                NavigateRow("Keyboard Layout", "Standard, QWERTZ, AZERTY and other bundled or imported layouts") { onNavigate(Routes.KEYBOARD_LAYOUT) }
             }
             item {
                 SwitchRow("Automatic Layout Mapping", checked = languages.layoutAutoByLocale, onCheckedChange = { set { p -> p.copy(layoutAutoByLocale = it) } })

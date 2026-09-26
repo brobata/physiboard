@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +35,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.AppCatalog
@@ -81,6 +85,21 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
         listenerGranted = privileged.permissions.isNotificationListenerGranted()
         fullScreenGranted = privileged.permissions.canUseFullScreenIntent()
         notificationsGranted = privileged.permissions.areNotificationsEnabled()
+    }
+    // spec: device-backlight-ring.md SS5.9: "The three grant rows are re-read every time the
+    // screen resumes, since they change behind it" (granting one in Android's own settings and
+    // coming back must not leave a stale row).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                listenerGranted = privileged.permissions.isNotificationListenerGranted()
+                fullScreenGranted = privileged.permissions.canUseFullScreenIntent()
+                notificationsGranted = privileged.permissions.areNotificationsEnabled()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     SettingsScreenScaffold(title = "Notification ring", onBack = onBack) {
@@ -161,6 +180,8 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     value = device.ringMinutes,
                     range = IntClosedRange(1, 60),
                     valueLabel = { "$it min" },
+                    // spec: device-backlight-ring.md SS5.7.3: "the value is saved when the drag ends".
+                    commitOnRelease = true,
                     onValueChange = { value -> controller.update { it.copy(device = it.device.copy(ringMinutes = value)) } },
                 )
             }
@@ -182,14 +203,19 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                 )
             }
             item {
-                val keyboardDarkNote = if (!privileged.permissions.hasWriteSecureSettings()) {
-                    "The keyboard backlight normally comes on whenever the screen does, so a ring at night lights up the whole keyboard with it.\nUnavailable until the phone has been paired once, on the Keyboard backlight screen."
+                // spec: device-backlight-ring.md SS5.7.4: the base description always shows; the
+                // "Unavailable until..." line is a separate note "in the error colour" below it,
+                // not part of the same muted description line.
+                val missingPermissionNote = if (!privileged.permissions.hasWriteSecureSettings()) {
+                    "Unavailable until the phone has been paired once, on the Keyboard backlight screen."
                 } else {
-                    "The keyboard backlight normally comes on whenever the screen does, so a ring at night lights up the whole keyboard with it."
+                    null
                 }
                 SwitchRow(
                     label = "Keep the keyboard dark",
-                    description = keyboardDarkNote,
+                    description = "The keyboard backlight normally comes on whenever the screen does, so a ring at night lights up the whole keyboard with it.",
+                    note = missingPermissionNote,
+                    noteIsError = true,
                     checked = device.ringKeyboardDark,
                     onCheckedChange = { checked -> controller.update { it.copy(device = it.device.copy(ringKeyboardDark = checked)) } },
                 )
@@ -199,15 +225,19 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                 ColorRow(label = "Default colour", color = device.ringDefaultColor ?: DEFAULT_GREEN) { editingColorFor = DEFAULT_COLOR_KEY }
             }
             item { Text("App colours", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 16.dp, top = 8.dp)) }
-            device.ringAppColors.entries.sortedBy { it.key }.forEach { (pkg, color) ->
-                item {
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        ColorDot(color, size = 22.dp) { editingColorFor = pkg }
-                        Text(pkg, modifier = Modifier.padding(start = 12.dp).weight(1f))
-                        TextButton(onClick = { controller.update { it.copy(device = it.device.copy(ringAppColors = it.device.ringAppColors - pkg)) } }) { Text("Remove") }
+            // spec: device-backlight-ring.md SS5.4: "the list is sorted by app label, case-insensitive".
+            device.ringAppColors.entries
+                .map { (pkg, color) -> Triple(pkg, AppCatalog.labelFor(context, pkg), color) }
+                .sortedBy { (_, label, _) -> label.lowercase() }
+                .forEach { (pkg, label, color) ->
+                    item {
+                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            ColorDot(color, size = 22.dp) { editingColorFor = pkg }
+                            Text(label, modifier = Modifier.padding(start = 12.dp).weight(1f))
+                            TextButton(onClick = { controller.update { it.copy(device = it.device.copy(ringAppColors = it.device.ringAppColors - pkg)) } }) { Text("Remove") }
+                        }
                     }
                 }
-            }
             item { ButtonRow(label = "Add an app", buttonText = "Choose", onClick = { showAddApp = true }) }
             item { SectionHeader("Fit") }
             item {

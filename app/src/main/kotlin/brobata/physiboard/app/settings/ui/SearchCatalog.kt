@@ -76,6 +76,7 @@ object SearchCatalog {
         SearchEntry("Personal dictionary", "Auto-correction", Routes.PERSONAL_DICTIONARY, "personal dictionary user words add delete edit"),
         SearchEntry("Installed dictionaries", "Input Languages", Routes.INSTALLED_DICTIONARIES, "dictionary download import language install manage"),
         SearchEntry("Manage input styles", "Input Languages", Routes.INPUT_STYLES, "input style locale layout suggestion dictionary add edit"),
+        SearchEntry("Keyboard Layout", "Keyboard Layout", Routes.KEYBOARD_LAYOUT, "keyboard layout qwertz azerty multitap standard import viewer"),
         SearchEntry("Saved themes", "Status Bar Theme", Routes.SAVED_THEMES, "saved theme apply delete custom"),
         SearchEntry("Layout overrides", "Status Bar Theme", Routes.THEME_LAYOUT_OVERRIDES, "theme layout override locale language per-language"),
         SearchEntry("App overrides", "Enter key behaviour", Routes.appPicker(PerAppListKind.ENTER_OVERRIDES), "enter send method shortcut per app override"),

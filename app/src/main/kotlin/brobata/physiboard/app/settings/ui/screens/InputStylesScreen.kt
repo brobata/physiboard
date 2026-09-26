@@ -42,6 +42,7 @@ import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.core.settings.LanguagePrefs
+import brobata.physiboard.core.subtype.BundledLayoutCatalog
 import brobata.physiboard.core.subtype.BundledLayoutIds
 import brobata.physiboard.core.subtype.LocaleLayoutMapping
 import kotlinx.coroutines.launch
@@ -100,14 +101,15 @@ private sealed interface StyleRow {
  * layout catalogue, a "No dictionary available" warning, and one suggestion-dictionary switch per
  * other installed language, with a confirmation before a custom row is deleted.
  *
- * SPEC GAP: the layout picker offers [BundledLayoutIds.ALL] (SS10's shrunk catalogue); this build
- * ships one real [brobata.physiboard.core.subtype.ShippedLayout] (`:ime`'s own SPEC GAP), so a
- * style naming any other layout id registers as a distinct, correctly named Android subtype but
- * still types through the Titan's one physical layout until per-locale key maps exist. A system
- * row's layout edit is persisted to `files/locale_layout_mapping.json`
- * ([LocaleLayoutOverrideStore]), the file SS10 names, but `:ime` does not yet re-resolve a running
- * subtype's layout from it (same SPEC GAP): the write is real, the live effect is not, until that
- * layout catalogue exists.
+ * The layout field is a picker over [BundledLayoutIds.ALL] (layers-sym-alt.md SS9.2's eighteen
+ * bundled names, shown with [BundledLayoutCatalog]'s own display names), not free text: every one
+ * of those ids is now a real [brobata.physiboard.core.subtype.ShippedLayout] `:device:titan`'s
+ * `TitanLayouts.bundled()` ships, so a custom style naming any of them types with that layout's
+ * own key map (`:core:subtype`'s `InputStyleCatalog.layoutFor`). A system row's layout edit is
+ * persisted to `files/locale_layout_mapping.json` ([LocaleLayoutOverrideStore]), the file SS10
+ * names, but `:ime` resolves a system row's layout from `custom_input_styles`/[InputStyle] only
+ * (SS10 step 2), not from this file (a pre-existing gap this task did not touch), so a system row's
+ * layout edit is saved but has no live effect yet.
  */
 @Composable
 fun InputStylesScreen(onBack: () -> Unit) {
@@ -355,10 +357,10 @@ private fun InputStyleEditDialog(
                     Text("No dictionary available for this locale. Suggestions and auto-correction will be disabled.")
                 }
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = { showLayoutMenu = true }) { Text("Layout: $layout (tap to change)") }
+                    TextButton(onClick = { showLayoutMenu = true }) { Text("Layout: ${BundledLayoutCatalog.infoFor(layout).displayName} (tap to change)") }
                     DropdownMenu(expanded = showLayoutMenu, onDismissRequest = { showLayoutMenu = false }) {
-                        BundledLayoutIds.ALL.sorted().forEach { id ->
-                            DropdownMenuItem(text = { Text(id) }, onClick = { layout = id; showLayoutMenu = false })
+                        BundledLayoutCatalog.ALL.sortedBy { it.displayName }.forEach { info ->
+                            DropdownMenuItem(text = { Text(info.displayName) }, onClick = { layout = info.id; showLayoutMenu = false })
                         }
                     }
                 }

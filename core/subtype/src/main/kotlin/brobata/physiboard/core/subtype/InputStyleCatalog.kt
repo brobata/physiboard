@@ -88,12 +88,9 @@ object InputStyleCatalog {
     /**
      * Resolves [style]'s own layout id to the [LayoutDescription] it should type with, falling
      * back to [shipped]'s first entry when [style] names a layout this device does not ship.
-     * Null only when [shipped] itself is empty.
-     *
-     * SPEC GAP: a second shipped layout is not in this milestone's scope (the task that added
-     * this module), so a custom style naming any layout id other than the one shipped layout
-     * types through that one layout anyway; giving a custom style's own id a real
-     * [LayoutDescription] is future work, not a decision this function is making incorrectly.
+     * Null only when [shipped] itself is empty. `:device:titan`'s `TitanLayouts.bundled()` now
+     * gives [shipped] all of layers-sym-alt.md SS9.2's eighteen names, so a custom style naming
+     * any bundled layout id types with that layout's own key map, not a fallback.
      */
     fun layoutFor(style: InputStyle, shipped: List<ShippedLayout>): LayoutDescription? =
         (shipped.firstOrNull { it.layoutId == style.layoutId } ?: shipped.firstOrNull())?.layout

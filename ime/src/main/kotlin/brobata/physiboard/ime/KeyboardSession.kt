@@ -171,10 +171,9 @@ internal class KeyboardSession(
     // dictionary-load/Toast calls only `:ime` can make.
     // -----------------------------------------------------------------------------------------
 
-    /** The Titan 2 Elite is the only device this build ships to (docs/plans/rebuild-from-scratch.md), so this catalog has exactly one entry; a second shipped layout is out of this milestone's scope (`:core:subtype`'s own KDoc). */
-    private val shippedLayouts: List<ShippedLayout> = listOf(
-        ShippedLayout(layoutId = SHIPPED_LAYOUT_ID, defaultLocale = ImeSettings.DEFAULT_SUBTYPE_LOCALE, layout = TitanLayouts.titan2EliteQwerty()),
-    )
+    /** layers-sym-alt.md SS9.2: every bundled layout `:device:titan`'s `TitanLayouts.bundled()` ships, `qwerty` first so it stays the startup default (`SHIPPED_LAYOUT_ID`, [ImeSettings.DEFAULT_SUBTYPE_LOCALE]). */
+    private val shippedLayouts: List<ShippedLayout> =
+        TitanLayouts.bundled().map { (layoutId, defaultLocale, layout) -> ShippedLayout(layoutId = layoutId, defaultLocale = defaultLocale, layout = layout) }
 
     /** spec dictionaries-languages.md SS9: the style the keyboard currently types with. Reassigned by [applySettings] (a settings-driven refresh) and [switchToNextInputStyle] (a chord, the language button, or a future settings-screen switch). */
     private var currentStyle: InputStyle = InputStyle(locale = shippedLayouts.first().defaultLocale, layoutId = shippedLayouts.first().layoutId, shipped = true)
@@ -693,6 +692,8 @@ internal class KeyboardSession(
         enterBehaviorEnabled = settings.perApp.enterBehaviorEnabled
         dictationController.settings = ImeSettings.dictationSettings(settings, Build.VERSION.SDK_INT)
         dictationController.textSettings = ImeSettings.dictationTextSettings(dictationController.textSettings, settings)
+        // spec: dictation.md SS5.1 step 1: the recognizer's language follows the active input style's locale.
+        dictationController.subtypeLanguageTag = currentStyle.locale
         clipboard.retentionMinutes = settings.expansion.clipboardRetentionMinutes
         clipboard.applyEnabledOnce(settings.expansion.clipboardHistoryEnabled)
         emojiPickerExpanded = settings.symPages.emojiPickerExpandedHeight
@@ -2324,7 +2325,7 @@ internal class KeyboardSession(
         /** spec: text-input.md SS2's one unified 240-character read. */
         const val TEXT_BEFORE_CURSOR_READ = 240
 
-        /** The one layout id `:device:titan` ships (`TitanLayouts.titan2EliteQwerty()`); matches `keyboard_layout`'s own default (`Settings.kt`'s `LanguagePrefs`). */
+        /** `keyboard_layout`'s own default (`Settings.kt`'s `LanguagePrefs`); layers-sym-alt.md SS9.2's first bundled layout. Kept for reference; [shippedLayouts] now builds from `TitanLayouts.bundled()` directly. */
         const val SHIPPED_LAYOUT_ID = "qwerty"
     }
 }

@@ -371,9 +371,9 @@ internal object ImeSettings {
     )
 
     /**
-     * spec: dictation.md SS6.3, SS13: the pause and the segmented-session switch; SS4.2: masking
-     * and automatic punctuation; SS8.1: the cues and their strength. [androidApiLevel] is the
-     * caller's `Build.VERSION.SDK_INT`.
+     * spec: dictation.md SS6.3, SS13: the pause and the segmented-session switch; SS4.2: masking,
+     * automatic punctuation, and the stored `dictation_engine` id the recognizer resolution reads;
+     * SS8.1: the cues and their strength. [androidApiLevel] is the caller's `Build.VERSION.SDK_INT`.
      */
     fun dictationSettings(s: Settings, androidApiLevel: Int): DictationSettings = DictationSettings(
         pauseMs = s.dictation.endSilenceMs.toLong(),
@@ -387,6 +387,7 @@ internal object ImeSettings {
             HapticStrength.STANDARD -> CueStrength.STANDARD
             HapticStrength.STRONG -> CueStrength.STRONG
         },
+        engineId = s.dictation.engine,
     )
 
     /** spec: dictation.md SS7.1: dictation capitalises by the same two auto-cap rows as typing; `capitalizationAllowed` stays the field's own answer. */

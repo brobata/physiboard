@@ -46,6 +46,18 @@
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:launchMode="singleTask" />
+
+        <!-- spec dictation.md SS11.3: the orange side key's long-press trampoline. "exported;
+             excluded from recents; own empty task affinity; single instance; no history." The
+             vendor launches it directly by package/activity, which is why it must be exported. -->
+        <activity
+            android:name="brobata.physiboard.ime.AssistantTriggerActivity"
+            android:exported="true"
+            android:theme="@style/Theme.PhysiBoard.AssistantTrigger"
+            android:excludeFromRecents="true"
+            android:taskAffinity="brobata.physiboard.assistanttrigger"
+            android:launchMode="singleInstance"
+            android:noHistory="true" />
     </application>
 
 </manifest>

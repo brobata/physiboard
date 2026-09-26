@@ -2,6 +2,7 @@ package brobata.physiboard.ime
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.core.app.ActivityCompat
@@ -12,19 +13,16 @@ import androidx.core.content.ContextCompat
  * [DictationController] opens this translucent, title-less activity when a trigger fires with
  * `RECORD_AUDIO` not yet granted, and resumes the pending start once the answer comes back.
  *
- * spec SS10 describes the answer travelling back to the keyboard service over a package-restricted
- * broadcast, because the activity there could in principle run in a different process. On this
- * build the activity and the input method service are the same app's single default process, so
- * [DictationPermissionBridge] delivers the answer with a direct in-process callback instead; the
- * externally visible behaviour (asks once, resumes the pending start on grant, does nothing on
- * denial) is unchanged. SPEC GAP: if a future build ever runs the IME in its own process, this
- * needs the broadcast SS10 describes instead.
+ * The answer travels back over the package-restricted broadcast pair spec SS10 describes:
+ * [ACTION_GRANTED] or [ACTION_DENIED], each sent with [Intent.setPackage] pinned to this app's own
+ * package, so nothing outside `brobata.physiboard` can see or spoof it. [DictationController]
+ * registers the receiver that answers it.
  */
 class DictationPermissionActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            DictationPermissionBridge.deliverResult(granted = true)
+            sendResult(granted = true)
             finish()
             return
         }
@@ -33,27 +31,20 @@ class DictationPermissionActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
-        DictationPermissionBridge.deliverResult(granted)
+        sendResult(granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
         finish()
     }
 
-    private companion object {
-        const val REQUEST_CODE = 1
-    }
-}
-
-/** See [DictationPermissionActivity]'s KDoc for why this is in-process rather than a broadcast. */
-internal object DictationPermissionBridge {
-    private var pending: ((granted: Boolean) -> Unit)? = null
-
-    fun awaitResult(onResult: (granted: Boolean) -> Unit) {
-        pending = onResult
+    private fun sendResult(granted: Boolean) {
+        sendBroadcast(Intent(if (granted) ACTION_GRANTED else ACTION_DENIED).setPackage(packageName))
     }
 
-    fun deliverResult(granted: Boolean) {
-        val callback = pending
-        pending = null
-        callback?.invoke(granted)
+    companion object {
+        /** spec SS10 step 2: `brobata.physiboard.PERMISSION_GRANTED`. */
+        const val ACTION_GRANTED = "brobata.physiboard.PERMISSION_GRANTED"
+
+        /** spec SS10 step 2: `brobata.physiboard.PERMISSION_DENIED`. */
+        const val ACTION_DENIED = "brobata.physiboard.PERMISSION_DENIED"
+        private const val REQUEST_CODE = 1
     }
 }

@@ -1,6 +1,10 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import android.content.Context
+import android.os.VibrationEffect
+import android.os.VibratorManager
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import brobata.physiboard.app.settings.ui.IntClosedRange
 import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
@@ -11,6 +15,8 @@ import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.settings.HapticStrength
+import brobata.physiboard.core.speech.CueStrength
+import brobata.physiboard.core.speech.DictationCues
 
 /**
  * "Sound & Haptics" (settings-catalog.md SS9.2, SS9.4). "Typing Sounds" carries
@@ -26,6 +32,7 @@ fun SoundHapticsScreen(onBack: () -> Unit) {
     val settings = controller.current.value
     val feedback = settings.feedback
     val dictation = settings.dictation
+    val context = LocalContext.current
 
     SettingsScreenScaffold(title = "Sound & Haptics", onBack = onBack) {
         RowList {
@@ -70,7 +77,11 @@ fun SoundHapticsScreen(onBack: () -> Unit) {
                         options = listOf(HapticStrength.LIGHT, HapticStrength.STANDARD, HapticStrength.STRONG),
                         optionLabel = ::hapticStrengthLabel,
                         selected = dictation.hapticStrength,
-                        onSelect = { strength -> controller.update { it.copy(dictation = it.dictation.copy(hapticStrength = strength)) } },
+                        onSelect = { strength ->
+                            controller.update { it.copy(dictation = it.dictation.copy(hapticStrength = strength)) }
+                            // spec: dictation.md SS12.2: "tapping a chip saves and plays that level's start cue."
+                            playHapticStrengthPreview(context, strength)
+                        },
                     )
                 }
             }
@@ -89,4 +100,18 @@ private fun hapticStrengthLabel(strength: HapticStrength): String = when (streng
     HapticStrength.LIGHT -> "Light"
     HapticStrength.STANDARD -> "Standard"
     HapticStrength.STRONG -> "Strong"
+}
+
+private fun cueStrengthOf(strength: HapticStrength): CueStrength = when (strength) {
+    HapticStrength.LIGHT -> CueStrength.LIGHT
+    HapticStrength.STANDARD -> CueStrength.STANDARD
+    HapticStrength.STRONG -> CueStrength.STRONG
+}
+
+/** spec: dictation.md SS12.2, SS8.1: the same start-cue pattern a real dictation session plays. */
+private fun playHapticStrengthPreview(context: Context, strength: HapticStrength) {
+    val pattern = DictationCues.startCue(cueStrengthOf(strength))
+    val vibrator = runCatching { (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator }.getOrNull()
+    val effect = VibrationEffect.createWaveform(pattern.timingsMs.toLongArray(), pattern.amplitudes.toIntArray(), -1)
+    runCatching { vibrator?.vibrate(effect) }
 }

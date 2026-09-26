@@ -22,6 +22,8 @@ data class DictationSettings(
     val hapticsEnabled: Boolean = true,
     /** `dictation_haptic_strength`: which of SS8.1's three pulse tables the cues use. */
     val hapticStrength: CueStrength = CueStrength.STRONG,
+    /** `dictation_engine` (spec SS4.2): empty for the system default, `ondevice`, or a flattened `package/class` component. */
+    val engineId: String = "",
 )
 
 /**

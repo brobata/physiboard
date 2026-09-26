@@ -25,16 +25,17 @@ object BaseSubtypes {
 }
 
 /**
- * spec SS10's bundled layout catalog, shrunk per SS17's Keep/Drop ("Only layouts the Titan can
- * express; drop arabic, greek, armenian_phonetic, the Bulgarian pair, russian_jcuken,
- * russian_standard, Cyrillic_Translite unless a Titan user asks"). This build has no custom-layout
- * mechanism ([ShippedLayout]'s own SPEC GAP: a second shipped layout is out of scope), so this is
+ * layers-sym-alt.md SS9.2's full bundled layout catalog: `:device:titan`'s `TitanLayouts.bundled()`
+ * now ships all eighteen names as real [brobata.physiboard.core.subtype.ShippedLayout]s, so this is
  * the whole "available layouts" set SS8.3 step 1 checks a custom input style's layout against.
  */
 object BundledLayoutIds {
     val ALL: Set<String> = setOf(
-        "qwerty", "azerty", "qwertz", "norwegian_multitap_qwerty", "vietnamese_telex_qwerty",
-        "russian_translit", "serbian_cyrillic", "turkish_multitap", "ukrainian",
+        "qwerty", "qwertz", "azerty", "german_multitap_qwertz", "turkish_multitap",
+        "norwegian_multitap_qwerty", "arabic", "armenian_phonetic", "bulgarian_phonetic",
+        "bulgarian_phonetic_traditional", "Cyrillic_Translite", "greek", "russian_jcuken",
+        "russian_standard", "russian_translit", "serbian_cyrillic", "ukrainian",
+        "vietnamese_telex_qwerty",
     )
 }
 

@@ -54,6 +54,9 @@ object AppCatalog {
         return "Web app - types inside $label, so $label is excluded too"
     }
 
+    /** spec: device-backlight-ring.md SS5.4: the "App colours" list shows the app's label, package name when it cannot be read, never the bare package id. */
+    fun labelFor(context: Context, packageName: String): String = labelFor(context.packageManager, packageName)
+
     /** spec: per-app-behavior.md SS3.11 step 3, "every installed favourite" needs this fact to decide which rows a preset writes. */
     fun isInstalled(context: Context, packageName: String): Boolean = try {
         context.packageManager.getApplicationInfo(packageName, 0)
