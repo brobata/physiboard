@@ -2,6 +2,7 @@ package brobata.physiboard.app.settings
 
 import android.content.Context
 import brobata.physiboard.core.keys.CtrlMappingCodec
+import brobata.physiboard.core.keys.CtrlMappingMigration
 import brobata.physiboard.core.keys.CtrlMappingTable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,10 +16,16 @@ import java.io.File
 class FnLayerMappingStore(private val context: Context) {
     private val file = File(context.filesDir, FILE_NAME)
 
-    /** SS5.4: "loaded from the private files directory when it exists, else from the assets." */
-    suspend fun load(): CtrlMappingTable = withContext(Dispatchers.IO) {
+    /**
+     * SS5.4: "loaded from the private files directory when it exists, else from the assets."
+     * [storedVersion] is `nav_mode_default_mappings_version`; a private file saved before it
+     * reached [brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION] gets the missing
+     * defaults [CtrlMappingMigration] backfills (spec SS12.1), so the grid this screen shows
+     * always matches what the running keyboard actually honours.
+     */
+    suspend fun load(storedVersion: Int): CtrlMappingTable = withContext(Dispatchers.IO) {
         val text = runCatching { if (file.exists()) file.readText() else assetText() }.getOrNull()
-        CtrlMappingCodec.decode(text)
+        CtrlMappingMigration.migrate(CtrlMappingCodec.decode(text), storedVersion)
     }
 
     /** SS5.8: "Save writes the whole 26-key map to the private file." */

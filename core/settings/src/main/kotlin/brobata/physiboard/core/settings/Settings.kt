@@ -57,10 +57,14 @@ data class Settings(
 
 /**
  * The typing pipeline's switches. spec: settings-catalog.md SS2.1; the behavior each one gates is
- * text-input.md's. `mid_word_quote_to_apostrophe`, `physical_keyboard_currency_symbol`,
- * `auto_show_keyboard`, `swipe_to_delete_provider` and `swipe_incremental_threshold` are dropped
- * (text-input.md SS20 Keep/Drop, catalogue SS13); `swipe_to_delete` stays because
- * keys-and-modifiers.md keeps "the consumption" and `:core:keys` models the switch.
+ * text-input.md's. `mid_word_quote_to_apostrophe`, `physical_keyboard_currency_symbol` and
+ * `auto_show_keyboard` are dropped (text-input.md SS20 Keep/Drop, catalogue SS13: no soft
+ * keyboard on the Titan); `swipe_to_delete` stays because keys-and-modifiers.md keeps "the
+ * consumption" and `:core:keys` models the switch. `swipe_to_delete_provider` and
+ * `swipe_incremental_threshold` are NOT dropped, despite once being listed here as such: they
+ * live under [KeyboardSwipePrefs] instead (`swipeToDeleteProvider`, `deleteSwipeThresholdPx`),
+ * the unified keyboard-surface-swipe home trackpad-caret-nav.md SS3.7 gives every swipe
+ * threshold, "see trackpad document" per text-input.md's own SS15 row for this key.
  */
 data class TypingPrefs(
     val capitalizeAtTextStart: Boolean = true,
@@ -176,6 +180,14 @@ data class KeyPrefs(
     val symEditShortcuts: Boolean = true,
     /** `nav_mode_mappings_updated`. spec: trackpad-caret-nav.md SS5.9: "any change makes the running keyboard reload the map" (`ctrl_key_mappings.json`, `:core:keys` `CtrlMappingCodec`). 0 means unset (never saved). */
     val navModeMappingsUpdatedAtMs: Long = 0L,
+    /**
+     * `nav_mode_default_mappings_version`. spec: keys-and-modifiers.md SS12.1: which version of
+     * the shipped Fn Layer defaults the private `ctrl_key_mappings.json` was last migrated
+     * against (`:core:keys` `CtrlMappingMigration`). 0 means never migrated: a fresh install's
+     * file is already current (seeded from the up to date asset), so this only matters for a file
+     * saved before a later default was added.
+     */
+    val navModeDefaultMappingsVersion: Int = 0,
     /** `bounce_keys_enabled`. spec: keys-and-modifiers.md SS10. */
     val bounceKeysEnabled: Boolean = false,
     /** `bounce_keys_delay_ms`, clamped 20 to 500 by `:core:keys` `BounceKeySettings.clampedDelayMs`. */
@@ -225,6 +237,19 @@ data class SymPagePrefs(
     val autoClose: Boolean = true,
     val autoCloseOnTouch: Boolean = true,
     val emojiPickerExpandedHeight: Boolean = false,
+    /**
+     * `restore_sym_page`. spec: layers-sym-alt.md SS5.8: "the page to reopen at next input start."
+     * Written only by the customisation screen, on a normal finish; read and cleared by the
+     * keyboard on its next field start (settings-catalog.md SS2.5: "Transient").
+     */
+    val restoreSymPage: Int = 0,
+    /**
+     * `pending_restore_sym_page`. spec: layers-sym-alt.md SS5.8: the page recorded on the way into
+     * the customisation screen, promoted to [restoreSymPage] only if that screen finishes
+     * normally; left stranded, and never promoted, if it is destroyed instead (the user switched
+     * to another app), which is why nothing ever reads this field back except to promote it.
+     */
+    val pendingRestoreSymPage: Int = 0,
 )
 
 /** `status_bar_visibility`. spec: status-bar.md SS3. */
@@ -571,6 +596,14 @@ data class LauncherPrefs(
      * blank means every source at its default (apps and PhysiBoard on, the other three off).
      */
     val commandSurfaceSourcesJson: String = "",
+    /**
+     * `quick_launcher_static_top_highlight`. spec: expansion-clipboard-pickers-launcher.md SS7.5:
+     * off by default, meaning the top match is tinted from its own color or one derived from its
+     * icon; on, it always gets [quickLauncherStaticTopHighlightColor] instead.
+     */
+    val quickLauncherStaticTopHighlight: Boolean = false,
+    /** `quick_launcher_static_top_highlight_color`, spec SS7.5/SS7.7: default `0x7A4285F4`. */
+    val quickLauncherStaticTopHighlightColor: Int = 0x7A4285F4.toInt(),
 )
 
 /**

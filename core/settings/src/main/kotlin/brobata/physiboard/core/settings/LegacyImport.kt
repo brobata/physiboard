@@ -52,7 +52,18 @@ object LegacyImport {
     private const val SLOT_RIGHT_2 = "status_bar_slot_right_2"
 
     /** Every flat-map key [SettingsCodec] reads, so the importer never has to be told twice what 3.0 keeps. */
-    private val KNOWN_KEYS: Set<String> = SettingsCodec.toMap(Settings()).keys - SettingsKeys.SCHEMA_VERSION + setOf(
+    private val KNOWN_KEYS: Set<String> = SettingsCodec.toMap(Settings()).keys - SettingsKeys.SCHEMA_VERSION -
+        // keys-and-modifiers.md SS12.1: 2.x's own counter under this same key name reflects 2.x's
+        // migration history, not 3.0's; carrying it over could tell 3.0 a Fn Layer default it has
+        // never actually backfilled was already migrated. A 2.x import always starts this at 0,
+        // the same as a fresh install (settings-catalog.md SS13's "2.x-only markers" are dropped).
+        SettingsKeys.NAV_MODE_DEFAULT_MAPPINGS_VERSION -
+        // settings-catalog.md SS2.5: both marked "Transient" -- request-scoped bookkeeping for
+        // whatever Sym page the *old* phone happened to be mid-edit on, not a preference to carry
+        // to a new one. A stale value would at worst reopen the wrong (or, SS5.8, the first
+        // enabled) page once; importing it anyway would still be surprising for something the
+        // catalogue itself does not call durable.
+        setOf(SettingsKeys.RESTORE_SYM_PAGE, SettingsKeys.PENDING_RESTORE_SYM_PAGE) + setOf(
         // Rows the default Settings does not write (nullable or blank-means-absent fields).
         SettingsKeys.RING_DEFAULT_COLOR,
         SettingsKeys.FN_CTRL_PREV_ENABLE,

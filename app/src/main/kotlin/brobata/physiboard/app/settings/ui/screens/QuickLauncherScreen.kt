@@ -1,15 +1,23 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.core.actions.launcher.LauncherShortcuts
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.ButtonRow
+import brobata.physiboard.app.settings.ui.ColorFieldRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -20,11 +28,12 @@ import brobata.physiboard.core.settings.LauncherPrefs
 
 /**
  * "PhysiBoard-QuickLauncher" (settings-catalog.md SS9.2; expansion-clipboard-pickers-launcher.md
- * SS6.5, SS7.8): the two trigger switches, the Behaviour rows, "Assigned launcher keys"
- * ([Routes.ASSIGNED_LAUNCHER_KEYS]), and the two Appearance rows 3.0 keeps, "QuickLauncher
- * entries" and "Customize entries". "Animation duration" and the cosmetic Appearance rows are
- * dropped (SS13). The blocked-default hint shows when Space held something before the quick
- * launcher's default could take it (SS6.1).
+ * SS6.5, SS7.8): the two trigger switches, the Behaviour rows (with SS7.4/SS7.8's "How ranking
+ * works" summary), "Assigned launcher keys" ([Routes.ASSIGNED_LAUNCHER_KEYS]), and the Appearance
+ * rows 3.0 keeps: "QuickLauncher entries", "Customize entries", and the top-match highlight
+ * switch and color (SS7.5). "Animation duration" and the cosmetic Appearance rows are dropped
+ * (SS13). The blocked-default hint shows when Space held something before the quick launcher's
+ * default could take it (SS6.1).
  */
 @Composable
 fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
@@ -32,6 +41,7 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
     val launcher = controller.current.value.launcher
     fun set(transform: (LauncherPrefs) -> LauncherPrefs) = controller.update { it.copy(launcher = transform(it.launcher)) }
     val shortcuts = LauncherShortcuts.parse(launcher.assignedKeysJson).applyDefault(defaultAlreadyAssigned = launcher.assignedKeysJson.isNotBlank())
+    var showRankingHelp by remember { mutableStateOf(false) }
 
     SettingsScreenScaffold(title = "PhysiBoard-QuickLauncher", onBack = onBack) {
         RowList {
@@ -91,9 +101,55 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
             item {
                 SwitchRow("Typo-tolerant search", checked = launcher.typoTolerantRanking, onCheckedChange = { set { p -> p.copy(typoTolerantRanking = it) } })
             }
+            item {
+                ButtonRow(
+                    label = "How ranking works",
+                    description = "What decides which app or command comes out on top",
+                    buttonText = "Learn more",
+                    onClick = { showRankingHelp = true },
+                )
+            }
             item { SectionHeader("Appearance") }
             item { NavigateRow("QuickLauncher entries", "Choose which sources appear in PhysiBoard search.") { onNavigate(Routes.QUICK_LAUNCHER_ENTRIES) } }
             item { NavigateRow("Customize entries", "Favorites, hidden entries, and search aliases") { onNavigate(Routes.CUSTOMIZE_ENTRIES) } }
+            item {
+                SwitchRow(
+                    "Use static top-match highlight color",
+                    description = "Off: the top match is tinted from its own color or one derived from its icon.",
+                    checked = launcher.quickLauncherStaticTopHighlight,
+                    onCheckedChange = { set { p -> p.copy(quickLauncherStaticTopHighlight = it) } },
+                )
+            }
+            if (launcher.quickLauncherStaticTopHighlight) {
+                item {
+                    ColorFieldRow(
+                        label = "Top-match highlight color",
+                        value = launcher.quickLauncherStaticTopHighlightColor,
+                        onValueChange = { value -> set { p -> p.copy(quickLauncherStaticTopHighlightColor = value) } },
+                    )
+                }
+            }
         }
+    }
+
+    if (showRankingHelp) {
+        AlertDialog(
+            onDismissRequest = { showRankingHelp = false },
+            title = { Text("How ranking works") },
+            text = {
+                // spec SS7.4/SS7.8: "the settings screen's 'How ranking works' dialog summarises
+                // this as: exact app name, app name prefix, word prefix, abbreviation/subsequence,
+                // typo-tolerant, then package name."
+                Text(
+                    "Results are ranked, best first: exact app name, then app name prefix, then " +
+                        "word prefix, then abbreviation or subsequence, then typo-tolerant match, " +
+                        "and finally package name. A favourite ranks slightly ahead of an " +
+                        "otherwise equal match; an alias, when set, is matched instead of the name.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showRankingHelp = false }) { Text("Close") }
+            },
+        )
     }
 }

@@ -1,7 +1,10 @@
 package brobata.physiboard.ime.actions
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
@@ -19,6 +22,7 @@ import android.widget.TextView
 import brobata.physiboard.core.actions.commands.CommandCatalog
 import brobata.physiboard.core.actions.commands.SourceVisibility
 import brobata.physiboard.core.actions.launcher.CommandCustomizations
+import brobata.physiboard.core.actions.launcher.IconTint
 import brobata.physiboard.core.actions.launcher.LauncherBehavior
 import brobata.physiboard.core.actions.launcher.LauncherRow
 import brobata.physiboard.core.actions.launcher.NiagaraSearch
@@ -65,7 +69,19 @@ internal class QuickLauncherController(
     private var dismissing = false
     private var autoLaunched = false
 
+    init {
+        // spec SS7.2: "the full catalog is reloaded in the background" -- while the sheet is open
+        // on a stale or empty (still "Loading apps...") list, a reload that actually changes the
+        // apps redraws it in place instead of waiting for the next open.
+        catalogSource.onAppsReloaded = { if (isOpen) refreshRows() }
+    }
+
     val isOpen: Boolean get() = panel.isShown
+
+    private fun refreshRows() {
+        rows = buildRows(catalogSource.build())
+        refilter()
+    }
 
     /** spec SS7.1: the key press toggles ("the same key opens and closes"); the command path opens. */
     fun toggle(): Boolean = if (isOpen) { dismiss(); true } else openPhysiBoardSheet()
@@ -243,6 +259,8 @@ internal class QuickLauncherController(
         val context = panel.overlayContext
         if (results.isEmpty()) {
             val message = when {
+                // spec SS7.2: "'Loading apps...' shows while the list is empty during that reload".
+                rows.isEmpty() && catalogSource.isLoadingApps -> R.LOADING
                 rows.isEmpty() -> R.EMPTY_NO_ENTRIES
                 query.isBlank() && settings.limitResults -> R.EMPTY_LIMITED
                 query.isBlank() -> R.EMPTY_NO_ENTRIES
@@ -271,7 +289,7 @@ internal class QuickLauncherController(
             setPadding(panel.dp(10), panel.dp(8), panel.dp(10), panel.dp(8))
             background = GradientDrawable().apply {
                 cornerRadius = panel.dp(10).toFloat()
-                if (top) setColor(R.STATIC_TOP_HIGHLIGHT_COLOR)
+                rowTintColor(row, top)?.let { setColor(it) }
                 if (row.isFavorite && settings.highlightFavorites) setStroke(panel.dp(R.FAVORITE_BORDER_DP), FAVORITE_BORDER)
             }
             setOnClickListener { launch(row) }
@@ -287,7 +305,42 @@ internal class QuickLauncherController(
         return view
     }
 
+    /**
+     * spec SS7.5: "the top match is tinted with `quick_launcher_static_top_highlight_color` ...
+     * when `quick_launcher_static_top_highlight` is on ..., otherwise with the entry's chosen
+     * color or a color derived from its icon at alpha 0.58." A non-top row with no chosen color
+     * keeps no fill: `quick_launcher_icon_colors` (tinting every row) is not built yet.
+     */
+    private fun rowTintColor(row: LauncherRow, top: Boolean): Int? {
+        row.customization.color?.let { return it }
+        if (!top) return null
+        if (settings.staticTopHighlight) return settings.staticTopHighlightColor
+        return iconTintFor(row, TOP_TINT_ALPHA)
+    }
+
+    /** spec SS7.5: "icons that yield nothing use a hue per source" -- also the only path for a command with no app icon at all. */
+    private fun iconTintFor(row: LauncherRow, alpha: Int): Int {
+        val fromIcon = row.command.iconPackage?.let { pkg -> catalogSource.appIcon(pkg) }?.let { averagePixelColor(it, alpha) }
+        return fromIcon ?: IconTint.colorForHue(row.command.source.hue, alpha)
+    }
+
+    /** spec SS7.5: "the alpha- and saturation-weighted average of a 32 by 32 rendering of the icon". */
+    private fun averagePixelColor(drawable: Drawable, alpha: Int): Int? = runCatching {
+        val bitmap = Bitmap.createBitmap(ICON_SAMPLE_SIZE, ICON_SAMPLE_SIZE, Bitmap.Config.ARGB_8888)
+        val previousBounds = drawable.bounds
+        drawable.setBounds(0, 0, ICON_SAMPLE_SIZE, ICON_SAMPLE_SIZE)
+        drawable.draw(Canvas(bitmap))
+        drawable.bounds = previousBounds
+        val pixels = IntArray(ICON_SAMPLE_SIZE * ICON_SAMPLE_SIZE)
+        bitmap.getPixels(pixels, 0, ICON_SAMPLE_SIZE, 0, 0, ICON_SAMPLE_SIZE, ICON_SAMPLE_SIZE)
+        bitmap.recycle()
+        IconTint.averageColor(pixels, alpha)
+    }.getOrNull()
+
     private companion object {
+        /** spec SS7.5: "alpha 0.58" (0.58 * 255, rounded). */
+        const val TOP_TINT_ALPHA = 148
+        const val ICON_SAMPLE_SIZE = 32
         const val TAG = "PhysiBoardQuickLauncher"
         val SHEET_BACKGROUND: Int = Color.rgb(28, 28, 30)
         val SEARCH_BACKGROUND: Int = Color.rgb(44, 44, 48)

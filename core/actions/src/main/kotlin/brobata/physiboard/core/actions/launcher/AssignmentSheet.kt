@@ -28,6 +28,17 @@ object AssignmentSheet {
     /** The intent action the keyboard sends (package-restricted) and the settings app's sheet answers, so neither names the other's class. */
     const val ACTION_ASSIGN_KEY: String = "brobata.physiboard.action.ASSIGN_LAUNCHER_KEY"
 
+    /**
+     * spec SS6.2/SS6.4: "when the sheet was opened by a key press the command also runs
+     * immediately." The sheet's own process can start an app or an intent directly, but an
+     * [brobata.physiboard.core.actions.commands.LaunchSpec.InternalAction] or
+     * [brobata.physiboard.core.actions.commands.LaunchSpec.NavAction] needs the running keyboard's
+     * own session (its quick launcher, its input connection), so the sheet sends this
+     * package-restricted broadcast back to the keyboard instead of trying to run it itself.
+     */
+    const val ACTION_RUN_COMMAND_NOW: String = "brobata.physiboard.action.RUN_ASSIGNED_COMMAND_NOW"
+    const val EXTRA_COMMAND_ID: String = "command_id"
+
     /** spec SS6.4: "every command that lists the 'assigned key' surface, from every source, regardless of the quick launcher's per-source visibility setting". */
     fun candidates(catalog: CommandCatalog): List<Command> = catalog.forSurface(CommandSurface.ASSIGNED_KEY)
 

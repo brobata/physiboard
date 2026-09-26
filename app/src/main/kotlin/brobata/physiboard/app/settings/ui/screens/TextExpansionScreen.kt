@@ -9,6 +9,7 @@ import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.app.settings.ui.TextFieldRow
+import brobata.physiboard.core.actions.snippets.SnippetRules
 import brobata.physiboard.core.settings.ExpansionPrefs
 import brobata.physiboard.core.settings.SnippetPresentation
 
@@ -94,7 +95,15 @@ fun TextExpansionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
     }
 }
 
-private fun isValidSnippetPrefix(char: String): Boolean = char.length == 1 && char[0] != ':' && !char[0].isWhitespace()
+/**
+ * spec: expansion-clipboard-pickers-launcher.md SS2.7. Delegates to the engine's own
+ * [SnippetRules.isValidPrefix] instead of restating a weaker copy of the rule here: a screen that
+ * only checked "not whitespace, not a colon" let a letter or digit save with no error, while
+ * `SnippetRules.isValidPrefix` (SS2.1: "not whitespace, not a letter or digit, and not a colon")
+ * silently falls back to `!` for that exact prefix at runtime, so the row showed a value that did
+ * nothing.
+ */
+private fun isValidSnippetPrefix(char: String): Boolean = SnippetRules.isValidPrefix(char)
 
 private fun presentationLabel(presentation: SnippetPresentation): String = when (presentation) {
     SnippetPresentation.OFF -> "Off"

@@ -34,9 +34,8 @@ data class EnterOverride(
 
 /**
  * The shipped app lists SS3.2 names that this module still needs. The "favourites" and "tested"
- * lists are dropped: section 14 says they "can collapse to one list with a per-app 'verified'
- * flag", and both only ever affected the settings screen's status-card wording (SS3.11), which
- * this task explicitly does not build.
+ * lists live in [FavouriteApp] (`EnterFavourites.kt`) instead of here, since they also carry the
+ * status-card wording ([FavouriteStatusCard]) that only `:app`'s override screen reads.
  */
 object EnterPresetPackages {
     const val DISCORD: String = "com.discord"

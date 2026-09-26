@@ -74,6 +74,19 @@ fun CustomizeSymKeyboardScreen(
     var pickerLetter by remember { mutableStateOf<Char?>(null) }
     var pendingReturn by remember { mutableStateOf(false) }
 
+    /**
+     * spec: layers-sym-alt.md SS5.8: "The customisation screen converts [pending_restore_sym_page]
+     * into restore_sym_page when it finishes normally (back arrow, system back, or the auto-return
+     * after a direct picker edit)." Getting destroyed instead (the user switched to another app)
+     * never calls this, so the pending value is simply left stranded and nothing is restored,
+     * exactly as the spec asks, with no extra bookkeeping needed for that case.
+     */
+    fun leaveNormally(finish: () -> Unit) {
+        val pending = controller.current.value.symPages.pendingRestoreSymPage
+        if (pending > 0) controller.update { it.copy(symPages = it.symPages.copy(restoreSymPage = pending)) }
+        finish()
+    }
+
     // spec SS5.8: with OPEN_SYM_PICKER and RETURN_AFTER_PICKER both true and a key code present,
     // "the picker opens immediately and the screen finishes as soon as the picker closes".
     LaunchedEffect(Unit) {
@@ -87,7 +100,7 @@ fun CustomizeSymKeyboardScreen(
 
     val page = editingPage
     if (page == null) {
-        SettingsScreenScaffold(title = "Customize SYM Keyboard", onBack = onBack) {
+        SettingsScreenScaffold(title = "Customize SYM Keyboard", onBack = { leaveNormally(onBack) }) {
             RowList {
                 item { SectionHeader("Arrange SYM pages order") }
                 item {
@@ -174,7 +187,7 @@ fun CustomizeSymKeyboardScreen(
             pickerLetter = null
             if (pendingReturn) {
                 pendingReturn = false
-                onFinishActivity()
+                leaveNormally(onFinishActivity)
             }
         }
         val isEmoji = editingPage == SymPage.EMOJI

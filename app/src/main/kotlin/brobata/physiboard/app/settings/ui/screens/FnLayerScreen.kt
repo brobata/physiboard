@@ -70,7 +70,20 @@ fun FnLayerScreen(onBack: () -> Unit) {
     var editingLetter by remember { mutableStateOf<Char?>(null) }
 
     LaunchedEffect(Unit) { enabled = remap.isEnabled() }
-    LaunchedEffect(Unit) { mappings = mappingStore.load() }
+    LaunchedEffect(Unit) {
+        val loaded = mappingStore.load(keys.navModeDefaultMappingsVersion)
+        mappings = loaded
+        // spec: keys-and-modifiers.md SS12.1: an install whose file predates a later default
+        // (already backfilled into [loaded] by the store) gets that default written back, once,
+        // so a plain reopen of this screen is also a chance to catch up, not only the keyboard's
+        // own startup path (see [brobata.physiboard.ime.KeyboardSession]'s matching migration).
+        if (keys.navModeDefaultMappingsVersion < brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION) {
+            mappingStore.save(loaded)
+            controller.update {
+                it.copy(keys = it.keys.copy(navModeDefaultMappingsVersion = brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION))
+            }
+        }
+    }
 
     SettingsScreenScaffold(title = "Fn Layer", onBack = onBack) {
         RowList {

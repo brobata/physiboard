@@ -146,6 +146,31 @@ class KeyboardPipelineTest {
         assertEquals("Hi", editor.text)
     }
 
+    /**
+     * spec: text-input.md SS9.3, "if the user taps Shift while auto-cap has it armed... the
+     * keyboard records the current cursor context... as suppressed". `:core:text`'s own
+     * AutoCapitalizationTest proves the pure decision; this proves the running keyboard actually
+     * calls it, which it did not before this test was added (the running pipeline never passed a
+     * suppression context to `AutoCapitalization.evaluate`, nor called `onUserDisarmed`).
+     */
+    @Test
+    fun `tapping Shift to cancel auto-cap keeps it cancelled through the next selection update`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        // "Capitalize at text start" (default on) arms a one-shot at this empty field.
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL), textBeforeCursor = "")
+
+        // The user taps Shift, turning the auto-armed one-shot back off.
+        step(pipeline, editor, modifier(ModifierKey.SHIFT))
+
+        // The exact same context (still an empty field) recurs, as a selection update the app
+        // fires right after; without the suppression this would re-arm the one-shot.
+        pipeline.onExternalSelectionChange(textBeforeCursor = "")
+        step(pipeline, editor, letter('H'))
+
+        assertEquals("h", editor.text, "the user's cancel of auto-cap must survive the very next selection update")
+    }
+
     // -----------------------------------------------------------------------------------------
     // The Space/Enter/Backspace baseline (see LayerResolver.withBaselineControlAction's KDoc):
     // without it these three keys would resolve to Action.PassThrough and never reach

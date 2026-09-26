@@ -36,6 +36,7 @@ import brobata.physiboard.core.keys.ModifierMachine
 import brobata.physiboard.core.keys.ModifierSettings
 import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
+import brobata.physiboard.core.text.ShiftArmSource
 import brobata.physiboard.core.keys.TypingSessionState
 import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
 import brobata.physiboard.core.pointer.navmode.NavModeEntry
@@ -282,6 +283,18 @@ internal class KeyboardPipeline(
     /** spec layers-sym-alt.md SS5.2: the open Sym page (0 for none); `:ime` shows the clipboard and emoji panels for pages 3 and 4. */
     val currentSymPage: Int get() = modifierState.sym.currentPageNumber
 
+    /**
+     * spec: layers-sym-alt.md SS5.8: "the page is reopened if it is in the enabled cycle,
+     * otherwise the first enabled page is opened, otherwise none." [requestedPageNumber] is
+     * `restore_sym_page` as read at field start (0 when nothing was pending); [KeyboardSession]
+     * calls this once, from [onStartInput]'s caller, and clears the stored value afterward.
+     */
+    fun restoreSymPage(requestedPageNumber: Int) {
+        if (requestedPageNumber <= 0) return
+        val resolved = layout.symPagesConfig.restorePage(requestedPageNumber)
+        modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = resolved))
+    }
+
     /** spec: trackpad-caret-nav.md SS5.7: whether the status bar should show the nav mode icon instead of the modifier icon. */
     val navModeActive: Boolean get() = modifierState.ctrl.latchFromNavMode
 
@@ -326,6 +339,9 @@ internal class KeyboardPipeline(
     private val ENTER_KEY = KeyId.Control(ControlKey.ENTER)
     private val SYM_KEY = KeyId.Modifier(ModifierKey.SYM)
     private val CTRL_KEY = KeyId.Modifier(ModifierKey.CTRL)
+
+    /** spec: text-input.md SS9.3, "200 characters before". */
+    private val AUTO_CAP_SUPPRESSION_CONTEXT_CHARS = 200
 
     /** When a long press is armed, the wall-clock time (same basis as [KeyStroke.timeMs]) it fires at. spec: keys-and-modifiers.md SS8.3. */
     val pendingLongPressDeadlineMs: Long?
@@ -394,7 +410,10 @@ internal class KeyboardPipeline(
         val resynced = textBeforeCursor?.let { textInputState.currentWord.syncedFrom(it) } ?: textInputState.currentWord
         applyCapDecision(CapDecision.ClearOneShot)
         val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
-        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, capContext)
+        val (capState, decision) = AutoCapitalization.evaluate(
+            textInputState.autoCap, activeField, settings.textInput.autoCap, capContext,
+            suppressionContext = autoCapSuppressionContext(capContext),
+        )
         textInputState = textInputState.copy(currentWord = resynced, autoCap = capState)
         applyCapDecision(decision)
     }
@@ -424,7 +443,10 @@ internal class KeyboardPipeline(
         // Sentence-end capitalisation, in contrast, needs surrounding context to be right rather
         // than merely present, so it follows [activeTrust] like every other context rule (point 2).
         val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
-        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, capContext)
+        val (capState, decision) = AutoCapitalization.evaluate(
+            textInputState.autoCap, activeField, settings.textInput.autoCap, capContext,
+            suppressionContext = autoCapSuppressionContext(capContext),
+        )
         textInputState = textInputState.copy(autoCap = capState)
         applyCapDecision(decision)
         // spec expansion-clipboard-pickers-launcher.md SS2.4: the lookup runs "after every selection
@@ -646,7 +668,7 @@ internal class KeyboardPipeline(
 
         if (stroke.key is KeyId.Modifier) {
             val armed = if (stroke.key == SYM_KEY) powerModeOnSymDown(stroke) else null
-            val action = dispatchModifier(stroke)
+            val action = dispatchModifier(stroke, editor)
             val result = applyAction(action, shiftHeld = stroke.meta.shift, altActive = modifierState.isAltActive(stroke.meta.alt), editor)
             return if (armed != null) result.copy(consumed = true, powerModeArmedAtMs = armed.powerModeArmedAtMs) else result
         }
@@ -1034,7 +1056,10 @@ internal class KeyboardPipeline(
      */
     fun onWindowShown(textBeforeCursor: String?) {
         val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
-        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, capContext)
+        val (capState, decision) = AutoCapitalization.evaluate(
+            textInputState.autoCap, activeField, settings.textInput.autoCap, capContext,
+            suppressionContext = autoCapSuppressionContext(capContext),
+        )
         textInputState = textInputState.copy(autoCap = capState)
         applyCapDecision(decision)
     }
@@ -1056,12 +1081,38 @@ internal class KeyboardPipeline(
     /** spec SS7.5, the Alt+Shift row: "(either order, repeat 0, editable field)" plus the another-subtype fact. */
     private val chordCanSwitchLayout: Boolean get() = anotherSubtypeAvailable && activeField.isReallyEditable
 
-    private fun dispatchModifier(stroke: KeyStroke): Action {
+    /**
+     * spec: text-input.md SS9.3, "if the user taps Shift while auto-cap has it armed (turning it
+     * off), the keyboard records the current cursor context ... as suppressed". [ModifierMachine]
+     * decides the Shift transition itself; this only notices the one transition auto-cap cares
+     * about (a one-shot *it* armed going to OFF on a plain Shift down, not a double tap promoting
+     * to Caps Lock) and records the suppression before returning the transition unchanged.
+     */
+    private fun shiftDownWithAutoCapDisarm(stroke: KeyStroke, editor: EditorSnapshot): ModifierMachine.Result {
+        val ownedByAutoCap = modifierState.shift.value == ShiftValue.ONE_SHOT &&
+            textInputState.autoCap.armSource == ShiftArmSource.AUTO_CAP
+        val result = ModifierMachine.shiftDown(modifierState, stroke, settings.modifier, canSwitchLayout = chordCanSwitchLayout)
+        if (ownedByAutoCap && result.state.shift.value == ShiftValue.OFF) {
+            val context = autoCapSuppressionContext(editor.textBeforeCursor)
+            textInputState = textInputState.copy(
+                autoCap = if (context != null) {
+                    textInputState.autoCap.onUserDisarmed(context)
+                } else {
+                    // Field unreadable: nothing to key the suppression on, but the user still
+                    // disarmed it, so at least stop crediting auto-cap with an armed one-shot.
+                    textInputState.autoCap.consumedUnconditionally()
+                },
+            )
+        }
+        return result
+    }
+
+    private fun dispatchModifier(stroke: KeyStroke, editor: EditorSnapshot): Action {
         val key = (stroke.key as KeyId.Modifier).key
         val down = stroke.edge == KeyEdge.DOWN
         val result = when (key) {
             // spec SS7.5: the Alt+Shift chord needs an editable field and another subtype.
-            ModifierKey.SHIFT -> if (down) ModifierMachine.shiftDown(modifierState, stroke, settings.modifier, canSwitchLayout = chordCanSwitchLayout) else ModifierMachine.shiftUp(modifierState, stroke, settings.modifier)
+            ModifierKey.SHIFT -> if (down) shiftDownWithAutoCapDisarm(stroke, editor) else ModifierMachine.shiftUp(modifierState, stroke, settings.modifier)
             ModifierKey.CTRL -> if (down) ModifierMachine.ctrlDown(modifierState, stroke, settings.modifier) else ModifierMachine.ctrlUp(modifierState, stroke, settings.modifier)
             ModifierKey.ALT -> if (down) ModifierMachine.altDown(modifierState, stroke, settings.modifier, canSwitchLayout = chordCanSwitchLayout) else ModifierMachine.altUp(modifierState, stroke, settings.modifier)
             ModifierKey.SYM -> if (down) {
@@ -1186,6 +1237,18 @@ internal class KeyboardPipeline(
     fun clearCtrlStateAfterEnterSend() {
         modifierState = modifierState.copy(ctrl = modifierState.ctrl.copy(oneShot = false, latched = false, latchFromNavMode = false))
     }
+
+    /**
+     * spec: text-input.md SS9.3, "records the current cursor context (200 characters before,
+     * 1 after)". Only the before-cursor half is available at every call site this pipeline has
+     * (the unified 240-before read, text-input.md SS19); the trailing character is not threaded
+     * through the field-start/restart/external-move paths that call this, so the key is built
+     * from the before-cursor text alone. That is a strictly coarser key than the spec's (it can
+     * only under-suppress, by treating two contexts the spec would call distinct as one, never
+     * the reverse), so it never suppresses auto-cap somewhere the spec would still arm it.
+     */
+    private fun autoCapSuppressionContext(textBeforeCursor: String?): String? =
+        textBeforeCursor?.takeLast(AUTO_CAP_SUPPRESSION_CONTEXT_CHARS)
 
     /** spec: text-input.md SS9.3. `:core:text` decides the auto-cap outcome; only applying it to `:core:keys`' own Shift state is this module's job (TextInputResult's own KDoc). */
     private fun applyCapDecision(decision: CapDecision) {

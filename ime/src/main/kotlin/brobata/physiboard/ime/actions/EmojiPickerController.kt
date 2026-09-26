@@ -179,7 +179,10 @@ internal class EmojiPickerController(
         }
         scroll = ScrollView(context).apply {
             addView(grid)
-            viewTreeObserver.addOnScrollChangedListener { followScroll() }
+            viewTreeObserver.addOnScrollChangedListener {
+                followScroll()
+                applyPendingRecentsRedrawIfNearTop()
+            }
         }
         val gridFrame = FrameLayout(context)
         gridFrame.addView(scroll, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
@@ -323,7 +326,16 @@ internal class EmojiPickerController(
 
     /** spec SS4.3: "tapping a tab jumps to that category's first row"; the Recents tab also refreshes the recents. */
     private fun jumpTo(category: EmojiCategory) {
-        if (category.id == EmojiCategories.RECENTS_ID) data?.let { renderSections(it) }
+        if (category.id == EmojiCategories.RECENTS_ID) {
+            data?.let { renderSections(it) }
+            pendingRecentsRedraw = false
+        } else if (pendingRecentsRedraw && deferRedrawUntilTabChange) {
+            // spec SS4.4: "when the choice was made from the Recents section itself, only once
+            // the user has moved to another tab" -- that move just happened.
+            pendingRecentsRedraw = false
+            deferRedrawUntilTabChange = false
+            data?.let { renderSections(it) }
+        }
         val start = sections.firstOrNull { it.first.id == category.id }?.second ?: return
         val grid = grid ?: return
         val cell = grid.getChildAt(start) ?: return
@@ -371,9 +383,39 @@ internal class EmojiPickerController(
     // Choosing. spec SS4.4.
     // -----------------------------------------------------------------------------------------
 
+    /** spec SS4.4: whether a Recents rebuild is owed once the deferred-redraw condition is met. */
+    private var pendingRecentsRedraw = false
+
+    /** spec SS4.4: true when the pending rebuild above is the "choice came from Recents" case. */
+    private var deferRedrawUntilTabChange = false
+
     private fun choose(emoji: String) {
         saveRecents(RecentEmojis.add(loadRecents(), emoji))
         listener?.onEmojiChosen(emoji)
+        scheduleRecentsRedraw()
+    }
+
+    /**
+     * spec SS4.4: "The redraw is deferred: it is applied only when the grid is idle, and, when
+     * the choice was made from the Recents section itself, only once the user has moved to
+     * another tab, so the row being tapped does not shuffle under the finger; when made from
+     * another section it waits until the grid is near the top." A choice from Recents waits for
+     * [jumpTo] to see the user leave that tab; any other choice waits here for the grid to scroll
+     * back near the top.
+     */
+    private fun scheduleRecentsRedraw() {
+        pendingRecentsRedraw = true
+        deferRedrawUntilTabChange = selectedTab == EmojiCategories.RECENTS_ID
+        if (!deferRedrawUntilTabChange) applyPendingRecentsRedrawIfNearTop()
+    }
+
+    private fun applyPendingRecentsRedrawIfNearTop() {
+        if (!pendingRecentsRedraw || deferRedrawUntilTabChange || searching) return
+        val y = scroll?.scrollY ?: return
+        if (y <= panel.dp(G.CELL_DP)) {
+            pendingRecentsRedraw = false
+            data?.let { renderSections(it) }
+        }
     }
 
     /** spec SS4.4: the skin-tone chooser, "a light popup above the cell... listing the base then each variant at 24 sp with 12 dp by 8 dp padding". */

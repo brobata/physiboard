@@ -27,6 +27,10 @@ data class QuickLauncherSettings(
     val typoTolerantRanking: Boolean = true,
     val showAliasFirst: Boolean = true,
     val highlightFavorites: Boolean = true,
+    /** `quick_launcher_static_top_highlight`. spec SS7.5: off means the top match uses its own or an icon-derived color instead. */
+    val staticTopHighlight: Boolean = false,
+    /** `quick_launcher_static_top_highlight_color`. spec SS7.5/SS7.7. */
+    val staticTopHighlightColor: Int = QuickLauncherRules.STATIC_TOP_HIGHLIGHT_COLOR,
 )
 
 /** The Niagara handoff. spec SS7.1: `android.intent.action.VIEW` of `niagara://search` to `bitpit.launcher`, browsable, new task, clear top, falling back to PhysiBoard's sheet. */

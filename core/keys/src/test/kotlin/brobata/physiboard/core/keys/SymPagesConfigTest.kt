@@ -34,6 +34,23 @@ class SymPagesConfigTest {
     }
 
     @Test
+    fun `case 7 - restoring a page no longer in the cycle falls back to the first enabled page`() {
+        // Default config: Emoji (1) and Symbols (2) enabled, Clipboard (3) disabled.
+        val config = SymPagesConfig()
+        assertEquals(1, config.restorePage(3), "clipboard is disabled, so restoring it falls back to the first enabled page")
+    }
+
+    @Test
+    fun `restoring a page still in the cycle reopens it as is`() {
+        assertEquals(2, SymPagesConfig().restorePage(2))
+    }
+
+    @Test
+    fun `restoring page 0 (nothing pending) opens nothing`() {
+        assertEquals(0, SymPagesConfig().restorePage(0))
+    }
+
+    @Test
     fun `case 3 - a custom order normalises with the missing ids appended and cycles accordingly`() {
         val config = SymPagesConfig(
             emojiEnabled = true,

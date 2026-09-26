@@ -38,6 +38,16 @@ object BackupArchive {
     private const val PREFS_PREFIX = "prefs/"
     private const val FILES_PREFIX = "files/"
 
+    /**
+     * True for a path the backup is allowed to write: one of the named side files, or something
+     * inside the one directory of them (the custom layouts). Compared on the normalised path, so
+     * a name that walks upward has already been refused by the zip-slip guard above.
+     */
+    private fun isRestorableSideFile(relativePath: String): Boolean =
+        LegacyImporter.SIDE_FILES.any { allowed ->
+            relativePath == allowed || relativePath.startsWith(allowed.removeSuffix("/") + "/")
+        }
+
     /** Writes the whole archive to [output]: `backup_meta.json`, `prefs/<file>.json`, then a `files/<name>` entry for each side file that exists. spec: SS7.1. */
     suspend fun write(context: Context, settings: Settings, metaTemplate: BackupMeta, output: OutputStream): Unit =
         withContext(Dispatchers.IO) {
@@ -130,6 +140,13 @@ object BackupArchive {
             if (!name.startsWith(FILES_PREFIX)) continue
             val relativePath = name.removePrefix(FILES_PREFIX)
             if (relativePath.isEmpty()) continue
+            // Only the side files this app puts in an archive are written back. A backup is a
+            // file the user can be handed by anyone, and without this a tampered one could name
+            // any path under the app's own storage and have it written (2026-09-26 review).
+            if (!isRestorableSideFile(relativePath)) {
+                sideFileFailures++
+                continue
+            }
             val target = File(filesRoot, relativePath)
             val written = runCatching {
                 target.parentFile?.mkdirs()

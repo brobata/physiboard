@@ -177,6 +177,8 @@ internal object ImeSettings {
         limitResults = s.launcher.limitResults,
         respectKeyboardLayout = s.launcher.respectKeyboardLayout,
         typoTolerantRanking = s.launcher.typoTolerantRanking,
+        staticTopHighlight = s.launcher.quickLauncherStaticTopHighlight,
+        staticTopHighlightColor = s.launcher.quickLauncherStaticTopHighlightColor,
     )
 
     fun commandCustomizations(s: Settings): CommandCustomizations = CommandCustomizations.parse(s.launcher.commandCustomizationsJson)

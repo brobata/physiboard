@@ -31,6 +31,7 @@ import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.actions.feedback.TypingSounds
 import brobata.physiboard.core.actions.launcher.AssignableKeys
+import brobata.physiboard.core.actions.launcher.AssignmentSheet
 import brobata.physiboard.core.actions.picker.AddSubstitutionSheet
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
@@ -354,6 +355,7 @@ internal class KeyboardSession(
      */
     fun onServiceDestroyed() {
         runCatching { service.unregisterReceiver(dictionaryChangeReceiver) }.onFailure { error -> Log.e(TAG, "dictionary receiver teardown crashed", error) }
+        runCatching { service.unregisterReceiver(runCommandNowReceiver) }.onFailure { error -> Log.e(TAG, "run-command receiver teardown crashed", error) }
         settingsScope.cancel()
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
@@ -418,6 +420,21 @@ internal class KeyboardSession(
     }
 
     /**
+     * spec: expansion-clipboard-pickers-launcher.md SS6.2/SS6.4: "when the sheet was opened by a
+     * key press the command also runs immediately." The assignment sheet (`:app`'s
+     * `LauncherAssignmentActivity`) can start an app or an intent itself, but an
+     * `InternalAction`/`NavAction` command needs this running session (its quick launcher, its
+     * input connection), so it sends [AssignmentSheet.ACTION_RUN_COMMAND_NOW] here instead.
+     */
+    private val runCommandNowReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val commandId = intent.getStringExtra(AssignmentSheet.EXTRA_COMMAND_ID) ?: return
+            val command = commandCatalog.build().find(commandId) ?: return
+            commandExecutor.run(command)
+        }
+    }
+
+    /**
      * spec: autocorrect-suggestions.md SS8.1: the bundled substitution rule sets, loaded once (a
      * few kilobytes, unlike a dictionary) and handed to [ImeSettings.ruleSets] on every settings
      * change. Only `auto_corrections_en.json` ships today; the other five bundled codes are a
@@ -433,8 +450,22 @@ internal class KeyboardSession(
      * `:app`'s identical `FnLayerMappingStore` cannot be reused directly.
      */
     private val ctrlMappingLoader = CtrlMappingFileLoader(service)
-    private var ctrlMappings: brobata.physiboard.core.keys.CtrlMappingTable = ctrlMappingLoader.load()
+    private var ctrlMappings: brobata.physiboard.core.keys.CtrlMappingTable = ctrlMappingLoader.load(lastSettings.keys.navModeDefaultMappingsVersion)
     private var lastAppliedCtrlMappingsUpdatedAtMs: Long = -1L
+
+    /**
+     * spec: keys-and-modifiers.md SS12.1: an install whose private `ctrl_key_mappings.json`
+     * predates a later shipped default (already backfilled into [ctrlMappings] by [CtrlMappingFileLoader
+     * .load]) gets that default written back to the file, and `nav_mode_default_mappings_version`
+     * bumped, so this only ever runs once per install and a later deliberate "none" survives.
+     * [settingsSource] being null (a JVM test, or a host without the store) just skips persisting;
+     * the in-memory migration [ctrlMappings] already carries still runs the keyboard correctly.
+     */
+    private fun persistCtrlMappingMigrationIfNeeded(currentVersion: Int) {
+        if (currentVersion >= brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION) return
+        ctrlMappingLoader.save(ctrlMappings)
+        settingsSource?.write { stored -> stored.copy(keys = stored.keys.copy(navModeDefaultMappingsVersion = brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION)) }
+    }
 
     /** spec: dictionaries-languages.md SS8.4, the active style's extra suggestion languages (`input_style_suggestion_locales`). */
     private var extraLanguages: List<LanguageCode> = emptyList()
@@ -443,6 +474,7 @@ internal class KeyboardSession(
     private var assistantRequest: AssistantRequest? = null
 
     init {
+        persistCtrlMappingMigrationIfNeeded(lastSettings.keys.navModeDefaultMappingsVersion)
         quickLauncher.executor = commandExecutor
         quickLauncher.quickLauncherKey = pipeline.settings.launcherShortcuts.quickLauncherKeycode?.let(AssignableKeys::keyOf)
         // spec: status-bar.md SS6.1: the microphone button follows the recognizer's level reports.
@@ -476,6 +508,9 @@ internal class KeyboardSession(
             addAction(DictionaryBroadcastActions.USER_DICTIONARY_UPDATED)
         }
         ContextCompat.registerReceiver(service, dictionaryChangeReceiver, dictionaryChangeFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        ContextCompat.registerReceiver(
+            service, runCommandNowReceiver, IntentFilter(AssignmentSheet.ACTION_RUN_COMMAND_NOW), ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         // The store is read the same way: the shipped defaults above stand until the first value
         // arrives, and every later emission re-applies live (settings-catalog.md SS1).
         // spec expansion-clipboard-pickers-launcher.md SS3.1: `clipboard_history_enabled` is read
@@ -646,8 +681,12 @@ internal class KeyboardSession(
         // Default" both bump it (see FnLayerMappingStore's write path in `:app`).
         if (settings.keys.navModeMappingsUpdatedAtMs != lastAppliedCtrlMappingsUpdatedAtMs) {
             lastAppliedCtrlMappingsUpdatedAtMs = settings.keys.navModeMappingsUpdatedAtMs
-            ctrlMappings = runCatching { ctrlMappingLoader.load() }.getOrDefault(ctrlMappings)
+            ctrlMappings = runCatching { ctrlMappingLoader.load(settings.keys.navModeDefaultMappingsVersion) }.getOrDefault(ctrlMappings)
         }
+        // spec: keys-and-modifiers.md SS12.1: catches the case the branch above misses, an install
+        // whose file predates a later default that arrives with no save/"Revert to Default" of its
+        // own to bump `nav_mode_mappings_updated` (an app update alone).
+        persistCtrlMappingMigrationIfNeeded(settings.keys.navModeDefaultMappingsVersion)
         pipeline.layout = ImeSettings.layout(InputStyleCatalog.layoutFor(currentStyle, shippedLayouts) ?: pipeline.layout, settings, ctrlMappings)
         // spec: status-bar.md SS9 and SS4: the theme, bar height and corner insets are the view's
         // construction facts, so a change to any of them rebuilds the candidates view; every other
@@ -805,6 +844,8 @@ internal class KeyboardSession(
             extraSendShortcut = EnterOverrideResolver.resolveExtraShortcut(reportedPackage, enterOverrides, enterBehaviorEnabled),
         )
         val field = classifyField(info, profile)
+        // spec: text-input.md SS3: set only after classification, which needs the app's own value.
+        applyNoSuggestionsFlag(info, field)
         DiagnosticLog.i(TAG) { "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}" }
         reportFieldAttachDebug(reportedPackage, info)
         ownEdit = null
@@ -829,6 +870,14 @@ internal class KeyboardSession(
         // spec SS2.4: matches are cleared "on every start of input".
         handler.removeCallbacks(expansionRefreshRunnable)
         expansionPopup.hide()
+        // spec: layers-sym-alt.md SS5.8: "when the IME next starts input and restore_sym_page is
+        // greater than 0... the preference is then cleared." Runs on every start (restart
+        // included); once consumed the stored value is 0, so a later start is a no-op.
+        val pendingSymPageRestore = lastSettings.symPages.restoreSymPage
+        if (pendingSymPageRestore > 0) {
+            pipeline.restoreSymPage(pendingSymPageRestore)
+            settingsSource?.write { stored -> stored.copy(symPages = stored.symPages.copy(restoreSymPage = 0)) }
+        }
         syncSymPanels()
         refreshCandidatesStrip()
     }
@@ -1096,8 +1145,10 @@ internal class KeyboardSession(
             val ic = service.currentInputConnection ?: return@runCatching
             // spec SS4.7: reports are asked for while the badge (or the emoji-picker search) needs
             // them; "with neither, a request with no flags is issued to turn monitoring off".
-            // SPEC GAP: the emoji picker's search does not read the caret yet, so its half is false.
-            val wanted = CursorUpdateRequestPolicy.wantsReports(caretBadge.settings.enabled, emojiSearchNeedsCaret = false)
+            // expansion-clipboard-pickers-launcher.md SS4.5: "while capture is on, the app's caret
+            // position is monitored (the single caret-monitoring switch is shared with the caret
+            // badge and is reconciled so neither feature turns it off under the other)".
+            val wanted = CursorUpdateRequestPolicy.wantsReports(caretBadge.settings.enabled, emojiSearchNeedsCaret = emojiPicker.isShown && emojiPicker.captureOn)
             val flags = if (wanted) InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR else 0
             if (ic.requestCursorUpdates(flags)) {
                 cursorUpdateState = CursorUpdateRetrySchedule.onRequestAccepted(cursorUpdateState)
@@ -2153,7 +2204,13 @@ internal class KeyboardSession(
     private fun openSymCustomization(letter: Char?) {
         runCatching {
             val intent = service.packageManager.getLaunchIntentForPackage(service.packageName) ?: return
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // spec: layers-sym-alt.md SS5.8: "records the current page in pending_restore_sym_page
+            // when a page is open" -- the intent extra alone only survives while this keyboard
+            // process stays alive; the settings row is what a process death between here and the
+            // screen's normal finish would otherwise lose.
+            if (pipeline.currentSymPage > 0) {
+                settingsSource?.write { stored -> stored.copy(symPages = stored.symPages.copy(pendingRestoreSymPage = pipeline.currentSymPage)) }
+            }
             intent.putExtra(SymCustomizationLink.EXTRA_INITIAL_SYM_PAGE, pipeline.currentSymPage)
             if (letter != null) {
                 intent.putExtra(SymCustomizationLink.EXTRA_INITIAL_SYM_KEY_CODE, KeyEvent.KEYCODE_A + (letter.uppercaseChar() - 'A'))

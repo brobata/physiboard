@@ -32,8 +32,11 @@ class LanguageTagResolverTest {
     }
 
     @Test
-    fun `T16 no subtype and no device locale falls to it-IT`() {
-        assertEquals("it-IT", LanguageTagResolver.resolve(null, null))
-        assertEquals("it-IT", LanguageTagResolver.resolve(null, ""))
+    fun `T16 no subtype and no device locale falls to English, not 2x's Italian leftover`() {
+        // spec: dictionaries-languages.md SS17 Keep/Drop: "Italian fallback when there is no
+        // subtype: Replace with English, upstream leftover." T16 itself still names `it-IT` as
+        // 2.0.7's own answer; this is the document's explicit 3.0 departure from it.
+        assertEquals("en-US", LanguageTagResolver.resolve(null, null))
+        assertEquals("en-US", LanguageTagResolver.resolve(null, ""))
     }
 }

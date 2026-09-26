@@ -79,6 +79,7 @@ object SettingsKeys {
     const val LAYOUT_AWARE_CTRL = "layout_aware_ctrl_shortcuts"
     const val SYM_EDIT_SHORTCUTS = "sym_edit_shortcuts"
     const val NAV_MODE_MAPPINGS_UPDATED = "nav_mode_mappings_updated"
+    const val NAV_MODE_DEFAULT_MAPPINGS_VERSION = "nav_mode_default_mappings_version"
     const val BOUNCE_KEYS_ENABLED = "bounce_keys_enabled"
     const val BOUNCE_KEYS_DELAY_MS = "bounce_keys_delay_ms"
     const val BOUNCE_KEYS_CHARACTER_KEYS_ENABLED = "bounce_keys_character_keys_enabled"
@@ -92,6 +93,8 @@ object SettingsKeys {
     const val SYM_PAGES_CONFIG = "sym_pages_config"
     const val SYM_MAPPINGS_CUSTOM = "sym_mappings_custom"
     const val SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
+    const val RESTORE_SYM_PAGE = "restore_sym_page"
+    const val PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page"
     const val SYM_AUTO_CLOSE = "sym_auto_close"
     const val SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch"
     const val EMOJI_PICKER_EXPANDED = "emoji_picker_expanded_height"
@@ -185,6 +188,8 @@ object SettingsKeys {
     const val LAUNCHER_SHORTCUTS = "launcher_shortcuts"
     const val LAUNCHER_COMMAND_CUSTOMIZATIONS = "quick_launcher_command_customizations"
     const val COMMAND_SURFACE_SOURCES = "command_surface_sources"
+    const val QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT = "quick_launcher_static_top_highlight"
+    const val QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR = "quick_launcher_static_top_highlight_color"
 
     // SS2.13 feedback
     const val TAP_HAPTIC_USE_SYSTEM = "tap_haptic_use_system"
@@ -402,6 +407,7 @@ object SettingsCodec {
         put(SettingsKeys.LAYOUT_AWARE_CTRL, k.layoutAwareCtrlShortcuts.toString())
         put(SettingsKeys.SYM_EDIT_SHORTCUTS, k.symEditShortcuts.toString())
         put(SettingsKeys.NAV_MODE_MAPPINGS_UPDATED, k.navModeMappingsUpdatedAtMs.toString())
+        put(SettingsKeys.NAV_MODE_DEFAULT_MAPPINGS_VERSION, k.navModeDefaultMappingsVersion.toString())
         put(SettingsKeys.BOUNCE_KEYS_ENABLED, k.bounceKeysEnabled.toString())
         put(SettingsKeys.BOUNCE_KEYS_DELAY_MS, k.bounceKeysDelayMs.toString())
         put(SettingsKeys.BOUNCE_KEYS_CHARACTER_KEYS_ENABLED, k.bounceKeysCharacterKeysEnabled.toString())
@@ -422,6 +428,7 @@ object SettingsCodec {
             layoutAwareCtrlShortcuts = r.bool(SettingsKeys.LAYOUT_AWARE_CTRL, d.layoutAwareCtrlShortcuts),
             symEditShortcuts = r.bool(SettingsKeys.SYM_EDIT_SHORTCUTS, d.symEditShortcuts),
             navModeMappingsUpdatedAtMs = r.long(SettingsKeys.NAV_MODE_MAPPINGS_UPDATED, d.navModeMappingsUpdatedAtMs),
+            navModeDefaultMappingsVersion = r.int(SettingsKeys.NAV_MODE_DEFAULT_MAPPINGS_VERSION, d.navModeDefaultMappingsVersion),
             bounceKeysEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_ENABLED, d.bounceKeysEnabled),
             bounceKeysDelayMs = r.long(SettingsKeys.BOUNCE_KEYS_DELAY_MS, d.bounceKeysDelayMs, 20L..500L),
             bounceKeysCharacterKeysEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_CHARACTER_KEYS_ENABLED, d.bounceKeysCharacterKeysEnabled),
@@ -444,6 +451,8 @@ object SettingsCodec {
         put(SettingsKeys.SYM_AUTO_CLOSE, s.autoClose.toString())
         put(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, s.autoCloseOnTouch.toString())
         put(SettingsKeys.EMOJI_PICKER_EXPANDED, s.emojiPickerExpandedHeight.toString())
+        put(SettingsKeys.RESTORE_SYM_PAGE, s.restoreSymPage.toString())
+        put(SettingsKeys.PENDING_RESTORE_SYM_PAGE, s.pendingRestoreSymPage.toString())
     }
 
     private fun readSymPages(r: FlatReader): SymPagePrefs {
@@ -455,6 +464,8 @@ object SettingsCodec {
             autoClose = r.bool(SettingsKeys.SYM_AUTO_CLOSE, d.autoClose),
             autoCloseOnTouch = r.bool(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, d.autoCloseOnTouch),
             emojiPickerExpandedHeight = r.bool(SettingsKeys.EMOJI_PICKER_EXPANDED, d.emojiPickerExpandedHeight),
+            restoreSymPage = r.int(SettingsKeys.RESTORE_SYM_PAGE, d.restoreSymPage),
+            pendingRestoreSymPage = r.int(SettingsKeys.PENDING_RESTORE_SYM_PAGE, d.pendingRestoreSymPage),
         )
     }
 
@@ -711,6 +722,8 @@ object SettingsCodec {
         if (l.assignedKeysJson.isNotBlank()) put(SettingsKeys.LAUNCHER_SHORTCUTS, l.assignedKeysJson)
         if (l.commandCustomizationsJson.isNotBlank()) put(SettingsKeys.LAUNCHER_COMMAND_CUSTOMIZATIONS, l.commandCustomizationsJson)
         if (l.commandSurfaceSourcesJson.isNotBlank()) put(SettingsKeys.COMMAND_SURFACE_SOURCES, l.commandSurfaceSourcesJson)
+        put(SettingsKeys.QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT, l.quickLauncherStaticTopHighlight.toString())
+        put(SettingsKeys.QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR, l.quickLauncherStaticTopHighlightColor.toString())
     }
 
     private fun readLauncher(r: FlatReader): LauncherPrefs {
@@ -726,6 +739,8 @@ object SettingsCodec {
             assignedKeysJson = StoredValues.jsonObjectText(r.string(SettingsKeys.LAUNCHER_SHORTCUTS)),
             commandCustomizationsJson = StoredValues.jsonObjectText(r.string(SettingsKeys.LAUNCHER_COMMAND_CUSTOMIZATIONS)),
             commandSurfaceSourcesJson = StoredValues.jsonObjectText(r.string(SettingsKeys.COMMAND_SURFACE_SOURCES)),
+            quickLauncherStaticTopHighlight = r.bool(SettingsKeys.QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT, d.quickLauncherStaticTopHighlight),
+            quickLauncherStaticTopHighlightColor = r.int(SettingsKeys.QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR, d.quickLauncherStaticTopHighlightColor),
         )
     }
 

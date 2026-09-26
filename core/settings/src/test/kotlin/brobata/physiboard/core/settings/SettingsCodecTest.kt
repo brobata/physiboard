@@ -46,7 +46,7 @@ class SettingsCodecTest {
         keys = KeyPrefs(
             longPressMode = LongPressMode.VARIATIONS, longPressThresholdMs = 700, navModeEnabled = false,
             navModeCtrlHoldEnabled = true, layoutAwareCtrlShortcuts = true, symEditShortcuts = false,
-            navModeMappingsUpdatedAtMs = 1700000000000L, bounceKeysEnabled = true, bounceKeysDelayMs = 120,
+            navModeMappingsUpdatedAtMs = 1700000000000L, navModeDefaultMappingsVersion = 3, bounceKeysEnabled = true, bounceKeysDelayMs = 120,
             bounceKeysCharacterKeysEnabled = false, bounceKeysModifierKeysEnabled = true, bounceKeysSpaceEnabled = false,
             bounceKeysEnterEnabled = false, bounceKeysBackspaceEnabled = false, overlappingKeysEnabled = true,
         ),
@@ -55,6 +55,7 @@ class SettingsCodecTest {
                 order = listOf(SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER)),
             customEmojiPage = mapOf("KEYCODE_Q" to "😀"), customSymbolsPage = mapOf("KEYCODE_W" to "€"),
             autoClose = false, autoCloseOnTouch = false, emojiPickerExpandedHeight = true,
+            restoreSymPage = 2, pendingRestoreSymPage = 1,
         ),
         statusBar = StatusBarPrefs(
             visibility = StatusBarVisibility.APPS, apps = setOf("com.example.a", "com.example.b"), heightDp = 64,
@@ -96,6 +97,7 @@ class SettingsCodecTest {
             behavior = LauncherBehavior.NIAGARA, openUniqueMatch = true, limitResults = true, respectKeyboardLayout = false,
             typoTolerantRanking = false, symShortcutsEnabled = false, homeScreenShortcutsEnabled = true,
             assignedKeysJson = """{"62":{"type":"quick_launcher"}}""", commandCustomizationsJson = """{"app:x":{"favorite":true}}""",
+            quickLauncherStaticTopHighlight = true, quickLauncherStaticTopHighlightColor = 0x7A34A853,
         ),
         feedback = FeedbackPrefs(
             tapHapticUseSystem = false, tapHapticDurationMs = 40,

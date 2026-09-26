@@ -2,6 +2,7 @@ package brobata.physiboard.ime
 
 import android.content.Context
 import brobata.physiboard.core.keys.CtrlMappingCodec
+import brobata.physiboard.core.keys.CtrlMappingMigration
 import brobata.physiboard.core.keys.CtrlMappingTable
 import java.io.File
 
@@ -27,10 +28,28 @@ import java.io.File
 internal class CtrlMappingFileLoader(private val context: Context) {
     private val file = File(context.filesDir, FILE_NAME)
 
-    /** spec SS5.4: "loaded from the private files directory when it exists, else from the assets." An unreadable file or asset decodes to an empty table (every key `none`), never throws. */
-    fun load(): CtrlMappingTable {
+    /**
+     * spec SS5.4: "loaded from the private files directory when it exists, else from the assets."
+     * An unreadable file or asset decodes to an empty table (every key `none`), never throws.
+     * [storedVersion] is `nav_mode_default_mappings_version`; a private file saved before it
+     * reached [brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION] gets the missing
+     * defaults [CtrlMappingMigration] backfills (spec SS12.1), in memory, on every load. A fresh
+     * install's file, seeded from the current asset, already has every key and comes back
+     * unchanged.
+     */
+    fun load(storedVersion: Int): CtrlMappingTable {
         val text = runCatching { if (file.exists()) file.readText() else assetText() }.getOrNull()
-        return CtrlMappingCodec.decode(text)
+        return CtrlMappingMigration.migrate(CtrlMappingCodec.decode(text), storedVersion)
+    }
+
+    /**
+     * Persists [table] back to the private file. Only [KeyboardSession] calls this, right after a
+     * migration in [load] actually changed something, so the migrated defaults survive the next
+     * load without re-deriving them (spec SS12.1's "any older file" -- once backfilled, the file
+     * itself carries the current defaults, not just this session's in-memory copy).
+     */
+    fun save(table: CtrlMappingTable) {
+        runCatching { file.writeText(CtrlMappingCodec.encode(table)) }
     }
 
     private fun assetText(): String? = runCatching { context.assets.open(ASSET_PATH).use { it.readBytes().decodeToString() } }.getOrNull()

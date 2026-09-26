@@ -32,3 +32,15 @@
 # stack traces even though method and class names are still shortened.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# app-shell.md SS23.5: "only error-level logging survives release." DiagnosticLog.i's own body
+# already compiles away outside sideload/debug (BuildConfig.DEBUG), but a handful of call sites
+# still log directly through android.util.Log at v/d/i/w (StatusBarView, ClipboardHistoryController,
+# TypingSoundPlayer, PhysiBoardApplication, UpdateCheckWorker); this strips every one of those
+# calls in a release build without touching Log.e, which the crash-guard rule above keeps meaningful.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+}

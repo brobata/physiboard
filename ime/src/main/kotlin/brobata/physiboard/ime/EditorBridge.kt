@@ -266,6 +266,28 @@ internal fun classifyField(info: EditorInfo?, profile: AppProfile = AppProfile.d
 }
 
 /**
+ * The `inputType` text-input.md SS3 calls for once a field is classified: the app's own
+ * `TYPE_TEXT_FLAG_NO_SUGGESTIONS` bit, set unconditionally on every editable field ("It never
+ * reads the flag" -- that half is [classifyField]'s own [FieldContext.appDisablesSuggestions],
+ * which is why this must always run after classification, never before, or the classifier would
+ * see this keyboard's own flag instead of the app's). Kept as a pure `Int -> Int` function,
+ * separate from [applyNoSuggestionsFlag], so the bit-setting rule itself runs under a plain JVM
+ * test with no live [EditorInfo] involved.
+ */
+internal fun inputTypeWithNoSuggestionsFlag(inputType: Int, field: FieldContext): Int =
+    if (field.kind == FieldKind.NOT_EDITABLE) inputType else inputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+
+/**
+ * spec: text-input.md SS3: applies [inputTypeWithNoSuggestionsFlag] to the real editor, mutating
+ * [info] in place, since it is the same [EditorInfo] instance the platform reads back once
+ * `onStartInput` returns.
+ */
+internal fun applyNoSuggestionsFlag(info: EditorInfo?, field: FieldContext) {
+    if (info == null) return
+    info.inputType = inputTypeWithNoSuggestionsFlag(info.inputType, field)
+}
+
+/**
  * spec: per-app-behavior.md SS3.9: "if the field's imeOptions has the 'no Enter action' flag,
  * none; else the field's explicit actionId if non-zero, else the action bits of imeOptions; the
  * result counts only if it is one of Go, Search, Send, Next, Done, Previous. Unspecified and None

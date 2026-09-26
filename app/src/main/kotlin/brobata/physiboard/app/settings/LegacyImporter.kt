@@ -73,7 +73,7 @@ class LegacyImporter(private val context: Context, private val store: SettingsSt
          * backup's `files/`). They are recorded, not moved: each belongs to the subsystem that
          * will read it at its 2.x path.
          */
-        val SIDE_FILES: List<String> = listOf("ctrl_key_mappings.json", "variations.json", "user_defaults.json", "locale_layout_mapping.json", "keyboard_layouts")
+        val SIDE_FILES: List<String> = listOf("personal_dictionary.json", "ctrl_key_mappings.json", "variations.json", "user_defaults.json", "locale_layout_mapping.json", "keyboard_layouts")
 
         /** The four smaller stores of settings-catalog.md SS1; none is a user setting, all stay in place. */
         val SIDE_STORES: List<String> = listOf("embedded_adb", "physiboard_toolbox", "app_list_cache_prefs", "recent_emojis_prefs")

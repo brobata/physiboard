@@ -69,9 +69,12 @@ import kotlinx.coroutines.launch
  * `skip_launch` extras; result 1 "assigned", 2 "removed". The content and its ordering are
  * [AssignmentSheet]'s; the store write is this activity's, since only `:app` holds the store.
  *
- * SPEC GAP: "when the sheet was opened by a key press the command also runs immediately" is
- * honoured for apps and intents, which this process can start; an internal PhysiBoard action
- * (the quick launcher) is assigned but not run from here, since its opener lives in the keyboard.
+ * SS6.2/SS6.4's "when the sheet was opened by a key press the command also runs immediately" is
+ * honoured for apps and intents, which this process can start directly, and for an internal
+ * PhysiBoard action or a nav-mode command (the quick launcher, Ctrl+letter and the rest) by
+ * asking the keyboard to run it, via [launchNow]'s [AssignmentSheet.ACTION_RUN_COMMAND_NOW]
+ * broadcast, since only the running session has a quick launcher or an input connection to run
+ * one against.
  */
 class LauncherAssignmentActivity : ComponentActivity() {
 
@@ -132,6 +135,19 @@ class LauncherAssignmentActivity : ComponentActivity() {
     }
 
     private fun launchNow(command: Command) {
+        // spec SS6.2/SS6.4: an `InternalAction`/`NavAction` command needs the running keyboard's
+        // own session (its quick launcher, its input connection), which this process does not
+        // have; it asks the keyboard to run it instead, the same way it asked the keyboard to
+        // open this sheet in the first place.
+        if (command.launch is LaunchSpec.InternalAction || command.launch is LaunchSpec.NavAction) {
+            sendBroadcast(
+                Intent(AssignmentSheet.ACTION_RUN_COMMAND_NOW).apply {
+                    setPackage(packageName)
+                    putExtra(AssignmentSheet.EXTRA_COMMAND_ID, command.id)
+                },
+            )
+            return
+        }
         val intent = when (val launch = command.launch) {
             is LaunchSpec.AppPackage -> packageManager.getLaunchIntentForPackage(launch.packageName)
             is LaunchSpec.IntentUri -> Intent(launch.action).apply {

@@ -133,6 +133,17 @@ data class SymPagesConfig(
     /** spec: layers-sym-alt.md SS4.3 (direct-open buttons ignore the enabled switch). */
     fun directOpen(page: SymPageId, currentPageNumber: Int): Int =
         if (currentPageNumber == page.pageNumber) 0 else page.pageNumber
+
+    /**
+     * spec: layers-sym-alt.md SS5.8: "the page is reopened if it is in the enabled cycle,
+     * otherwise the first enabled page is opened, otherwise none." [requestedPageNumber] is
+     * `restore_sym_page` as read at field start; 0 (or lower) means nothing was pending.
+     */
+    fun restorePage(requestedPageNumber: Int): Int {
+        if (requestedPageNumber <= 0) return 0
+        if (requestedPageNumber in cycle) return requestedPageNumber
+        return cycle.getOrElse(1) { 0 }
+    }
 }
 
 /** spec: keys-and-modifiers.md SS12.2. */
