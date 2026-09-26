@@ -19,6 +19,9 @@ sealed class DictationEffect {
 
     /** spec SS6.6: the toast text for a real error. */
     data class ShowMessage(val message: DictationMessage) : DictationEffect()
+
+    /** spec SS2.6 steps 4 and 7: a start failure's message is log-only; "the user sees nothing." */
+    data class LogMessage(val message: DictationMessage) : DictationEffect()
 }
 
 /**

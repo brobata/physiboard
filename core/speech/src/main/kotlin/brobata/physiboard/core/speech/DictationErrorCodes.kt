@@ -60,11 +60,40 @@ object DictationErrorClassifier {
     }
 }
 
-/** spec: dictation.md SS6.6's toast text and SS2.6's log-only messages that reach the user. */
-enum class DictationMessage {
-    NO_TEXT_RECOGNIZED,
-    NO_SPEECH_INPUT_DETECTED,
-    MIC_PERMISSION_DENIED,
-    NETWORK_ERROR,
-    SPEECH_RECOGNITION_ERROR,
+/**
+ * spec: dictation.md SS6.6's toast text and SS2.6's log-only messages that reach the user. [text]
+ * is the exact spec string so `:ime` never invents its own wording for either surface (a toast via
+ * `DictationEffect.ShowMessage`, a log line via `DictationEffect.LogMessage`).
+ */
+enum class DictationMessage(val text: String) {
+    NO_TEXT_RECOGNIZED("No text recognized. Try again."),
+    NO_SPEECH_INPUT_DETECTED("No speech input detected."),
+    MIC_PERMISSION_DENIED("Microphone permission denied."),
+    NETWORK_ERROR("Network error."),
+    SPEECH_RECOGNITION_ERROR("Speech recognition error."),
+    /** spec SS2.6 step 4: "Speech recognition not available." Log-only, never a toast. */
+    SPEECH_RECOGNITION_NOT_AVAILABLE("Speech recognition not available."),
+}
+
+/**
+ * spec SS2.6 steps 4 and 7: why the very first request of a session could not be issued, before
+ * the engine ever got a chance to answer. `:ime` classifies the platform failure into one of these;
+ * [DictationEngine] turns it into the matching log-only [DictationMessage].
+ */
+enum class DictationStartFailureReason {
+    /** step 4: no recognizer exists for the engine id and none could be created either. */
+    RECOGNITION_UNAVAILABLE,
+    /** step 7: "a security failure" starting the request (a permission race after the trigger checked it). */
+    SECURITY_FAILURE,
+    /** step 7: "any other failure" starting the request. */
+    OTHER_FAILURE,
+}
+
+/** spec SS2.6 steps 4 and 7: which log-only message each start-failure reason reports. */
+object DictationStartFailureMessages {
+    fun forReason(reason: DictationStartFailureReason): DictationMessage = when (reason) {
+        DictationStartFailureReason.RECOGNITION_UNAVAILABLE -> DictationMessage.SPEECH_RECOGNITION_NOT_AVAILABLE
+        DictationStartFailureReason.SECURITY_FAILURE -> DictationMessage.MIC_PERMISSION_DENIED
+        DictationStartFailureReason.OTHER_FAILURE -> DictationMessage.SPEECH_RECOGNITION_ERROR
+    }
 }

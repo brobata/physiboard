@@ -39,17 +39,30 @@ object DictationEngine {
             is DictationEvent.Trigger -> throw IllegalStateException("Trigger is handled before a session is required")
             DictationEvent.ReadyForSpeech -> handleReady(session)
             DictationEvent.BeginningOfSpeech -> handleBeginningOfSpeech(session)
+            DictationEvent.EndOfSpeech -> handleEndOfSpeech(session, now, settings)
             is DictationEvent.PartialResult -> handlePartialResult(session, event.text, textSettings)
             is DictationEvent.FinalResult -> handleFinalResult(session, event.text, now, settings, textSettings)
             is DictationEvent.SegmentResult -> handleSegmentResult(session, event.text, now, settings, textSettings)
-            DictationEvent.SegmentedSessionEnded -> DictationOutcome(null, endEffects(session, cancelRecognizer = false), clearComposingOps(session.utterance.pending))
+            DictationEvent.SegmentedSessionEnded -> {
+                // Not in SS3's literal table (which has no leftover-partial case for this row), but
+                // a partial can genuinely be on screen here: the engine can decide to end the
+                // segmented session at any moment, including between a partial and the segment that
+                // would have finalized it. Committing it, never discarding it, is the survivable
+                // choice this task's fourth finding asks for.
+                val finished = finishPendingIfAny(session.utterance, textSettings)
+                DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+            }
             is DictationEvent.Error -> handleError(session, event.code, now, settings, textSettings)
             DictationEvent.EditorFieldClosed -> DictationOutcome(session.copy(editorGoneDeadlineMs = now + DictationTiming.EDITOR_GONE_GRACE_MS))
             is DictationEvent.EditorFieldOpened -> handleEditorFieldOpened(session, event.ownerPackage)
             DictationEvent.UserEditedComposingText -> DictationOutcome(session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated)))
             DictationEvent.EditorRejectedInsert -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
-            DictationEvent.StartFailed -> DictationOutcome(null, endEffects(session, cancelRecognizer = false), clearComposingOps(session.utterance.pending))
-            DictationEvent.ClockTick -> handleClockTick(session, now)
+            is DictationEvent.StartFailed -> DictationOutcome(
+                null,
+                endEffects(session, cancelRecognizer = false, logMessage = DictationStartFailureMessages.forReason(event.reason)),
+                clearComposingOps(session.utterance.pending),
+            )
+            DictationEvent.ClockTick -> handleClockTick(session, now, textSettings)
         }
     }
 
@@ -103,6 +116,19 @@ object DictationEngine {
     /** spec SS6.3, SS6.4: beginning of speech cancels both the silence timer and the segmented watchdog. */
     private fun handleBeginningOfSpeech(session: DictationSession): DictationOutcome =
         DictationOutcome(session.copy(silenceDeadlineMs = null, watchdogDeadlineMs = null))
+
+    /**
+     * spec SS6.3: "The watchdog is also armed ... when the engine reports end of speech." This is
+     * the segmented watchdog specifically (the rest of SS6.3 is entirely about segmented mode: a
+     * session that never delivers another segment or ends itself is closed pause + 5000 ms later).
+     * Restart-loop mode has no equivalent policing at end of speech: the engine is expected to
+     * deliver a final on its own right after, and SS6.4's silence timer only starts once that final
+     * (or a continuation of it) actually arrives.
+     */
+    private fun handleEndOfSpeech(session: DictationSession, now: Long, settings: DictationSettings): DictationOutcome {
+        if (session.mode != DictationMode.SEGMENTED) return DictationOutcome(session)
+        return DictationOutcome(session.copy(watchdogDeadlineMs = now + DictationTiming.watchdogMs(settings.pauseMs)))
+    }
 
     // ---------------------------------------------------------------------------------------
     // Partials. spec SS7.1.
@@ -299,11 +325,17 @@ object DictationEngine {
 
         // Rule 7 (session already ended) never reaches this function; see [handleWithSession].
 
-        // Rule 8: anything else.
+        // Rule 8: anything else. SS6.6's literal text says "clear partial", but a real error (as
+        // opposed to the quiet ones rules 2-6 already finish) is exactly what an unproven recognizer
+        // shape (SS5's segmented-session extra) could raise instead of ending cleanly; committing
+        // whatever was already heard, same as rule 5 does for a quiet error, is the survivable choice
+        // (this task's fourth finding) so a real error never means "everything you said is wasted" on
+        // top of the toast this rule already shows.
+        val finished = finishPendingIfAny(session.utterance, textSettings)
         return DictationOutcome(
             null,
             endEffects(session, cancelRecognizer = false, message = DictationErrorClassifier.toastFor(code)),
-            clearComposingOps(session.utterance.pending),
+            finished.ops,
         )
     }
 
@@ -333,7 +365,7 @@ object DictationEngine {
     // The clock. spec SS6.3, SS6.4, SS3.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleClockTick(session: DictationSession, now: Long): DictationOutcome {
+    private fun handleClockTick(session: DictationSession, now: Long, textSettings: DictationTextSettings): DictationOutcome {
         session.busyRetryDeadlineMs?.let { deadline ->
             if (now >= deadline) {
                 return DictationOutcome(session.copy(busyRetryDeadlineMs = null), listOf(DictationEffect.StartListening(session.mode)))
@@ -341,7 +373,10 @@ object DictationEngine {
         }
         session.silenceDeadlineMs?.let { deadline ->
             if (now >= deadline) {
-                // spec SS6.4: "Expiry cancels the recognizer, clears any composing partial, and ends the session."
+                // spec SS6.4: "Expiry cancels the recognizer, clears any composing partial, and ends
+                // the session." A non-empty partial always cancels this timer on arrival (SS6.4,
+                // handlePartialResult), so nothing should be live here in practice; clearing (a no-op
+                // on an empty pending state) is kept rather than guessed at.
                 return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
             }
         }
@@ -351,7 +386,14 @@ object DictationEngine {
                 // untouched. Only a segmented session can say anything about segmented support;
                 // the same watchdog after a restart-loop stop (SS6.5) says nothing about it.
                 val latch = if (session.mode == DictationMode.SEGMENTED && session.segmentsSeen == 0) true else null
-                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending), newSegmentedRefusalLatch = latch)
+                // Unlike the silence timer above, this watchdog CAN fire with a live partial now that
+                // it is armed on end-of-speech too (this task's first finding): the engine may go
+                // quiet after a partial without ever delivering the segment/final that would have
+                // committed it. Finishing it here, rather than the literal "clears any partial" this
+                // spec row otherwise implies, is the fourth finding's survivable choice for an
+                // unverified recognizer shape.
+                val finished = finishPendingIfAny(session.utterance, textSettings)
+                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), finished.ops, newSegmentedRefusalLatch = latch)
             }
         }
         session.editorGoneDeadlineMs?.let { deadline ->
@@ -370,9 +412,15 @@ object DictationEngine {
      * down (a timer fired with no recognizer answer coming) from one where the recognizer's own
      * terminal callback already ended it.
      */
-    private fun endEffects(session: DictationSession, cancelRecognizer: Boolean, message: DictationMessage? = null): List<DictationEffect> = buildList {
+    private fun endEffects(
+        session: DictationSession,
+        cancelRecognizer: Boolean,
+        message: DictationMessage? = null,
+        logMessage: DictationMessage? = null,
+    ): List<DictationEffect> = buildList {
         if (cancelRecognizer) add(DictationEffect.CancelListening)
         if (session.active) add(DictationEffect.PlayStopCue)
         message?.let { add(DictationEffect.ShowMessage(it)) }
+        logMessage?.let { add(DictationEffect.LogMessage(it)) }
     }
 }

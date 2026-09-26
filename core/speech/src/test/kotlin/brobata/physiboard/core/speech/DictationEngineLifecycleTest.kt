@@ -132,6 +132,46 @@ class DictationEngineLifecycleTest {
         assertTrue(strayCallback.effects.isEmpty(), "a callback after the session ended must not vibrate again")
     }
 
+    // SS6.3: "The watchdog is also armed ... when the engine reports end of speech." This task's
+    // first finding: there was no event for onEndOfSpeech() at all before this.
+
+    @Test
+    fun `end of speech arms the segmented watchdog`() {
+        val state = session(mode = DictationMode.SEGMENTED, watchdogDeadlineMs = null)
+        val outcome = handle(state, DictationEvent.EndOfSpeech, now = 1000L)
+        assertEquals(1000L + DictationTiming.watchdogMs(settings.pauseMs), outcome.session?.watchdogDeadlineMs)
+        assertTrue(outcome.effects.isEmpty(), "arming the watchdog is a pure state change, not an effect")
+    }
+
+    @Test
+    fun `end of speech does nothing in restart-loop mode`() {
+        val state = session(mode = DictationMode.RESTART_LOOP, watchdogDeadlineMs = null)
+        val outcome = handle(state, DictationEvent.EndOfSpeech, now = 1000L)
+        assertNull(outcome.session?.watchdogDeadlineMs, "restart-loop mode has no watchdog to arm here")
+    }
+
+    // SS2.6 steps 4 and 7: this task's third finding. A start failure now carries a reason, and
+    // the engine turns it into the spec's log-only message; never a toast.
+
+    @Test
+    fun `a start failure reports 'Speech recognition not available' and never toasts`() {
+        val outcome = handle(session(active = false), DictationEvent.StartFailed(DictationStartFailureReason.RECOGNITION_UNAVAILABLE), now = 100L)
+        assertNull(outcome.session)
+        assertEquals(listOf(DictationEffect.LogMessage(DictationMessage.SPEECH_RECOGNITION_NOT_AVAILABLE)), outcome.effects)
+    }
+
+    @Test
+    fun `a start failure from a security exception reports 'Microphone permission denied'`() {
+        val outcome = handle(session(active = false), DictationEvent.StartFailed(DictationStartFailureReason.SECURITY_FAILURE), now = 100L)
+        assertEquals(listOf(DictationEffect.LogMessage(DictationMessage.MIC_PERMISSION_DENIED)), outcome.effects)
+    }
+
+    @Test
+    fun `any other start failure reports 'Speech recognition error'`() {
+        val outcome = handle(session(active = false), DictationEvent.StartFailed(DictationStartFailureReason.OTHER_FAILURE), now = 100L)
+        assertEquals(listOf(DictationEffect.LogMessage(DictationMessage.SPEECH_RECOGNITION_ERROR)), outcome.effects)
+    }
+
     @Test
     fun `T55 a new field in the same app cancels the editor-gone grace`() {
         val closed = handle(session(), DictationEvent.EditorFieldClosed, now = 1000L)

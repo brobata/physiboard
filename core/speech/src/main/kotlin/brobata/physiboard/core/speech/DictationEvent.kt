@@ -21,6 +21,13 @@ sealed class DictationEvent {
     /** spec SS6.3, SS6.4: cancels the silence timer and the segmented watchdog. */
     object BeginningOfSpeech : DictationEvent()
 
+    /**
+     * spec SS6.3: "The watchdog is also armed ... when the engine reports end of speech." The
+     * recognizer's `onEndOfSpeech()` callback, dispatched unconditionally; [DictationEngine] is the
+     * one place that decides the watchdog only matters in segmented mode.
+     */
+    object EndOfSpeech : DictationEvent()
+
     /** spec SS7.1. Blank text is ignored by [DictationEngine], per SS7.1's "Empty partials are ignored." */
     data class PartialResult(val text: String) : DictationEvent()
 
@@ -55,8 +62,14 @@ sealed class DictationEvent {
     /** spec SS3: "The field rejected an insert (exception while writing)." */
     object EditorRejectedInsert : DictationEvent()
 
-    /** spec SS2.6 step 7: the first request could not even be issued (permission or platform failure). */
-    object StartFailed : DictationEvent()
+    /**
+     * spec SS2.6 steps 4 and 7: the first request could not even be issued. [reason] is what step
+     * asked for a distinct log message: "Speech recognition not available." (step 4, no recognizer
+     * could be created), "Microphone permission denied." (step 7, a security failure), or
+     * "Speech recognition error." (step 7, any other failure). All three are log-only per spec: "the
+     * user sees nothing."
+     */
+    data class StartFailed(val reason: DictationStartFailureReason) : DictationEvent()
 
     /** The clock reaching [DictationSession.nextDeadlineMs]; see that property's KDoc. */
     object ClockTick : DictationEvent()

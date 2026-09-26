@@ -16,16 +16,17 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.inputmethod.InputConnection
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import brobata.physiboard.core.speech.CuePattern
 import brobata.physiboard.core.speech.DictationCues
 import brobata.physiboard.core.speech.DictationEffect
 import brobata.physiboard.core.speech.DictationEngine
 import brobata.physiboard.core.speech.DictationEvent
-import brobata.physiboard.core.speech.DictationMessage
 import brobata.physiboard.core.speech.DictationMode
 import brobata.physiboard.core.speech.DictationSession
 import brobata.physiboard.core.speech.DictationSettings
+import brobata.physiboard.core.speech.DictationStartFailureReason
 import brobata.physiboard.core.speech.DictationTextSettings
 import brobata.physiboard.core.speech.LanguageTagResolver
 import brobata.physiboard.core.speech.RecognizerRequestOptions
@@ -151,7 +152,14 @@ internal class DictationController(
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
         session = outcome.session
         if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
-        outcome.newSegmentedRefusalLatch?.let { segmentedRefusalLatch = it }
+        // spec SS6.3: the fourth finding's other half. Since SS5's segmented-session request extra
+        // is unverified device-side, the one thing this code can guarantee is that the mode actually
+        // driving the session's timers is visible in the log, both when it is decided and if it ever
+        // flips underneath a session that thought it was segmented.
+        outcome.newSegmentedRefusalLatch?.let {
+            segmentedRefusalLatch = it
+            if (it) DiagnosticLog.i(TAG) { "segmented mode refused by the engine; falling back to restart-loop" }
+        }
         // spec SS3: "The field rejected an insert (exception while writing)": the one write this
         // whole feature makes that can throw (a hostile or misbehaving editor), so it is the one
         // write wrapped; a failure here re-enters this same function once with EditorRejectedInsert,
@@ -169,8 +177,17 @@ internal class DictationController(
             DictationEffect.CancelListening -> runCatching { recognizer?.cancel() }
             DictationEffect.PlayStartCue -> playCue(isStart = true)
             DictationEffect.PlayStopCue -> playCue(isStart = false)
-            is DictationEffect.ShowMessage -> Unit // SPEC GAP: no toast surface wired yet (no :settings/UI module); the message is available for a future one.
+            // spec SS6.6, SS3: the message every session-ending error computes, shown the same way
+            // the rest of :ime already surfaces user-facing feedback (LauncherKeysController,
+            // CommandExecutor, TrackpadOverlayController).
+            is DictationEffect.ShowMessage -> toast(effect.message.text)
+            // spec SS2.6 steps 4 and 7: a start failure's message is log-only, never shown.
+            is DictationEffect.LogMessage -> DiagnosticLog.i(TAG) { "start failed: ${effect.message.text}" }
         }
+    }
+
+    private fun toast(text: String) {
+        runCatching { Toast.makeText(service, text, Toast.LENGTH_SHORT).show() }
     }
 
     private fun rescheduleClock() {
@@ -189,13 +206,31 @@ internal class DictationController(
     // -----------------------------------------------------------------------------------------
 
     private fun startListening(mode: DictationMode) {
+        // spec SS6.3, SS5: the mode actually in force, logged at the one point every request of
+        // every session passes through, so a phone session's log can say whether a given cutoff
+        // happened in segmented or restart-loop mode without needing a debugger attached.
+        DiagnosticLog.i(TAG) { "start listening mode=$mode pauseMs=${settings.pauseMs}" }
         val speechRecognizer = ensureRecognizer()
         if (speechRecognizer == null) {
-            dispatch(DictationEvent.StartFailed)
+            // spec SS2.6 step 4: "If the platform reports that speech recognition is unavailable
+            // ... 'Speech recognition not available.'" (also reached when recognizer creation itself
+            // fails, per SS4.2's "any creation failure" row bottoming out here).
+            dispatch(DictationEvent.StartFailed(DictationStartFailureReason.RECOGNITION_UNAVAILABLE))
             return
         }
-        val started = runCatching { speechRecognizer.startListening(buildRecognizerIntent(mode)) }.isSuccess
-        if (!started) dispatch(DictationEvent.StartFailed)
+        // spec SS2.6 step 7: "A security failure or any other failure at this point ... reports
+        // 'Microphone permission denied.' or 'Speech recognition error.'" A SecurityException here
+        // is the permission race the trigger's own check cannot fully close: granted at trigger
+        // time, revoked before this call actually reaches the recognizer.
+        runCatching { speechRecognizer.startListening(buildRecognizerIntent(mode)) }
+            .onFailure { error ->
+                val reason = if (error is SecurityException) {
+                    DictationStartFailureReason.SECURITY_FAILURE
+                } else {
+                    DictationStartFailureReason.OTHER_FAILURE
+                }
+                dispatch(DictationEvent.StartFailed(reason))
+            }
     }
 
     private fun ensureRecognizer(): SpeechRecognizer? {
@@ -246,7 +281,7 @@ internal class DictationController(
             onAudioLevel?.invoke(rmsdB)
         }
         override fun onBufferReceived(buffer: ByteArray?) = Unit
-        override fun onEndOfSpeech() = Unit
+        override fun onEndOfSpeech() = dispatch(DictationEvent.EndOfSpeech)
         override fun onError(error: Int) = dispatch(DictationEvent.Error(error))
         override fun onResults(results: Bundle?) = dispatch(DictationEvent.FinalResult(firstResult(results)))
         override fun onPartialResults(partialResults: Bundle?) {
@@ -289,5 +324,6 @@ internal class DictationController(
 
     private companion object {
         const val TEXT_BEFORE_SESSION_WINDOW = 240
+        const val TAG = "PhysiBoardDictation"
     }
 }
