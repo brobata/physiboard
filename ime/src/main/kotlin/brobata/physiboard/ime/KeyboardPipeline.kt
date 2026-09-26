@@ -195,6 +195,19 @@ data class PipelineResult(
      * ran a word-boundary evaluation, so [KeyboardSession] can forward it to the debug capture.
      */
     val autocorrectDebug: BoundaryDebugInfo? = null,
+    /**
+     * spec trackpad-caret-nav.md SS5.5's `native_ctrl` row, non-null only for the "with no field"
+     * case: [key]'s down and up should be synthesized with Ctrl meta and sent through the input
+     * connection. Unlike the in-field physical-Ctrl-combo case (`LayerResolver.resolveCtrlActive`'s
+     * own [Action.ForwardAsCtrlCombo], answered with plain [PipelineResult.NOT_CONSUMED] since the
+     * real event already carries Ctrl's meta bit), nav mode's Ctrl is a latch here, not a physical
+     * hold, so the raw stroke carries no such bit; letting it fall through unconsumed would deliver
+     * a bare letter instead of the combo the user's own mapping asked for. `:ime` is where the
+     * synthesis happens ([brobata.physiboard.device.titan.KeyNormalizer] is forward-only, and
+     * `:core:actions`' [brobata.physiboard.core.actions.launcher.AssignableKeys.keycodeOf] is the
+     * one reverse `KeyId`-to-keycode map this project already has).
+     */
+    val forwardAsCtrlCombo: KeyId? = null,
 ) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
@@ -369,6 +382,13 @@ internal class KeyboardPipeline(
         activeField = field
         activeTrust = trust
         activeAppProfile = appProfile
+        // spec SS6.2 B: the Sym power-shortcut mode only exists "with no editable field"; focusing
+        // a really editable one while it is still armed cancels its pending nav-mode restore
+        // rather than letting the 5000 ms timer (or a later key) re-latch nav mode into the field
+        // the user is now actively typing in -- turning the next few letters into arrows/clipboard
+        // commands instead of text. The restore is dropped outright, not deferred: the user is
+        // already typing, so there is no later "outside a field" moment left to apply it to.
+        if (field.isReallyEditable && powerMode.isArmed) powerMode = PowerShortcutState.IDLE
         textInputState = textInputState.forNewField()
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
@@ -783,14 +803,12 @@ internal class KeyboardPipeline(
      * its unit tests and for callers this milestone does not have (a command with no field and no
      * connection at all).
      *
-     * SPEC GAP: a `native_ctrl` mapping resolves to [Action.ForwardAsCtrlCombo], which
-     * [applyAction] answers with [PipelineResult.NOT_CONSUMED] on the assumption the original
-     * event already carries Ctrl's meta bit (true for the in-field physical-combo case this action
-     * also represents). Here Ctrl is a latch, not a physical hold, so the raw stroke never carries
-     * that bit and the app sees the bare letter instead of a synthesized Ctrl+letter combo. The
-     * shipped default map has no `native_ctrl` entry, so this only affects a key a user has
-     * customised to that type; fixing it needs a `KeyId` to platform-keycode reverse map `:ime`
-     * does not have today (see [brobata.physiboard.device.titan.KeyNormalizer], forward-only).
+     * A `native_ctrl` mapping resolves to [Action.ForwardAsCtrlCombo]; unlike the in-field
+     * physical-combo case (where the real event already carries Ctrl's meta bit and
+     * [applyAction]'s plain [PipelineResult.NOT_CONSUMED] is correct), nav mode's Ctrl here is a
+     * latch, not a physical hold, so the raw stroke never carries that bit. Handled below by
+     * setting [PipelineResult.forwardAsCtrlCombo] instead of routing through [applyAction], so
+     * `:ime` synthesizes the real combo rather than letting a bare letter through.
      */
     private fun onNavModeMappedKeyDown(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult? {
         val decision = if (stroke.key == ENTER_KEY) {
@@ -799,7 +817,14 @@ internal class KeyboardPipeline(
             NavModeMap.resolveLetterKeyDown(stroke.key, layout.ctrlMappings, hasInputConnection = true)
         }
         if (!decision.consumed) return null
-        return applyAction(decision.action, shiftHeld = stroke.meta.shift, altActive = false, editor)
+        val action = decision.action
+        // A `native_ctrl` mapping's Ctrl is nav mode's own latch, not a physical hold, so the raw
+        // stroke carries no Ctrl meta bit for the app to see: [applyAction]'s ordinary
+        // [Action.ForwardAsCtrlCombo] handling (`PipelineResult.NOT_CONSUMED`, correct only when
+        // the physical event already is the combo) would deliver a bare letter instead. This
+        // consumes the key itself and asks `:ime` to synthesize the real combo instead.
+        if (action is Action.ForwardAsCtrlCombo) return PipelineResult.CONSUMED_NO_OP.copy(forwardAsCtrlCombo = action.key)
+        return applyAction(action, shiftHeld = stroke.meta.shift, altActive = false, editor)
     }
 
     /**

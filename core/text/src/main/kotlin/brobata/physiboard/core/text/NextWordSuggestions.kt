@@ -24,6 +24,18 @@ import brobata.physiboard.core.dict.WordSource
 object StarterWords {
     private const val LIMIT = 48
 
+    /**
+     * How much further than [limit] this over-fetches from the dictionary before the eligibility
+     * filter runs, so a one-letter word, a symbol-bearing entry or a default user word occupying
+     * one of the raw top-N frequency slots is replaced by the next-ranked eligible word instead of
+     * simply shrinking the result. Spec SS4's "the top 48 entries... excluding..." reads as
+     * filter-then-rank over the dictionary, not filter-after-a-hard-limit; the fixed multiplier is
+     * this module's own choice of "how far past the raw top-N is far enough" (unspecified), a
+     * generous enough margin that only a dictionary overwhelmingly built of ineligible spellings
+     * could still fall short of [limit] real starters.
+     */
+    private const val OVER_FETCH_FACTOR = 4
+
     /** [primary] is the current subtype's primary dictionary, or null while it is still loading (spec SS2 point 3: an unready dictionary is simply absent). */
     fun of(primary: DictionaryIndex?, userWords: UserWordStore, limit: Int = LIMIT): List<String> {
         val personal = userWords.personalWords()
@@ -34,7 +46,7 @@ object StarterWords {
             emptyList()
         } else {
             val entries = mutableListOf<WordFrequency>()
-            primary.topByFrequency(limit, entries)
+            primary.topByFrequency(limit * OVER_FETCH_FACTOR, entries)
             entries
                 .filter { isEligibleSpelling(it.word) && userWords.sourceOf(it.word) != WordSource.DEFAULT_USER }
                 .sortedWith(compareByDescending<WordFrequency> { it.frequency }.thenBy { it.word.length })

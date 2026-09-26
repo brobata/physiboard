@@ -35,4 +35,20 @@ class LocaleLayoutMappingTest {
         val resolved = LocaleLayoutMapping.resolve("fr_CA", override = mapOf("fr" to "azerty"))
         assertEquals("azerty", resolved)
     }
+
+    /** spec SS10: `:ime`'s own decoder for the file `:app`'s `LocaleLayoutOverrideStore` writes. */
+    @Test
+    fun `decodeOverride reads the same flat JSON object the settings screen writes`() {
+        val decoded = LocaleLayoutMapping.decodeOverride("""{"it_IT":"qwertz","fr_FR":"azerty"}""")
+        assertEquals(mapOf("it_IT" to "qwertz", "fr_FR" to "azerty"), decoded)
+        assertEquals("qwertz", LocaleLayoutMapping.resolve("it_IT", override = decoded))
+    }
+
+    @Test
+    fun `decodeOverride never throws on missing, blank or malformed text`() {
+        assertEquals(emptyMap(), LocaleLayoutMapping.decodeOverride(null))
+        assertEquals(emptyMap(), LocaleLayoutMapping.decodeOverride(""))
+        assertEquals(emptyMap(), LocaleLayoutMapping.decodeOverride("not json"))
+        assertEquals(emptyMap(), LocaleLayoutMapping.decodeOverride("[1,2,3]"))
+    }
 }

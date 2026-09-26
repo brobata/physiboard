@@ -48,7 +48,13 @@ internal class UserWordFileLoader(
      */
     fun savePersonalAsync(personalWords: List<PersonalWord>, onResult: (Boolean) -> Unit = {}) {
         Thread({
-            val ok = runCatching { writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(personalWords)) }.isSuccess
+            // spec dictionaries-languages.md SS7: `:app`'s `UserWordFileStore` (the Personal
+            // Dictionary screen's own edits) writes this identical file from an independent
+            // thread in the same process; [UserWordFileCodec.PersonalDictionaryFileLock] is what
+            // keeps the two writes from silently discarding one another.
+            val ok = synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
+                runCatching { writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(personalWords)) }.getOrDefault(false)
+            }
             mainHandler.post { onResult(ok) }
         }, "physiboard-userwords-save").apply { isDaemon = true }.start()
     }
@@ -63,9 +69,20 @@ internal class UserWordFileLoader(
 
     private fun readOrNull(file: File): String? = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
 
-    private fun writeAtomically(file: File, text: String) {
+    /**
+     * spec dictionaries-languages.md SS3: "a rename, or copy then delete when the rename fails" --
+     * a cross-filesystem tmp dir, a full disk mid-rename or a locked destination all land in the
+     * fallback. The caller relies on the return value to decide whether the save actually
+     * succeeded (SS6.3's "save failed" surfacing), so it is never discarded here.
+     */
+    private fun writeAtomically(file: File, text: String): Boolean {
         val tmp = File(file.parentFile, "${file.name}.tmp")
         tmp.writeText(text)
-        tmp.renameTo(file)
+        if (tmp.renameTo(file)) return true
+        return runCatching {
+            tmp.copyTo(file, overwrite = true)
+            tmp.delete()
+            true
+        }.getOrDefault(false)
     }
 }

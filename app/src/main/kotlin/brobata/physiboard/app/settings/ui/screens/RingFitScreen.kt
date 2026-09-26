@@ -82,6 +82,11 @@ fun RingFitScreen(onDone: () -> Unit) {
     // fix seeds from it instead of always starting from the Titan hand-fit).
     DisposableEffect(Unit) {
         val window = activity?.window
+        // This screen is a composable inside the one shared `MainActivity`, not its own Activity,
+        // so a `layoutInDisplayCutoutMode` this sets outlives the screen unless it is put back:
+        // every other screen in Settings would otherwise render laid out into the cutout too, from
+        // the moment this one is left, until the Activity happens to recreate.
+        val originalCutoutMode = window?.attributes?.layoutInDisplayCutoutMode
         if (window != null) {
             window.attributes = window.attributes.apply {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
@@ -111,6 +116,9 @@ fun RingFitScreen(onDone: () -> Unit) {
             if (window != null) {
                 WindowCompat.setDecorFitsSystemWindows(window, true)
                 WindowInsetsControllerCompat(window, view).show(WindowInsetsCompat.Type.systemBars())
+                window.attributes = window.attributes.apply {
+                    layoutInDisplayCutoutMode = originalCutoutMode ?: WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                }
             }
         }
     }

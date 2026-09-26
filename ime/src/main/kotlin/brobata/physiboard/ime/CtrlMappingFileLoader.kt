@@ -29,17 +29,28 @@ internal class CtrlMappingFileLoader(private val context: Context) {
     private val file = File(context.filesDir, FILE_NAME)
 
     /**
-     * spec SS5.4: "loaded from the private files directory when it exists, else from the assets."
-     * An unreadable file or asset decodes to an empty table (every key `none`), never throws.
-     * [storedVersion] is `nav_mode_default_mappings_version`; a private file saved before it
-     * reached [brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION] gets the missing
-     * defaults [CtrlMappingMigration] backfills (spec SS12.1), in memory, on every load. A fresh
-     * install's file, seeded from the current asset, already has every key and comes back
-     * unchanged.
+     * spec SS5.4: "loaded from the private files directory when it exists, else from the assets...
+     * If the file cannot be read, the asset is used." A file that exists but holds truncated or
+     * invalid JSON (the app killed mid-save) used to reach this point too, and
+     * [CtrlMappingCodec.decode] "never throws" for it either -- it silently decodes to an empty
+     * table (every key falls through [CtrlMappingTable.mappingFor] to [CtrlMapping.None]), which
+     * used to be handed back as-is instead of falling back to the asset the same way an unreadable
+     * file does, worse than a missing file: every key in nav mode/Fn Layer stopped doing anything
+     * at all. A genuinely empty *decoded* table is told apart from a legitimate "every key turned
+     * off" one: the encoder always writes an explicit `{"type":"none"}` entry for a switched-off
+     * key rather than omitting it ([CtrlMappingCodec.encodeMapping]'s own comment), so only a file
+     * that failed to parse at all, not one the user emptied on purpose, produces
+     * [CtrlMappingTable.entries] with nothing in it. [storedVersion] is
+     * `nav_mode_default_mappings_version`; a private file saved before it reached
+     * [brobata.physiboard.core.keys.CTRL_MAPPING_DEFAULTS_VERSION] gets the missing defaults
+     * [CtrlMappingMigration] backfills (spec SS12.1), in memory, on every load. A fresh install's
+     * file, seeded from the current asset, already has every key and comes back unchanged.
      */
     fun load(storedVersion: Int): CtrlMappingTable {
-        val text = runCatching { if (file.exists()) file.readText() else assetText() }.getOrNull()
-        return CtrlMappingMigration.migrate(CtrlMappingCodec.decode(text), storedVersion)
+        val fileText = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
+        val fromFile = fileText?.let(CtrlMappingCodec::decode)
+        val table = if (fromFile != null && fromFile.entries.isNotEmpty()) fromFile else CtrlMappingCodec.decode(assetText())
+        return CtrlMappingMigration.migrate(table, storedVersion)
     }
 
     /**

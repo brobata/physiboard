@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.util.Log
 import androidx.core.content.ContextCompat
 import brobata.physiboard.app.settings.SettingsStore
 import brobata.physiboard.core.actions.launcher.LauncherShortcuts
@@ -47,12 +48,21 @@ class AppPackageChangeMonitor(
         // spec SS7 step 2: only a true uninstall prunes launcher shortcuts; an update
         // (PACKAGE_REPLACED, or PACKAGE_REMOVED with EXTRA_REPLACING true) "changes nothing".
         if (intent.action == Intent.ACTION_PACKAGE_REMOVED && !intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) {
+            // An unguarded DataStore write here (a DataStore I/O failure -- low storage, concurrent
+            // writer contention) would crash the whole process from an unrelated app's uninstall;
+            // guarded the same way every other settings write in the app is (StoreBridge.write).
             scope.launch {
-                settingsStore.update { settings ->
-                    val pruned = LauncherShortcuts.parse(settings.launcher.assignedKeysJson).removeTargeting(packageName)
-                    settings.copy(launcher = settings.launcher.copy(assignedKeysJson = LauncherShortcuts.encode(pruned)))
-                }
+                runCatching {
+                    settingsStore.update { settings ->
+                        val pruned = LauncherShortcuts.parse(settings.launcher.assignedKeysJson).removeTargeting(packageName)
+                        settings.copy(launcher = settings.launcher.copy(assignedKeysJson = LauncherShortcuts.encode(pruned)))
+                    }
+                }.onFailure { error -> Log.e(TAG, "launcher shortcut prune on uninstall failed", error) }
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "AppPackageChangeMonitor"
     }
 }

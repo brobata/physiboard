@@ -78,6 +78,7 @@ import brobata.physiboard.core.speech.AssistantRequest
 import brobata.physiboard.core.subtype.AdditionalSubtypeBuilder
 import brobata.physiboard.core.subtype.InputStyle
 import brobata.physiboard.core.subtype.InputStyleCatalog
+import brobata.physiboard.core.subtype.LocaleLayoutMapping
 import brobata.physiboard.core.subtype.ShippedLayout
 import brobata.physiboard.core.strip.BacklightNudge
 import brobata.physiboard.core.strip.BacklightNudgeEpisode
@@ -110,6 +111,7 @@ import brobata.physiboard.core.text.CurrentWordTracker
 import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.EnterOverride
 import brobata.physiboard.core.text.EnterOverrideResolver
+import brobata.physiboard.core.text.FieldKind
 import brobata.physiboard.core.text.MessagingPreset
 import brobata.physiboard.device.titan.DeviceIdentity
 import brobata.physiboard.device.titan.KeyNormalizer
@@ -285,6 +287,13 @@ internal class KeyboardSession(
 
     private val commandCatalog = AndroidCommandCatalog(service)
     private val quickLauncher = QuickLauncherController(service, handler, commandCatalog) { key, uppercase -> layoutText(key, uppercase) }
+        .apply {
+            // spec expansion-clipboard-pickers-launcher.md SS6.2/SS7.1: at most one bottom overlay
+            // shown at once. The Sym-grid/clipboard/emoji trio is already exclusive among itself
+            // (one `currentSymPage` int); this is the other half, closing that trio whenever the
+            // quick launcher is the one that just opened (see [syncSymPanels] for the reverse).
+            onOpened = { closeSymPanel() }
+        }
     private val commandExecutor = CommandExecutor(
         service,
         openQuickLauncher = { quickLauncher.open() },
@@ -345,6 +354,14 @@ internal class KeyboardSession(
     private val dictationController = DictationController(service) { service.currentInputConnection }
     private var currentPackageName: String? = null
 
+    /**
+     * The focused field's [FieldKind], tracked so [reportKeyboardDebugEvent] can refuse to record
+     * from a password field regardless of whether Diagnostics is open or what it captured before
+     * (app-shell.md SS10.2 never claims an exemption for password fields; the field's own
+     * sensitivity outranks the debug pipeline).
+     */
+    private var currentFieldKind: FieldKind = FieldKind.NOT_EDITABLE
+
     fun onDictationTrigger() = dictationController.trigger(currentPackageName)
 
     /**
@@ -388,7 +405,19 @@ internal class KeyboardSession(
 
     /** The loaded dictionaries by language, primary and extras alike; [rebuildDictionaries] hands the wanted ones to the pipeline, primary first. */
     private val loadedDictionaries = linkedMapOf<LanguageCode, DictionaryIndex>()
-    private val dictionaryLoadsInFlight = mutableSetOf<LanguageCode>()
+
+    /**
+     * Which [dictionaryLoadGeneration] owns the in-flight load for each language, not just whether
+     * one is in flight: [reloadAllDictionaries] used to `clear()` a plain set here without
+     * cancelling the actual background thread [loadDictionary] had already started for it, so a
+     * slow load from before the reload could still land afterward and, with no ordering guarantee
+     * against the fresh reload's own load, overwrite it depending only on which one happened to
+     * post to the main thread last. Tagging each in-flight entry with the generation it belongs to
+     * lets a stale completion recognise itself as superseded (its generation no longer matches the
+     * map's current entry for that language) without touching the fresher load's own entry.
+     */
+    private val dictionaryLoadsInFlight = mutableMapOf<LanguageCode, Int>()
+    private var dictionaryLoadGeneration = 0
 
     // spec dictionaries-languages.md SS7: the default and personal user words, loaded once at
     // startup and reloaded whenever the Personal Dictionary screen (or the strip's own add-word,
@@ -452,6 +481,15 @@ internal class KeyboardSession(
     private val ctrlMappingLoader = CtrlMappingFileLoader(service)
     private var ctrlMappings: brobata.physiboard.core.keys.CtrlMappingTable = ctrlMappingLoader.load(lastSettings.keys.navModeDefaultMappingsVersion)
     private var lastAppliedCtrlMappingsUpdatedAtMs: Long = -1L
+
+    /**
+     * spec dictionaries-languages.md SS10: the Input Languages screen's "System" row override,
+     * consulted by [onCurrentInputMethodSubtypeChanged] to resolve a base subtype's layout the same
+     * way the screen itself previews it. Re-read on every subtype change rather than cached for the
+     * session's whole lifetime: this file changes rarely (an explicit save from the screen), so a
+     * fresh small synchronous read costs nothing and never risks acting on a stale override.
+     */
+    private val localeLayoutOverrideLoader = LocaleLayoutOverrideFileLoader(service)
 
     /**
      * spec: keys-and-modifiers.md SS12.1: an install whose private `ctrl_key_mappings.json`
@@ -534,8 +572,15 @@ internal class KeyboardSession(
      * strip refreshes when it completes".
      */
     private fun loadDictionary(language: LanguageCode) {
-        if (language in loadedDictionaries || !dictionaryLoadsInFlight.add(language)) return
+        if (language in loadedDictionaries || language in dictionaryLoadsInFlight) return
+        val generation = dictionaryLoadGeneration
+        dictionaryLoadsInFlight[language] = generation
         dictionaryLoader.loadAsync(language) { index ->
+            // A completion whose generation no longer owns this language's in-flight entry was
+            // superseded by [reloadAllDictionaries] while it was running: neither its result nor
+            // its removal of the in-flight marker (which would belong to the fresher load by now)
+            // should apply.
+            if (dictionaryLoadsInFlight[language] != generation) return@loadAsync
             dictionaryLoadsInFlight.remove(language)
             loadedDictionaries[language] = index
             rebuildDictionaries()
@@ -558,6 +603,10 @@ internal class KeyboardSession(
      * once, immediately, rather than waiting for the next field or the next process start.
      */
     private fun reloadAllDictionaries() {
+        // Bumped before clearing, so any load already in flight for a language this call also
+        // re-requests recognises itself as stale when it completes (see [loadDictionary]) instead
+        // of racing the fresh load this call starts for the identical language.
+        dictionaryLoadGeneration++
         loadedDictionaries.clear()
         dictionaryLoadsInFlight.clear()
         pipeline.resources = pipeline.resources.copy(dictionaries = emptyList())
@@ -725,6 +774,8 @@ internal class KeyboardSession(
         trackpad.activationSettings = ImeSettings.trackpadActivation(settings)
         trackpad.gestureSettings = ImeSettings.trackpadGesture(settings)
         keyboardSwipe.settings = ImeSettings.keyboardSwipeSettings(settings)
+        // spec trackpad-caret-nav.md SS3.3: re-attached "whenever ... the provider preference changes".
+        attachKeyboardSwipeListener()
         appProfiles = ImeSettings.appProfiles(settings)
         enterOverrides = ImeSettings.enterOverrides(settings)
         enterPreset = settings.perApp.enterPreset
@@ -781,13 +832,56 @@ internal class KeyboardSession(
     private fun switchToNextInputStyle() {
         val styles = InputStyleCatalog.availableStyles(shippedLayouts, lastSettings.languages)
         val next = InputStyleCatalog.next(styles, currentStyle.key) ?: return
-        currentStyle = next
-        applySettings(lastSettings, announceSwitch = true)
+        switchToInputStyle(next, announceSwitch = true)
+    }
+
+    /** The reapplication both [switchToNextInputStyle] and [onCurrentInputMethodSubtypeChanged] need once a target [InputStyle] is chosen. */
+    private fun switchToInputStyle(target: InputStyle, announceSwitch: Boolean) {
+        currentStyle = target
+        applySettings(lastSettings, announceSwitch = announceSwitch)
         // spec dictionaries-languages.md SS10: `keyboard_layout` is "rewritten by every language
         // switch", so the choice survives the next start instead of falling back to the
         // locale-derived pick.
-        settingsSource?.write { stored -> stored.copy(languages = stored.languages.copy(keyboardLayout = next.layoutId)) }
+        settingsSource?.write { stored -> stored.copy(languages = stored.languages.copy(keyboardLayout = target.layoutId)) }
     }
+
+    /**
+     * spec dictionaries-languages.md SS9.4: Android's own language-switch key, or Settings >
+     * Languages, picking a different base subtype must keep [currentStyle] (and so the loaded
+     * dictionary and layout) following it, not just PhysiBoard's own in-app cycle
+     * ([switchToNextInputStyle]). [InputStyleCatalog]'s own KDoc used to record this as a SPEC GAP
+     * ("this project has no subtype-changed callback to hook"); this is that callback, wired from
+     * [PhysiBoardInputMethodService.onCurrentInputMethodSubtypeChanged]. A subtype Android reports
+     * that matches no known style (locale not in [InputStyleCatalog.availableStyles], or a stale
+     * callback during startup) is left alone rather than guessed at.
+     */
+    fun onCurrentInputMethodSubtypeChanged(subtype: InputMethodSubtype?) {
+        runCatching {
+            val locale = subtype?.locale?.takeIf { it.isNotBlank() } ?: return@runCatching
+            val styles = InputStyleCatalog.availableStyles(shippedLayouts, lastSettings.languages)
+            // spec SS8.3 step 3: an additional subtype's extra value carries `KeyboardLayoutSet=<id>`.
+            val layoutFromExtra = subtype.extraValue.orEmpty().split(',')
+                .firstOrNull { it.startsWith("KeyboardLayoutSet=") }
+                ?.substringAfter('=')
+            val target = if (layoutFromExtra != null) {
+                styles.firstOrNull { normalizedLocale(it.locale) == normalizedLocale(locale) && it.layoutId == layoutFromExtra }
+            } else {
+                // One of the twelve base subtypes declared in method.xml: no PhysiBoard-authored
+                // extra value to read a layout id from, so this resolves it exactly the way the
+                // Input Languages screen's "System" row does (SS10), honoring the on-device
+                // override that row writes to `locale_layout_mapping.json` -- previously read by
+                // nothing under `:ime` at all, so a saved override never reached the keyboard.
+                val resolvedLayoutId = LocaleLayoutMapping.resolve(locale, override = localeLayoutOverrideLoader.load())
+                InputStyle(locale = locale, layoutId = resolvedLayoutId, shipped = true)
+                    .takeIf { shippedLayouts.any { shipped -> shipped.layoutId == resolvedLayoutId } }
+            }
+            val resolved = target ?: styles.firstOrNull { normalizedLocale(it.locale) == normalizedLocale(locale) } ?: return@runCatching
+            if (resolved.key == currentStyle.key) return@runCatching
+            switchToInputStyle(resolved, announceSwitch = false)
+        }.onFailure { error -> Log.e(TAG, "subtype-changed resync crashed", error) }
+    }
+
+    private fun normalizedLocale(locale: String): String = locale.replace('_', '-').lowercase()
 
     /**
      * Set right before this session calls [InputConnection.applyEditorOps] for a stroke that
@@ -844,6 +938,7 @@ internal class KeyboardSession(
             extraSendShortcut = EnterOverrideResolver.resolveExtraShortcut(reportedPackage, enterOverrides, enterBehaviorEnabled),
         )
         val field = classifyField(info, profile)
+        currentFieldKind = field.kind
         // spec: text-input.md SS3: set only after classification, which needs the app's own value.
         applyNoSuggestionsFlag(info, field)
         DiagnosticLog.i(TAG) { "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}" }
@@ -880,6 +975,8 @@ internal class KeyboardSession(
         }
         syncSymPanels()
         refreshCandidatesStrip()
+        // spec trackpad-caret-nav.md SS3.3: re-attached "whenever the editor starts".
+        attachKeyboardSwipeListener()
     }
 
     /**
@@ -900,6 +997,7 @@ internal class KeyboardSession(
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         handler.removeCallbacksAndMessages(selectionSyncToken)
+        currentFieldKind = FieldKind.NOT_EDITABLE
         pipeline.onFinishInput()
         requestCandidatesShown(false)
         dictationController.onEditorFieldClosed()
@@ -915,6 +1013,10 @@ internal class KeyboardSession(
         statusBar?.exitActionMode()
         closeQuickActions()
         syncSymPanels()
+        // The quick launcher is a bottom overlay like the Sym-grid/clipboard/emoji trio above, but
+        // was not being dismissed here: left open, it could keep floating over whatever app the
+        // user switched to once the field it was opened over finished.
+        if (quickLauncher.isOpen) quickLauncher.dismiss()
     }
 
     /**
@@ -935,6 +1037,10 @@ internal class KeyboardSession(
             closeQuickActions()
             expansionPopup.hide()
             syncSymPanels()
+            // The quick launcher is a bottom overlay too, but nothing dismissed it here: left open,
+            // it could be seen floating over whatever app the user switched to once the keyboard's
+            // own window was gone (expansion-clipboard-pickers-launcher.md SS7.1's dismissal list).
+            if (quickLauncher.isOpen) quickLauncher.dismiss()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
     }
 
@@ -944,6 +1050,8 @@ internal class KeyboardSession(
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
             pipeline.onWindowShown(textBeforeCursor)
             refreshCandidatesStrip()
+            // spec trackpad-caret-nav.md SS3.3: re-attached "whenever ... the keyboard window is shown".
+            attachKeyboardSwipeListener()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowShown crashed", error) }
     }
 
@@ -1301,6 +1409,9 @@ internal class KeyboardSession(
      * pipeline's own result, which this boundary does not see.
      */
     private fun reportKeyboardDebugEvent(event: KeyEvent) {
+        // A password field's keystrokes are never recorded, no matter what the Diagnostics screen
+        // or its "Record" toggle is doing: the field's own sensitivity outranks the debug pipeline.
+        if (currentFieldKind == FieldKind.PASSWORD) return
         val sink = debugCaptureSink ?: return
         val glyph = pipeline.modifierGlyphInput()
         val unicodeRaw = runCatching { event.unicodeChar }.getOrDefault(0)
@@ -1380,6 +1491,10 @@ internal class KeyboardSession(
         result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
         // spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on; none when it turns off."
         if (result.navModeTransition == NavModeTransition.ENTERED) performHaptic(NAV_MODE_HAPTIC_MS)
+        // spec trackpad-caret-nav.md SS5.5's `native_ctrl` row, "with no field": nav mode's Ctrl
+        // is a latch, not a physical hold, so the raw stroke carries no Ctrl meta bit for the app
+        // to see; this synthesizes the real combo instead of the bare letter that used to reach it.
+        result.forwardAsCtrlCombo?.let { key -> runCatching { sendNavModeCtrlCombo(key) }.onFailure { error -> Log.e(TAG, "nav mode Ctrl combo synth crashed", error) } }
         result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
         if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
         syncSymPanels()
@@ -1506,10 +1621,18 @@ internal class KeyboardSession(
         override fun onClose() = closeSymPanel()
     }
 
-    /** Shows or hides the clipboard panel, the emoji picker and the Emoji/Symbols key-layer grid to match the pipeline's open Sym page (0 through 4). */
+    /**
+     * Shows or hides the clipboard panel, the emoji picker and the Emoji/Symbols key-layer grid to
+     * match the pipeline's open Sym page (0 through 4). These three are already mutually exclusive
+     * by construction (one `currentSymPage` int), but the quick launcher is a fourth bottom overlay
+     * with no idea any of this exists; opening a Sym page while it is up would otherwise stack two
+     * overlays on screen at once. This function dismisses the quick launcher when a Sym page opens;
+     * [QuickLauncherController.onOpened] (wired to [closeSymPanel] below) does the reverse.
+     */
     private fun syncSymPanels() {
         runCatching {
             val page = pipeline.currentSymPage
+            if (page > 0 && quickLauncher.isOpen) quickLauncher.dismiss()
             val theme = pipeline.settings.statusBar.theme
             if (page == brobata.physiboard.core.strip.SYM_PAGE_CLIPBOARD) {
                 clipboard.cleanup(forced = true)
@@ -1785,9 +1908,17 @@ internal class KeyboardSession(
         if (!pipeline.settings.screenTrackpadEnabled) return false
         val trackpadKey = classifyTrackpadKey(event.keyCode)
         val isTriggerKey = trackpadKey != null && TrackpadPhysicalKey.matchesTrigger(trackpadKey, trackpad.activationSettings.triggerKey)
-        // spec SS2.2: "A Space down that already carries Ctrl or Alt in its meta state is never a trigger."
+        // spec SS2.2: "A Space down that already carries Ctrl or Alt in its meta state is never a
+        // trigger: Ctrl+Space and Alt+Space go straight down the normal pipeline." A Ctrl or Alt
+        // tap (not held) arms PhysiBoard's own one-shot in [ModifierState] without the physical key
+        // still being down, so the raw event's meta bits alone miss a one-shot- or latch-armed
+        // Ctrl+Space/Alt+Space entirely; both sources are consulted here. A nav-mode-originated Ctrl
+        // latch ([ModifierGlyphInput.ctrlLatchedNotNavMode] excludes it on purpose) is a different
+        // feature, not "Ctrl held for a chord", so it does not disqualify the trigger.
+        val glyph = pipeline.modifierGlyphInput()
         val carriesDisqualifyingMeta = trackpadKey == TrackpadPhysicalKey.SPACE &&
-            (event.metaState and KeyEvent.META_CTRL_ON != 0 || event.metaState and KeyEvent.META_ALT_ON != 0)
+            (event.metaState and KeyEvent.META_CTRL_ON != 0 || event.metaState and KeyEvent.META_ALT_ON != 0 ||
+                glyph.ctrlOneShotArmed || glyph.ctrlLatchedNotNavMode || glyph.altOneShotArmed || glyph.altLatched)
         return when (event.action) {
             KeyEvent.ACTION_DOWN -> {
                 if (isTriggerKey) {
@@ -1962,6 +2093,29 @@ internal class KeyboardSession(
         }
     }
 
+    /**
+     * spec trackpad-caret-nav.md SS3.3, verbatim: "The keyboard's own window (its decor view) is
+     * made focusable in touch mode, given focus, and a generic-motion listener is attached to it
+     * whenever the editor starts, the keyboard window is shown, or the provider preference
+     * changes." Attaching the listener to [StatusBarView] (the small candidates/strip view)
+     * alone, as an earlier revision did, left the feature dead on the real device: nothing had
+     * ever made that view -- or any view in this window -- focusable/focused, and the vendor
+     * firmware's touchpad-source `MotionEvent`s go to whatever holds focus, or nowhere.
+     * [KeyboardSwipeController.accepts] re-reads live settings/eligibility on every event, so
+     * re-running this at each of the three named triggers is cheap and always current; it is not
+     * gated on whether anything actually changed.
+     */
+    private fun attachKeyboardSwipeListener() {
+        val decor = service.window?.window?.decorView ?: return
+        decor.isFocusableInTouchMode = true
+        decor.requestFocus()
+        decor.setOnGenericMotionListener { _, event ->
+            if (!keyboardSwipe.accepts(event)) return@setOnGenericMotionListener false
+            onKeyboardSwipeEvaluated(keyboardSwipe.onGenericMotion(event))
+            true
+        }
+    }
+
     // -----------------------------------------------------------------------------------------
     // The status bar. spec: status-bar.md. The model is the pipeline's ([KeyboardPipeline.stripModel]),
     // the drawing is [StatusBarView]'s; this section wires the taps to the subsystems that exist.
@@ -1987,15 +2141,11 @@ internal class KeyboardSession(
             listener = stripListener,
         )
         statusBar = view
-        // spec trackpad-caret-nav.md SS3.3: "a generic-motion listener is attached to [the decor
-        // view]... whenever the editor starts, the keyboard window is shown, or the provider
-        // preference changes". [KeyboardSwipeController.accepts] re-reads the live settings and
-        // device eligibility on every event, so attaching it once here covers all three triggers.
-        view.setOnGenericMotionListener { _, event ->
-            if (!keyboardSwipe.accepts(event)) return@setOnGenericMotionListener false
-            onKeyboardSwipeEvaluated(keyboardSwipe.onGenericMotion(event))
-            true
-        }
+        // spec trackpad-caret-nav.md SS3.3: attached to the decor view, not this strip view, at
+        // each of the three named triggers (see [attachKeyboardSwipeListener]); building the
+        // strip is not itself one of those triggers, but the first attach still has to happen
+        // somewhere before the first of them fires.
+        attachKeyboardSwipeListener()
         // spec trackpad-caret-nav.md SS6: "every touch down... on the keyboard's chrome layout,
         // that is the strip and everything drawn in the keyboard window" takes a pulse, and any
         // held pulse is released when that layout leaves its window. These two hooks sit in
@@ -2182,6 +2332,23 @@ internal class KeyboardSession(
     private fun sendCtrlCombo(letter: Char) {
         val ic = service.currentInputConnection ?: return
         val keyCode = KeyEvent.KEYCODE_A + (letter.uppercaseChar() - 'A')
+        val now = SystemClock.uptimeMillis()
+        val meta = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
+    }
+
+    /**
+     * spec trackpad-caret-nav.md SS5.5's `native_ctrl` row, "with no field": [key]'s down and up,
+     * synthesized with Ctrl meta, the same shape [sendCtrlCombo] already uses for the action-mode
+     * undo/redo buttons but for any of the 26 letter keys a `native_ctrl` Fn Layer mapping can name,
+     * not just Z/Y. [AssignableKeys.keycodeOf] (`:core:actions`) is the reverse `KeyId`-to-keycode
+     * map [KeyboardPipeline]'s own KDoc says this needed (`:device:titan`'s `KeyNormalizer` only
+     * goes the other way). A [key] the map cannot resolve to a real keycode is a no-op.
+     */
+    private fun sendNavModeCtrlCombo(key: KeyId) {
+        val ic = service.currentInputConnection ?: return
+        val keyCode = AssignableKeys.keycodeOf(key) ?: return
         val now = SystemClock.uptimeMillis()
         val meta = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))

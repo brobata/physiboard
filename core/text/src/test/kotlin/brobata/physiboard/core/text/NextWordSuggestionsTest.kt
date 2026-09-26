@@ -35,6 +35,24 @@ class NextWordSuggestionsTest {
         assertFalse("BlackBerry" in starters, "default user words are excluded from starters (SS4)")
     }
 
+    /**
+     * spec SS4's "top 48... excluding..." reads as filter-then-rank: an ineligible spelling
+     * occupying one of the raw top-N frequency slots must be replaced by the next-ranked eligible
+     * word, not just dropped. Ten one-letter words outrank forty eligible two-letter ones here; a
+     * filter-after-limit implementation would return only the eligible words that survived inside
+     * the original top-48 window (38 of them), not all 40 that actually qualify.
+     */
+    @Test
+    fun `an ineligible word occupying a top-frequency slot is backfilled by the next eligible one`() {
+        val junk = ('a'..'j').map { WordFrequency(it.toString(), frequency = 1000) } // 10 one-letter, highest frequency
+        val eligible = ('a'..'z').flatMap { a -> ('a'..'z').map { b -> "$a$b" } }.take(40)
+            .mapIndexed { index, word -> WordFrequency(word, frequency = 100 - index) }
+        val dict = DictionaryIndex.build(en, junk + eligible)
+        val starters = StarterWords.of(dict, UserWordStore.empty())
+        assertEquals(40, starters.size, "all 40 eligible words should surface, not just the ones inside the raw top-48 window: $starters")
+        assertTrue(junk.none { it.word in starters }, "one-letter words are still excluded")
+    }
+
     @Test
     fun `starter words cap at 48 and are ordered by frequency then length`() {
         // 60 distinct alphabetic two-letter spellings ("aa", "ab", ...), frequency increasing with

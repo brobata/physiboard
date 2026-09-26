@@ -1,5 +1,7 @@
 package brobata.physiboard.ime
 
+import brobata.physiboard.core.keys.CtrlMapping
+import brobata.physiboard.core.keys.CtrlMappingTable
 import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
@@ -117,6 +119,27 @@ class KeyboardPipelineNavModeTest {
 
         assertTrue(result.consumed)
         assertEquals(listOf(EditorOp.SendKey(EditEffect.CURSOR_CENTER)), result.ops)
+    }
+
+    /**
+     * spec trackpad-caret-nav.md SS5.5's `native_ctrl` row, "with no field": before this fix,
+     * [KeyboardPipeline.onNavModeMappedKeyDown] routed a `native_ctrl` mapping through the same
+     * [PipelineResult.NOT_CONSUMED] path the in-field physical-Ctrl-combo case uses, on the
+     * assumption the raw event already carried Ctrl's meta bit -- true there, but nav mode's Ctrl
+     * here is a latch, not a physical hold, so the app would have received a bare letter. This
+     * pins that the key is consumed and [PipelineResult.forwardAsCtrlCombo] names the key instead,
+     * so `:ime` can synthesize the real combo.
+     */
+    @Test
+    fun `T61 - a native_ctrl Fn Layer mapping with no field consumes the key and asks ime to forward the combo`() {
+        val pipeline = KeyboardPipeline(layout = layout.copy(ctrlMappings = CtrlMappingTable(mapOf(KeyId.Letter('Q') to CtrlMapping.NativeCtrl))))
+        latchNavMode(pipeline)
+
+        val result = pipeline.onKeyStroke(letter('Q', 1000), noEditor)
+
+        assertTrue(result.consumed)
+        assertEquals(emptyList(), result.ops, "no text op of its own -- :ime sends the synthesized combo")
+        assertEquals(KeyId.Letter('Q'), result.forwardAsCtrlCombo)
     }
 
     @Test

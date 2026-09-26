@@ -22,8 +22,9 @@ class LocaleLayoutOverrideStore(private val context: Context) {
 
     suspend fun read(): Map<String, String> = withContext(Dispatchers.IO) {
         if (!file.isFile) return@withContext emptyMap()
-        val obj = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }.getOrNull() ?: return@withContext emptyMap()
-        obj.entries.associate { (k, v) -> k to ((v as? JsonPrimitive)?.content.orEmpty()) }
+        // Shared with `:ime`'s own reader ([LocaleLayoutMapping.decodeOverride]) so both sides
+        // decode the identical file the identical way.
+        LocaleLayoutMapping.decodeOverride(runCatching { file.readText() }.getOrNull())
     }
 
     /** SS10's "Writing an override": merges [locale] to [layoutId] over the existing file (or the bundled asset when there is none yet). */

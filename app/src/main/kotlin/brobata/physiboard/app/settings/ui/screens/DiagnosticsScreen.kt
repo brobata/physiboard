@@ -37,6 +37,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
@@ -95,9 +98,15 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
     var viewerText by remember { mutableStateOf<String?>(null) }
 
     // spec SS10.2: "it registers as the ONE listener for key events reported by the keyboard
-    // service... leaving it unregisters."
-    DisposableEffect(Unit) {
-        store.setKeyboardEventListener { event ->
+    // service... leaving it unregisters." "Leaving" means the screen is no longer the thing on
+    // screen, not merely still alive in composition: a composable stays composed while the whole
+    // Settings app is backgrounded (Home pressed without navigating away), and a capture left
+    // registered through that would keep recording whatever the user types into other apps,
+    // passwords included, until Settings is foregrounded again. Registration is therefore tied to
+    // the lifecycle's foreground state (ON_RESUME/ON_PAUSE), not just to composition.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val listener: (KeyboardEventRecord) -> Unit = { event ->
             displayedEvent = KeyboardEventRecording.displayedEvent(displayedEvent, event, ignoreBack)
             if (recording) {
                 val atMs = KeyboardEventRecording.wallClockAtMs(System.currentTimeMillis(), SystemClock.uptimeMillis(), event.eventUptimeMs)
@@ -106,7 +115,18 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 lastRecordedAtMs = atMs
             }
         }
-        onDispose { store.setKeyboardEventListener(null) }
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> store.setKeyboardEventListener(listener)
+                Lifecycle.Event.ON_PAUSE -> store.setKeyboardEventListener(null)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            store.setKeyboardEventListener(null)
+        }
     }
 
     fun buildReport(): String {

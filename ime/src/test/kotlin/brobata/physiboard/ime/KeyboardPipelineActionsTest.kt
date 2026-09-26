@@ -132,6 +132,35 @@ class KeyboardPipelineActionsTest {
         assertEquals(LauncherKeyDecision.OpenAssignmentSheet(AssignableKeys.keycodeOf(KeyId.Letter('Q'))!!), unassigned.onKeyStroke(down(KeyId.Letter('Q'), at = 1100), snapshot("", 1100)).launcherKey)
     }
 
+    /**
+     * spec SS6.2 B: arming the mode suspends an active nav-mode latch and restores it once the
+     * mode disarms -- but only while there is still no field to restore it into. Before this fix,
+     * [KeyboardPipeline.onStartInput] never touched the armed mode at all, so a field focused
+     * mid-arm left the restore pending; the 5000 ms timeout (exercised here) would then re-latch
+     * nav mode into the field the user was already typing in.
+     */
+    @Test
+    fun `B - focusing a real field while armed cancels the pending nav-mode restore instead of applying it later`() {
+        val p = pipeline(editable = false)
+        val ctrl = KeyId.Modifier(ModifierKey.CTRL)
+        p.onKeyStroke(KeyStroke(ctrl, KeyEdge.DOWN, 0, 0), snapshot(""))
+        p.onKeyStroke(KeyStroke(ctrl, KeyEdge.UP, 0, 50), snapshot(""))
+        p.onKeyStroke(KeyStroke(ctrl, KeyEdge.DOWN, 0, 400), snapshot("")) // nav mode now latched
+        p.onKeyStroke(KeyStroke(ctrl, KeyEdge.UP, 0, 450), snapshot(""))
+
+        p.onKeyStroke(down(sym, at = 1000), snapshot("")) // arms the mode, suspending the latch
+        assertEquals(1000L, p.powerShortcutArmedAtMs)
+
+        // A real field focuses before the 5000 ms disarm timer fires.
+        p.onStartInput(FieldContext(FieldKind.NORMAL))
+        assertNull(p.powerShortcutArmedAtMs, "starting a real field must cancel the armed mode outright")
+
+        // The timer firing afterward (or any later key) must not restore nav mode into that field.
+        p.onPowerShortcutTimeout(6000)
+        val typed = p.onKeyStroke(KeyStroke(KeyId.Letter('E'), KeyEdge.DOWN, 0, 7000), snapshot("", 7000))
+        assertTrue(typed.ops.none { it is EditorOp.SendKey }, "nav mode must not have re-latched into the field being typed in: ${typed.ops}")
+    }
+
     @Test
     fun `B - the mode disarms after 5000 ms and A - a bare key with the home switch off does nothing`() {
         val p = pipeline(editable = false)

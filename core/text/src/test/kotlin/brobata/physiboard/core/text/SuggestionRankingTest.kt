@@ -79,6 +79,30 @@ class SuggestionRankingTest {
         assertEquals("poster", results.first().word, results.joinToString { it.word })
     }
 
+    /** spec: dictionaries-languages.md SS7, "a personal word can never be filtered out of suggestions" -- even with no dictionary loaded at all. */
+    @Test
+    fun `a personal word offers a completion with no dictionary loaded`() {
+        val store = UserWordStore.empty().withPersonalWordAdded("physiboard", nowMillis = 0L)
+        val results = SuggestionRanking.suggest("physiboa", emptyList(), store, RankingOptions())
+        assertTrue(results.any { it.word == "physiboard" }, "a personal word must complete even with no dictionary loaded: $results")
+    }
+
+    /** spec: dictionaries-languages.md SS7's default-user-word list, autocorrect-suggestions.md SS6.1. */
+    @Test
+    fun `a shipped default user word offers a completion with no dictionary loaded`() {
+        val store = UserWordStore.of(listOf(WordFrequency("PhysiBoard", 30)))
+        val results = SuggestionRanking.suggest("physiboa", emptyList(), store, RankingOptions())
+        assertTrue(results.any { it.word == "PhysiBoard" }, "a default user word must complete even with no dictionary loaded: $results")
+    }
+
+    /** A personal word one typo away from what was typed must still surface as a fuzzy match, not just an exact completion. */
+    @Test
+    fun `a personal word offers a fuzzy match with no dictionary loaded`() {
+        val store = UserWordStore.empty().withPersonalWordAdded("physiboard", nowMillis = 0L)
+        val results = SuggestionRanking.suggest("phisiboard", emptyList(), store, RankingOptions())
+        assertTrue(results.any { it.word == "physiboard" }, "a personal word must still surface as a fuzzy match: $results")
+    }
+
     @Test
     fun `the edit-type term prefers insert over substitute over delete`() {
         assertEquals(0.5, SuggestionRanking.editTypeTerm("postr", "poster"))

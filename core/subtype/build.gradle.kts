@@ -20,6 +20,10 @@ dependencies {
     // reasoning for depending on `:core:keys`).
     api(project(":core:settings"))
     api(project(":core:keys"))
+    // Only the JSON tree API (no compiler plugin): `locale_layout_mapping.json`, the per-locale
+    // layout override the Input Languages screen's "System" rows write, is hand-parsed like
+    // `:core:keys`'s `ctrl_key_mappings.json`, so `:ime` can decode the identical file `:app` writes.
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

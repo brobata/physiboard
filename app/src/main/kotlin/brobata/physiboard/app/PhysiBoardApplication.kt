@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -87,12 +88,22 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
     override fun onCreate() {
         super.onCreate()
         settingsStore = SettingsStore.open(this)
-        // dictionaries-languages.md SS11: sync AppCompatDelegate to the stored `app_language_tag`
-        // before any activity is created, so the first screen already draws in the chosen
-        // language. A synchronous read, same precedent as StoreBridge.snapshot() below: the
-        // gated, import-aware settingsSource flow has not emitted yet at this point in start-up.
-        runCatching { AppLocaleApplier.applyAtStartup(runBlocking { settingsStore.current() }.languages.appLanguageTag) }
-            .onFailure { Log.e(TAG, "app language apply at startup failed", it) }
+        // dictionaries-languages.md SS11: sync AppCompatDelegate to the stored `app_language_tag`.
+        // A `runBlocking` read straight off `settingsStore` used to sit here, on the main thread,
+        // in both this process's launcher-Activity role and the keyboard-service role (no
+        // `android:process` split) -- risking an ANR on the very first field focus on a slow first
+        // DataStore read, and it also ran before [LegacyImporter.runOnce] below, so the first
+        // launch after upgrading from 2.x with a non-default app language applied the pre-migration
+        // (empty/default) tag and would not pick up the migrated one until the next full process
+        // restart. Reading through [settingsSource] instead waits for [importSettled] the same way
+        // every other reader of it already does, off the main thread, so this now sees the
+        // post-migration value on the very first launch it matters for; the trade is that the very
+        // first screen can draw for one frame in the previous language while this resolves, instead
+        // of ever showing the wrong one at all.
+        scope.launch {
+            runCatching { AppLocaleApplier.applyAtStartup(settingsSource.settings.first().languages.appLanguageTag) }
+                .onFailure { Log.e(TAG, "app language apply at startup failed", it) }
+        }
         // app-shell.md SS13.7: the daily background check is (re)armed or torn down once per
         // process start, from the one component that runs whether the launcher activity or the
         // keyboard service brought this process up, and never from `:ime` itself.

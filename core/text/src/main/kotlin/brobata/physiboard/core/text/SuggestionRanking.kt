@@ -114,6 +114,26 @@ object SuggestionRanking {
             }
         }
 
+        // spec dictionaries-languages.md SS7: "Both lists are merged into every loaded
+        // dictionary... a personal word can never be filtered out of suggestions." A personal or
+        // default word need not appear in any loaded [DictionaryIndex] (it is added from the strip
+        // or shipped as `common/dictionaries/user_defaults.json`, independent of the trie a
+        // dictionary install builds), so it needs its own completion/fuzzy pass here, mirroring
+        // [StarterWords.of]'s own fold of `userWords.personalWords()` into its candidate list.
+        val userWordEntries = userWords.personalWords().map { WordFrequency(it.word, it.frequency) } + userWords.defaultWords()
+        for (entry in userWordEntries) {
+            val key = DictNormalization.normalizedKey(entry.word)
+            if (key.isEmpty()) continue
+            if (entry.word.length > typedWord.length && key.startsWith(normalized) && passesCompletionFilters(typedWord, entry, n, userWords)) {
+                addOrKeepBetter(results, score(typedWord, entry.word, 0, entry.frequency, CandidateSource.COMPLETION, userWords, n, options))
+            }
+            if (n >= 2) {
+                val distance = boundedEditDistance(normalized, key, maxDistance = 2) ?: continue
+                if (!passesGeneralFilters(typedWord, entry.word, distance, n, options)) continue
+                addOrKeepBetter(results, score(typedWord, entry.word, distance, entry.frequency, CandidateSource.FUZZY, userWords, n, options))
+            }
+        }
+
         return results.values
             .filterNot { it.word.equals(typedWord, ignoreCase = false) }
             .sortedWith(
@@ -124,6 +144,30 @@ object SuggestionRanking {
             )
             .distinctBy { it.word.lowercase() }
             .take(limit)
+    }
+
+    /**
+     * Plain Levenshtein distance between two normalized keys, capped at [maxDistance] (null once
+     * exceeded): the small personal/default-word lists have no trie of their own to walk the way
+     * [DictionaryIndex.neighbours] does, so this is a direct DP over the handful of candidates
+     * instead.
+     */
+    private fun boundedEditDistance(a: String, b: String, maxDistance: Int): Int? {
+        if (abs(a.length - b.length) > maxDistance) return null
+        val prev = IntArray(b.length + 1) { it }
+        val curr = IntArray(b.length + 1)
+        for (i in 1..a.length) {
+            curr[0] = i
+            var rowMin = curr[0]
+            for (j in 1..b.length) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                curr[j] = minOf(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+                rowMin = minOf(rowMin, curr[j])
+            }
+            if (rowMin > maxDistance) return null
+            System.arraycopy(curr, 0, prev, 0, curr.size)
+        }
+        return prev[b.length].takeIf { it <= maxDistance }
     }
 
     private fun addOrKeepBetter(into: MutableMap<String, RankedSuggestion>, candidate: RankedSuggestion) {

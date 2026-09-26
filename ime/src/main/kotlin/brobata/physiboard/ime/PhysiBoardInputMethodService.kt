@@ -6,6 +6,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodSubtype
 import brobata.physiboard.device.privileged.PrivilegedServices
 import brobata.physiboard.device.privileged.setup.SetupReasons
 
@@ -100,6 +101,16 @@ class PhysiBoardInputMethodService : InputMethodService() {
     override fun onWindowShown() {
         super.onWindowShown()
         keyboard.onKeyboardWindowShown()
+    }
+
+    /**
+     * spec dictionaries-languages.md SS9.4: Android's own language-switch key or Settings >
+     * Languages picking a different base subtype must resync the running keyboard, not just
+     * PhysiBoard's own in-app cycle.
+     */
+    override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype?) {
+        super.onCurrentInputMethodSubtypeChanged(newSubtype)
+        keyboard.onCurrentInputMethodSubtypeChanged(newSubtype)
     }
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {

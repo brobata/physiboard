@@ -71,10 +71,12 @@ object InputStyleCatalog {
 
     /**
      * spec dictionaries-languages.md SS10's "automatic... resolves the layout from the subtype or
-     * mapping", read here for `keyboard_layout_auto_by_locale` once, at startup, rather than on
-     * every subtype change (this project has no subtype-changed callback to hook, SS9.4): with
+     * mapping", read here for `keyboard_layout_auto_by_locale` once, at startup: with
      * [autoByLocale] off the catalog's own first (shipped) row is kept; with it on, the first row
-     * whose language matches [systemLocale]'s, or the first row when none does.
+     * whose language matches [systemLocale]'s, or the first row when none does. `:ime` now also
+     * has a subtype-changed callback (SS9.4, `KeyboardSession.onCurrentInputMethodSubtypeChanged`)
+     * that keeps the running style in sync with Android's own choice after startup; this function
+     * only decides the one-time starting point.
      */
     fun startupStyle(styles: List<InputStyle>, systemLocale: String, autoByLocale: Boolean): InputStyle? {
         if (styles.isEmpty()) return null

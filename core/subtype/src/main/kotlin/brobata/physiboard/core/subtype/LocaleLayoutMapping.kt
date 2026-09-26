@@ -1,5 +1,9 @@
 package brobata.physiboard.core.subtype
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+
 /**
  * spec dictionaries-languages.md SS10: resolves the layout id for a locale string, the user's own
  * override (`files/locale_layout_mapping.json`, written by the Input Languages screen) taking
@@ -53,4 +57,19 @@ object LocaleLayoutMapping {
     }
 
     private fun normalize(s: String): String = s.replace('_', '-').lowercase()
+
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    /**
+     * Decodes `files/locale_layout_mapping.json`'s flat `{"<locale>": "<layoutId>"}` object, the
+     * same shape `:app`'s `LocaleLayoutOverrideStore` writes. Previously only `:app` ever read this
+     * file back; `:ime` had no decoder of its own, so a "System" row's saved override never reached
+     * the running keyboard at all. A missing file, unreadable text or a non-object root all decode
+     * to an empty override (never throws), matching this module's other malformed-input guards.
+     */
+    fun decodeOverride(text: String?): Map<String, String> {
+        if (text.isNullOrBlank()) return emptyMap()
+        val obj = runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return emptyMap()
+        return obj.entries.associate { (key, value) -> key to ((value as? JsonPrimitive)?.content.orEmpty()) }
+    }
 }

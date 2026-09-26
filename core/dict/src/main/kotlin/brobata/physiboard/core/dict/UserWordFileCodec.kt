@@ -27,6 +27,18 @@ object UserWordFileCodec {
     /** The shared file name for the personal word list (see the class KDoc's SPEC GAP). */
     const val PERSONAL_WORDS_FILE_NAME: String = "personal_dictionary.json"
 
+    /**
+     * The monitor both writers of [PERSONAL_WORDS_FILE_NAME] hold for the whole of their write:
+     * `:ime`'s `UserWordFileLoader` (the strip's own add/delete-word path) and `:app`'s
+     * `UserWordFileStore` (the Personal Dictionary screen's own edits). Both run in the same
+     * process (no `android:process` split) on independent threads, and neither write was
+     * otherwise serialized against the other: whichever `renameTo` landed last silently won,
+     * discarding the other side's edit with no conflict signal to either writer. A plain JVM
+     * object is enough since this codec is pure Kotlin with no coroutine dispatcher of its own to
+     * coordinate through.
+     */
+    object PersonalDictionaryFileLock
+
     /** dictionaries-languages.md SS7: the default-word file, copied from the asset on first use. */
     const val DEFAULT_WORDS_FILE_NAME: String = "user_defaults.json"
 

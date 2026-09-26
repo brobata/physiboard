@@ -15,12 +15,19 @@ import brobata.physiboard.core.text.WebApkHost
 object WebApkHostLookup {
     private const val RUNTIME_HOST_META_DATA = "org.chromium.webapk.shell_apk.runtimeHost"
 
-    /** A `webApkHost` function bound to [context], suitable for [KeyboardSession]'s constructor. */
+    /**
+     * A `webApkHost` function bound to [context], suitable for [KeyboardSession]'s constructor.
+     * [AppProfileResolver.resolve] calls this once per configured WebAPK-named profile on every
+     * `onStartInput`, so a package's resolved host is cached for the life of this closure (the
+     * session's whole lifetime) rather than making a fresh, synchronous `PackageManager` Binder
+     * call on the IME's main thread on every field attach for a package that never changes.
+     */
     fun forContext(context: Context): (String) -> String? {
         val packageManager = context.packageManager
+        val resolvedHostCache = mutableMapOf<String, String?>()
         return { packageName ->
             if (WebApkHost.isWebApk(packageName)) {
-                WebApkHost.resolve(packageName, rawRuntimeHost(packageManager, packageName))
+                resolvedHostCache.getOrPut(packageName) { WebApkHost.resolve(packageName, rawRuntimeHost(packageManager, packageName)) }
             } else {
                 null
             }

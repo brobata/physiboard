@@ -59,6 +59,13 @@ internal class QuickLauncherController(
     var quickLauncherKey: KeyId? = null
     var executor: CommandExecutor? = null
 
+    /**
+     * Called right after the sheet actually opens, so the owner of the other three bottom
+     * overlays (Sym grid, clipboard, emoji picker -- exclusive among themselves by construction)
+     * can close whichever of those is open, keeping at most one overlay on screen at once.
+     */
+    var onOpened: () -> Unit = {}
+
     private val panel = BottomOverlay(service, TAG)
     private var query = ""
     private var rows: List<LauncherRow> = emptyList()
@@ -116,6 +123,7 @@ internal class QuickLauncherController(
         val root = build()
         val height = (service.resources.displayMetrics.heightPixels * R.MAX_HEIGHT_PERCENT / 100)
         if (!panel.show(root, heightPx = height, focusable = true)) return false
+        onOpened()
         root.requestFocus()
         refilter()
         root.animate().translationY(0f).alpha(1f).setDuration(R.ANIMATION_MS).start()

@@ -32,7 +32,13 @@ class UserWordFileStore(private val context: Context) {
 
     /** Persists [store]'s personal tier, then sends the package-internal update broadcast (SS6.1). */
     suspend fun savePersonal(store: UserWordStore): Boolean = withContext(Dispatchers.IO) {
-        val ok = writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(store.personalWords()))
+        // `:ime`'s `UserWordFileLoader` (the strip's own add/delete-word path) writes this
+        // identical file from an independent thread in the same process (no `android:process`
+        // split); [UserWordFileCodec.PersonalDictionaryFileLock] is what keeps the two writes from
+        // silently discarding one another.
+        val ok = synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
+            writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(store.personalWords()))
+        }
         if (ok) notifyUpdated()
         ok
     }
