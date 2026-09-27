@@ -193,7 +193,12 @@ internal class DictationController(
         // ("Connection to speech recognition service lost, but no #startListening has been
         // invoked yet", the maintainer's Titan, 2026-09-26: dictation took a long time to
         // start and then typed nothing). Every session gets a recognizer of its own.
-        if (wasActive && session == null) releaseRecognizer()
+        if (wasActive && session == null) {
+            releaseRecognizer()
+            // Anything still staged belonged to the session that just ended; it must not be
+            // written into whatever the next one says.
+            directCommit = DirectCommitState()
+        }
         // spec SS6.3: the fourth finding's other half. Since SS5's segmented-session request extra
         // is unverified device-side, the one thing this code can guarantee is that the mode actually
         // driving the session's timers is visible in the log, both when it is decided and if it ever

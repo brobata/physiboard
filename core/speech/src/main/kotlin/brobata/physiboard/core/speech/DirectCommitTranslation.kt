@@ -11,45 +11,51 @@ package brobata.physiboard.core.speech
  * sentence was lost. The plan's "editor is not a reliable narrator" answers exactly this: where
  * a composing region is unsafe "the keyboard commits directly and loses only the underline".
  *
- * So this translates the same decisions into commits: each staged text replaces the previous one
- * by deleting exactly what was written last, and finishing an utterance becomes nothing at all,
- * because the words are already in the field. [written] carries how many characters the last
- * translation put there and must be handed back on the next call.
+ * So this holds the words back until the utterance is finished and then commits them once.
+ * [DirectCommitState] carries the staged text between calls and must be handed back on the next.
  */
-data class DirectCommitState(val written: Int = 0) {
-    init { require(written >= 0) { "written cannot be negative: $written" } }
-}
+data class DirectCommitState(val pending: String = "")
 
 /** The ops to apply, and the state to carry into the next translation. */
 data class DirectCommitTranslation(val ops: List<DictationTextOp>, val state: DirectCommitState)
 
 object DirectCommit {
     /**
-     * [ops] as they would be applied to an editor that refuses a composing region. A staged text
-     * becomes a delete of whatever the last one left plus a commit of the new one; an empty
-     * staged text, which is how the engine clears an abandoned utterance, becomes the delete
-     * alone; finishing becomes nothing, and an outright commit passes through and is not counted,
-     * since the engine only commits text it will never revise.
+     * [ops] rewritten for an editor that will not hold a staged region, where NOTHING is written
+     * until the sentence is final.
+     *
+     * The obvious translation, replacing each staged text by deleting the one before it, is
+     * wrong here and was shipped once: the maintainer dictated a sentence and it arrived seven
+     * times over, each copy a word or two longer than the last (2026-09-27). A terminal consumes
+     * the characters it is sent, so deleting them afterwards cannot work, and every partial the
+     * recognizer produced simply piled up. These editors get no running preview at all; the
+     * words appear when the utterance ends, which is the only behaviour that can be correct in
+     * a field that cannot take anything back.
+     *
+     * [DirectCommitState.pending] carries the latest staged text between calls, because a
+     * partial and the final that supersedes it arrive in separate dispatches.
      */
     fun translate(ops: List<DictationTextOp>, state: DirectCommitState): DirectCommitTranslation {
-        var written = state.written
+        var pending = state.pending
         val out = mutableListOf<DictationTextOp>()
         for (op in ops) {
             when (op) {
-                is DictationTextOp.SetComposingText -> {
-                    if (written > 0) out += DictationTextOp.DeleteBeforeCursor(written)
-                    if (op.text.isNotEmpty()) out += DictationTextOp.CommitText(op.text)
-                    written = op.text.length
+                // Remembered, never written: the next one supersedes it and this field cannot
+                // take back what it has already been sent.
+                is DictationTextOp.SetComposingText -> pending = op.text
+                // The utterance is over, so what it settled on is worth writing, once.
+                DictationTextOp.FinishComposing -> {
+                    if (pending.isNotEmpty()) out += DictationTextOp.CommitText(pending)
+                    pending = ""
                 }
-                DictationTextOp.FinishComposing -> written = 0
                 is DictationTextOp.CommitText -> {
                     out += op
-                    written = 0
+                    pending = ""
                 }
-                // Already translated; the engine itself never produces one.
+                // Never produced by the engine, and nothing here asks for one any more.
                 is DictationTextOp.DeleteBeforeCursor -> out += op
             }
         }
-        return DirectCommitTranslation(out, DirectCommitState(written))
+        return DirectCommitTranslation(out, DirectCommitState(pending))
     }
 }
