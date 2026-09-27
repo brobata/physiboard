@@ -964,6 +964,9 @@ internal class KeyboardSession(
         // told dictation's words as plain commits: a web terminal drew the staged sentence and
         // adopted none of it (2026-09-26). See DirectCommit.
         dictationController.composingAllowed = profile.editorTrust.composingRegionAllowed && !field.appDisablesSuggestions
+        // An app that refuses to be resized for a keyboard needs the strip to blink before it
+        // will lay out clear of it; see [dipForListedAppOnFieldStart].
+        if (field.isReallyEditable) handler.post { dipForListedAppOnFieldStart() }
         dictationController.onEditorFieldOpened(reportedPackage)
         clipboard.onFieldStarted()
         // spec SS2.4: matches are cleared "on every start of input".
@@ -1084,6 +1087,30 @@ internal class KeyboardSession(
             }
         }.onFailure { error -> Log.e(TAG, "onShowInputRequested crashed", error) }
     }
+
+    /**
+     * spec: status-bar.md SS12.2, reached from a field opening rather than from a refused request
+     * to show the keyboard. An app that sets `adjust=nothing` on its window tells Android not to
+     * move it for an input method, and Android obeys the app: whatever the strip reports as its
+     * insets, the app keeps drawing underneath it and its text box disappears behind the strip
+     * (Teams on the maintainer's Titan, 2026-09-26). The dip, hiding the strip and showing it
+     * again, is what makes such an app lay itself out afresh, and an app that never asks for a
+     * keyboard, because the phone has a hardware one, never produces the refused request the dip
+     * normally waits for. So a listed app gets its dip when its field opens.
+     */
+    private fun dipForListedAppOnFieldStart() {
+        runCatching {
+            if (!statusBarRendersNow()) return@runCatching
+            val decision = pipeline.onShowRequestRefused(SystemClock.uptimeMillis(), stripRendered = true, configurationChange = false)
+            applyDipEffects(decision.effects)
+            if (decision.started) {
+                handler.removeCallbacks(dipReshowRunnable)
+                handler.postDelayed(dipReshowRunnable, StripDip.HOLD_MS)
+            }
+        }.onFailure { error -> Log.e(TAG, "dip at field start crashed", error) }
+    }
+
+    private fun statusBarRendersNow(): Boolean = statusBar?.isRenderedOnScreen() ?: false
 
     /** spec SS12.2: the service consults this before honouring any request to show the candidates view. */
     fun refusesCandidatesShow(): Boolean = runCatching { pipeline.refusesCandidatesShow(SystemClock.uptimeMillis()) }.getOrDefault(false)
