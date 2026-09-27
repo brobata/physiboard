@@ -1105,7 +1105,7 @@ internal class KeyboardSession(
             applyDipEffects(decision.effects)
             if (decision.started) {
                 handler.removeCallbacks(dipReshowRunnable)
-                handler.postDelayed(dipReshowRunnable, StripDip.HOLD_MS)
+                handler.postDelayed(dipReshowRunnable, StripDip.HOLD_MS + DIP_RESHOW_RETRY_MS)
             }
         }.onFailure { error -> Log.e(TAG, "dip at field start crashed", error) }
     }
@@ -1116,8 +1116,17 @@ internal class KeyboardSession(
     fun refusesCandidatesShow(): Boolean = runCatching { pipeline.refusesCandidatesShow(SystemClock.uptimeMillis()) }.getOrDefault(false)
 
     private fun onDipHoldElapsed() {
-        runCatching { applyDipEffects(pipeline.onDipHoldElapsed(SystemClock.uptimeMillis())) }
-            .onFailure { error -> Log.e(TAG, "dip re-show crashed", error) }
+        runCatching {
+            val effects = pipeline.onDipHoldElapsed(SystemClock.uptimeMillis())
+            if (effects.isEmpty() && pipeline.dipIsInFlight(SystemClock.uptimeMillis())) {
+                // The timer can land a moment before the hold is up, and the hold refuses its own
+                // re-show, so without this retry the strip stays hidden for good: the maintainer
+                // tapped a Teams message box and the strip simply vanished (2026-09-26).
+                handler.postDelayed(dipReshowRunnable, DIP_RESHOW_RETRY_MS)
+                return@runCatching
+            }
+            applyDipEffects(effects)
+        }.onFailure { error -> Log.e(TAG, "dip re-show crashed", error) }
     }
 
     /** spec SS12.2 steps 2 and 3, plus SS3.2's "one turn after that forces the enclosing container back to visible". */
@@ -2568,6 +2577,9 @@ internal class KeyboardSession(
     }
 
     private companion object {
+        /** A margin on the dip's re-show, and the retry if it still lands early. */
+        const val DIP_RESHOW_RETRY_MS = 32L
+
         const val TAG = "PhysiBoardKeyboard"
         const val HAPTIC_DURATION_MS = 10L
 

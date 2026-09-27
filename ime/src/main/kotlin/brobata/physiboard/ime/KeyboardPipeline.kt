@@ -1049,6 +1049,9 @@ internal class KeyboardPipeline(
     }
 
     /** spec SS12.2 step 3: the hold's timer fired; answers the re-show once, never twice. */
+    /** True while a dip is still settling, so `:ime` can retry a re-show that landed a moment early. */
+    fun dipIsInFlight(nowMs: Long): Boolean = StripDip.isInFlight(dip, nowMs)
+
     fun onDipHoldElapsed(nowMs: Long): List<DipEffect> {
         val (next, effects) = StripDip.onHoldElapsed(dip, nowMs)
         dip = next
