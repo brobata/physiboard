@@ -15,6 +15,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -278,15 +280,33 @@ private fun ActionCard(title: String, subtitle: String, onClick: () -> Unit) {
 
 @Composable
 private fun HomeTile(label: String, subLabel: String? = null, showDot: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(modifier = modifier.aspectRatio(1.6f)) {
+    Box(modifier = modifier.aspectRatio(2.6f)) {
         Card(
             modifier = Modifier.fillMaxSize().clickable(onClick = onClick),
             shape = RoundedCornerShape(6.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         ) {
-            Column(modifier = Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.Center) {
-                Text(label, style = MaterialTheme.typography.titleSmall)
-                if (subLabel != null) Text(subLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Read as a terminal listing rather than a card: the prompt marker, then the name,
+            // anchored top-left the way a line of output is.
+            Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.Top) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "$",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = brobata.physiboard.app.settings.ui.PhysiBoardColors.SignalAmber,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(label, style = MaterialTheme.typography.titleSmall)
+                }
+                if (subLabel != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        subLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 18.dp),
+                    )
+                }
             }
         }
         if (showDot) {
