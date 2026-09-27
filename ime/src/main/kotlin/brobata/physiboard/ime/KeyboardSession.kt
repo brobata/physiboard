@@ -708,6 +708,9 @@ internal class KeyboardSession(
      */
     private fun applySettings(settings: Settings, announceSwitch: Boolean = false) {
         lastSettings = settings
+        // The per-key diagnostic trail is off until asked for; it sits on the path every
+        // keystroke takes. See [DiagnosticLog].
+        DiagnosticLog.enabled = settings.statusBar.overlayDebugLoggingEnabled
         // spec dictionaries-languages.md SS8.2, SS9 and keys-and-modifiers.md SS7.5: the
         // available styles and whether a chord (or the language button) has anywhere to switch to
         // are both recomputed from the store on every emission; SS10's
@@ -1521,7 +1524,7 @@ internal class KeyboardSession(
         }
         if (stroke.edge == KeyEdge.DOWN) {
             val g = pipeline.modifierGlyphInput()
-            DiagnosticLog.i(TAG) { "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops} dicts=${pipeline.resources.dictionaries.size} sugg=${runCatching { pipeline.suggestions().map { it.word } }.getOrDefault(emptyList())}" }
+            DiagnosticLog.i(TAG) { "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] ops=${result.ops.size}" }
         }
         scheduleLongPressIfNeeded()
         // spec app-shell.md SS11, autocorrect-suggestions.md SS7.2: "each attempt is recorded in
