@@ -188,6 +188,12 @@ internal class DictationController(
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
         session = outcome.session
         if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
+        // A recognizer kept between sessions goes stale: Android unbinds the remote speech
+        // service while nothing is listening, and the next request reaches a dead connection
+        // ("Connection to speech recognition service lost, but no #startListening has been
+        // invoked yet", the maintainer's Titan, 2026-09-26: dictation took a long time to
+        // start and then typed nothing). Every session gets a recognizer of its own.
+        if (wasActive && session == null) releaseRecognizer()
         // spec SS6.3: the fourth finding's other half. Since SS5's segmented-session request extra
         // is unverified device-side, the one thing this code can guarantee is that the mode actually
         // driving the session's timers is visible in the log, both when it is decided and if it ever
@@ -282,6 +288,14 @@ internal class DictationController(
      * segmented sessions' latch is cleared." "Any creation failure" falls to the system default;
      * if that fails too, there is no recognizer and the caller reports the start failure.
      */
+    /** Destroys the recognizer so the next session binds a fresh connection to the speech service. */
+    private fun releaseRecognizer() {
+        recognizer?.let { runCatching { it.destroy() } }
+        recognizer = null
+        recognizerEngineId = null
+        DiagnosticLog.i(TAG) { "recognizer released at the end of the session" }
+    }
+
     private fun ensureRecognizer(): SpeechRecognizer? {
         val engineId = settings.engineId
         recognizer?.let { if (recognizerEngineId == engineId) return it }

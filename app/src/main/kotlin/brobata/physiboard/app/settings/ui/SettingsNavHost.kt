@@ -1,5 +1,10 @@
 package brobata.physiboard.app.settings.ui
 
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -73,7 +78,20 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
     fun navigate(route: String) { navController.navigate(route) }
     fun back() { navController.popBackStack() }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        // spec: app-shell.md SS22.2, "Opening settings from home slides in from the right;
+        // finishing the settings activity slides out to the right." 3.0 collapsed the old
+        // two-activity shell into one push/pop stack (this NavHost), so the same slide is applied
+        // uniformly to every push/pop here rather than only Home's own outgoing edge: the screen
+        // being pushed slides in from the right over a static predecessor, and the screen being
+        // popped slides back out to the right to reveal a static predecessor underneath.
+        enterTransition = { slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
+    ) {
         composable(Routes.HOME) { HomeScreen(onNavigate = ::navigate) }
         composable(Routes.SETUP) {
             SetupScreen(onComplete = { navController.navigate(Routes.HOME) { popUpTo(0) } })

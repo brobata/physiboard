@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -80,6 +82,7 @@ class LauncherAssignmentActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         overridePendingTransition(0, 0)
         val keycode = intent.getIntExtra(AssignmentSheet.EXTRA_KEY_CODE, -1)
         val skipLaunch = intent.getBooleanExtra(AssignmentSheet.EXTRA_SKIP_LAUNCH, false)
@@ -187,7 +190,7 @@ private fun AssignmentSheetContent(
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f)).clickable(onClick = onClose), contentAlignment = Alignment.BottomCenter) {
         Surface(
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.75f).clickable(enabled = false) {},
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.75f).navigationBarsPadding().clickable(enabled = false) {},
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Box(modifier = Modifier.size(width = 40.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.outline).align(Alignment.CenterHorizontally))

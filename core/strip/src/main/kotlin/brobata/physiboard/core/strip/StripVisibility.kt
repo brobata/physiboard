@@ -41,9 +41,16 @@ object StripVisibility {
         packageName: String?,
         symPageOpen: Boolean,
         navModeLatched: Boolean,
+        fieldOffersSuggestions: Boolean = true,
+        hideWhereNothingToSuggest: Boolean = true,
     ): StripFootprint = when {
         navModeLatched -> StripFootprint.COLLAPSED
         symPageOpen -> StripFootprint.SHOWN
+        // A field that allows no suggestions can never fill a slot, so the strip is a band of
+        // nothing: the maintainer's terminal showed an empty black bar taking a tenth of the
+        // screen (2026-09-26, "if I'm using a terminal app it's useless"). It keeps its
+        // footprint only while a Sym page is open, which is the case above.
+        hideWhereNothingToSuggest && !fieldOffersSuggestions -> StripFootprint.COLLAPSED
         isShownForApp(mode, apps, packageName) -> StripFootprint.SHOWN
         else -> StripFootprint.COLLAPSED
     }

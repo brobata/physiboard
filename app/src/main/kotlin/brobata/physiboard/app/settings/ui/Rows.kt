@@ -30,9 +30,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,10 +54,11 @@ import androidx.compose.ui.unit.dp
 val MinTouchTarget = 48.dp
 
 /**
- * The screen chrome every hub and sub-screen shares: a back arrow, a title, and an optional
- * trailing action (used for the "Reset" row some screens carry). Content scrolls in a
- * [LazyColumn] so a screen with more rows than the Titan's 1200 px tall panel can hold is still
- * fully reachable by DPAD.
+ * The screen chrome every hub and sub-screen shares (app-shell.md SS22.1, "the settings screens
+ * share one top bar"): inset below the status bar and out of the cutout, 1 dp tonal elevation, a
+ * back arrow with content description "Back", the title as a heading in headline-small
+ * semi-bold, and trailing actions. Content scrolls in a [LazyColumn] so a screen with more rows
+ * than the Titan's 1200 px tall panel can hold is still fully reachable by DPAD.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +71,13 @@ fun SettingsScreenScaffold(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {
@@ -77,6 +86,9 @@ fun SettingsScreenScaffold(
                     }
                 },
                 actions = { trailingAction?.invoke() },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+                ),
             )
         },
     ) { padding ->

@@ -8,17 +8,32 @@ import android.provider.Settings as AndroidSettings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,13 +52,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.PhysiBoardColors
 import brobata.physiboard.app.settings.ui.Routes
-import brobata.physiboard.app.settings.ui.TerminalPromptStyle
+import brobata.physiboard.app.settings.ui.rememberReducedMotion
 import brobata.physiboard.app.shell.AutoUpdateCheckOnCreate
 import brobata.physiboard.app.shell.ImeComponent
 import brobata.physiboard.app.shell.ImeProbeAndroid
@@ -104,7 +123,12 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         HomeHeader()
-        Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .padding(16.dp),
+        ) {
             HomeActionCard(probe, updateState, onNavigate)
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -155,16 +179,60 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     }
 }
 
+/**
+ * The terminal header (app-shell.md SS22.1): an Ink band, regardless of the app's own light or
+ * dark theme, with a 2 dp amber hairline along its top, `physiboard:~$` in bold 18 sp amber and a
+ * 10x20 dp amber block cursor fading every 600 ms (held static under reduced motion). The prompt
+ * itself is inset below the status bar and the display cutout so it is never hidden behind
+ * either (the maintainer's complaint this rebuild fixes); the band's own background reaches the
+ * true top of the window, matching the status bar colour set in [brobata.physiboard.app.MainActivity]
+ * so the hairline reads as the top edge of one continuous surface. Section 6.1's translucent
+ * status-bar scrim (black 30% dark theme, white 20% light) sits over just the status-bar strip.
+ */
 @Composable
 private fun HomeHeader() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(vertical = 20.dp, horizontal = 16.dp),
-    ) {
-        Text("physiboard:~$", style = TerminalPromptStyle, color = MaterialTheme.colorScheme.primary)
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    Box(modifier = Modifier.fillMaxWidth().background(PhysiBoardColors.Ink)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .padding(top = 2.dp)
+                .padding(vertical = 20.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("physiboard:~$", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 18.sp, color = PhysiBoardColors.SignalAmber)
+            TerminalCursor(modifier = Modifier.padding(start = 6.dp))
+        }
+        // spec: SS6.1, "a translucent overlay ... covers the status-bar area."
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsTopHeight(WindowInsets.statusBars)
+                .background(if (dark) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.2f)),
+        )
+        // The 2 dp amber hairline sits at the true top edge of the band.
+        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(PhysiBoardColors.SignalAmber).align(Alignment.TopStart))
     }
+}
+
+/** The 10x20 dp amber block cursor (app-shell.md SS22.1), shared by every terminal header. */
+@Composable
+fun TerminalCursor(modifier: Modifier = Modifier, periodMillis: Int = 600) {
+    val reducedMotion = rememberReducedMotion()
+    val alpha = if (reducedMotion) {
+        1f
+    } else {
+        val transition = rememberInfiniteTransition(label = "terminal_cursor")
+        val animated by transition.animateFloat(
+            initialValue = 1f,
+            targetValue = 0f,
+            animationSpec = infiniteRepeatable(animation = tween(periodMillis), repeatMode = RepeatMode.Reverse),
+            label = "terminal_cursor_alpha",
+        )
+        animated
+    }
+    Box(modifier = modifier.size(width = 10.dp, height = 20.dp).alpha(alpha).background(PhysiBoardColors.SignalAmber))
 }
 
 @Composable

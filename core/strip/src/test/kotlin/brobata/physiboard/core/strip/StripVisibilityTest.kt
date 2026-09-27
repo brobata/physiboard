@@ -80,4 +80,17 @@ class StripVisibilityTest {
         val footprint = StripVisibility.footprint(StripVisibilityMode.APPS, StripVisibility.SEEDED_APPS, null, symPageOpen = false, navModeLatched = false)
         assertEquals(StripFootprint.COLLAPSED, footprint)
     }
+
+    /** The maintainer's terminal: an empty black band across the bottom, because no slot can ever fill there. */
+    @Test
+    fun `a field that offers no suggestions collapses the strip, unless a Sym page is open`() {
+        fun call(offers: Boolean, sym: Boolean = false, hide: Boolean = true) = StripVisibility.footprint(
+            StripVisibilityMode.ALWAYS, emptySet(), "com.android.chrome",
+            symPageOpen = sym, navModeLatched = false, fieldOffersSuggestions = offers, hideWhereNothingToSuggest = hide,
+        )
+        assertEquals(StripFootprint.COLLAPSED, call(offers = false))
+        assertEquals(StripFootprint.SHOWN, call(offers = false, sym = true))
+        assertEquals(StripFootprint.SHOWN, call(offers = false, hide = false))
+        assertEquals(StripFootprint.SHOWN, call(offers = true))
+    }
 }

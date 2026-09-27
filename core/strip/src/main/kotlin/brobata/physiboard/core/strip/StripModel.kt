@@ -19,6 +19,12 @@ data class StripSettings(
     val dipApps: Set<String> = StripDip.SEEDED_APPS,
     /** spec SS4, D3: `titan2_elite_rounded_corner_insets`, true on the Elite, the only device 3.0 ships to. */
     val roundedCorners: Boolean = true,
+    /**
+     * Collapse the strip in a field that allows no suggestions, where its slots can never fill.
+     * On by default: a terminal showed an empty band taking a tenth of the screen
+     * (2026-09-26). Switching it off keeps the strip's buttons available everywhere.
+     */
+    val hideWhereNothingToSuggest: Boolean = true,
     val theme: StripTheme = StripTheme.SLATE_DARK,
 )
 
@@ -98,6 +104,8 @@ data class StripModel(
                     packageName = inputs.packageName,
                     symPageOpen = inputs.modifiers.symPageOpen,
                     navModeLatched = inputs.navModeLatched,
+                    fieldOffersSuggestions = inputs.fieldAllowsSuggestions,
+                    hideWhereNothingToSuggest = settings.hideWhereNothingToSuggest,
                 ),
                 row = row,
                 leftButtons = settings.slots.drawn(StripSide.LEFT),

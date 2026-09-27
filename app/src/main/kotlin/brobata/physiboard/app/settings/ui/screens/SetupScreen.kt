@@ -3,19 +3,15 @@ package brobata.physiboard.app.settings.ui.screens
 import android.content.Intent
 import android.provider.Settings as AndroidSettings
 import android.view.inputmethod.InputMethodManager
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -73,7 +69,13 @@ fun SetupScreen(onComplete: () -> Unit) {
         if (essentialsExpanded) scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    Column(modifier = Modifier.fillMaxWidth().verticalScroll(scrollState).padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(scrollState)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(androidx.compose.foundation.layout.WindowInsetsSides.Vertical + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal))
+            .padding(16.dp),
+    ) {
         TerminalHeader()
         Text("Two quick steps to start typing.", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 16.dp))
 
@@ -161,20 +163,7 @@ private fun LaunchedEffectPoll(action: () -> Unit) {
 private fun TerminalHeader() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("physiboard:~$ setup", style = TerminalPromptStyle, color = PhysiBoardColors.SignalAmber)
-        val transition = rememberInfiniteTransition(label = "setup_cursor")
-        val alpha by transition.animateFloat(
-            initialValue = 1f,
-            targetValue = 0f,
-            animationSpec = infiniteRepeatable(animation = tween(650), repeatMode = RepeatMode.Reverse),
-            label = "setup_cursor_alpha",
-        )
-        Box(
-            modifier = Modifier
-                .padding(start = 4.dp)
-                .size(width = 10.dp, height = 20.dp)
-                .alpha(alpha)
-                .background(PhysiBoardColors.SignalAmber),
-        )
+        TerminalCursor(modifier = Modifier.padding(start = 4.dp), periodMillis = 650)
     }
 }
 

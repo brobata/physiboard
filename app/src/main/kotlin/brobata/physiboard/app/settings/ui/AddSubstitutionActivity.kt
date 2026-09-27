@@ -68,67 +68,72 @@ class AddSubstitutionActivity : ComponentActivity() {
             val trigger = shortcut.trim().lowercase()
             val validTrigger = trigger.isNotEmpty() && trigger != "__name"
 
-            AlertDialog(
-                onDismissRequest = { finish() },
-                title = { Text("Add substitution") },
-                text = {
-                    Column {
-                        Text("Replacement: $word")
-                        OutlinedTextField(
-                            value = shortcut,
-                            onValueChange = { shortcut = it },
-                            label = { Text("Shortcut") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).focusRequester(focusRequester),
-                        )
-                        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = addToDictionary, onCheckedChange = { addToDictionary = it })
-                            Text("Also add replacement to dictionary")
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        enabled = validTrigger,
-                        onClick = {
-                            scope.launch {
-                                val saved = runCatching {
-                                    app.settingsStore.update { settings ->
-                                        val existing = settings.correction.customSubstitutions[languageCode] ?: SubstitutionSet()
-                                        val rules = LinkedHashMap<String, String>()
-                                        rules[trigger] = word
-                                        rules.putAll(existing.rules.filterKeys { it != trigger })
-                                        val languages = if (languageCode in settings.correction.textReplacementLanguages) {
-                                            settings.correction.textReplacementLanguages
-                                        } else {
-                                            settings.correction.textReplacementLanguages + languageCode
-                                        }
-                                        settings.copy(
-                                            correction = settings.correction.copy(
-                                                customSubstitutions = settings.correction.customSubstitutions + (languageCode to existing.copy(rules = rules)),
-                                                textReplacementLanguages = languages,
-                                            ),
-                                        )
-                                    }
-                                }.isSuccess
-                                if (saved && addToDictionary && isValidNewDictionaryWord(word)) {
-                                    runCatching {
-                                        val fileStore = UserWordFileStore(this@AddSubstitutionActivity)
-                                        fileStore.savePersonal(fileStore.load().withPersonalWordAdded(word, System.currentTimeMillis()))
-                                    }
-                                }
-                                Toast.makeText(
-                                    this@AddSubstitutionActivity,
-                                    if (saved) "Substitution saved" else "Could not save substitution",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                finish()
+            // spec: app-shell.md SS22.1. This activity has no other content (a transparent,
+            // animation-free sheet holding just this dialog), but the dialog itself must still
+            // read the app's own colour scheme and typography rather than Compose's defaults.
+            PhysiBoardTheme {
+                AlertDialog(
+                    onDismissRequest = { finish() },
+                    title = { Text("Add substitution") },
+                    text = {
+                        Column {
+                            Text("Replacement: $word")
+                            OutlinedTextField(
+                                value = shortcut,
+                                onValueChange = { shortcut = it },
+                                label = { Text("Shortcut") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).focusRequester(focusRequester),
+                            )
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = addToDictionary, onCheckedChange = { addToDictionary = it })
+                                Text("Also add replacement to dictionary")
                             }
-                        },
-                    ) { Text("Save") }
-                },
-                dismissButton = { TextButton(onClick = { finish() }) { Text("Cancel") } },
-            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            enabled = validTrigger,
+                            onClick = {
+                                scope.launch {
+                                    val saved = runCatching {
+                                        app.settingsStore.update { settings ->
+                                            val existing = settings.correction.customSubstitutions[languageCode] ?: SubstitutionSet()
+                                            val rules = LinkedHashMap<String, String>()
+                                            rules[trigger] = word
+                                            rules.putAll(existing.rules.filterKeys { it != trigger })
+                                            val languages = if (languageCode in settings.correction.textReplacementLanguages) {
+                                                settings.correction.textReplacementLanguages
+                                            } else {
+                                                settings.correction.textReplacementLanguages + languageCode
+                                            }
+                                            settings.copy(
+                                                correction = settings.correction.copy(
+                                                    customSubstitutions = settings.correction.customSubstitutions + (languageCode to existing.copy(rules = rules)),
+                                                    textReplacementLanguages = languages,
+                                                ),
+                                            )
+                                        }
+                                    }.isSuccess
+                                    if (saved && addToDictionary && isValidNewDictionaryWord(word)) {
+                                        runCatching {
+                                            val fileStore = UserWordFileStore(this@AddSubstitutionActivity)
+                                            fileStore.savePersonal(fileStore.load().withPersonalWordAdded(word, System.currentTimeMillis()))
+                                        }
+                                    }
+                                    Toast.makeText(
+                                        this@AddSubstitutionActivity,
+                                        if (saved) "Substitution saved" else "Could not save substitution",
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                    finish()
+                                }
+                            },
+                        ) { Text("Save") }
+                    },
+                    dismissButton = { TextButton(onClick = { finish() }) { Text("Cancel") } },
+                )
+            }
         }
     }
 }

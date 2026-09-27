@@ -2,7 +2,9 @@ package brobata.physiboard.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
@@ -12,7 +14,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.PhysiBoardColors
 import brobata.physiboard.app.settings.ui.PhysiBoardTheme
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SettingsApp
@@ -38,6 +42,14 @@ import kotlinx.coroutines.flow.first
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // spec: app-shell.md SS22.1, "no-action-bar Material window with status and navigation
+        // bars in the splash colours (dark or light variant), and edge-to-edge is enabled on
+        // every activity." SystemBarStyle.auto switches the scrim and icon contrast with the
+        // system's own dark/light state, which is what the theme itself follows too.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(PhysiBoardColors.Cloud.toArgb(), PhysiBoardColors.Ink.toArgb()),
+            navigationBarStyle = SystemBarStyle.auto(PhysiBoardColors.Cloud.toArgb(), PhysiBoardColors.Ink.toArgb()),
+        )
         val application = application as PhysiBoardApplication
         setContent {
             val controller = rememberSettingsController(application.settingsSource.settings, application.settingsStore)

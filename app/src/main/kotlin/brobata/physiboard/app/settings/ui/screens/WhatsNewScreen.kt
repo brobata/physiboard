@@ -1,8 +1,13 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,7 +45,13 @@ fun WhatsNewScreen(onDone: () -> Unit) {
         WhatsNewNotes.parse(markdown)
     }
 
-    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal))
+            .padding(16.dp),
+    ) {
         Text("physiboard:~$ whatsnew", style = TerminalPromptStyle, color = PhysiBoardColors.SignalAmber)
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.padding(top = 16.dp),

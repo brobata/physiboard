@@ -363,6 +363,12 @@ data class StatusBarPrefs(
     val layoutOverrides: List<ThemeLayoutOverride> = emptyList(),
     /** `titan2_elite_rounded_corner_insets`, kept as the hidden preference status-bar.md SS9 allows. */
     val roundedCornerInsets: Boolean = true,
+    /**
+     * Collapse the strip in a field that allows no suggestions, where its slots can never fill.
+     * On by default: the maintainer's terminal showed an empty band across the bottom of the
+     * screen (2026-09-26). Off keeps the strip's buttons reachable in every field.
+     */
+    val hideWhereNothingToSuggest: Boolean = true,
     /** `accessibility_live_announcements_enabled`, spec SS5.6, SS15: default false. */
     val accessibilityLiveAnnouncementsEnabled: Boolean = false,
     /** `accessibility_suggestions_announcement_delay_ms`, spec SS5.6, SS15: default 500 ms. */

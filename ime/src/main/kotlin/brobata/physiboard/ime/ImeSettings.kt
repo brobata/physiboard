@@ -262,6 +262,7 @@ internal object ImeSettings {
             slots = ButtonSlots(left = bar.leftButtons.map(::stripButton), right = bar.rightButtons.map(::stripButton)),
             dipApps = s.perApp.nudgePackages,
             roundedCorners = bar.roundedCornerInsets,
+            hideWhereNothingToSuggest = bar.hideWhereNothingToSuggest,
             theme = StripTheme(
                 background = theme.background,
                 suggestion = theme.suggestion,

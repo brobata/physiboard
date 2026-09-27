@@ -112,6 +112,7 @@ object SettingsKeys {
     const val SAVED_THEMES = "keyboard_theme_saved_themes"
     const val LAYOUT_OVERRIDES = "keyboard_theme_layout_overrides_hardware"
     const val ROUNDED_CORNER_INSETS = "titan2_elite_rounded_corner_insets"
+    const val HIDE_STRIP_WHERE_NOTHING_TO_SUGGEST = "hide_status_bar_where_nothing_to_suggest"
     const val ACCESSIBILITY_LIVE_ANNOUNCEMENTS = "accessibility_live_announcements_enabled"
     const val ACCESSIBILITY_ANNOUNCEMENT_DELAY_MS = "accessibility_suggestions_announcement_delay_ms"
     const val OVERLAY_DEBUG_LOGGING = "ime_overlay_debug_logging"
@@ -486,6 +487,7 @@ object SettingsCodec {
         put(SettingsKeys.SAVED_THEMES, JsonRows.encode(JsonArray(s.savedThemes.map { StoredValues.namedTheme(it) })))
         put(SettingsKeys.LAYOUT_OVERRIDES, JsonRows.encode(StoredValues.layoutOverrides(s.layoutOverrides)))
         put(SettingsKeys.ROUNDED_CORNER_INSETS, s.roundedCornerInsets.toString())
+        put(SettingsKeys.HIDE_STRIP_WHERE_NOTHING_TO_SUGGEST, s.hideWhereNothingToSuggest.toString())
         put(SettingsKeys.ACCESSIBILITY_LIVE_ANNOUNCEMENTS, s.accessibilityLiveAnnouncementsEnabled.toString())
         put(SettingsKeys.ACCESSIBILITY_ANNOUNCEMENT_DELAY_MS, s.accessibilitySuggestionsAnnouncementDelayMs.toString())
         put(SettingsKeys.OVERLAY_DEBUG_LOGGING, s.overlayDebugLoggingEnabled.toString())
@@ -506,6 +508,7 @@ object SettingsCodec {
             savedThemes = StoredValues.namedThemes(JsonRows.parseArray(r.string(SettingsKeys.SAVED_THEMES))) ?: d.savedThemes,
             layoutOverrides = StoredValues.layoutOverrides(JsonRows.parseArray(r.string(SettingsKeys.LAYOUT_OVERRIDES))) ?: d.layoutOverrides,
             roundedCornerInsets = r.bool(SettingsKeys.ROUNDED_CORNER_INSETS, d.roundedCornerInsets),
+            hideWhereNothingToSuggest = r.bool(SettingsKeys.HIDE_STRIP_WHERE_NOTHING_TO_SUGGEST, d.hideWhereNothingToSuggest),
             accessibilityLiveAnnouncementsEnabled = r.bool(SettingsKeys.ACCESSIBILITY_LIVE_ANNOUNCEMENTS, d.accessibilityLiveAnnouncementsEnabled),
             // spec SS5.6: "never negative".
             accessibilitySuggestionsAnnouncementDelayMs = r.long(SettingsKeys.ACCESSIBILITY_ANNOUNCEMENT_DELAY_MS, d.accessibilitySuggestionsAnnouncementDelayMs, 0..Long.MAX_VALUE),
