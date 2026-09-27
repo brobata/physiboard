@@ -265,6 +265,9 @@ private fun ActionCard(title: String, subtitle: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(bottom = 16.dp)
             .clickable(onClick = onClick),
+        // A visible border rather than a soft elevation shadow: the "terminal panel" reading
+        // item 6 asked for, on the screen the maintainer named first.
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
@@ -276,7 +279,11 @@ private fun ActionCard(title: String, subtitle: String, onClick: () -> Unit) {
 @Composable
 private fun HomeTile(label: String, subLabel: String? = null, showDot: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(modifier = modifier.aspectRatio(1.6f)) {
-        Card(modifier = Modifier.fillMaxSize().clickable(onClick = onClick), shape = RoundedCornerShape(12.dp)) {
+        Card(
+            modifier = Modifier.fillMaxSize().clickable(onClick = onClick),
+            shape = RoundedCornerShape(6.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        ) {
             Column(modifier = Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.Center) {
                 Text(label, style = MaterialTheme.typography.titleSmall)
                 if (subLabel != null) Text(subLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

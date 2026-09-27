@@ -2,7 +2,9 @@ package brobata.physiboard.app.settings.ui
 
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -14,6 +16,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import brobata.physiboard.app.R
 
@@ -151,6 +154,20 @@ private val PhysiBoardTypography = Typography().let { base ->
     )
 }
 
+/**
+ * Sharper, more rectangular corners than Material's own defaults, applied once here so every
+ * card, button, chip, dialog and text field reads as one "terminal panel" family instead of the
+ * soft, fully-rounded default look (a "designer's eye" pass item 6 asked for, not named by
+ * app-shell.md SS22.1 itself).
+ */
+private val PhysiBoardShapes = Shapes(
+    extraSmall = RoundedCornerShape(2.dp),
+    small = RoundedCornerShape(4.dp),
+    medium = RoundedCornerShape(6.dp),
+    large = RoundedCornerShape(8.dp),
+    extraLarge = RoundedCornerShape(12.dp),
+)
+
 /** The terminal-header monospace style shared by Home and the setup/what's-new pages (SS22.1). */
 val TerminalPromptStyle: TextStyle
     @Composable get() = TextStyle(fontFamily = jetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -173,5 +190,5 @@ fun rememberReducedMotion(): Boolean {
 @Composable
 fun PhysiBoardTheme(content: @Composable () -> Unit) {
     val colorScheme = if (isSystemInDarkTheme()) PhysiBoardDarkColors else PhysiBoardLightColors
-    MaterialTheme(colorScheme = colorScheme, typography = PhysiBoardTypography, content = content)
+    MaterialTheme(colorScheme = colorScheme, typography = PhysiBoardTypography, shapes = PhysiBoardShapes, content = content)
 }
