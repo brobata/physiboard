@@ -85,9 +85,21 @@ class SettingsBaselineTest {
     }
 
     @Test
-    fun `the production CURRENT_VERSION is 1 with an empty correction table, and applying it just stamps the marker`() {
-        val result = SettingsBaseline.apply(emptyMap(), storedVersion = 0)
-        assertEquals(SettingsBaseline.CURRENT_VERSION.toString(), result[SettingsKeys.BASELINE_VERSION])
-        assertEquals(1, result.size, "no known-wrong default exists yet, so nothing besides the marker should change")
+    /** Version 2 hides the suggestion row on an install that had already stored it on (2026-09-26). */
+    fun `the production baseline hides the suggestion row and stamps its marker`() {
+        val fresh = SettingsBaseline.apply(emptyMap(), storedVersion = 0)
+        assertEquals(SettingsBaseline.CURRENT_VERSION.toString(), fresh[SettingsKeys.BASELINE_VERSION])
+        assertEquals(StatusBarVisibility.NEVER.storedValue, fresh[SettingsKeys.STATUS_BAR_VISIBILITY])
+
+        val hadItOn = mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.ALWAYS.storedValue)
+        val corrected = SettingsBaseline.apply(hadItOn, storedVersion = 1)
+        assertEquals(StatusBarVisibility.NEVER.storedValue, corrected[SettingsKeys.STATUS_BAR_VISIBILITY])
+
+        val alreadyApplied = SettingsBaseline.apply(hadItOn, storedVersion = SettingsBaseline.CURRENT_VERSION)
+        assertEquals(
+            StatusBarVisibility.ALWAYS.storedValue,
+            alreadyApplied[SettingsKeys.STATUS_BAR_VISIBILITY],
+            "a correction runs once per version: switching the row back on afterwards must stand",
+        )
     }
 }

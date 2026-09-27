@@ -25,12 +25,18 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; see the class KDoc for why it is 1 with no corrections yet. */
-    const val CURRENT_VERSION: Int = 1
+    /** The baseline version this build ships with; version 2 hides the suggestion row on installs that already wrote it on. */
+    const val CURRENT_VERSION: Int = 2
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
         1 to emptyMap(),
+        // Version 2, 2026-09-26: the suggestion row ships hidden (StatusBarPrefs' KDoc has the
+        // reasoning). An install that already stored ALWAYS would keep it for ever, because a
+        // stored value never picks up a later change to a default, which is exactly the case
+        // this mechanism exists for. Anyone who wants the row switches it back on afterwards and
+        // that choice stands: a correction runs once per version, not at every start.
+        2 to mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.NEVER.storedValue),
     )
 
     /** The baseline version already applied to [flatMap], or 0 when the marker was never written. Mirrors [SettingsCodec.schemaVersionOf]'s style. */
