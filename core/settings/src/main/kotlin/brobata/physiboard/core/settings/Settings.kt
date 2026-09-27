@@ -343,13 +343,18 @@ data class ThemeLayoutOverride(val locale: String? = null, val layout: String? =
  * row's own two announcement settings (SS5.6, SS15, kept: "Accessibility announcement
  * throttling") live here rather than a dedicated Accessibility screen, since 3.0 has none yet.
  *
- * [visibility] defaults to ALWAYS, not the asset's APPS: the catalogue (SS1.1, SS11 first row)
- * says a fresh install ends at ALWAYS because the impact stamp overwrote the asset, and SS13
- * folds that stamp's intent into the first-run defaults. [apps] is the seeded twenty (status-bar.md
- * SS3).
+ * MAINTAINER DECISION (2026-09-26), overriding the catalogue's ALWAYS: [visibility] ships NEVER.
+ * A phone with real keys makes few enough typos that a row of guesses earns nothing, and the
+ * band cost real screen: apps that refuse to be resized for a keyboard, Teams among them, drew
+ * their message box underneath it whatever the strip reported. Nothing else is lost by hiding
+ * it. Autocorrect runs on the boundary keys, not in the row; dictation is the Fn hold, not the
+ * microphone button; the clipboard, emoji and symbols are Sym pages, which still open while the
+ * row is hidden (status-bar.md SS3.5's own exception). Turn it back on under Status Bar Theme.
+ *
+ * [apps] is the seeded twenty (status-bar.md SS3).
  */
 data class StatusBarPrefs(
-    val visibility: StatusBarVisibility = StatusBarVisibility.ALWAYS,
+    val visibility: StatusBarVisibility = StatusBarVisibility.NEVER,
     val apps: Set<String> = SEEDED_STATUS_BAR_APPS,
     val heightDp: Int = 56,
     val leftButtons: List<BarButton> = listOf(BarButton.CLIPBOARD),

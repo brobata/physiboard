@@ -360,6 +360,10 @@ class LegacyImportTest {
             // default-ON rule, `Settings.kt`'s own KDoc) that a fresh 3.0 install with no 2.x data
             // to import would otherwise start from.
             languages = LanguagePrefs(altShiftLayoutSwitch = true),
+            // Same shape as `alt_shift_layout_switch` above: the 2.x baseline has the strip on,
+            // and the importer carries what it finds, whatever a fresh 3.0 install would default
+            // to now that the row ships hidden (StatusBarPrefs' own KDoc, 2026-09-26).
+            statusBar = StatusBarPrefs(visibility = StatusBarVisibility.ALWAYS),
             perApp = PerAppPrefs(exactTypingPackages = setOf("org.chromium.webapk.a5d49fddf77614419_v2")),
             device = DevicePrefs(ringAppColors = mapOf("co.kidcasa.app" to -757066, "com.google.android.apps.googlevoice" to -13318311)),
             dictation = DictationPrefs(sideKeyAssistant = true),
