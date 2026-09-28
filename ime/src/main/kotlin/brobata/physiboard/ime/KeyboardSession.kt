@@ -25,6 +25,8 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import androidx.core.content.ContextCompat
+import brobata.physiboard.core.text.EditorSnapshot
+import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.feedback.SoundGroup
 import brobata.physiboard.core.actions.feedback.TapVibration
@@ -1375,6 +1377,14 @@ internal class KeyboardSession(
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
+        // The Fn key never reaches an editor, so it must not pay an editor's price. This phone
+        // sends no key-down for Fn at all, only a burst of repeats about 50 ms apart, and the
+        // trigger wants five of them inside a 200 ms window. Sending each one down the ordinary
+        // path meant a round trip to the app to read its text, the whole text pipeline and a
+        // strip refresh before the burst counter even saw it: five times over, and if the
+        // keyboard was busy the window lapsed and dictation never fired (2026-09-27, and the
+        // reason the 2.x build answered this key at the very top of its own handler).
+        if (stroke.key == KeyId.Modifier(ModifierKey.FN)) return@runCatching processFnStroke(stroke)
         processKeyStroke(stroke)
     }.getOrElse { error ->
         Log.e(TAG, "onKeyEvent crashed on keyCode=${event.keyCode}; letting the raw key through", error)
@@ -1505,6 +1515,19 @@ internal class KeyboardSession(
      * SS2.3: "the swallowed down... replayed through the normal pipeline, so a quick tap still
      * types the key").
      */
+    /**
+     * The Fn key's own path: the modifier machine and nothing else, with no editor read. Every
+     * Fn-origin event is consumed, as 2.x consumed them, because this device never delivers the
+     * key's release and letting its repeats into the ordinary path leaves Ctrl stuck down.
+     */
+    private fun processFnStroke(stroke: KeyStroke): Boolean {
+        // The burst's own command reaches [handleCommand] through the pipeline's callback, so
+        // the trigger fires from here without this path knowing anything about dictation.
+        pipeline.onKeyStroke(stroke, EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs))
+        refreshCandidatesStrip()
+        return true
+    }
+
     private fun processKeyStroke(stroke: KeyStroke): Boolean {
         val ic = service.currentInputConnection ?: return false
         // spec: expansion-clipboard-pickers-launcher.md SS9.1: "on every hardware key down with
@@ -1513,10 +1536,18 @@ internal class KeyboardSession(
         if (stroke.edge == KeyEdge.DOWN && TypingSounds.shouldPlay(typingSoundMode, stroke.key, stroke.repeatCount, editableFieldActive = true)) {
             typingSoundPlayer?.play(SoundGroup.forKey(stroke.key))
         }
+        // Always-on timing of the one path the user feels. Two clock reads and a comparison cost
+        // nothing; a keystroke that took long enough to be noticed says where it went. The
+        // maintainer could out-type this keyboard (2026-09-27) and guessing at the cause twice
+        // was one time too many.
+        val tStart = System.nanoTime()
         val readout = ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
+        val tRead = System.nanoTime()
         val glyphBefore = pipeline.modifierGlyphInput()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
+        val tPipeline = System.nanoTime()
         val consumed = applyResult(ic, result, readout)
+        val tApply = System.nanoTime()
         if (result.appMayEditField && stroke.edge == KeyEdge.DOWN && !AppliedEditAccounting.movesCursor(result.ops)) {
             AppliedEditAccounting.expectedCursorAfterPassThrough(stroke.key, readout.cursorAbsolute, hasSelection = !lastReportedSelectionCollapsed)?.let { expected ->
                 ownEdit = OwnEditExpectation(selStart = expected, expiresAtMs = SystemClock.uptimeMillis() + OwnEditExpectation.SETTLE_WINDOW_MS)
@@ -1547,6 +1578,19 @@ internal class KeyboardSession(
             handler.postDelayed(expansionRefreshRunnable, SnippetExpansion.LOOKUP_DELAY_MS)
         }
         refreshCandidatesStrip()
+        val totalMs = (System.nanoTime() - tStart) / 1_000_000.0
+        if (totalMs >= SLOW_KEYSTROKE_MS) {
+            Log.w(
+                TAG,
+                "slow keystroke ${stroke.key}: total=%.1fms read=%.1f pipeline=%.1f apply=%.1f rest=%.1f".format(
+                    totalMs,
+                    (tRead - tStart) / 1_000_000.0,
+                    (tPipeline - tRead) / 1_000_000.0,
+                    (tApply - tPipeline) / 1_000_000.0,
+                    (System.nanoTime() - tApply) / 1_000_000.0,
+                ),
+            )
+        }
         return consumed
     }
 
@@ -2580,6 +2624,9 @@ internal class KeyboardSession(
     }
 
     private companion object {
+        /** A keystroke slower than this is reported with its breakdown; a fast typist sends one every ~60 ms. */
+        const val SLOW_KEYSTROKE_MS = 12.0
+
         /** A margin on the dip's re-show, and the retry if it still lands early. */
         const val DIP_RESHOW_RETRY_MS = 32L
 
