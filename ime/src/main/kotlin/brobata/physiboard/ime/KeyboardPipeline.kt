@@ -1007,7 +1007,11 @@ internal class KeyboardPipeline(
             expansionSuggestions = expansionBarRows().map { it.label },
             clipboardOverlayOpen = clipboardOverlayOpen,
             suggestionsEnabled = settings.textInput.autocorrect.suggestionsEnabled,
-            fieldAllowsSuggestions = activeField.suggestionsAllowed,
+            // The strip's own footprint also steps aside where the app said it wants no
+            // suggestions: Teams' message box and a web terminal both declare it, and both drew
+            // themselves under the strip or left it empty (2026-09-28). Autocorrect is untouched
+            // by this; it follows `suggestionsAllowed`, which this deliberately does not change.
+            fieldAllowsSuggestions = activeField.suggestionsAllowed && !activeField.appDisablesSuggestions,
             dictionaryInstalled = dictionaryInstalled,
             modifiers = ModifierIndicatorInput(
                 capsLockOn = modifierState.shift.value == ShiftValue.CAPS,

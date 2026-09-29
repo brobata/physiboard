@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 2 hides the suggestion row on installs that already wrote it on. */
-    const val CURRENT_VERSION: Int = 2
+    /** The baseline version this build ships with; version 3 puts the suggestion row back after version 2 hid it. */
+    const val CURRENT_VERSION: Int = 3
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -37,6 +37,12 @@ object SettingsBaseline {
         // this mechanism exists for. Anyone who wants the row switches it back on afterwards and
         // that choice stands: a correction runs once per version, not at every start.
         2 to mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.NEVER.storedValue),
+        // Version 3, 2026-09-28: and back on again. Version 2 switched the row off because it was
+        // drawing over apps that refuse to be resized for a keyboard; the row now steps aside by
+        // itself in any field whose app asked for no suggestions, which covers those apps, so
+        // there is no longer a reason to deny it everywhere else. Anyone who preferred it off
+        // switches it off and that choice stands, the same as before.
+        3 to mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.ALWAYS.storedValue),
     )
 
     /** The baseline version already applied to [flatMap], or 0 when the marker was never written. Mirrors [SettingsCodec.schemaVersionOf]'s style. */

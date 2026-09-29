@@ -34,12 +34,8 @@ class SettingsDefaultsTest {
     }
 
     @Test
-    /**
-     * MAINTAINER DECISION 2026-09-26: the strip ships hidden, against the catalogue's ALWAYS.
-     * See [StatusBarPrefs]'s own KDoc for why; everything else about the row's defaults stands.
-     */
-    fun `a fresh install ends with the strip hidden, the seeded twenty apps and the baseline slots`() {
-        assertEquals(StatusBarVisibility.NEVER, d.statusBar.visibility)
+    fun `a fresh install ends with the strip always on, the seeded twenty apps and the baseline slots`() {
+        assertEquals(StatusBarVisibility.ALWAYS, d.statusBar.visibility)
         assertEquals(20, d.statusBar.apps.size)
         assertTrue("com.whatsapp" in d.statusBar.apps && "com.google.android.gm" in d.statusBar.apps)
         assertEquals(listOf(BarButton.CLIPBOARD), d.statusBar.leftButtons)

@@ -343,18 +343,16 @@ data class ThemeLayoutOverride(val locale: String? = null, val layout: String? =
  * row's own two announcement settings (SS5.6, SS15, kept: "Accessibility announcement
  * throttling") live here rather than a dedicated Accessibility screen, since 3.0 has none yet.
  *
- * MAINTAINER DECISION (2026-09-26), overriding the catalogue's ALWAYS: [visibility] ships NEVER.
- * A phone with real keys makes few enough typos that a row of guesses earns nothing, and the
- * band cost real screen: apps that refuse to be resized for a keyboard, Teams among them, drew
- * their message box underneath it whatever the strip reported. Nothing else is lost by hiding
- * it. Autocorrect runs on the boundary keys, not in the row; dictation is the Fn hold, not the
- * microphone button; the clipboard, emoji and symbols are Sym pages, which still open while the
- * row is hidden (status-bar.md SS3.5's own exception). Turn it back on under Status Bar Theme.
+ * [visibility] is ALWAYS again (2026-09-28). It shipped NEVER for two days because the row was
+ * drawing over apps that refuse to be resized for a keyboard, but the maintainer had it working
+ * everywhere except Teams in 2.0.7 and wants that back. The row now steps aside by itself in any
+ * field whose app asked for no suggestions, which is what Teams' message box and a web terminal
+ * both declare, so it keeps out of the two places it was in the way without being switched off.
  *
  * [apps] is the seeded twenty (status-bar.md SS3).
  */
 data class StatusBarPrefs(
-    val visibility: StatusBarVisibility = StatusBarVisibility.NEVER,
+    val visibility: StatusBarVisibility = StatusBarVisibility.ALWAYS,
     val apps: Set<String> = SEEDED_STATUS_BAR_APPS,
     val heightDp: Int = 56,
     val leftButtons: List<BarButton> = listOf(BarButton.CLIPBOARD),

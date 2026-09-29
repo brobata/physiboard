@@ -85,21 +85,21 @@ class SettingsBaselineTest {
     }
 
     @Test
-    /** Version 2 hides the suggestion row on an install that had already stored it on (2026-09-26). */
-    fun `the production baseline hides the suggestion row and stamps its marker`() {
+    /** Version 3 puts the suggestion row back after version 2 had hidden it (2026-09-28). */
+    fun `the production baseline shows the suggestion row and stamps its marker`() {
         val fresh = SettingsBaseline.apply(emptyMap(), storedVersion = 0)
         assertEquals(SettingsBaseline.CURRENT_VERSION.toString(), fresh[SettingsKeys.BASELINE_VERSION])
-        assertEquals(StatusBarVisibility.NEVER.storedValue, fresh[SettingsKeys.STATUS_BAR_VISIBILITY])
+        assertEquals(StatusBarVisibility.ALWAYS.storedValue, fresh[SettingsKeys.STATUS_BAR_VISIBILITY])
 
-        val hadItOn = mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.ALWAYS.storedValue)
-        val corrected = SettingsBaseline.apply(hadItOn, storedVersion = 1)
-        assertEquals(StatusBarVisibility.NEVER.storedValue, corrected[SettingsKeys.STATUS_BAR_VISIBILITY])
+        val hadItOff = mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.NEVER.storedValue)
+        val corrected = SettingsBaseline.apply(hadItOff, storedVersion = 2)
+        assertEquals(StatusBarVisibility.ALWAYS.storedValue, corrected[SettingsKeys.STATUS_BAR_VISIBILITY])
 
-        val alreadyApplied = SettingsBaseline.apply(hadItOn, storedVersion = SettingsBaseline.CURRENT_VERSION)
+        val alreadyApplied = SettingsBaseline.apply(hadItOff, storedVersion = SettingsBaseline.CURRENT_VERSION)
         assertEquals(
-            StatusBarVisibility.ALWAYS.storedValue,
+            StatusBarVisibility.NEVER.storedValue,
             alreadyApplied[SettingsKeys.STATUS_BAR_VISIBILITY],
-            "a correction runs once per version: switching the row back on afterwards must stand",
+            "a correction runs once per version: switching the row off afterwards must stand",
         )
     }
 }
