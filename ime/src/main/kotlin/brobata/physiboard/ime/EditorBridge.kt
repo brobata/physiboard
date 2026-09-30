@@ -42,10 +42,22 @@ internal data class EditorReadout(
  * [fallbackCursorAbsolute] is the caller's best knowledge of the cursor (the editor's last
  * selection report) for when the document is not read.
  */
+/**
+ * The most text a keystroke will pull back from the app at once. Generous for the selection and
+ * word-motion work that asks for it, small enough that the copy is never what the user feels.
+ */
+private const val EXTRACTED_TEXT_LIMIT = 4096
+
 internal fun InputConnection.readEditorState(nowMs: Long, wholeDocument: Boolean, fallbackCursorAbsolute: Int): EditorReadout {
     val before = runCatching { getTextBeforeCursor(TEXT_BEFORE_CURSOR_WINDOW, 0)?.toString() }.getOrNull()
     val extracted = if (wholeDocument) {
-        runCatching { getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 0 }, 0) }.getOrNull()
+        // Bounded, not the whole document. A hint of zero means "everything you have", and in a
+        // terminal with a long scrollback that is an enormous string copied across a process
+        // boundary on the path of a single keystroke: on the maintainer's phone a Space or a
+        // Backspace spent 30 ms or more here while a letter spent 8 (2026-09-29). Every caller
+        // that asks for this wants the selection and the words around the cursor, never the
+        // whole history above it.
+        runCatching { getExtractedText(ExtractedTextRequest().apply { hintMaxChars = EXTRACTED_TEXT_LIMIT }, 0) }.getOrNull()
     } else {
         null
     }
