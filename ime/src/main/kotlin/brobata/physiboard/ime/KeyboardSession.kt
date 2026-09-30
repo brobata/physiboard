@@ -1541,7 +1541,18 @@ internal class KeyboardSession(
         // maintainer could out-type this keyboard (2026-09-27) and guessing at the cause twice
         // was one time too many.
         val tStart = System.nanoTime()
-        val readout = ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
+        // A key coming back up changes no text: its work is modifier bookkeeping and the
+        // long-press timer, neither of which reads the field. Asking the app for its text again
+        // there doubled what every character cost, 7 ms of it for an up that applied nothing
+        // (measured on the maintainer's phone, 2026-09-29). An up that does turn out to produce
+        // ops still gets them applied; the rules that need surrounding context see an
+        // unavailable read and stand down, which is what they already do for an editor that
+        // will not answer.
+        val readout = if (stroke.edge == KeyEdge.UP) {
+            EditorReadout(EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs), documentStartOffset = 0, cursorAbsolute = lastReportedSelStart)
+        } else {
+            ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
+        }
         val tRead = System.nanoTime()
         val glyphBefore = pipeline.modifierGlyphInput()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
@@ -1577,7 +1588,8 @@ internal class KeyboardSession(
             handler.removeCallbacks(expansionRefreshRunnable)
             handler.postDelayed(expansionRefreshRunnable, SnippetExpansion.LOOKUP_DELAY_MS)
         }
-        refreshCandidatesStrip()
+        // The strip only changes when something was typed; a bare key-up leaves it as it was.
+        if (stroke.edge == KeyEdge.DOWN || result.ops.isNotEmpty()) refreshCandidatesStrip()
         val totalMs = (System.nanoTime() - tStart) / 1_000_000.0
         if (totalMs >= SLOW_KEYSTROKE_MS) {
             Log.w(
