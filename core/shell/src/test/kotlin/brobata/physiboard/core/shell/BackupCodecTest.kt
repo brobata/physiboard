@@ -160,4 +160,17 @@ class BackupCodecTest {
         assertFalse(ZipEntryPaths.isRestorableSideFilePath("shared_prefs/embedded_adb.xml", allowed))
         assertFalse(ZipEntryPaths.isRestorableSideFilePath("keyboard_layouts_evil/x", allowed))
     }
+
+    @Test
+    fun `a restore keeps the launcher keys a backup actually carries`() {
+        // These three are written by the codec only when non-blank, so they are absent from a
+        // default Settings map. Before 2026-09-29 that made them "keys the codec never writes"
+        // and every restore dropped them.
+        for (key in listOf("launcher_shortcuts", "quick_launcher_command_customizations", "command_surface_sources")) {
+            val backup = BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), mapOf(key to "{}"))
+            val outcome = BackupRestore.restore(Settings(), backup)
+            assertEquals(1, outcome.appliedCount, "$key should be applied, not skipped")
+            assertEquals(0, outcome.skippedCount, "$key should not be skipped")
+        }
+    }
 }

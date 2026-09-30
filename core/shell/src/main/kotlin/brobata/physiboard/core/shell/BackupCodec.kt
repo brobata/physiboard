@@ -174,8 +174,28 @@ data class RestoreOutcome(val settings: Settings, val appliedCount: Int, val ski
  * [SettingsCodec.fromMap] would silently ignore it anyway and the snackbar needs a true count.
  */
 object BackupRestore {
-    /** Every key a fresh [Settings] round-trips through the codec, plus the one dynamic prefix (`auto_correct_custom_<lang>`) the codec also accepts. */
-    private val knownFixedKeys: Set<String> by lazy { SettingsCodec.toMap(Settings()).keys }
+    /**
+     * Every key the codec can write, plus the one dynamic prefix (`auto_correct_custom_<lang>`)
+     * it also accepts.
+     *
+     * A fresh [Settings] is not enough on its own. Three launcher keys are written only when
+     * their value is non-blank, so they never appear in a default's map, were therefore treated
+     * as keys the codec never writes, and were skipped on every restore: a backup carried the
+     * user's key assignments, launcher customisations and command surfaces out and silently
+     * dropped all three coming back in (2026-09-29). Populating them here asks the codec what it
+     * *can* write rather than what a default happens to write.
+     */
+    private val knownFixedKeys: Set<String> by lazy {
+        val defaults = Settings()
+        val withOptionalKeys = defaults.copy(
+            launcher = defaults.launcher.copy(
+                assignedKeysJson = "{}",
+                commandCustomizationsJson = "{}",
+                commandSurfaceSourcesJson = "{}",
+            ),
+        )
+        SettingsCodec.toMap(defaults).keys + SettingsCodec.toMap(withOptionalKeys).keys
+    }
 
     private fun isKnownKey(key: String): Boolean =
         key in knownFixedKeys || key.startsWith(SettingsKeys.AUTO_CORRECT_CUSTOM_PREFIX)
