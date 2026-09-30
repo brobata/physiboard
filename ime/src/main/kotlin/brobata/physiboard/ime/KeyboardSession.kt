@@ -962,7 +962,10 @@ internal class KeyboardSession(
         } else {
             pipeline.onStartInput(field, profile.editorTrust, profile, openingText)
         }
-        pipeline.fieldDrawsUnderStrip = false
+        // An app that refuses to be resized for a keyboard draws its text box where the strip
+        // already is; the strip gives up the space for the whole field. See [StripOverlap].
+        pipeline.fieldDrawsUnderStrip =
+            StripOverlap.appDrawsUnderStrip(reportedPackage, lastSettings.perApp.nudgePackages, field.isReallyEditable)
         requestCandidatesShown(field.isReallyEditable)
         currentPackageName = reportedPackage
         // spec expansion-clipboard-pickers-launcher.md SS6.2 A: the home screen path needs the foreground launcher.
@@ -1264,37 +1267,7 @@ internal class KeyboardSession(
                 null
             }
             refreshCaretBadge()
-            updateFieldDrawsUnderStrip(info)
         }.onFailure { error -> Log.e(TAG, "onUpdateCursorAnchorInfo crashed", error) }
-    }
-
-    /**
-     * Asks the caret whether the app is drawing its text box under the strip, and collapses the
-     * strip when it is. See [StripOverlap] for why the caret is the only honest evidence and why
-     * [StripDip]'s blink could never settle this.
-     *
-     * The caret arrives in the editor's own coordinates; [CursorAnchorInfo.getMatrix] is what maps
-     * them onto the screen, which is the space the strip's own location is read in.
-     */
-    private fun updateFieldDrawsUnderStrip(info: CursorAnchorInfo) {
-        // The verdict is reached once per field and never taken back while that field is open.
-        // Collapsing the strip is what removes the evidence for it -- with the strip gone there is
-        // nothing left for the caret to be under -- so re-deciding every report would show it,
-        // hide it, show it again for as long as the field had focus.
-        if (pipeline.fieldDrawsUnderStrip) return
-        val bar = statusBar
-        val rendered = bar != null && bar.isShown && bar.height > 0
-        val caretScreenBottom = if (rendered) {
-            val point = floatArrayOf(info.insertionMarkerHorizontal, info.insertionMarkerBottom)
-            runCatching { info.matrix.mapPoints(point) }
-            point[1]
-        } else {
-            Float.NaN
-        }
-        val stripScreenTop = IntArray(2).also { bar?.getLocationOnScreen(it) }[1]
-        if (!StripOverlap.fieldDrawsUnderStrip(caretScreenBottom, stripScreenTop, rendered)) return
-        pipeline.fieldDrawsUnderStrip = true
-        refreshCandidatesStrip()
     }
 
     // -----------------------------------------------------------------------------------------
@@ -1333,13 +1306,7 @@ internal class KeyboardSession(
             // expansion-clipboard-pickers-launcher.md SS4.5: "while capture is on, the app's caret
             // position is monitored (the single caret-monitoring switch is shared with the caret
             // badge and is reconciled so neither feature turns it off under the other)".
-            val wanted = CursorUpdateRequestPolicy.wantsReports(
-                caretBadge.settings.enabled,
-                emojiSearchNeedsCaret = emojiPicker.isShown && emojiPicker.captureOn,
-                // Only until this field's verdict is in; after that the strip has no further use
-                // for the reports and stops asking the app for them.
-                stripNeedsCaret = !pipeline.fieldDrawsUnderStrip,
-            )
+            val wanted = CursorUpdateRequestPolicy.wantsReports(caretBadge.settings.enabled, emojiSearchNeedsCaret = emojiPicker.isShown && emojiPicker.captureOn)
             val flags = if (wanted) InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR else 0
             if (ic.requestCursorUpdates(flags)) {
                 cursorUpdateState = CursorUpdateRetrySchedule.onRequestAccepted(cursorUpdateState)
