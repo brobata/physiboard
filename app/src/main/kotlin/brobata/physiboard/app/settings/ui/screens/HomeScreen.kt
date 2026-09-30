@@ -136,7 +136,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                HomeTile("T2E Tools", subLabel = if (brokerVerdict != null && brokerVerdict != BrokerVerdict.OK) "needs pairing" else null, showDot = brokerVerdict != null && brokerVerdict != BrokerVerdict.OK, modifier = Modifier.weight(1f)) { onNavigate(Routes.T2E_TOOLS) }
+                HomeTile("T2E Tools", subLabel = brokerTileLabel(brokerVerdict), showDot = brokerTileLabel(brokerVerdict) != null, modifier = Modifier.weight(1f)) { onNavigate(Routes.T2E_TOOLS) }
                 HomeTile("Keyboard", modifier = Modifier.weight(1f)) { onNavigate(Routes.KEYBOARD) }
             }
             Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -319,4 +319,19 @@ private fun HomeTile(label: String, subLabel: String? = null, showDot: Boolean =
             )
         }
     }
+}
+
+/**
+ * What the T2E tile says under its name when the broker is not usable. Every verdict used to read
+ * "needs pairing", which sent the maintainer to re-pair a pairing that was intact: theirs was
+ * [BrokerVerdict.WIRELESS_DEBUGGING_OFF], which Android causes by itself after a restart and which
+ * the screen behind this tile already describes correctly (2026-09-29). Null means nothing is
+ * wrong and the tile shows no warning dot.
+ */
+private fun brokerTileLabel(verdict: BrokerVerdict?): String? = when (verdict) {
+    null, BrokerVerdict.OK -> null
+    BrokerVerdict.NOT_PAIRED -> "needs pairing"
+    BrokerVerdict.WIRELESS_DEBUGGING_OFF -> "debugging off"
+    BrokerVerdict.NO_SERVICE -> "unreachable"
+    BrokerVerdict.REJECTED -> "pairing refused"
 }
