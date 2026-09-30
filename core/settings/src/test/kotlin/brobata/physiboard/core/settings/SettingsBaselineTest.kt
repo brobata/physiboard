@@ -102,4 +102,24 @@ class SettingsBaselineTest {
             "a correction runs once per version: switching the row off afterwards must stand",
         )
     }
+
+    /**
+     * Version 4: the chords that intercept Alt, Shift, Enter and Space go off whatever a 2.x
+     * store carried, because shipping eighteen layouts made them live for the first time and
+     * Alt with Shift began switching the keyboard out from under the maintainer (2026-09-29).
+     */
+    @Test
+    fun `the layout-switch chords are switched off on an install that imported them on`() {
+        val imported = mapOf(
+            SettingsKeys.ALT_SHIFT_LAYOUT_SWITCH to "true",
+            SettingsKeys.CTRL_SPACE_LAYOUT_SWITCH to "true",
+        )
+        val corrected = SettingsBaseline.apply(imported, storedVersion = 3)
+        assertEquals("false", corrected[SettingsKeys.ALT_SHIFT_LAYOUT_SWITCH])
+        assertEquals("false", corrected[SettingsKeys.ALT_ENTER_LAYOUT_SWITCH])
+        assertEquals("false", corrected[SettingsKeys.CTRL_SPACE_LAYOUT_SWITCH])
+
+        val chosenSince = SettingsBaseline.apply(imported, storedVersion = SettingsBaseline.CURRENT_VERSION)
+        assertEquals("true", chosenSince[SettingsKeys.ALT_SHIFT_LAYOUT_SWITCH], "a later choice must stand")
+    }
 }

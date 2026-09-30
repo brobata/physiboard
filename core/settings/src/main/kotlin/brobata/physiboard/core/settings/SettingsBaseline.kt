@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 3 puts the suggestion row back after version 2 hid it. */
-    const val CURRENT_VERSION: Int = 3
+    /** The baseline version this build ships with; version 4 switches the layout-switch chords off after eighteen layouts made them live. */
+    const val CURRENT_VERSION: Int = 4
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -43,6 +43,18 @@ object SettingsBaseline {
         // there is no longer a reason to deny it everywhere else. Anyone who preferred it off
         // switches it off and that choice stands, the same as before.
         3 to mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.ALWAYS.storedValue),
+        // Version 4, 2026-09-29: the three layout-switch chords off, whatever a 2.x store said.
+        // They intercept Alt, Shift, Enter and Space, and this project's rule is that such a
+        // thing ships off until it has survived real use on the maintainer's own phone. Their
+        // 2.x settings carried `alt_shift_layout_switch` true and the importer honoured it, which
+        // was harmless while one layout existed and the chords had nowhere to go. Shipping
+        // eighteen layouts made them live, and Alt with Shift began silently switching the
+        // keyboard out from under them. An explicit choice in the settings screen still stands.
+        4 to mapOf(
+            SettingsKeys.ALT_SHIFT_LAYOUT_SWITCH to "false",
+            SettingsKeys.ALT_ENTER_LAYOUT_SWITCH to "false",
+            SettingsKeys.CTRL_SPACE_LAYOUT_SWITCH to "false",
+        ),
     )
 
     /** The baseline version already applied to [flatMap], or 0 when the marker was never written. Mirrors [SettingsCodec.schemaVersionOf]'s style. */
