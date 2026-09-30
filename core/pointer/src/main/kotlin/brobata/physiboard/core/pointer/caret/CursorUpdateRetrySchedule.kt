@@ -21,7 +21,17 @@ data class CursorUpdateRequestState(val attemptsMade: Int = 0, val accepted: Boo
  * other."
  */
 object CursorUpdateRequestPolicy {
-    fun wantsReports(caretBadgeEnabled: Boolean, emojiSearchNeedsCaret: Boolean): Boolean = caretBadgeEnabled || emojiSearchNeedsCaret
+    /**
+     * [stripNeedsCaret] is the third consumer: the strip asks where the caret is to find out
+     * whether the app has drawn its text box underneath it
+     * (`brobata.physiboard.core.strip.StripOverlap`). Without it that fix would have worked only
+     * for someone who happened to have the caret badge switched on.
+     */
+    fun wantsReports(
+        caretBadgeEnabled: Boolean,
+        emojiSearchNeedsCaret: Boolean,
+        stripNeedsCaret: Boolean = false,
+    ): Boolean = caretBadgeEnabled || emojiSearchNeedsCaret || stripNeedsCaret
 }
 
 object CursorUpdateRetrySchedule {

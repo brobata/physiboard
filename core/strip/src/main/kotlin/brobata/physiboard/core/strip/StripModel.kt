@@ -40,6 +40,8 @@ data class StripInputs(
     val expansionSuggestions: List<String> = emptyList(),
     val suggestionsEnabled: Boolean = true,
     val fieldAllowsSuggestions: Boolean = true,
+    /** The app is drawing its text box under the strip; see [StripOverlap]. */
+    val fieldDrawsUnderStrip: Boolean = false,
     val dictionaryInstalled: Boolean = true,
     val clipboardOverlayOpen: Boolean = false,
     val modifiers: ModifierIndicatorInput = ModifierIndicatorInput(),
@@ -106,6 +108,7 @@ data class StripModel(
                     navModeLatched = inputs.navModeLatched,
                     fieldOffersSuggestions = inputs.fieldAllowsSuggestions,
                     hideWhereNothingToSuggest = settings.hideWhereNothingToSuggest,
+                    fieldDrawsUnderStrip = inputs.fieldDrawsUnderStrip,
                 ),
                 row = row,
                 leftButtons = settings.slots.drawn(StripSide.LEFT),

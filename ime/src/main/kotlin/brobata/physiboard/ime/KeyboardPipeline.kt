@@ -270,6 +270,13 @@ internal class KeyboardPipeline(
     /** spec: keys-and-modifiers.md SS11: "state resets on start and finish of input and on any input device change." Input-device-change resets are `:ime`'s to add; no such callback exists yet in this milestone. */
     private var accidentalPressFilterState = AccidentalPressFilterState()
     private var activeField = FieldContext(FieldKind.NOT_EDITABLE)
+
+    /**
+     * Set by `:ime` from the editor's own caret reports: the app is drawing its text box under the
+     * strip, so the strip collapses out of its way. See [brobata.physiboard.core.strip.StripOverlap].
+     * Cleared whenever a field starts, so one app's verdict never carries into the next.
+     */
+    var fieldDrawsUnderStrip: Boolean = false
     private var activeTrust = EditorTrust.FULL
     private var activeAppProfile = AppProfile.default(null)
 
@@ -1012,6 +1019,7 @@ internal class KeyboardPipeline(
             // themselves under the strip or left it empty (2026-09-28). Autocorrect is untouched
             // by this; it follows `suggestionsAllowed`, which this deliberately does not change.
             fieldAllowsSuggestions = activeField.suggestionsAllowed && !activeField.appDisablesSuggestions,
+            fieldDrawsUnderStrip = fieldDrawsUnderStrip,
             dictionaryInstalled = dictionaryInstalled,
             modifiers = ModifierIndicatorInput(
                 capsLockOn = modifierState.shift.value == ShiftValue.CAPS,

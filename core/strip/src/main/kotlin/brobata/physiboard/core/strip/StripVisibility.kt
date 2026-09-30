@@ -43,8 +43,12 @@ object StripVisibility {
         navModeLatched: Boolean,
         fieldOffersSuggestions: Boolean = true,
         hideWhereNothingToSuggest: Boolean = true,
+        fieldDrawsUnderStrip: Boolean = false,
     ): StripFootprint = when {
         navModeLatched -> StripFootprint.COLLAPSED
+        // Ahead of the Sym exception: a page the user cannot see under the app's own message box
+        // is worse than no page. See [StripOverlap].
+        fieldDrawsUnderStrip -> StripFootprint.COLLAPSED
         symPageOpen -> StripFootprint.SHOWN
         // A field that allows no suggestions can never fill a slot, so the strip is a band of
         // nothing: the maintainer's terminal showed an empty black bar taking a tenth of the
