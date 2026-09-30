@@ -22,7 +22,7 @@ data class InstalledApp(val packageName: String, val label: String)
  */
 object AppCatalog {
     @Volatile
-    private var cachedLaunchable: Set<String>? = null
+    private var cachedLaunchable: Map<String, String>? = null
 
     /**
      * Every launchable app, plus [alsoInclude] (packages already on a list that may no longer
@@ -32,8 +32,8 @@ object AppCatalog {
     fun installedApps(context: Context, alsoInclude: Set<String> = emptySet()): List<InstalledApp> {
         val pm = context.packageManager
         val launchable = cachedLaunchable ?: queryLaunchable(pm).also { cachedLaunchable = it }
-        val packages = launchable + alsoInclude
-        return packages.map { pkg -> InstalledApp(pkg, labelFor(pm, pkg)) }.sortedBy { it.label.lowercase() }
+        val packages = launchable.keys + alsoInclude
+        return packages.map { pkg -> InstalledApp(pkg, launchable[pkg] ?: labelFor(pm, pkg)) }.sortedBy { it.label.lowercase() }
     }
 
     /** spec SS7 step 1: "the in-memory list is invalidated" on any package-change broadcast. */
@@ -65,10 +65,26 @@ object AppCatalog {
         false
     }
 
-    private fun queryLaunchable(pm: PackageManager): Set<String> {
+    /**
+     * Every launchable package with the label its launcher entry carries. The launcher activity's
+     * own label is read here rather than the application's because a WebAPK has no application
+     * label at all: PersaLink came out as the forty-character
+     * `org.chromium.webapk.a5d49fddf77614419_v2` on the exact-typing screen, which is the one
+     * screen that decides how that terminal types (2026-09-29). One query answers every package,
+     * so this costs no more than the package list it already fetched.
+     */
+    private fun queryLaunchable(pm: PackageManager): Map<String, String> {
         val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         @Suppress("DEPRECATION")
-        return pm.queryIntentActivities(launcherIntent, 0).mapNotNull { it.activityInfo?.packageName }.toSet()
+        val resolved = pm.queryIntentActivities(launcherIntent, 0)
+        val labels = LinkedHashMap<String, String>()
+        for (info in resolved) {
+            val pkg = info.activityInfo?.packageName ?: continue
+            val label = runCatching { info.loadLabel(pm).toString() }.getOrNull()
+                ?.takeIf { it.isNotBlank() && it != pkg }
+            labels.putIfAbsent(pkg, label ?: labelFor(pm, pkg))
+        }
+        return labels
     }
 
     private fun labelFor(pm: PackageManager, packageName: String): String = try {

@@ -10,6 +10,19 @@
         <intent>
             <action android:name="android.view.InputMethod" />
         </intent>
+        <!--
+          per-app-behavior.md SS4: every per-app list is chosen from "the installed apps". Android 11
+          hides packages an app has not declared an interest in, and without this the pickers offered
+          five system apps out of the four hundred and ninety-five installed on the maintainer's
+          phone: Chrome, Teams and every other app they actually type in were missing, and the two
+          that were on a list already showed as bare package names because their labels could not be
+          read either (2026-09-29). This is the narrow declaration for "apps with a launcher entry",
+          not QUERY_ALL_PACKAGES.
+        -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <!-- app-shell.md SS13.2: the update checker's one GitHub GET. -->
