@@ -8,7 +8,9 @@ import android.hardware.input.InputManager
 import android.os.Build
 import android.os.SystemClock
 import android.view.InputDevice
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -280,10 +282,17 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 fontFamily = FontFamily.Monospace,
             )
 
-            Row(modifier = Modifier.padding(top = 12.dp)) {
+            // A plain Row squeezed the third chip into the width that was left, which on the
+            // Titan's 1080-wide screen wrapped "incl. autocorrections" to two characters a line
+            // down a column the height of the screen (2026-09-29). These wrap onto a second row.
+            FlowRow(
+                modifier = Modifier.padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FilterChip(selected = includeSuggestions, onClick = { includeSuggestions = !includeSuggestions }, label = { Text("incl. suggestions") })
-                FilterChip(selected = includeRawTrackpad, onClick = { includeRawTrackpad = !includeRawTrackpad }, label = { Text("incl. raw trackpad") }, modifier = Modifier.padding(start = 8.dp))
-                FilterChip(selected = includeAutocorrections, onClick = { includeAutocorrections = !includeAutocorrections }, label = { Text("incl. autocorrections") }, modifier = Modifier.padding(start = 8.dp))
+                FilterChip(selected = includeRawTrackpad, onClick = { includeRawTrackpad = !includeRawTrackpad }, label = { Text("incl. raw trackpad") })
+                FilterChip(selected = includeAutocorrections, onClick = { includeAutocorrections = !includeAutocorrections }, label = { Text("incl. autocorrections") })
             }
 
             LastKeyboardEventPanel(
