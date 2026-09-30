@@ -94,6 +94,18 @@ class DictionaryIndex private constructor(
      */
     fun topByFrequency(limit: Int, into: MutableList<WordFrequency>): Int {
         if (limit <= 0) return 0
+        // Answered once and remembered. The list this returns depends on nothing but the index,
+        // which never changes, and working it out means walking every word in the dictionary:
+        // on the maintainer's phone that was 140 ms, paid on every keystroke that emptied a word
+        // and sent the strip looking for something to suggest next, which is why holding
+        // Backspace crawled (2026-09-29).
+        cachedTop?.let { cached ->
+            if (cachedTopLimit >= limit) {
+                val take = cached.take(limit)
+                into.addAll(take)
+                return take.size
+            }
+        }
         val worstFirst = java.util.PriorityQueue(limit + 1, BEST_FIRST.reversed())
         for (group in normalizedKeys.indices) {
             var bestIndex = groupOffsets[group]
@@ -104,9 +116,15 @@ class DictionaryIndex private constructor(
             if (worstFirst.size > limit) worstFirst.poll()
         }
         val selected = worstFirst.toMutableList().apply { sortWith(BEST_FIRST) }
+        cachedTop = selected.toList()
+        cachedTopLimit = limit
         into.addAll(selected)
         return selected.size
     }
+
+    /** The last [topByFrequency] answer, reused while it is at least as long as what is asked for. */
+    private var cachedTop: List<WordFrequency>? = null
+    private var cachedTopLimit: Int = 0
 
     /**
      * Appends every entry under the exact normalized key of [word] (the case and accent
