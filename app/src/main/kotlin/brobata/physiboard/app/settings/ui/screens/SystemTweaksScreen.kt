@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.PhysiBoardApplication
+import brobata.physiboard.app.settings.ui.CheckingSystemRow
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -67,7 +68,7 @@ fun SystemTweaksScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
                 )
             }
             when {
-                loading -> item { CircularProgressIndicator(modifier = Modifier.padding(24.dp)) }
+                loading -> item { CheckingSystemRow() }
                 notPaired -> {
                     item { Text("Needs the same wireless-debugging pairing as the keyboard backlight.", modifier = Modifier.padding(16.dp)) }
                     item { ButtonRow(label = "Set up pairing", buttonText = "Open", onClick = onNavigateToolbox) }

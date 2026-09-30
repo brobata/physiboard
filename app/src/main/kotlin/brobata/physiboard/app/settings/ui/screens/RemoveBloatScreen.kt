@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.CheckingSystemRow
 import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.ButtonRow
@@ -94,7 +95,7 @@ fun RemoveBloatScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
                 }
                 item { ButtonRow(label = "Set up pairing", buttonText = "Open", onClick = onNavigateToolbox) }
             }
-            loading -> RowList { item { CircularProgressIndicator(modifier = Modifier.padding(24.dp)) } }
+            loading -> RowList { item { CheckingSystemRow() } }
             else -> RowList {
                 if (journalCount > 0) {
                     item {

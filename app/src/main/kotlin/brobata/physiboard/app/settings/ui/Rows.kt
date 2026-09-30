@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -517,3 +519,25 @@ private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
 /** Gives a row a click target with the [Role.Button] semantics DPAD/Enter navigation expects, without importing `clickable` at every call site. */
 private fun Modifier.clickableRow(enabled: Boolean, onClick: () -> Unit): Modifier =
     this.then(Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick))
+
+/**
+ * The wait shown while a T2E screen asks the broker what the system currently reports. A bare
+ * spinner sat here for the ten seconds that round trip takes to time out when wireless debugging
+ * is off, with nothing to say what was happening or that an answer was still coming
+ * (Titan, 2026-09-29).
+ */
+@Composable
+fun CheckingSystemRow() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        Text(
+            "Checking the connection to the system…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 12.dp),
+        )
+    }
+}
