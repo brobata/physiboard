@@ -110,4 +110,54 @@ class BackupCodecTest {
     fun `zip-slip guard accepts a path that dips into a subdirectory and back out, since it never escapes root`() {
         assertTrue(ZipEntryPaths.isSafeRelativePath("keyboard_layouts/nested/../custom-1.json"))
     }
+
+    @Test
+    fun `a name that only escapes once the files prefix is stripped is caught at the root it is written from`() {
+        // The whole entry name passes: measured from the archive's root, "files" and
+        // "keyboard_layouts" pay for both of the "..", and depth never goes below zero.
+        val entryName = "files/keyboard_layouts/../../shared_prefs/embedded_adb.xml"
+        assertTrue(ZipEntryPaths.isSafeRelativePath(entryName))
+
+        // Side files are written from filesDir, which is the "files/" segment, so that is the
+        // root the path has to be safe against -- and against that root it escapes. Before
+        // 2026-09-29 only the first check ran and this resolved to the app's shared preferences.
+        assertFalse(ZipEntryPaths.isSafeRelativePath(entryName.removePrefix("files/")))
+    }
+
+    @Test
+    fun `an ordinary custom layout still passes once the files prefix is stripped`() {
+        val entryName = "files/keyboard_layouts/custom-1.json"
+        assertTrue(ZipEntryPaths.isSafeRelativePath(entryName))
+        assertTrue(ZipEntryPaths.isSafeRelativePath(entryName.removePrefix("files/")))
+    }
+
+    @Test
+    fun `a backslash separated climb is normalised before depth is counted`() {
+        assertFalse(ZipEntryPaths.isSafeRelativePath("keyboard_layouts\\..\\..\\shared_prefs\\x"))
+    }
+
+    @Test
+    fun `a tampered backup cannot write outside filesDir by climbing out of an allowed directory`() {
+        val allowed = listOf("personal_dictionary.json", "ctrl_key_mappings.json", "user_defaults.json", "keyboard_layouts")
+        // The escape: passes the whole-name zip-slip check, begins with an allowed directory, and
+        // resolves to the app's shared preferences. It must not be restorable.
+        assertFalse(ZipEntryPaths.isRestorableSideFilePath("keyboard_layouts/../../shared_prefs/embedded_adb.xml", allowed))
+        assertFalse(ZipEntryPaths.isRestorableSideFilePath("keyboard_layouts/../../databases/x", allowed))
+        assertFalse(ZipEntryPaths.isRestorableSideFilePath("../user_defaults.json", allowed))
+    }
+
+    @Test
+    fun `the files a backup really carries are still restorable`() {
+        val allowed = listOf("personal_dictionary.json", "ctrl_key_mappings.json", "user_defaults.json", "keyboard_layouts")
+        assertTrue(ZipEntryPaths.isRestorableSideFilePath("user_defaults.json", allowed))
+        assertTrue(ZipEntryPaths.isRestorableSideFilePath("keyboard_layouts/custom-1.json", allowed))
+        assertTrue(ZipEntryPaths.isRestorableSideFilePath("keyboard_layouts/nested/../custom-1.json", allowed))
+    }
+
+    @Test
+    fun `a path outside the allowed names is still refused`() {
+        val allowed = listOf("user_defaults.json", "keyboard_layouts")
+        assertFalse(ZipEntryPaths.isRestorableSideFilePath("shared_prefs/embedded_adb.xml", allowed))
+        assertFalse(ZipEntryPaths.isRestorableSideFilePath("keyboard_layouts_evil/x", allowed))
+    }
 }

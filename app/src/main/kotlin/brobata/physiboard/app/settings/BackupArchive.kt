@@ -38,15 +38,9 @@ object BackupArchive {
     private const val PREFS_PREFIX = "prefs/"
     private const val FILES_PREFIX = "files/"
 
-    /**
-     * True for a path the backup is allowed to write: one of the named side files, or something
-     * inside the one directory of them (the custom layouts). Compared on the normalised path, so
-     * a name that walks upward has already been refused by the zip-slip guard above.
-     */
+    /** spec SS7.2: the allow-list and the path rule both live in [ZipEntryPaths.isRestorableSideFilePath]; this only supplies the names. */
     private fun isRestorableSideFile(relativePath: String): Boolean =
-        LegacyImporter.SIDE_FILES.any { allowed ->
-            relativePath == allowed || relativePath.startsWith(allowed.removeSuffix("/") + "/")
-        }
+        ZipEntryPaths.isRestorableSideFilePath(relativePath, LegacyImporter.SIDE_FILES)
 
     /** Writes the whole archive to [output]: `backup_meta.json`, `prefs/<file>.json`, then a `files/<name>` entry for each side file that exists. spec: SS7.1. */
     suspend fun write(context: Context, settings: Settings, metaTemplate: BackupMeta, output: OutputStream): Unit =
@@ -148,7 +142,12 @@ object BackupArchive {
                 continue
             }
             val target = File(filesRoot, relativePath)
+            // Belt and braces over the path rules above: whatever the name looked like, the file
+            // this resolves to has to sit under filesDir. Catches a symlink already on disk too,
+            // which no amount of reading the name can.
             val written = runCatching {
+                val root = filesRoot.canonicalFile
+                require(target.canonicalFile.toPath().startsWith(root.toPath())) { "outside filesDir" }
                 target.parentFile?.mkdirs()
                 target.writeBytes(bytes)
             }.isSuccess

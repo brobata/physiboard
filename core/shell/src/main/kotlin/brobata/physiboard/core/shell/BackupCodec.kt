@@ -142,6 +142,25 @@ object ZipEntryPaths {
         }
         return true
     }
+
+    /**
+     * True when a backup's `files/<relativePath>` entry may be written under `filesDir`:
+     * [relativePath] must be safe measured from its own root AND name one of [allowedNames] or
+     * something inside one of them.
+     *
+     * Both halves are needed and the first is the one that was missing. [isSafeRelativePath] run
+     * over the whole entry name measures depth from the archive's root, while these files are
+     * written from `filesDir` -- the `files/` segment, one level deeper. So
+     * `files/keyboard_layouts/../../shared_prefs/embedded_adb.xml` kept the archive-root depth at
+     * zero or above, passed that check, began with `keyboard_layouts/` and passed the name list,
+     * and resolved to the app's shared preferences. A backup is a file the user can be handed by
+     * anyone, so that was a tampered archive overwriting the ADB pairing key (2026-09-29).
+     */
+    fun isRestorableSideFilePath(relativePath: String, allowedNames: List<String>): Boolean =
+        isSafeRelativePath(relativePath) &&
+            allowedNames.any { allowed ->
+                relativePath == allowed || relativePath.startsWith(allowed.removeSuffix("/") + "/")
+            }
 }
 
 /** The result of applying a decoded backup onto the phone's current settings. spec: SS7.2 step 7's counts. */
