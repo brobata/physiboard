@@ -21,12 +21,12 @@ data class SearchEntry(val title: String, val screenTitle: String, val route: St
 object SearchCatalog {
     val entries: List<SearchEntry> = listOf(
         SearchEntry("Screen trackpad", "Screen trackpad", Routes.SCREEN_TRACKPAD, "trackpad cursor swipe screen spacebar hold arrow select"),
-        SearchEntry("Smart Features", "Smart Features", Routes.SMART_FEATURES, "typing punctuation spaces"),
+        SearchEntry("Smart Features", "Smart Features", Routes.SMART_FEATURES, "typing punctuation spaces smart quotes curly apostrophe dash double space period"),
         SearchEntry("Auto-correction", "Auto-correction", Routes.AUTO_CORRECTION, "autocorrect spell dictionary suggestions typo"),
         SearchEntry("Input Languages", "Input Languages", Routes.INPUT_LANGUAGES, "language layout azerty qwertz input style"),
         SearchEntry("App Language", "Input Languages", Routes.INPUT_LANGUAGES, "language locale translate"),
         SearchEntry("Fn Layer", "Fn Layer", Routes.FN_LAYER, "navigation arrows cursor dpad scroll"),
-        SearchEntry("Status Bar Theme", "Status Bar Theme", Routes.STATUS_BAR_THEME, "theme dark light color appearance keyboard"),
+        SearchEntry("Status Bar Theme", "Status Bar Theme", Routes.STATUS_BAR_THEME, "theme dark light color colour appearance keyboard"),
         SearchEntry("Status Bar", "Status Bar Theme", Routes.STATUS_BAR_THEME, "microphone mic emoji hamburger bottom bar status slots"),
         SearchEntry("PhysiBoard-QuickLauncher", "PhysiBoard-QuickLauncher", Routes.QUICK_LAUNCHER, "quick launcher apps shortcut launch"),
         SearchEntry("Enter key behaviour", "Enter key behaviour", Routes.ENTER_KEY_BEHAVIOUR, "enter send newline whatsapp per app"),
@@ -62,14 +62,14 @@ object SearchCatalog {
         SearchEntry("Manage text replacements", "Auto-correction", Routes.CUSTOM_SUBSTITUTIONS, "text replacements custom substitutions correction language"),
         SearchEntry("Assigned launcher keys", "PhysiBoard-QuickLauncher", Routes.ASSIGNED_LAUNCHER_KEYS, "launcher key assign shortcut sym space app command"),
         SearchEntry("QuickLauncher entries", "PhysiBoard-QuickLauncher", Routes.QUICK_LAUNCHER_ENTRIES, "quick launcher sources apps device control navigation"),
-        SearchEntry("Customize entries", "PhysiBoard-QuickLauncher", Routes.CUSTOMIZE_ENTRIES, "favorites hidden alias search color quick launcher"),
+        SearchEntry("Customize entries", "PhysiBoard-QuickLauncher", Routes.CUSTOMIZE_ENTRIES, "favorites favourites hidden alias search color colour quick launcher"),
         SearchEntry("Clipboard history", "Clipboard history", Routes.CLIPBOARD_HISTORY, "clipboard copy paste history retention pin clips"),
         // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
         SearchEntry("Smart keyboard backlight", "Smart keyboard backlight", Routes.SMART_BACKLIGHT, "backlight keyboard light always on pairing broker adb"),
         SearchEntry("Remove bloat", "Remove bloat", Routes.REMOVE_BLOAT, "bloat vendor factory uninstall disable bloatware titan"),
         SearchEntry("Screen density", "Screen density", Routes.SCREEN_DENSITY, "density dpi wm zoom scale screen size"),
         SearchEntry("System tweaks", "System tweaks", Routes.SYSTEM_TWEAKS, "animation scale notification history one-handed mode tweaks"),
-        SearchEntry("Notification ring", "Notification ring", Routes.NOTIFICATION_RING, "ring glow camera hole notification lock screen backlight color"),
+        SearchEntry("Notification ring", "Notification ring", Routes.NOTIFICATION_RING, "ring glow camera hole notification lock screen backlight color colour"),
         SearchEntry("Key mapping", "Key mapping", Routes.KEY_MAPPING, "key mapping fn sym orange side key vendor inventory"),
         // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.2-9.4; per-app-behavior.md
         // SS3.11; trackpad-caret-nav.md SS5.8: this module's feature work.
