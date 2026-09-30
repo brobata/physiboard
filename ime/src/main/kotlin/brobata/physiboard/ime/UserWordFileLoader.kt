@@ -5,6 +5,7 @@ import android.os.Handler
 import brobata.physiboard.core.dict.PersonalWord
 import brobata.physiboard.core.dict.UserWordFileCodec
 import brobata.physiboard.core.dict.UserWordStore
+import brobata.physiboard.core.dict.WordFrequency
 import java.io.File
 
 /**
@@ -24,11 +25,12 @@ internal class UserWordFileLoader(
 ) {
     private val personalFile = File(context.filesDir, UserWordFileCodec.PERSONAL_WORDS_FILE_NAME)
     private val defaultFile = File(context.filesDir, UserWordFileCodec.DEFAULT_WORDS_FILE_NAME)
+    private val seededFile = File(context.filesDir, UserWordFileCodec.DEFAULT_WORDS_SEEDED_FILE_NAME)
 
     /** Loads both tiers into one [UserWordStore]; [onLoaded] runs on the main thread. */
     fun loadAsync(onLoaded: (UserWordStore) -> Unit) {
         Thread({
-            ensureDefaultsFileExists()
+            ensureDefaultsFileCurrent()
             val personal = UserWordFileCodec.decodePersonalWords(readOrNull(personalFile))
             val defaults = UserWordFileCodec.decodeDefaultWords(readOrNull(defaultFile))
             val store = UserWordStore.of(defaults, personal)
@@ -59,12 +61,40 @@ internal class UserWordFileLoader(
         }, "physiboard-userwords-save").apply { isDaemon = true }.start()
     }
 
-    private fun ensureDefaultsFileExists() {
-        if (defaultFile.exists()) return
-        val assetBytes = runCatching {
-            context.assets.open(UserWordFileCodec.DEFAULT_WORDS_ASSET_PATH).use { it.readBytes() }
+    /**
+     * Seeds `user_defaults.json` from the asset, and on a later run adds whatever default words
+     * this build has gained since the last one. Copying only when the file was missing meant an
+     * install that had already run never saw a new default word again: the maintainer's phone
+     * still held the original three while the build on it shipped sixty-four, so `haha` kept
+     * being corrected away (2026-09-29). Words they deleted stay deleted, which is what
+     * `user_defaults_seeded.json` is for; see [UserWordFileCodec.DEFAULT_WORDS_SEEDED_FILE_NAME].
+     */
+    private fun ensureDefaultsFileCurrent() {
+        val assetText = runCatching {
+            context.assets.open(UserWordFileCodec.DEFAULT_WORDS_ASSET_PATH).use { it.readBytes().decodeToString() }
         }.getOrNull() ?: return
-        runCatching { defaultFile.writeBytes(assetBytes) }
+        val assetWords = UserWordFileCodec.decodeDefaultWords(assetText)
+        if (assetWords.isEmpty()) return
+
+        if (!defaultFile.exists()) {
+            runCatching { defaultFile.writeBytes(assetText.encodeToByteArray()) }
+                .onSuccess { recordSeeded(assetWords) }
+            return
+        }
+
+        val stored = UserWordFileCodec.decodeDefaultWords(readOrNull(defaultFile))
+        val seeded = UserWordFileCodec.decodeSeededSpellings(readOrNull(seededFile))
+        val toAdd = UserWordFileCodec.defaultWordsToMergeIn(assetWords, stored, seeded)
+        if (toAdd.isEmpty()) {
+            if (!seededFile.exists()) recordSeeded(assetWords)
+            return
+        }
+        runCatching { writeAtomically(defaultFile, UserWordFileCodec.encodeDefaultWords(stored + toAdd)) }
+            .onSuccess { recordSeeded(assetWords) }
+    }
+
+    private fun recordSeeded(assetWords: List<WordFrequency>) {
+        runCatching { writeAtomically(seededFile, UserWordFileCodec.encodeSeededSpellings(assetWords)) }
     }
 
     private fun readOrNull(file: File): String? = runCatching { if (file.exists()) file.readText() else null }.getOrNull()

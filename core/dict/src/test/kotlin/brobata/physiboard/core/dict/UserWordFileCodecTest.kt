@@ -50,4 +50,45 @@ class UserWordFileCodecTest {
         assertFalse(isValidNewDictionaryWord(""))
         assertFalse(isValidNewDictionaryWord("   "))
     }
+
+    @Test
+    fun `an upgrade adds the default words this build gained`() {
+        val asset = listOf(WordFrequency("PhysiBoard", 30), WordFrequency("haha", 30), WordFrequency("yep", 30))
+        val stored = listOf(WordFrequency("PhysiBoard", 30))
+        val seeded = setOf("physiboard")
+        assertEquals(
+            listOf(WordFrequency("haha", 30), WordFrequency("yep", 30)),
+            UserWordFileCodec.defaultWordsToMergeIn(asset, stored, seeded),
+        )
+    }
+
+    @Test
+    fun `a default word the user deleted is not raised from the dead`() {
+        val asset = listOf(WordFrequency("PhysiBoard", 30), WordFrequency("haha", 30))
+        // "PhysiBoard" was seeded before and is gone from the stored file: the user deleted it.
+        val merged = UserWordFileCodec.defaultWordsToMergeIn(asset, emptyList(), setOf("physiboard"))
+        assertEquals(listOf(WordFrequency("haha", 30)), merged)
+    }
+
+    @Test
+    fun `an install that never recorded what it seeded gains every word it is missing`() {
+        val asset = listOf(WordFrequency("PhysiBoard", 30), WordFrequency("haha", 30))
+        val stored = listOf(WordFrequency("PhysiBoard", 30))
+        assertEquals(listOf(WordFrequency("haha", 30)), UserWordFileCodec.defaultWordsToMergeIn(asset, stored, emptySet()))
+    }
+
+    @Test
+    fun `a word already stored is left at the frequency the user gave it`() {
+        val asset = listOf(WordFrequency("haha", 30))
+        val stored = listOf(WordFrequency("haha", 99))
+        assertTrue(UserWordFileCodec.defaultWordsToMergeIn(asset, stored, emptySet()).isEmpty())
+    }
+
+    @Test
+    fun `seeded spellings survive a round trip and are matched without regard to case`() {
+        val encoded = UserWordFileCodec.encodeSeededSpellings(listOf(WordFrequency("PhysiBoard", 30), WordFrequency("haha", 30)))
+        assertEquals(setOf("physiboard", "haha"), UserWordFileCodec.decodeSeededSpellings(encoded))
+        assertEquals(emptySet<String>(), UserWordFileCodec.decodeSeededSpellings(null))
+        assertEquals(emptySet<String>(), UserWordFileCodec.decodeSeededSpellings("not json"))
+    }
 }

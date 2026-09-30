@@ -45,6 +45,46 @@ object UserWordFileCodec {
     /** dictionaries-languages.md SS7: where the shipped default-word list lives as an asset. */
     const val DEFAULT_WORDS_ASSET_PATH: String = "common/dictionaries/user_defaults.json"
 
+    /**
+     * The spellings [DEFAULT_WORDS_ASSET_PATH] held the last time its contents were merged into
+     * [DEFAULT_WORDS_FILE_NAME]. SS7 has the asset copied "on first use" and says nothing more, so
+     * a build that adds default words never reached a phone that had already run once: the
+     * maintainer's Titan still held the original three-word list while the build in their hand
+     * shipped sixty-four, which is why `haha` was still being corrected away (2026-09-29).
+     *
+     * Remembering what was seeded, rather than diffing against the asset itself, is what lets a
+     * word the user deleted stay deleted: SS6.3 lets them edit this list, and a plain union with
+     * the asset would raise every deletion from the dead on each upgrade.
+     */
+    const val DEFAULT_WORDS_SEEDED_FILE_NAME: String = "user_defaults_seeded.json"
+
+    /** Encodes the spellings of [words] for [DEFAULT_WORDS_SEEDED_FILE_NAME]. */
+    fun encodeSeededSpellings(words: List<WordFrequency>): String =
+        json.encodeToString(JsonArray.serializer(), JsonArray(words.map { JsonPrimitive(it.word) }))
+
+    /** Decodes [DEFAULT_WORDS_SEEDED_FILE_NAME]; an absent or unreadable file means "nothing was ever recorded". */
+    fun decodeSeededSpellings(text: String?): Set<String> {
+        val array = parseArray(text) ?: return emptySet()
+        return array.mapNotNullTo(mutableSetOf()) { element ->
+            (element as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }?.lowercase()
+        }
+    }
+
+    /**
+     * The entries of [assetWords] that an upgrade should add to an existing default-word file:
+     * those this build ships which were neither recorded as already seeded ([seededSpellings], so
+     * a deletion stays deleted) nor already present in [storedWords] (so an edited frequency is
+     * left alone). Order follows the asset.
+     */
+    fun defaultWordsToMergeIn(
+        assetWords: List<WordFrequency>,
+        storedWords: List<WordFrequency>,
+        seededSpellings: Set<String>,
+    ): List<WordFrequency> {
+        val stored = storedWords.mapTo(mutableSetOf()) { it.word.lowercase() }
+        return assetWords.filter { it.word.lowercase() !in seededSpellings && it.word.lowercase() !in stored }
+    }
+
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /** Encodes [words] as the `[{"w":..,"f":..,"u":..}]` array autocorrect-suggestions.md SS6.1 describes. */
