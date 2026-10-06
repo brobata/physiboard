@@ -1,6 +1,7 @@
 package brobata.physiboard.ime
 
 import android.text.InputType
+import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
@@ -83,6 +84,16 @@ internal fun InputConnection.readEditorState(nowMs: Long, wholeDocument: Boolean
  * [cursorAbsolute] are the two facts from the [EditorReadout] the ops were computed against,
  * used to translate [EditorOp.SetSelection] and [EditorOp.SetComposingRegion]'s window-relative
  * offsets into real document positions.
+ *
+ * [typeAsKeys] is non-null only for an Alt-layer stroke ([PipelineResult.altLayerStroke]). When
+ * the last op then puts down a single character, that character is typed through it as the plain
+ * key presses that produce it, rather than committed: Chrome swaps a one-character commit for the
+ * hardware key it recorded (Alt+M, read by a terminal as Meta-m), but passes key presses the
+ * keyboard sends straight to the page (docs/spec/per-app-behavior.md D7). Only the last op, so
+ * nothing is applied after a key press the app has yet to process; [typeAsKeys] answers false for
+ * a character no key produces, which is then committed as before. Composing text would dodge the
+ * swap too, but the same web terminal is on record dropping composed text (see
+ * [KeyboardSession.onStartInput]'s note on dictation).
  */
 internal fun InputConnection.applyEditorOps(
     ops: List<EditorOp>,
@@ -91,16 +102,18 @@ internal fun InputConnection.applyEditorOps(
     sendSpaceKeyFallback: () -> Unit,
     haptic: () -> Unit,
     dispatchMediaKey: (EditEffect) -> Unit = {},
+    typeAsKeys: ((Char) -> Boolean)? = null,
 ) {
     if (ops.isEmpty()) return
     beginBatchEdit()
     try {
-        for (op in ops) {
+        for ((index, op) in ops.withIndex()) {
+            val keys = if (index == ops.lastIndex) typeAsKeys else null
             when (op) {
-                is EditorOp.CommitText -> commitText(op.text, 1)
+                is EditorOp.CommitText -> commitTyped(op.text, keys)
                 is EditorOp.ReplaceBeforeCursor -> {
                     deleteSurroundingText(op.count, 0)
-                    commitText(op.text, 1)
+                    commitTyped(op.text, keys)
                 }
                 is EditorOp.DeleteSurrounding -> deleteSurroundingText(op.before, op.after)
                 EditorOp.FinishComposing -> finishComposingText()
@@ -124,6 +137,23 @@ internal fun InputConnection.applyEditorOps(
     } finally {
         endBatchEdit()
     }
+}
+
+private fun InputConnection.commitTyped(text: String, typeAsKeys: ((Char) -> Boolean)?) {
+    if (typeAsKeys != null && text.length == 1 && typeAsKeys(text[0])) return
+    commitText(text, 1)
+}
+
+/**
+ * Sends [ch] as the key presses Android's virtual keyboard map gives for it (Shift included, for
+ * a character such as "?"), with no Alt: the delivery [applyEditorOps] uses for an Alt-layer
+ * character. False, with nothing sent, when no key produces it.
+ */
+internal fun InputConnection.sendCharacterAsKeys(ch: Char): Boolean {
+    val events = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD).getEvents(charArrayOf(ch)) ?: return false
+    if (events.isEmpty()) return false
+    events.forEach(::sendKeyEvent)
+    return true
 }
 
 /** spec: keys-and-modifiers.md SS12.2's twelve `keycode` names, plus the two `page_start`/`page_end` and `line_home`/`line_end` pairs that share the same real keys. */

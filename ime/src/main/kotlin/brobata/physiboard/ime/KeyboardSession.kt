@@ -2166,6 +2166,7 @@ internal class KeyboardSession(
                 sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
                 haptic = ::performHaptic,
                 dispatchMediaKey = ::dispatchMediaKey,
+                typeAsKeys = if (result.altLayerStroke) ic::sendCharacterAsKeys else null,
             )
         }
         // spec: the c440844 invariant. An edit this keyboard made to the text, or a key it handed

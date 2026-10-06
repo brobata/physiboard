@@ -31,6 +31,7 @@ import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.keys.LayerResolver
 import brobata.physiboard.core.keys.LayoutDescription
+import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.keys.ModifierMachine
 import brobata.physiboard.core.keys.ModifierSettings
@@ -208,6 +209,21 @@ data class PipelineResult(
      * one reverse `KeyId`-to-keycode map this project already has).
      */
     val forwardAsCtrlCombo: KeyId? = null,
+    /**
+     * The key went down with Alt active in any form (held, one-shot or latched), so a single
+     * character put down by the last of [ops] came from the Alt layer and must not reach the app
+     * as a bare one-character commit. Only the last op: the autocorrect hand-off's first commit of
+     * the character still goes out plainly, which matters only where autocorrect runs, never in an
+     * exact-typing app. Chrome records every hardware key down before the keyboard sees it
+     * and, when the keyboard then commits exactly the character the device's own key map gives
+     * that recorded event, throws the commit away and replays the recorded key instead. On the
+     * Titan that map says Alt+M is "." just as the Alt layer does, so a held Alt+M committed as
+     * "." reached the page as the key M with Alt down, which a terminal reads as Meta-m and
+     * types nothing (PersaLink, 2026-10-06). [EditorBridge.applyEditorOps] types such a
+     * character as the plain key presses that produce it, which Chrome passes on as they are.
+     * Also set for a long press in Alt mode ([checkLongPressTick]).
+     */
+    val altLayerStroke: Boolean = false,
 ) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
@@ -754,6 +770,8 @@ internal class KeyboardPipeline(
             hasTextBeforeCaret = editor.textBeforeCursor?.isNotEmpty() ?: true,
             canSwitchLayout = anotherSubtypeAvailable,
         )
+        // Read before resolution, which spends a one-shot Alt on this very key.
+        val altLayerStroke = modifierState.isAltActive(effectiveStroke.meta.alt)
         val resolution = LayerResolver.resolveKeyDown(
             modifierState, typingState, effectiveStroke, layout, settings.modifier, settings.resolver, context,
         )
@@ -778,7 +796,7 @@ internal class KeyboardPipeline(
         // A key the app will delete or paste with is as much an edit of the field as one this
         // keyboard made itself (dictation's c440844 invariant, see PipelineResult.appMayEditField).
         val appEdits = !result.consumed && AppliedEditAccounting.appEditsWithPassThrough(effectiveStroke.key, ctrlActive)
-        return if (appEdits) result.copy(appMayEditField = true) else result
+        return result.copy(appMayEditField = result.appMayEditField || appEdits, altLayerStroke = altLayerStroke)
     }
 
     // -----------------------------------------------------------------------------------------
@@ -904,7 +922,10 @@ internal class KeyboardPipeline(
         val resolution = LayerResolver.resolveLongPressTick(modifierState, typingState, nowMs, layout) ?: return null
         modifierState = resolution.state
         typingState = resolution.typing
-        return applyAction(resolution.action, shiftHeld = false, altActive = false, editor)
+        val result = applyAction(resolution.action, shiftHeld = false, altActive = false, editor)
+        // A long press in Alt mode types the Alt-layer character in place of the letter: the same
+        // delivery as Alt+key, or a "." held out of M could match a held Alt+M Chrome still remembers.
+        return if (layout.longPress.mode == LongPressMode.ALT) result.copy(altLayerStroke = true) else result
     }
 
     // -----------------------------------------------------------------------------------------
