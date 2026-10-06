@@ -25,7 +25,7 @@ class EnglishWordListAssetTest {
         val loaded = assertNotNull(index, "app/src/main/assets/dictionaries/en.pbd is missing or failed to parse; run scripts/build_dictionary.py")
         assertEquals(LanguageCode.of("en"), loaded.language)
         // 80,000 built, less the slurs in scripts/blocklists/en.txt.
-        assertEquals(79_961, loaded.wordCount)
+        assertEquals(79_964, loaded.wordCount)
     }
 
     @Test

@@ -50,7 +50,7 @@ English's.
 
 | File | Language | Built by | Entries | Size |
 |---|---|---|---|---|
-| `app/src/main/assets/dictionaries/en.pbd` | English (`en`) | `scripts/build_dictionary.py --lang en --size 80000`, less the slur blocklist | 79,961 | ~1.2 MB |
+| `app/src/main/assets/dictionaries/en.pbd` | English (`en`) | `scripts/build_dictionary.py --lang en --size 80000`, less the slur blocklist | 79,964 | ~1.2 MB |
 
 Rebuild it with:
 
@@ -134,14 +134,15 @@ python3 scripts/build_bigrams.py --pbd app/src/main/assets/dictionaries/en.pbd \
 
 ## Slurs are not in the word list
 
-`scripts/blocklists/en.txt` lists the slurs kept out of `en.pbd` (39 entries were removed on
+`scripts/blocklists/en.txt` lists the slurs kept out of `en.pbd` (36 entries were removed on
 2026-10-06), so autocorrect never suggests one or "corrects" a typo into one. Because the word-pair
 table is built from `en.pbd`'s vocabulary, no pair involving one survives either. Profanity (`fuck`,
 `shit`, ...) stays: it is ordinary language, and a test checks both sides.
 
 Words whose everyday meaning is innocent stay too: `chink` (a gap), `coon` (a raccoon), `dyke` (an
 embankment, and reclaimed), `queer` (reclaimed), `homo` (as in *Homo sapiens*), `cracker`, `mick`,
-`gypsy`, `negro` (historical names such as the Negro Leagues), `oriental` (rugs), `twink`. A user
+`gypsy`, `negro` (historical names such as the Negro Leagues), `oriental` (rugs), `twink`, and
+`retard`/`retarded`/`retards` (kept at the maintainer's call; `retard` is also a verb). A user
 can still type any removed word; it is simply unknown, like a name, and can be added to the personal
 dictionary.
 
