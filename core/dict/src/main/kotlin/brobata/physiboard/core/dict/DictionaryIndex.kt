@@ -177,7 +177,7 @@ class DictionaryIndex private constructor(
         val maxLength = minOf(lengthBucketStart.size - 2, queryLength + maxDistance)
         if (minLength > maxLength) return 0
 
-        val walk = PrefixWalk(key, maxLength)
+        val walk = PrefixWalk(key, maxLength, maxDistance)
         val found = ArrayList<ScoredCandidate>()
         var i = 0
         var previous = ""
@@ -202,7 +202,7 @@ class DictionaryIndex private constructor(
             previous = candidate
             validDepth = depth
             if (prunedAt >= 0) {
-                i = upperBoundForPrefix(candidate.substring(0, prunedAt), i + 1)
+                i = endOfPrefixRun(candidate, prunedAt, i + 1)
                 continue
             }
             if (candidate.length >= minLength) {
@@ -234,10 +234,17 @@ class DictionaryIndex private constructor(
      * distances of the candidate's first `d` characters against every prefix of the query, the
      * same recurrence as [EditDistance.osaDistance] (which is symmetric, so which string is
      * the row and which the column does not matter).
+     *
+     * Only the diagonal band `|d - j| <= maxDistance` is computed: a cell outside it is at least
+     * its distance from the diagonal, so it can never be within reach, and the cell just outside
+     * each end of the band holds `maxDistance + 1`, a lower bound on its true value that keeps
+     * every result within reach exact (anything derived from it exceeds [maxDistance] too). That
+     * makes a row cost the band's width, not the query's length.
      */
-    private class PrefixWalk(private val query: String, maxDepth: Int) {
+    private class PrefixWalk(private val query: String, maxDepth: Int, private val maxDistance: Int) {
         private val width = query.length + 1
         private val rows = IntArray((maxDepth + 1) * width)
+        private val outOfReach = maxDistance + 1
 
         init {
             for (j in 0 until width) rows[j] = j
@@ -249,7 +256,11 @@ class DictionaryIndex private constructor(
             val beforePrevious = previous - width
             val candidateChar = candidate[depth - 1]
             rows[current] = depth
-            for (j in 1 until width) {
+            val lo = maxOf(1, depth - maxDistance)
+            val hi = minOf(width - 1, depth + maxDistance)
+            if (lo > 1) rows[current + lo - 1] = outOfReach
+            if (hi + 1 < width) rows[current + hi + 1] = outOfReach
+            for (j in lo..hi) {
                 val cost = if (query[j - 1] == candidateChar) 0 else 1
                 var value = minOf(rows[current + j - 1] + 1, rows[previous + j] + 1, rows[previous + j - 1] + cost)
                 if (depth > 1 && j > 1 && candidateChar == query[j - 2] && candidate[depth - 2] == query[j - 1]) {
@@ -259,10 +270,13 @@ class DictionaryIndex private constructor(
             }
         }
 
+        /** The smallest value in the band of row [depth] (column 0 included when the band reaches it); everything outside the band is out of reach. */
         fun rowMinimum(depth: Int): Int {
             val base = depth * width
-            var minimum = rows[base]
-            for (j in 1 until width) if (rows[base + j] < minimum) minimum = rows[base + j]
+            val lo = maxOf(1, depth - maxDistance)
+            val hi = minOf(width - 1, depth + maxDistance)
+            var minimum = if (lo == 1 || depth <= maxDistance) rows[base] else outOfReach
+            for (j in lo..hi) if (rows[base + j] < minimum) minimum = rows[base + j]
             return minimum
         }
 
@@ -312,6 +326,36 @@ class DictionaryIndex private constructor(
         while (lo < hi) {
             val mid = (lo + hi) ushr 1
             if (normalizedKeys[mid].startsWith(prefix)) lo = mid + 1 else hi = mid
+        }
+        return lo
+    }
+
+    /**
+     * The first index from [from] whose key does not start with [key]'s first [prefixLength]
+     * characters: the end of the run [neighbours] prunes. Pruned runs are mostly short (a third or
+     * fourth letter's worth of keys), so this gallops forward from [from] and binary-searches only
+     * the last step, rather than bisecting the whole rest of the list from scratch; and it
+     * compares in place, with no prefix string built per prune.
+     */
+    private fun endOfPrefixRun(key: String, prefixLength: Int, from: Int): Int {
+        fun inRun(index: Int): Boolean = normalizedKeys[index].regionMatches(0, key, 0, prefixLength)
+        val size = normalizedKeys.size
+        var lo = from
+        var step = 1
+        // Invariant: every index below lo is in the run.
+        while (lo < size && inRun(lo)) {
+            val probe = lo + step
+            if (probe >= size || !inRun(probe)) {
+                var hi = minOf(probe, size)
+                lo++
+                while (lo < hi) {
+                    val mid = (lo + hi) ushr 1
+                    if (inRun(mid)) lo = mid + 1 else hi = mid
+                }
+                return lo
+            }
+            lo = probe + 1
+            step = step shl 1
         }
         return lo
     }

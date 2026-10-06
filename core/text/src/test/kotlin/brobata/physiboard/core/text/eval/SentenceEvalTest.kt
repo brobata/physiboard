@@ -144,6 +144,11 @@ class SentenceEvalTest {
         println("timing clean, no table (the engine before): boundaries=${legacy.boundaries} mean=${"%.0f".format(legacy.meanMicros)}us p50=${"%.0f".format(legacy.percentileMicros(50))}us p99=${"%.0f".format(legacy.percentileMicros(99))}us")
         // A desktop JVM is roughly 5-10x a Titan; a typical boundary must stay far inside the phone's 12 ms log line.
         assertTrue(clean.percentileMicros(50) < 200.0, "median boundary ${clean.percentileMicros(50)} us")
+        // The median says little (most words are known and cost microseconds); the slow boundaries
+        // are the unknown words, which pay the fuzzy walk. Ratchet on the typo text's 99th
+        // percentile: about 0.9 ms when the walk was banded and stopped bisecting the whole list
+        // per pruned prefix (1.9 ms before), so a return to the old cost fails here.
+        assertTrue(typos.percentileMicros(99) < 1_500.0, "99th percentile boundary on typo text ${typos.percentileMicros(99)} us")
     }
 
     @Test

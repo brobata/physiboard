@@ -258,14 +258,25 @@ the mix-up fix on:
 |---|---|---|---|---|
 | BEFORE (every word) | 1,349 µs | 1,357 µs | 2,003 µs | |
 | AFTER, clean text | 17 µs | 2 µs | 362 µs | 2.5 ms (JIT) |
-| AFTER, text with one typo per sentence | 129 µs | 3 µs | 1,892 µs | |
+| AFTER, text with one typo per sentence | 129 µs | 3 µs | 1,892 µs | 6.9 ms |
 | AFTER, a word the dictionary does not know | about 1,400 µs | | | |
+| AFTER the walk fix, clean text | 10 µs | 3 µs | 232 µs | 1.1 to 5 ms (JIT, GC) |
+| AFTER the walk fix, text with one typo per sentence | 70 µs | 4 µs | 890 to 950 µs | 2.3 to 5.8 ms |
+| AFTER the walk fix, a word the dictionary does not know | about 520 µs (0.7 ms at five letters or more) | | | |
 
 A known word now costs microseconds: the old path ran the full suggestion ranking (a 200-entry
 completion lookup and a distance-2 fuzzy walk) on every boundary only to discover the word was
-known. An unknown word still pays the distance-2 fuzzy walk (about 1.3 ms here, so perhaps 7 to
-13 ms on the phone), which is what every word paid before. Nothing on the boundary does I/O; the
-table is in memory before the first boundary uses it.
+known. An unknown word still pays the distance-2 fuzzy walk, which is nearly all of its cost
+(the rescoring of up to 24 candidates is about 40 µs). Fixed after review, the walk itself
+(`DictionaryIndex.neighbours`, which the path without a table and the suggestion lookups share)
+now computes only the diagonal band of each distance row, and at each pruned prefix gallops
+forward to the end of its run, comparing in place, instead of bisecting the rest of the 80,000
+keys with a fresh prefix string each time: 1.35 ms -> 0.73 ms for a word of five letters or
+more, exactly the same results (checked against a brute-force reference at distances 0, 1 and 2).
+On the phone that is perhaps 4 to 7 ms for an unknown word against the 12 ms keystroke log line.
+`SentenceEvalTest` now holds the 99th percentile on typo text under 1.5 ms (the old walk measures
+2.0 ms there), not only the median. Nothing on the boundary does I/O; the table is in memory
+before the first boundary uses it.
 
 ## Not verified, and judgement calls
 

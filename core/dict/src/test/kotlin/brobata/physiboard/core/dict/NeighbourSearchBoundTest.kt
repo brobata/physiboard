@@ -44,6 +44,22 @@ class NeighbourSearchBoundTest {
         }
     }
 
+    @Test
+    fun `the banded walk is exact at every distance the keyboard asks for`() {
+        // The walk computes only the diagonal band of each row and gallops past pruned runs; at
+        // 0, 1 and 2 alike it must find exactly what scoring every key finds.
+        val doc = assertNotNull(document, "app/src/main/assets/dictionaries/en.pbd is missing")
+        val index = DictionaryIndex.from(doc)
+        val reference = BruteForceNeighbours(doc.entries)
+        for (distance in 0..2) {
+            for (query in queries + listOf("a", "zz", "teh", "definately", "abc'd")) {
+                val actual = mutableListOf<ScoredCandidate>()
+                index.neighbours(query, distance, Int.MAX_VALUE, actual)
+                assertEquals(reference.neighbours(query, distance, Int.MAX_VALUE).sortedWith(tieBroken), actual.sortedWith(tieBroken), "query '$query' at $distance")
+            }
+        }
+    }
+
     private val tieBroken = compareBy<ScoredCandidate> { it.distance }.thenByDescending { it.frequency }.thenBy { it.word.length }.thenBy { it.word }
 
     @Test
