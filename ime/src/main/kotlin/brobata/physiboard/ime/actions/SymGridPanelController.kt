@@ -35,7 +35,7 @@ internal class SymGridPanelController(service: InputMethodService) {
         /** spec SS5.7: "Tapping a key commits its character"; not sent for a key with no character (SS5.7: "not tappable"). */
         fun onKeyTapped(letter: Char)
 
-        /** spec SS5.7, SS5.8: "opens the customisation screen directly on that letter's picker." Not built in this milestone (see this class's KDoc); a caller may log the gap. */
+        /** spec SS5.7, SS5.8: "opens the customisation screen directly on that letter's picker", or, for an emoji that takes skin tones, the skin-tone chooser (expansion-clipboard-pickers-launcher.md SS4.7). */
         fun onKeyLongPressed(letter: Char)
 
         /** spec SS5.7: the pencil button, "opens the customisation screen for this page". Not built in this milestone. */

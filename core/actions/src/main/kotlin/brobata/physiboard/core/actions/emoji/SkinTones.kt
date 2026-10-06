@@ -140,8 +140,9 @@ object SkinTones {
  * toneable emoji (an Emoji page key, a Sym chord, the picker's page) arms a hold; if the same key
  * is still down once [thresholdMs] has passed, the chooser opens with that emoji's six forms.
  * While it is open the six forms are picked by the keys printed 0 to 5 (the Titan's device layer:
- * Q, W, E, R, S, D on both Titan legends) or by the digit keys of a keyboard that has them. Back
- * closes it without a change; any other key closes it and is typed as usual.
+ * Q, W, E, R, S, D on both Titan legends) or by the digit keys of a keyboard that has them. Alt
+ * and Shift are swallowed, so Alt+W picks the same form as W; Back closes it without a change;
+ * any other key closes it and is typed as usual.
  */
 object SkinToneChooser {
 
@@ -159,7 +160,7 @@ object SkinToneChooser {
         /** Close without a change; the key and its release are consumed (Back, or a repeat of the held key). */
         object Dismiss : KeyOutcome()
 
-        /** The held key's own auto-repeat: consumed, the chooser stays open. */
+        /** The held key's own auto-repeat, or Alt or Shift: consumed (with its release), the chooser stays open. */
         object Swallow : KeyOutcome()
 
         /** Close, and let the key do what it would have done. */
@@ -175,10 +176,12 @@ object SkinToneChooser {
 
     /**
      * spec SS4.7's key table. [isBack] is the Back key; [isHeldKeyRepeat] is an auto-repeat of the
-     * key that opened the chooser; [digit] is [digitFor]'s answer for this key.
+     * key that opened the chooser; [isAltOrShift] is Alt or Shift, which a user may press out of
+     * habit before a digit and which must neither close the chooser nor stay armed for the key
+     * after the pick; [digit] is [digitFor]'s answer for this key.
      */
-    fun onKeyDown(forms: List<String>, isBack: Boolean, isHeldKeyRepeat: Boolean, digit: Int?): KeyOutcome = when {
-        isHeldKeyRepeat -> KeyOutcome.Swallow
+    fun onKeyDown(forms: List<String>, isBack: Boolean, isHeldKeyRepeat: Boolean, digit: Int?, isAltOrShift: Boolean = false): KeyOutcome = when {
+        isHeldKeyRepeat || isAltOrShift -> KeyOutcome.Swallow
         isBack -> KeyOutcome.Dismiss
         digit != null && digit in forms.indices -> KeyOutcome.Pick(forms[digit])
         else -> KeyOutcome.CloseAndPassOn
@@ -188,5 +191,12 @@ object SkinToneChooser {
      * Whether the text just committed for a fresh press arms a hold: it must be one emoji that
      * takes tones. A letter, a word or a heart never does.
      */
-    fun arms(committed: String): Boolean = committed.isNotBlank() && SkinTones.isToneable(committed.trim())
+    fun arms(committed: String): Boolean {
+        // Ordinary typing never reaches the table: every toneable emoji has a character at or
+        // above U+261D (☝, the lowest) or a surrogate pair.
+        if (committed.none { it.code >= LOWEST_TONEABLE }) return false
+        return SkinTones.isToneable(committed.trim())
+    }
+
+    private const val LOWEST_TONEABLE: Int = 0x261D
 }

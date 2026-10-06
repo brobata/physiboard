@@ -96,6 +96,8 @@ class SkinTonesTest {
         assertEquals(SkinToneChooser.KeyOutcome.Pick("👋"), SkinToneChooser.onKeyDown(forms, isBack = false, isHeldKeyRepeat = false, digit = 0))
         assertIs<SkinToneChooser.KeyOutcome.Swallow>(SkinToneChooser.onKeyDown(forms, isBack = false, isHeldKeyRepeat = true, digit = 3))
         assertIs<SkinToneChooser.KeyOutcome.Dismiss>(SkinToneChooser.onKeyDown(forms, isBack = true, isHeldKeyRepeat = false, digit = null))
+        // Alt pressed out of habit before the digit neither closes the chooser nor stays armed.
+        assertIs<SkinToneChooser.KeyOutcome.Swallow>(SkinToneChooser.onKeyDown(forms, isBack = false, isHeldKeyRepeat = false, digit = null, isAltOrShift = true))
         assertIs<SkinToneChooser.KeyOutcome.CloseAndPassOn>(SkinToneChooser.onKeyDown(forms, isBack = false, isHeldKeyRepeat = false, digit = null))
     }
 

@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.actions.clipboard.Clip
+import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.feedback.SoundGroup
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
@@ -100,6 +101,7 @@ import brobata.physiboard.core.strip.StripButton
 import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripGeometry
 import brobata.physiboard.core.strip.StripInsets
+import brobata.physiboard.core.strip.StripTheme
 import brobata.physiboard.core.strip.SuggestionRow
 import brobata.physiboard.core.strip.SuggestionRowRules
 import brobata.physiboard.core.strip.SurfaceTransitionOutcome
@@ -112,6 +114,7 @@ import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AppProfileResolver
 import brobata.physiboard.core.text.BoundaryDebugInfo
 import brobata.physiboard.core.text.CurrentWordTracker
+import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.EnterOverride
 import brobata.physiboard.core.text.EnterOverrideResolver
@@ -130,6 +133,7 @@ import brobata.physiboard.ime.actions.EmojiPickerController
 import brobata.physiboard.ime.actions.ExpansionPopupController
 import brobata.physiboard.ime.actions.LauncherKeysController
 import brobata.physiboard.ime.actions.QuickLauncherController
+import brobata.physiboard.ime.actions.SkinToneHoldController
 import brobata.physiboard.ime.actions.SymGridPanelController
 import brobata.physiboard.ime.actions.TypingSoundPlayer
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
@@ -288,6 +292,23 @@ internal class KeyboardSession(
     private var emojiPickerExpanded = false
     private var symAutoClose = true
     private var symAutoCloseOnTouch = true
+    /** spec expansion-clipboard-pickers-launcher.md SS4.7: `emoji_default_skin_tone`. */
+    private var defaultSkinTone = SkinTone.NONE
+    /** spec SS4.7: the skin-tone chooser a held emoji key (or a long-pressed Emoji page key) opens. */
+    private val skinTones = SkinToneHoldController(service, handler).also { controller ->
+        controller.host = object : SkinToneHoldController.Host {
+            override val theme: StripTheme get() = pipeline.settings.statusBar.theme
+            override val aboveBottomPx: Int get() = stripHeightPx()
+            override fun deviceLayerText(key: KeyId): String? = pipeline.layout.deviceLayer[key]
+            override fun digitKeyLabels(): List<String?> = ('0'..'5').map { digit ->
+                pipeline.layout.deviceLayer.entries.entries
+                    .filter { (key, text) -> key is KeyId.Letter && text == digit.toString() }
+                    .map { (key, _) -> (key as KeyId.Letter).qwertyLetter.toString() }
+                    .minOrNull()
+            }
+            override fun replaceCommitted(committed: String, form: String) = replaceRecentEmoji(committed, form)
+        }
+    }
 
     private val commandCatalog = AndroidCommandCatalog(service)
     private val quickLauncher = QuickLauncherController(service, handler, commandCatalog) { key, uppercase -> layoutText(key, uppercase) }
@@ -391,7 +412,7 @@ internal class KeyboardSession(
         lastShownStatusIcon = StatusBarIcon.None
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
-        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); quickLauncher.onServiceDestroyed() }
+        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
@@ -824,6 +845,7 @@ internal class KeyboardSession(
         clipboard.retentionMinutes = settings.expansion.clipboardRetentionMinutes
         clipboard.applyEnabledOnce(settings.expansion.clipboardHistoryEnabled)
         emojiPickerExpanded = settings.symPages.emojiPickerExpandedHeight
+        defaultSkinTone = settings.symPages.defaultSkinTone
         symAutoClose = settings.symPages.autoClose
         symAutoCloseOnTouch = settings.symPages.autoCloseOnTouch
         quickLauncher.settings = ImeSettings.quickLauncherSettings(settings)
@@ -1056,6 +1078,8 @@ internal class KeyboardSession(
         handler.removeCallbacks(expansionRefreshRunnable)
         expansionPopup.hide()
         emojiPicker.onAppSelectionChanged()
+        // spec SS4.7: the skin-tone chooser belongs to the field it would type into.
+        skinTones.reset()
         // spec SS5.3: "Action mode also ends when... the field finishes"; SS6.4: "the overlay is
         // also closed whenever the connection to the app changes".
         statusBar?.exitActionMode()
@@ -1089,6 +1113,9 @@ internal class KeyboardSession(
             // it could be seen floating over whatever app the user switched to once the keyboard's
             // own window was gone (expansion-clipboard-pickers-launcher.md SS7.1's dismissal list).
             if (quickLauncher.isOpen) quickLauncher.dismiss()
+            // spec SS4.7: the skin-tone chooser is a bottom overlay too, and a hold must not open
+            // it after the window is gone.
+            skinTones.reset()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
     }
 
@@ -1408,8 +1435,14 @@ internal class KeyboardSession(
             if (event.action == KeyEvent.ACTION_UP) closeQuickActions()
             return@runCatching true
         }
+        // spec expansion-clipboard-pickers-launcher.md SS4.7: the skin-tone chooser's keys, and
+        // the auto-repeat of a key held on an emoji that takes tones, ahead of everything else.
+        val normalized = normalizeStroke(event)
+        normalized?.let { stroke ->
+            if (skinTones.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, eventTimeMs = event.eventTime)) return@runCatching true
+        }
         // spec expansion-clipboard-pickers-launcher.md SS4.5: while page 4's search captures, hardware keys type into it.
-        if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalizeStroke(event)?.key)) return@runCatching true
+        if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalized?.key)) return@runCatching true
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
@@ -1594,6 +1627,13 @@ internal class KeyboardSession(
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val tPipeline = System.nanoTime()
         val consumed = applyResult(ic, result, readout)
+        // spec expansion-clipboard-pickers-launcher.md SS4.7: a letter that just typed an emoji
+        // which takes tones (an Emoji page key, a Sym chord) arms the hold that opens the chooser.
+        if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key is KeyId.Letter) {
+            result.ops.filterIsInstance<EditorOp.CommitText>().singleOrNull()?.let { commit ->
+                skinTones.onCommitted(stroke.key, commit.text, stroke.timeMs, pipeline.layout.longPress.clampedThresholdMs)
+            }
+        }
         val tApply = System.nanoTime()
         if (result.appMayEditField && stroke.edge == KeyEdge.DOWN && !AppliedEditAccounting.movesCursor(result.ops)) {
             AppliedEditAccounting.expectedCursorAfterPassThrough(stroke.key, readout.cursorAbsolute, hasSelection = !lastReportedSelectionCollapsed)?.let { expected ->
@@ -1696,18 +1736,39 @@ internal class KeyboardSession(
     }
 
     private val emojiPickerListener = object : EmojiPickerController.Listener {
-        override fun onEmojiChosen(emoji: String) {
-            // spec SS4.4: with `sym_auto_close` and `sym_auto_close_on_touch` both on, the page closes first and the commit is posted after.
-            if (symAutoClose && symAutoCloseOnTouch) {
-                closeSymPanel()
-                handler.post { commitFinishedText(emoji) }
-            } else {
-                commitFinishedText(emoji)
-            }
-        }
+        override fun onChosen(text: String) = commitFromTouch(text)
 
         override fun onClose() = closeSymPanel()
         override fun layoutText(key: KeyId, uppercase: Boolean): String? = this@KeyboardSession.layoutText(key, uppercase)
+    }
+
+    /** spec SS4.4: with `sym_auto_close` and `sym_auto_close_on_touch` both on, the page closes first and the commit is posted after. */
+    private fun commitFromTouch(text: String) {
+        if (symAutoClose && symAutoCloseOnTouch) {
+            closeSymPanel()
+            handler.post { commitFinishedText(text) }
+        } else {
+            commitFinishedText(text)
+        }
+    }
+
+    /**
+     * spec SS4.7: the chooser's pick replaces the emoji the held key typed, when it is still just
+     * before the caret; otherwise (the app moved the caret or rewrote the text) the pick is
+     * inserted where the caret is, so the user's choice is never lost.
+     */
+    private fun replaceRecentEmoji(committed: String, form: String) {
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            ic.beginBatchEdit()
+            ic.finishComposingText()
+            val before = ic.getTextBeforeCursor(committed.length, 0)?.toString()
+            if (before == committed) ic.deleteSurroundingText(committed.length, 0)
+            ic.commitText(form, 1)
+            ic.endBatchEdit()
+            noteFieldEditedDuringDictation()
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "skin tone replace crashed", error) }
     }
 
     private fun commitFinishedText(text: String) {
@@ -1739,12 +1800,24 @@ internal class KeyboardSession(
                 val key = KeyId.Letter(letter)
                 processKeyStroke(KeyStroke(key = key, edge = KeyEdge.DOWN, repeatCount = 0, timeMs = now))
                 processKeyStroke(KeyStroke(key = key, edge = KeyEdge.UP, repeatCount = 0, timeMs = now))
+                // spec expansion-clipboard-pickers-launcher.md SS4.7: a tap is not a hold. The
+                // down above armed the skin-tone hold like a real key would; this up never passes
+                // through onKeyEvent, so it disarms it here.
+                skinTones.onKey(key, down = false, repeatCount = 0, eventTimeMs = now)
             }.onFailure { error -> Log.e(TAG, "sym grid key tap crashed", error) }
         }
 
         // spec SS5.7, SS5.8: opens "Customize SYM Keyboard" already on this page's editor; a long
         // press also opens that letter's picker immediately and returns here when it closes.
-        override fun onKeyLongPressed(letter: Char) = openSymCustomization(letter)
+        override fun onKeyLongPressed(letter: Char) {
+            // spec expansion-clipboard-pickers-launcher.md SS4.7: a key whose emoji takes tones
+            // opens the skin-tone chooser; any other key opens its picker in the customisation
+            // screen (the pencil still does, for every key).
+            val page = SymGridPage.forPageNumber(pipeline.currentSymPage)
+            val emoji = page?.let { symGridCharacters(it)[letter] }
+            if (emoji != null && skinTones.openForTouch(emoji) { form -> commitFromTouch(form) }) return
+            openSymCustomization(letter)
+        }
         override fun onPencil() = openSymCustomization(letter = null)
 
         // spec SS5.7: "opens the system input-method picker."
@@ -1776,7 +1849,7 @@ internal class KeyboardSession(
                 clipboardPanel.hide()
             }
             if (page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
-                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), emojiPickerListener)
+                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), defaultSkinTone, emojiPickerListener)
             } else {
                 emojiPicker.hide()
             }
