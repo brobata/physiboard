@@ -640,6 +640,27 @@ and "ordinary words overruled ≤ 0" as invariants; they are not to be loosened.
 Only English was rebuilt. The other eleven bundled lists came from the same upstream process and
 very likely have the same coverage problem.
 
+Amended 2026-10-06, **the mix-up exception**. With `fix_word_mixups` on (off by default; section
+13, settings-catalog.md), one narrow kind of known word may be replaced: a word from a
+hand-curated confusion set (`its`/`it's`, `your`/`you're`, `their`/`there`/`they're`,
+`then`/`than`, `to`/`too`, `lose`/`loose`, `whose`/`who's`, `were`/`we're`/`where`,
+`cant`/`can't`, `wont`/`won't`, `lets`/`let's`, `ill`/`I'll`, `know`/`no`, `new`/`knew`,
+`quite`/`quiet`, `weather`/`whether`), and only the word before the one just finished, judged
+from both sides with the word-pair table once the next word's boundary arrives. A twin replaces
+it only when at least e^5 times likelier overall, no worse than e^2 on either side alone, and
+seen beside a neighbour at least 5 times in the table; only when the two words are separated by
+exactly one space in the text the field reported and the previous word stands on its own (text
+start, a space, or an opening quote or bracket before it); with the typed case kept (the pronoun
+`I'll` always capitalised). The current word is
+settled first, then the previous one is judged with it. Both edits are one replacement, so one
+Backspace restores what was typed and rejects both words until the next letter (7.5). A set is
+kept only when the sentence harness (section 12) shows at least 10 measured flips, at least 60%
+of them fixed and no correct word changed on clean text; `docs/plans/autocorrect-context.md`
+has the per-set numbers and the sets dropped (`of`/`off` changed a correct word; `here`/`hear`
+and `well`/`we'll` fixed too few; the rest had too few examples). No other path may replace a
+known word: the context-aware correction of the current word (section 16, W2 and W5) runs only
+on words no dictionary or word store spells as typed.
+
 ## 11. The English word-list pipeline
 
 Inputs and steps of `scripts/build_en_wordlist.py` (requires `pip install wordfreq
@@ -740,6 +761,43 @@ Proximity ranking earns its keep (turning it off raises the false-correction rat
 nothing extra). The threshold and the rebuilt list fix the same failure by different means, so
 after the rebuild the threshold was lowered from 0.10 to 0.02 to avoid paying twice.
 
+### 12.1 The sentence harness (3.0)
+
+Amended 2026-10-06. 3.0's harness lives in `:core:text`'s tests and replays whole sentences
+rather than lone words: `SentenceEvalTest` types each sentence word by word through
+`BoundaryEngine`, exactly as `TextInputPipeline` calls it (the tracked word, the window of text
+before the cursor with the corrections made so far, the boundary character), on the shipped
+`en.pbd`, `en.bigrams` and default word list, with the shipped Titan settings. Gradle passes the
+asset directory (`physiboard.assets.dictionaries`), so the 3.9 MB table is read where the app
+ships it. It always runs; the whole set takes well under a minute on a desktop JVM.
+
+Corpora, from the 6,000 Tatoeba sentences held out of the word-pair counts
+(`en_heldout_sentences.txt`):
+
+| Corpus | Content | Headline |
+|---|---|---|
+| a, clean | the sentences as written; every word is a control | correct words changed, as one per N words, split known / unknown lowercase / unknown capitalised at sentence start / mid-sentence |
+| b, Titan typos | one seeded slip per sentence in a word of three or more letters: adjacent-key substitution, dropped letter, doubled letter, transposition, extra adjacent key, in equal measure | fixed / missed / wrong / clobbered, recall (overall and on typos that are not real words) |
+| c, misspellings | `en_cases.tsv` and `en_misspellings.tsv`, each word typed alone into an empty field | fixed / missed / wrong |
+| d, mix-ups | sentences using a confusion-set word, flipped to a twin, replayed to the word after it | per set: flips fixed, and correct words changed on corpus a with the set on |
+
+Outcomes are section 12's FIXED / MISSED / WRONG / CLOBBERED / UNTOUCHED; "known" means spelled
+this way (ignoring case) in the dictionary or a word store. It also reports the cost of each
+boundary (mean, median, 99th percentile). Invariants asserted: no known word changed on a or b
+with the mix-up fix off; the shipped confusion sets change no word on a. Ratchets, measured
+2026-10-06 (tighten when earned, never loosen): a ≤ 10 changed; b recall ≥ 0.75, wrong ≤ 88,
+clobbered ≤ 6; c fixed ≥ 138, wrong ≤ 3; d shipped sets fixed ≥ 1,414 of 1,773. The before/after
+tables are in `docs/plans/autocorrect-context.md`.
+
+    ./gradlew :core:text:test --tests '*SentenceEvalTest*' -i
+    ./gradlew :core:text:test --tests '*SentenceSweepTest*' -Pphysiboard.eval.sweep=true \
+        -Pphysiboard.eval.grid="scale=6,7;keep=-12,-13" -Pphysiboard.eval.split=dev
+    ./gradlew :core:text:test --tests '*SentenceSweepTest*' -Pphysiboard.eval.sweep=mixups
+
+The sweep is opt-in and tunes on the first half of the sentences (`split=dev`); `test` and `all`
+re-check a choice. The small-vocabulary eval above (`AutocorrectEvalTest`) still runs, against the
+engine's path without a word-pair table.
+
 ## 13. Settings
 
 | Preference key | Type | Default | What it changes | Screen | Label |
@@ -753,6 +811,7 @@ after the rebuild the threshold was lowered from 0.10 to 0.02 to avoid paying tw
 | `max_auto_replace_distance` | int 0..3 | code default 1; shipped Titan baseline 2 | Largest edit distance a correction may have; 0 shows "Off" and blocks every fuzzy correction (accent and case repairs at distance 0 still pass) | Auto-correction, shown only while automatic correction is on; slider with 3 steps | "Maximum correction distance" |
 | `use_keyboard_proximity` | boolean | code default false; shipped Titan baseline true | Drops same-length candidates that need a far-key substitution; adjacent-key bonus in edit-type ranking | Auto-correction | "Keyboard Proximity Ranking" |
 | `use_edit_type_ranking` | boolean | false | The edit-type score term (insert 0.5 > substitute 0.4/0.2 > delete 0.3/0.1/0) | Auto-correction | "Edit Type Ranking" |
+| `fix_word_mixups` | boolean | false (no baseline) | The mix-up fix of the previous word (section 10's exception); needs the word-pair table | Auto-correction | "Fix mixed-up words" (subtitle: Fixes a real word typed for its twin — its/it's, your/you're, their/there, then/than — by reading the words on both sides. Backspace right after puts back what you typed.) |
 | `user_dictionary_entries` | string (JSON array of `{"w","f","u"}`) | `[]` | The personal dictionary | Personal dictionary; strip add-word | "Personal dictionary" |
 | `trackpad_gesture_add_word_enabled` | boolean | true | Whether the left-third trackpad gesture adds the add-word candidate | none (no UI; backed up) | "Add words with gestures" (string exists, unused) |
 | `trackpad_gesture_add_word_full_width_enabled` | boolean | true | Whether any third adds the candidate when it is alone on the strip | none (no UI) | "Full-width add-word swipe" (string exists, unused) |
@@ -854,6 +913,20 @@ and W7 done):
 - W1: evaluation harness. Done (section 12).
 - W7a/b: word list. Done for English (section 11). Remaining: the other eleven languages; owning
   the corpus ingest so the 0..255 quantization and the `^0.75` curve stop being a guess.
+Amended 2026-10-06: **W2 and W5 are done for English** (`docs/plans/autocorrect-context.md`). With
+a word-pair table loaded, a word no dictionary or word store spells as typed is rescored as a
+noisy channel over up to 24 nearby keys: the word-pair prior (`P(word | word before)`, sentence
+start included, half mixed with plain frequency) plus per-edit costs from the Titan's staggered
+rows (this section's table, tuned: adjacent 0.35, one key between 0.8, vowel for vowel 0.9, far
+1.6, transposition 0.4, dropped 0.5 or 0.3 for half a double, doubled 0.3, extra adjacent key
+0.45, other extra 0.9, first letter +0.8 unless the first two are swapped), against "meant as
+typed" (heavier for a capitalised word inside a sentence); committed only at 70% of the total.
+The 2.5-key veto and the 0.2/0.4 nudges are not used on that path; the old path still runs for
+every language without a table. `definately` now becomes `definitely` after `I`. Measured:
+recall on synthetic Titan typos 0.304 -> 0.750, classic misspellings 0.729 -> 0.831, correct words
+changed on clean text 1 per 143 -> 1 per 4,564. The learned user bigrams are not used as the prior;
+the shipped table is, loaded off the main thread with the dictionary, so the boundary does no I/O.
+
 - W2: geometry into scoring. Replace the uniform-cost retrieval-then-veto with a rescoring pass
   over about 16 fuzzy candidates using per-edit costs (adjacent substitution 0.35, two keys away
   0.7, far key 1.6, transposition 0.4, dropped letter 0.5, doubled letter 0.3, other insertion

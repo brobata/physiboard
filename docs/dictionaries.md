@@ -108,9 +108,10 @@ downloaded or imported file loads no dictionary for it.
 ## The word-pair table (`en.bigrams`)
 
 `app/src/main/assets/dictionaries/en.bigrams` tells autocorrect which words follow which, so it
-can read the sentence: `definately not` becomes `definitely not` (never `defiantly`), and `wagged
-it's tail` becomes `wagged its tail`. It holds about 500,000 pairs of dictionary words, each seen
-at least twice.
+can read the sentence: `I definately` becomes `I definitely` (never `defiantly`), and, with "Fix
+mixed-up words" on, `wagged it's tail` becomes `wagged its tail`. It holds about 500,000 pairs of
+dictionary words, each seen at least twice. How autocorrect uses it, and what it measured, is in
+[`plans/autocorrect-context.md`](plans/autocorrect-context.md).
 
 It is built by `scripts/build_bigrams.py` from the English sentences of
 **[Tatoeba](https://tatoeba.org)**, used under **CC BY 2.0 FR**, which permits redistribution
