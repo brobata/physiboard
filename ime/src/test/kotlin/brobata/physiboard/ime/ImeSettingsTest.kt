@@ -1,5 +1,6 @@
 package brobata.physiboard.ime
 
+import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.trackpad.ActivationMode
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
@@ -134,6 +135,22 @@ class ImeSettingsTest {
         assertEquals(shipped.emojiPage, symbols.emojiPage)
         val unusable = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(customEmojiPage = mapOf("KEYCODE_1" to "x", "KEYCODE_Q" to ""))))
         assertEquals(shipped.emojiPage, unusable.emojiPage)
+    }
+
+    @Test
+    fun `the default skin tone tones the Sym pages' emoji that take one and leaves the rest`() {
+        val shipped = TitanLayouts.titan2EliteQwerty()
+        val toned = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(defaultSkinTone = SkinTone.MEDIUM)))
+        assertEquals("👍", shipped.emojiPage[KeyId.Letter('Y')]?.lowercase)
+        assertEquals(SymPageEntry("👍🏽"), toned.emojiPage[KeyId.Letter('Y')])
+        assertEquals(shipped.emojiPage[KeyId.Letter('U')], toned.emojiPage[KeyId.Letter('U')])
+        assertEquals(shipped.emojiPage[KeyId.Letter('Q')], toned.emojiPage[KeyId.Letter('Q')])
+        assertEquals(shipped.symbolsPage, toned.symbolsPage)
+        // A tone the user put on a custom key is theirs.
+        val custom = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(customEmojiPage = mapOf("KEYCODE_A" to "👋🏻", "KEYCODE_B" to "🧑‍🤝‍🧑"), defaultSkinTone = SkinTone.DARK)))
+        assertEquals(SymPageEntry("👋🏻"), custom.emojiPage[KeyId.Letter('A')])
+        assertEquals(SymPageEntry("🧑🏿‍🤝‍🧑🏿"), custom.emojiPage[KeyId.Letter('B')])
+        assertEquals(shipped.emojiPage, ImeSettings.layout(shipped, Settings()).emojiPage)
     }
 
     @Test

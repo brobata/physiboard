@@ -44,6 +44,19 @@ Project Authors, under the **SIL Open Font License, version 1.1**. It is the app
 required typeface (app-shell.md SS22.1) and is not PhysiBoard's work; the full licence text is
 in `third_party/licenses/OFL-1.1.txt`.
 
+### Unicode data
+
+The emoji picker's emoji lists and English search names (`ime/src/main/assets/emoji/`,
+`ime/src/main/assets/emoji_search/en.tsv`, built by `tools/emoji/build_emoji_assets.py`) and the
+skin-tone table (`core/actions/src/main/kotlin/brobata/physiboard/core/actions/emoji/SkinToneTable.kt`,
+built by `scripts/build_skin_tone_table.py`) are derived from Unicode Emoji 17.0
+`emoji-test.txt`, **Copyright © 1991-2026 Unicode, Inc.**, used under the **Unicode License
+v3**, which allows redistribution with this notice. The full licence text is in
+`third_party/licenses/Unicode-3.0.txt`. The names the symbol search shows are not shipped; they
+come from the phone's own Unicode tables at run time.
+
+The kaomoji collection (`core/actions/.../kaomoji/KaomojiData.kt`) is PhysiBoard's own work.
+
 The bundled dictionaries carry their own terms; see [`docs/dictionaries.md`](docs/dictionaries.md).
 The English word-pair table is built from sentences of [Tatoeba](https://tatoeba.org), used under
 CC BY 2.0 FR.

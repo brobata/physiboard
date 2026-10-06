@@ -156,3 +156,28 @@ object EmojiPickerGeometry {
         return fit.coerceIn(MIN_COLUMNS, MAX_COLUMNS)
     }
 }
+
+/**
+ * What the picker page (Sym page 4) is showing. spec SS4.3: the mode button in the tab row cycles
+ * Emoji, Kaomoji, Symbols and back; the search field searches the mode on screen.
+ */
+enum class PickerMode(val buttonLabel: String, val searchHint: String, val noResults: String, val recentsKey: String) {
+    EMOJI("Emoji", "Search emoji...", "No emoji found", "recent_emojis"),
+    KAOMOJI("Kaomoji", "Search kaomoji...", "No kaomoji found", "recent_kaomoji"),
+    SYMBOLS("Symbols", "Search symbols...", "No symbols found", "recent_symbols"),
+    ;
+
+    fun next(): PickerMode = entries[(ordinal + 1) % entries.size]
+}
+
+/** The kaomoji and symbol grids' geometry. spec SS4.3. */
+object PickerModeGeometry {
+    const val KAOMOJI_COLUMNS: Int = 3
+    const val KAOMOJI_CELL_DP: Int = 40
+    const val KAOMOJI_MAX_SP: Int = 16
+    const val KAOMOJI_MIN_SP: Int = 9
+    const val SYMBOL_GLYPH_SP: Int = 24
+    const val MODE_BUTTON_DP: Int = 56
+    const val LOADING_SYMBOLS: String = "Loading symbols..."
+    const val SYMBOLS_FAILED: String = "Unable to load symbols"
+}

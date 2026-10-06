@@ -97,6 +97,12 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (Str
             )
 
             NavigateRow(
+                label = "Emoji data",
+                description = "Emoji lists and skin tones come from Unicode (unicode.org), Unicode License v3",
+                onClick = { openInBrowser(context, "https://www.unicode.org/license.txt") },
+            )
+
+            NavigateRow(
                 label = "Sentence data",
                 description = "Autocorrect's word-pair counts come from Tatoeba (tatoeba.org), CC BY 2.0 FR",
                 onClick = { openInBrowser(context, "https://tatoeba.org") },

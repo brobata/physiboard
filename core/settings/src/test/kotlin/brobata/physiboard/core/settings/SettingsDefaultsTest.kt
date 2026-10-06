@@ -77,6 +77,7 @@ class SettingsDefaultsTest {
         assertTrue(d.symPages.pages.emojiPickerEnabled && d.symPages.pages.symbolsEnabled)
         assertFalse(d.symPages.pages.emojiEnabled || d.symPages.pages.clipboardEnabled)
         assertFalse(d.symPages.emojiPickerExpandedHeight)
+        assertEquals(brobata.physiboard.core.actions.emoji.SkinTone.NONE, d.symPages.defaultSkinTone)
     }
 
     @Test

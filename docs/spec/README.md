@@ -54,3 +54,4 @@ around.
 | `keys-and-modifiers.md` | 5.4, 5.5, 22 | The Alt+Ctrl dictation chord is removed; Alt or Ctrl down with the other's meta bit is now an ordinary press. | fcec53b |
 | `keys-and-modifiers.md` | 7.5 | Ctrl+Space only consumes and switches when another input subtype exists; with one layout, Fn+Space no longer vanishes. | fcec53b |
 | `autocorrect-suggestions.md` | 6.1, 7.2, 9, 10 | Primary case repair and the automatic-correction decision's "exact primary case" fact now consult the personal and default word stores and every loaded dictionary, not only the primary list. | fcec53b |
+| `layers-sym-alt.md` | 5.4, 5.7 | A long press on an Emoji page grid key whose emoji takes a skin tone opens the skin-tone chooser instead of the customisation screen; a held page key whose emoji takes a tone no longer repeats its letter after the emoji. | 76a37bc |
