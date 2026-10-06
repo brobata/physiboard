@@ -14,6 +14,14 @@ import kotlin.math.sqrt
  * A character off the grid (a digit, an apostrophe, an accented letter) has no position; a cost
  * that asks about it falls back to the "far key" price, which is the honest answer for a slip
  * the geometry cannot explain.
+ *
+ * QWERTY only: the rows are fixed letter strings, not read from the active layout. On a QWERTZ or
+ * AZERTY layout the letters the layout moves (`y`/`z`; `a`/`q`, `z`/`w`, `m`) are priced where
+ * QWERTY puts them, so a slip onto the key physically beside them costs a far-key substitution
+ * and one onto a key that is beside them only on QWERTY costs an adjacent one. Every other letter
+ * is priced right. Only English has a word-pair table today, so this only reaches English typed
+ * on those layouts; the path without a table remaps its own grid per layout (autocorrect-
+ * suggestions.md §3.5). docs/plans/autocorrect-context.md records it as a known limit.
  */
 object TitanKeyGeometry {
     val rows: List<String> = listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")

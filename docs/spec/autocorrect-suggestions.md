@@ -805,7 +805,11 @@ this way (ignoring case) in the dictionary or a word store. It also reports the 
 boundary (mean, median, 99th percentile). Invariants asserted: no known word changed on a or b
 with the mix-up fix off; the shipped confusion sets change no word on a. Ratchets, measured
 2026-10-06 (tighten when earned, never loosen): a ≤ 10 changed; b recall ≥ 0.75, wrong ≤ 88,
-clobbered ≤ 6; c fixed ≥ 138, wrong ≤ 3; d shipped sets fixed ≥ 1,414 of 1,773. The before/after
+clobbered ≤ 6; c fixed ≥ 138, wrong ≤ 3; d shipped sets fixed ≥ 1,414 of 1,773; a boundary's
+median on clean text under 200 µs and its 99th percentile on b's typo text under 1.5 ms (desktop
+JVM; about 0.9 ms measured). The replay carries the autocorrect memory from one boundary to the
+next within a sentence, as the keyboard does, so the mix-up fix sees the word before as typed in
+sequence; each sentence is a new field. The before/after
 tables are in `docs/plans/autocorrect-context.md`.
 
     ./gradlew :core:text:test --tests '*SentenceEvalTest*' -i
@@ -941,7 +945,10 @@ rows (this section's table, tuned: adjacent 0.35, one key between 0.8, vowel for
 0.45, other extra 0.9, first letter +0.8 unless the first two are swapped), against "meant as
 typed" (heavier for a capitalised word inside a sentence); committed only at 70% of the total.
 The 2.5-key veto and the 0.2/0.4 nudges are not used on that path; the old path still runs for
-every language without a table. `definately` now becomes `definitely` after `I`. Measured:
+every language without a table. The key positions are QWERTY's three rows, whatever the active layout: on
+QWERTZ or AZERTY the letters those layouts move are priced at their QWERTY positions (a slip onto
+the physically adjacent key reads as a far one), unlike section 3.5's grid, which is remapped per
+layout. Only English has a table, so only English typed on those layouts is affected. `definately` now becomes `definitely` after `I`. Measured:
 recall on synthetic Titan typos 0.304 -> 0.750, classic misspellings 0.729 -> 0.831, correct words
 changed on clean text 1 per 143 -> 1 per 4,564. The learned user bigrams are not used as the prior;
 the shipped table is, loaded off the main thread with the dictionary, so the boundary does no I/O.

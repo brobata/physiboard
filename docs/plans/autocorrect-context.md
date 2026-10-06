@@ -298,6 +298,14 @@ before the first boundary uses it.
   rewritten word, and `:ime` takes back the one learn of `wagged -> it's` (a count down by one, not
   the pair's whole history), learns `wagged -> its`, and learns `its -> tail`. The database writes
   now go through one thread in order, so the take-back cannot overtake the learn it takes back.
+- The key geometry (`TitanKeyGeometry`) is QWERTY only: the rows are fixed letter strings, not
+  read from the active layout. On QWERTZ or AZERTY the letters those layouts move (`y`/`z`;
+  `a`/`q`, `z`/`w`, `m`) are priced where QWERTY has them, so a slip onto the key physically beside
+  one of them is priced as a far key (fixed less often) and a slip onto a key beside it only on
+  QWERTY as an adjacent one; every other letter is right. Only English has a table, so this reaches
+  English typed on those layouts only. The fix is to build the rows from the layout's letter
+  positions, as the path without a table does (§3.5); not done, since no shipped English input
+  style uses either layout.
 - With an extra language loaded, its unknown words are weighed with the English table, so a
   Spanish slip leans towards an English word. Correct Spanish words are still known words.
 - A previous word at index 0 of a short read is trusted as the start of the text, as the rest of
