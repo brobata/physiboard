@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 4 switches the layout-switch chords off after eighteen layouts made them live. */
-    const val CURRENT_VERSION: Int = 4
+    /** The baseline version this build ships with; version 5 hides the suggestion row again. */
+    const val CURRENT_VERSION: Int = 5
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -55,6 +55,10 @@ object SettingsBaseline {
             SettingsKeys.ALT_ENTER_LAYOUT_SWITCH to "false",
             SettingsKeys.CTRL_SPACE_LAYOUT_SWITCH to "false",
         ),
+        // Version 5, 2026-10-05: the suggestion row hidden again, by the maintainer's choice
+        // rather than a bug: apps keep the whole screen while typing, autocorrect does the
+        // work, and Sym brings up emoji, symbols and the clipboard. Switching it back on stands.
+        5 to mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.NEVER.storedValue),
     )
 
     /** The baseline version already applied to [flatMap], or 0 when the marker was never written. Mirrors [SettingsCodec.schemaVersionOf]'s style. */

@@ -343,16 +343,15 @@ data class ThemeLayoutOverride(val locale: String? = null, val layout: String? =
  * row's own two announcement settings (SS5.6, SS15, kept: "Accessibility announcement
  * throttling") live here rather than a dedicated Accessibility screen, since 3.0 has none yet.
  *
- * [visibility] is ALWAYS again (2026-09-28). It shipped NEVER for two days because the row was
- * drawing over apps that refuse to be resized for a keyboard, but the maintainer had it working
- * everywhere except Teams in 2.0.7 and wants that back. The row now steps aside by itself in any
- * field whose app asked for no suggestions, which is what Teams' message box and a web terminal
- * both declare, so it keeps out of the two places it was in the way without being switched off.
+ * [visibility] is NEVER (2026-10-05, the maintainer's call): with real keys and autocorrect the
+ * row mostly costs screen, so apps keep the whole screen and Sym opens emoji, symbols and the
+ * clipboard when they are wanted. It was ALWAYS from 2026-09-28 and NEVER for two days before
+ * that; the row still works for anyone who switches it back on.
  *
  * [apps] is the seeded twenty (status-bar.md SS3).
  */
 data class StatusBarPrefs(
-    val visibility: StatusBarVisibility = StatusBarVisibility.ALWAYS,
+    val visibility: StatusBarVisibility = StatusBarVisibility.NEVER,
     val apps: Set<String> = SEEDED_STATUS_BAR_APPS,
     val heightDp: Int = 56,
     val leftButtons: List<BarButton> = listOf(BarButton.CLIPBOARD),

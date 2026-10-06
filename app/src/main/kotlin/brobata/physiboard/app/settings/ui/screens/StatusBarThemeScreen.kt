@@ -26,7 +26,6 @@ import brobata.physiboard.app.settings.ui.DividerLabel
 import brobata.physiboard.app.settings.ui.KeyboardUiPreview
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
-import brobata.physiboard.app.settings.ui.PerAppListKind
 import brobata.physiboard.app.settings.ui.ReorderableMultiChoiceRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.Routes
@@ -35,7 +34,6 @@ import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.StatusBarPrefs
-import brobata.physiboard.core.settings.StatusBarVisibility
 import brobata.physiboard.core.settings.StripTheme
 import brobata.physiboard.core.settings.StripThemePresets
 import brobata.physiboard.core.strip.ButtonSlots
@@ -100,19 +98,6 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     onChange = { updated -> set { p -> p.copy(rightButtons = updated) } },
                 )
             }
-            item { DividerLabel("Show status bar") }
-            item {
-                SingleChoiceChipsRow(
-                    label = "Visibility",
-                    options = listOf(StatusBarVisibility.ALWAYS, StatusBarVisibility.NEVER, StatusBarVisibility.APPS),
-                    optionLabel = ::visibilityLabel,
-                    selected = statusBar.visibility,
-                    onSelect = { v -> set { p -> p.copy(visibility = v) } },
-                )
-            }
-            if (statusBar.visibility == StatusBarVisibility.APPS) {
-                item { NavigateRow("Choose apps", onClick = { onNavigate(Routes.appPicker(PerAppListKind.STATUS_BAR_APPS)) }) }
-            }
             item {
                 SingleChoiceChipsRow(
                     label = "Bar height",
@@ -121,15 +106,6 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     optionLabel = { "$it dp" },
                     selected = statusBar.heightDp,
                     onSelect = { height -> set { p -> p.copy(heightDp = height) } },
-                )
-            }
-            item { DividerLabel("Accessibility") }
-            item {
-                SwitchRow(
-                    "Announce suggestions",
-                    description = "A screen reader speaks the suggestion row's words once they settle.",
-                    checked = statusBar.accessibilityLiveAnnouncementsEnabled,
-                    onCheckedChange = { checked -> set { p -> p.copy(accessibilityLiveAnnouncementsEnabled = checked) } },
                 )
             }
             item { DividerLabel("Modifiers") }
@@ -228,8 +204,3 @@ private fun barButtonLabel(button: BarButton): String = when (button) {
     BarButton.REDO -> "Redo"
 }
 
-private fun visibilityLabel(visibility: StatusBarVisibility): String = when (visibility) {
-    StatusBarVisibility.ALWAYS -> "Always"
-    StatusBarVisibility.NEVER -> "Never"
-    StatusBarVisibility.APPS -> "Only in these apps"
-}

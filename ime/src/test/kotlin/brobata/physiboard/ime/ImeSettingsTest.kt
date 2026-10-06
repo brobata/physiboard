@@ -81,7 +81,7 @@ class ImeSettingsTest {
     }
 
     @Test
-    fun `status bar rows land in the strip settings - visibility, apps, height, slots, the nudge list and the corner insets`() {
+    fun `status bar rows land in the strip settings, and the row stays hidden whatever was stored`() {
         val s = Settings(
             statusBar = StatusBarPrefs(
                 visibility = StatusBarVisibility.APPS, apps = setOf("com.whatsapp"), heightDp = 48,
@@ -90,7 +90,8 @@ class ImeSettingsTest {
             perApp = PerAppPrefs(nudgePackages = setOf("com.example.chat")),
         )
         val strip = ImeSettings.stripSettings(s)
-        assertEquals(StripVisibilityMode.APPS, strip.visibility)
+        assertEquals(StripVisibilityMode.NEVER, strip.visibility, "the suggestion row is hidden for good")
+        assertEquals(StripVisibilityMode.NEVER, ImeSettings.stripSettings(Settings(statusBar = StatusBarPrefs(visibility = StatusBarVisibility.ALWAYS))).visibility)
         assertEquals(setOf("com.whatsapp"), strip.apps)
         assertEquals(48, strip.barHeightDp)
         assertEquals(listOf(StripButton.HAMBURGER, StripButton.UNDO), strip.slots.left)

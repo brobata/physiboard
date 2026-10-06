@@ -34,8 +34,8 @@ class SettingsDefaultsTest {
     }
 
     @Test
-    fun `a fresh install ends with the strip always on, the seeded twenty apps and the baseline slots`() {
-        assertEquals(StatusBarVisibility.ALWAYS, d.statusBar.visibility)
+    fun `a fresh install ends with the strip hidden, the seeded twenty apps and the baseline slots`() {
+        assertEquals(StatusBarVisibility.NEVER, d.statusBar.visibility)
         assertEquals(20, d.statusBar.apps.size)
         assertTrue("com.whatsapp" in d.statusBar.apps && "com.google.android.gm" in d.statusBar.apps)
         assertEquals(listOf(BarButton.CLIPBOARD), d.statusBar.leftButtons)

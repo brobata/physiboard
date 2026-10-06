@@ -27,7 +27,7 @@ object SearchCatalog {
         SearchEntry("App Language", "Input Languages", Routes.INPUT_LANGUAGES, "language locale translate"),
         SearchEntry("Fn Layer", "Fn Layer", Routes.FN_LAYER, "navigation arrows cursor dpad scroll"),
         SearchEntry("Status Bar Theme", "Status Bar Theme", Routes.STATUS_BAR_THEME, "theme dark light color colour appearance keyboard"),
-        SearchEntry("Status Bar", "Status Bar Theme", Routes.STATUS_BAR_THEME, "microphone mic emoji hamburger bottom bar status slots"),
+        SearchEntry("Status Bar", "Status Bar Theme", Routes.STATUS_BAR_THEME, "microphone mic emoji hamburger buttons slots sym page"),
         SearchEntry("PhysiBoard-QuickLauncher", "PhysiBoard-QuickLauncher", Routes.QUICK_LAUNCHER, "quick launcher apps shortcut launch"),
         SearchEntry("Enter key behaviour", "Enter key behaviour", Routes.ENTER_KEY_BEHAVIOUR, "enter send newline whatsapp per app"),
         SearchEntry("T2E Tools", "T2E Tools", Routes.T2E_TOOLS, "device toolbox titan unihertz system tools"),
@@ -47,7 +47,6 @@ object SearchCatalog {
         SearchEntry("Double Space inserts period", "Smart Features", Routes.SMART_FEATURES, "period full stop double space"),
         SearchEntry("Text expansion", "Text expansion", Routes.TEXT_EXPANSION, "snippet abbreviation expand shortcut"),
         SearchEntry("Exact typing", "Exact typing", Routes.appPicker(PerAppListKind.EXACT_TYPING), "terminal termux disable smart per app raw exceptions"),
-        SearchEntry("Text box under the bar", "Text box under the bar", Routes.appPicker(PerAppListKind.TEXT_BOX_UNDER_BAR), "teams hidden covered text box compose field under bar inset blink"),
         // app-shell.md: the shell's own rows, now that Settings, About, Diagnostics and the update
         // checker exist (this module's report). Re-added per SS8's own rule: point at the real
         // screen, not a placeholder.

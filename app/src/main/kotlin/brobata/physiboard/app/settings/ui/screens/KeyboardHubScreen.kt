@@ -26,6 +26,5 @@ private fun LazyListScope.keyboardHubRows(onNavigate: (String) -> Unit) {
     item { NavigateRow("Customize SYM Keyboard", "Arrange, enable and edit the Sym key's Emoji and Symbols pages") { onNavigate(Routes.CUSTOMIZE_SYM_KEYBOARD) } }
     item { NavigateRow("Sound & Haptics", "Typing sounds and vibration") { onNavigate(Routes.SOUND_HAPTICS) } }
     item { NavigateRow("Exact typing", "For terminals, SSH and code: what you type is what goes in") { onNavigate(Routes.appPicker(PerAppListKind.EXACT_TYPING)) } }
-    item { NavigateRow("Text box under the bar", "For apps like Teams that leave the text box hidden under the bar") { onNavigate(Routes.appPicker(PerAppListKind.TEXT_BOX_UNDER_BAR)) } }
     item { NavigateRow("Enter key behaviour", "Configure app-specific Enter and newline handling") { onNavigate(Routes.ENTER_KEY_BEHAVIOUR) } }
 }

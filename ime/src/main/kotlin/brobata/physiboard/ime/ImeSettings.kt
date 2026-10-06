@@ -30,7 +30,6 @@ import brobata.physiboard.core.settings.AssistantAction
 import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.HapticStrength
 import brobata.physiboard.core.settings.Settings
-import brobata.physiboard.core.settings.StatusBarVisibility
 import brobata.physiboard.core.settings.StripThemeResolution
 import brobata.physiboard.core.speech.AssistantRequest
 import brobata.physiboard.core.speech.CueStrength
@@ -252,11 +251,10 @@ internal object ImeSettings {
         val bar = s.statusBar
         val theme = StripThemeResolution.resolve(bar.theme, bar.layoutOverrides, subtypeLocale, s.languages.keyboardLayout)
         return StripSettings(
-            visibility = when (bar.visibility) {
-                StatusBarVisibility.ALWAYS -> StripVisibilityMode.ALWAYS
-                StatusBarVisibility.NEVER -> StripVisibilityMode.NEVER
-                StatusBarVisibility.APPS -> StripVisibilityMode.APPS
-            },
+            // The suggestion row is hidden for good (2026-10-05, the maintainer's call): apps keep
+            // the whole screen, autocorrect does the work, and Sym still opens its pages. The
+            // stored `status_bar_visibility` is kept for import/export but no longer read.
+            visibility = StripVisibilityMode.NEVER,
             apps = bar.apps,
             barHeightDp = bar.heightDp,
             slots = ButtonSlots(left = bar.leftButtons.map(::stripButton), right = bar.rightButtons.map(::stripButton)),
