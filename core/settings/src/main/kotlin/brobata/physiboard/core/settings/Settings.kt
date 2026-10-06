@@ -1,5 +1,6 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
@@ -244,6 +245,12 @@ data class SymPagePrefs(
     val autoClose: Boolean = true,
     val autoCloseOnTouch: Boolean = true,
     val emojiPickerExpandedHeight: Boolean = false,
+    /**
+     * `emoji_default_skin_tone`. spec: expansion-clipboard-pickers-launcher.md SS4.7: the tone every
+     * emoji that takes one is inserted and shown in (Emoji page keys, Sym chords, the picker and its
+     * recents), unless the user picked a tone for it. [SkinTone.NONE] changes nothing.
+     */
+    val defaultSkinTone: SkinTone = SkinTone.NONE,
     /**
      * `restore_sym_page`. spec: layers-sym-alt.md SS5.8: "the page to reopen at next input start."
      * Written only by the customisation screen, on a normal finish; read and cleared by the

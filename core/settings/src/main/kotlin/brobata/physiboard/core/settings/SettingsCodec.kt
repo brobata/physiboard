@@ -1,5 +1,6 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
@@ -99,6 +100,7 @@ object SettingsKeys {
     const val SYM_AUTO_CLOSE = "sym_auto_close"
     const val SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch"
     const val EMOJI_PICKER_EXPANDED = "emoji_picker_expanded_height"
+    const val EMOJI_DEFAULT_SKIN_TONE = "emoji_default_skin_tone"
 
     // SS2.6 status bar
     const val STATUS_BAR_VISIBILITY = "status_bar_visibility"
@@ -455,6 +457,7 @@ object SettingsCodec {
         put(SettingsKeys.SYM_AUTO_CLOSE, s.autoClose.toString())
         put(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, s.autoCloseOnTouch.toString())
         put(SettingsKeys.EMOJI_PICKER_EXPANDED, s.emojiPickerExpandedHeight.toString())
+        put(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE, s.defaultSkinTone.storedValue)
         put(SettingsKeys.RESTORE_SYM_PAGE, s.restoreSymPage.toString())
         put(SettingsKeys.PENDING_RESTORE_SYM_PAGE, s.pendingRestoreSymPage.toString())
     }
@@ -468,6 +471,7 @@ object SettingsCodec {
             autoClose = r.bool(SettingsKeys.SYM_AUTO_CLOSE, d.autoClose),
             autoCloseOnTouch = r.bool(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, d.autoCloseOnTouch),
             emojiPickerExpandedHeight = r.bool(SettingsKeys.EMOJI_PICKER_EXPANDED, d.emojiPickerExpandedHeight),
+            defaultSkinTone = SkinTone.fromStored(r.string(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE)),
             restoreSymPage = r.int(SettingsKeys.RESTORE_SYM_PAGE, d.restoreSymPage),
             pendingRestoreSymPage = r.int(SettingsKeys.PENDING_RESTORE_SYM_PAGE, d.pendingRestoreSymPage),
         )

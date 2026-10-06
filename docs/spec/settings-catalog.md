@@ -185,6 +185,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `sym_auto_close` | boolean | true | | Sym page closes after a key | SYM customization > "Auto-Close SYM Layout" |
 | `sym_auto_close_on_touch` | boolean | true | | Also after an on-screen Sym key | "Also close after on-screen SYM keys" |
 | `emoji_picker_expanded_height` | boolean | true | false | Taller emoji picker | SYM customization > "Larger emoji picker" |
+| `emoji_default_skin_tone` | string `none`, `light`, `medium_light`, `medium`, `medium_dark`, `dark`; anything else reads as `none` | `none` | | The tone emoji that take one are inserted and shown in: Sym pages, chords, the picker and its recents (expansion-clipboard-pickers-launcher.md 4.7). Backed up. | SYM customization > "Default skin tone" |
 | `restore_sym_page` | int 0, 1 (emoji) or 2 (symbols) | 0 | | Page to reopen after returning from SYM customization | Transient |
 | `pending_restore_sym_page` | int | 0 | | Candidate for the above, promoted only when the user presses Back | Transient |
 | `current_sym_page` | int | 0 | | The page currently open, written by the keyboard, read when opening SYM customization | Not managed by the settings layer |

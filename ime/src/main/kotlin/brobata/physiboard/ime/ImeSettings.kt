@@ -1,6 +1,8 @@
 package brobata.physiboard.ime
 
 import brobata.physiboard.core.actions.commands.SourceVisibility
+import brobata.physiboard.core.actions.emoji.SkinTone
+import brobata.physiboard.core.actions.emoji.SkinTones
 import brobata.physiboard.core.actions.launcher.CommandCustomizations
 import brobata.physiboard.core.actions.launcher.LauncherBehavior
 import brobata.physiboard.core.actions.launcher.LauncherKeySettings
@@ -204,8 +206,8 @@ internal object ImeSettings {
      * existing caller that has not loaded a file yet still gets.
      */
     fun layout(base: LayoutDescription, s: Settings, ctrlMappings: CtrlMappingTable? = null): LayoutDescription = base.copy(
-        emojiPage = customSymPage(s.symPages.customEmojiPage) ?: base.emojiPage,
-        symbolsPage = customSymPage(s.symPages.customSymbolsPage) ?: base.symbolsPage,
+        emojiPage = toned(customSymPage(s.symPages.customEmojiPage) ?: base.emojiPage, s.symPages.defaultSkinTone),
+        symbolsPage = toned(customSymPage(s.symPages.customSymbolsPage) ?: base.symbolsPage, s.symPages.defaultSkinTone),
         symPagesConfig = symPagesConfig(s.symPages.pages),
         longPress = LongPressSettings(mode = s.keys.longPressMode, thresholdMs = s.keys.longPressThresholdMs),
         ctrlMappings = ctrlMappings ?: base.ctrlMappings,
@@ -230,6 +232,21 @@ internal object ImeSettings {
         brobata.physiboard.core.settings.SymPage.SYMBOLS -> SymPageId.SYMBOLS
         brobata.physiboard.core.settings.SymPage.CLIPBOARD -> SymPageId.CLIPBOARD
         brobata.physiboard.core.settings.SymPage.EMOJI_PICKER -> SymPageId.EMOJI_PICKER
+    }
+
+    /**
+     * spec: expansion-clipboard-pickers-launcher.md SS4.7: the default skin tone reaches every
+     * emoji a Sym page key, a Sym chord or a Sym long press inserts, and the grid that shows them,
+     * by toning the page map once here, when the settings change, rather than on each keystroke.
+     * An entry that already carries a tone, or does not take one, is kept as it is.
+     */
+    private fun toned(page: SymPageMap, tone: SkinTone): SymPageMap {
+        if (tone == SkinTone.NONE) return page
+        return SymPageMap(
+            page.entries.mapValues { (_, entry) ->
+                SymPageEntry(SkinTones.withDefault(entry.lowercase, tone), entry.uppercase?.let { SkinTones.withDefault(it, tone) })
+            },
+        )
     }
 
     private fun customSymPage(stored: Map<String, String>): SymPageMap? {

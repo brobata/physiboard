@@ -184,4 +184,15 @@ class BackupCodecTest {
         assertEquals(0, outcome.skippedCount)
         assertTrue(outcome.settings.correction.fixWordMixups)
     }
+
+    @Test
+    fun `emoji_default_skin_tone goes out in a backup and comes back through a restore`() {
+        val dark = Settings().let { it.copy(symPages = it.symPages.copy(defaultSkinTone = brobata.physiboard.core.actions.emoji.SkinTone.DARK)) }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", dark))!!
+        assertEquals("dark", entries["emoji_default_skin_tone"])
+        val backup = BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries)
+        val outcome = BackupRestore.restore(Settings(), backup)
+        assertEquals(0, outcome.skippedCount)
+        assertEquals(brobata.physiboard.core.actions.emoji.SkinTone.DARK, outcome.settings.symPages.defaultSkinTone)
+    }
 }

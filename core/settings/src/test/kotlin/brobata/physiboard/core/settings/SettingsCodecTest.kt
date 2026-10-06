@@ -55,6 +55,7 @@ class SettingsCodecTest {
                 order = listOf(SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER)),
             customEmojiPage = mapOf("KEYCODE_Q" to "😀"), customSymbolsPage = mapOf("KEYCODE_W" to "€"),
             autoClose = false, autoCloseOnTouch = false, emojiPickerExpandedHeight = true,
+            defaultSkinTone = brobata.physiboard.core.actions.emoji.SkinTone.MEDIUM_DARK,
             restoreSymPage = 2, pendingRestoreSymPage = 1,
         ),
         statusBar = StatusBarPrefs(

@@ -86,6 +86,7 @@ object SearchCatalog {
         SearchEntry("Arrange SYM pages order", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym pages order emoji symbols clipboard picker cycle"),
         SearchEntry("Auto-Close SYM Layout", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym auto close layout one-shot"),
         SearchEntry("Larger emoji picker", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji picker height expanded larger sym"),
+        SearchEntry("Default skin tone", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji skin tone colour color fitzpatrick hand people default"),
     )
 
     /** spec: SS8, "the trimmed query is a case-insensitive substring of the title, of the screen title, or of the keywords." Results keep catalogue order. */
