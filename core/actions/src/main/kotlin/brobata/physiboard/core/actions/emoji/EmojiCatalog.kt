@@ -102,6 +102,14 @@ object RecentEmojis {
         return (listOf(emoji) + recents.filterNot { it == emoji }).take(MAX)
     }
 
+    /**
+     * The recents after [emoji] is chosen: [add]'s rule when the keyboard may remember things, and
+     * the list unchanged in private mode or a field that asks for no learning (app-shell.md SS31),
+     * so the caller writes nothing.
+     */
+    fun afterChoice(recents: List<String>, emoji: String, learningAllowed: Boolean): List<String> =
+        if (learningAllowed) add(recents, emoji) else recents
+
     /** spec SS4.4: "The Recents section is rebuilt from that list with each entry's variants looked up from the categories." */
     fun category(recents: List<String>, categories: List<EmojiCategory>): EmojiCategory? {
         if (recents.isEmpty()) return null

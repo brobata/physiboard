@@ -95,4 +95,29 @@ class MixupLearningTest {
         assertEquals(0, net("bigger", "then"))
         assertEquals(0, net("then", "mine"))
     }
+
+    /** Every learn and take-back the pipeline reported, in order. app-shell.md SS31. */
+    private val calls = mutableListOf<String>()
+
+    @Test
+    fun `in private mode the mix-up fix still happens but nothing is learned or taken back`() {
+        pipeline.onBigramLearned = { _, prefix, word -> calls += "learn $prefix $word" }
+        pipeline.onBigramUnlearned = { _, prefix, word -> calls += "unlearn $prefix $word" }
+        pipeline.learningAllowed = false
+        type("it is bigger then mine ")
+        assertEquals("it is bigger than mine ", text, "private mode changes what is remembered, not how text is corrected")
+        assertEquals(emptyList(), calls)
+    }
+
+    @Test
+    fun `a pair learned before private mode started is not taken back by a fix made during it`() {
+        type("it is bigger then ")
+        assertEquals(1, net("bigger", "then"))
+        pipeline.learningAllowed = false
+        type("mine ")
+        assertEquals("it is bigger than mine ", text)
+        assertEquals(1, net("bigger", "then"), "the take-back is a learn too; it waits for private mode to end")
+        assertEquals(0, net("bigger", "than"))
+        assertEquals(0, net("than", "mine"))
+    }
 }

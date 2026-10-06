@@ -16,7 +16,8 @@ import brobata.physiboard.core.actions.clipboard.ClipboardHistory
 
 /**
  * Captures the system clipboard into the [ClipboardHistory] model and mirrors it to SQLite.
- * spec: expansion-clipboard-pickers-launcher.md SS3.1 to SS3.4. Every rule (dedupe, ordering,
+ * spec: expansion-clipboard-pickers-launcher.md SS3.1 to SS3.4 and SS3.7 (a copy is stored with
+ * its links cleaned), app-shell.md SS31 (nothing is captured while learning is off). Every rule (dedupe, ordering,
  * retention, the 5 s debounce, the sensitive-clip exclusion 3.0 adds) is the model's; this class
  * owns the listener, the database, the 60 s timer and the single background thread the writes
  * go to "so the keyboard's input thread never waits for disk" (SS3.2).
@@ -28,6 +29,10 @@ internal class ClipboardHistoryController(
     private val context: Context,
     private val mainHandler: Handler,
     private val onChanged: () -> Unit,
+    /** app-shell.md SS31: false in private mode or a field that asks for no learning; asked at every copy. */
+    private val learningAllowed: () -> Boolean,
+    /** SS3.7: `clean_links`, asked at every copy. */
+    private val cleanLinks: () -> Boolean,
 ) {
     /** spec SS3.1: read once; the store's first emission is the "service creation" read, later changes wait for a restart. */
     private var enabled: Boolean = false
@@ -114,8 +119,8 @@ internal class ClipboardHistoryController(
         val mimeTypes = (0 until description.mimeTypeCount).map { description.getMimeType(it) }
         val sensitive = description.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE, false) ?: false
         val text = runCatching { clip.getItemAt(0).coerceToText(context)?.toString() }.getOrNull()
-        if (!ClipCapture.accepts(mimeTypes, text, sensitive)) return
-        commit(history.capture(text!!, System.currentTimeMillis()))
+        if (!ClipCapture.accepts(mimeTypes, text, sensitive, learningAllowed())) return
+        commit(history.capture(ClipCapture.text(text!!, cleanLinks()), System.currentTimeMillis()))
         cleanup(forced = true)
     }
 

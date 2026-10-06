@@ -3,18 +3,28 @@ package brobata.physiboard.core.actions.clipboard
 /** One entry of the clipboard history. spec: expansion-clipboard-pickers-launcher.md SS1 ("Clip"), SS3.2's row shape. */
 data class Clip(val id: Long, val text: String, val timestampMs: Long, val pinned: Boolean = false)
 
-/** The capture rule for one system clip. spec SS3.1. */
+/** The capture rule for one system clip. spec SS3.1, SS3.7. */
 object ClipCapture {
     /**
-     * Whether a clip's first item is taken: the clip declares a `text/` prefixed type or no type at all,
-     * the coerced text is not empty, and (3.0, SS13 "Sensitive-clip exclusion: keep (add it)") the
+     * Whether a clip's first item is taken: the keyboard may remember things right now
+     * ([learningAllowed] is false in private mode and in a field that asks for no learning, SS3.1
+     * and app-shell.md SS31), the clip declares a `text/` prefixed type or no type at all, the
+     * coerced text is not empty, and (3.0, SS13 "Sensitive-clip exclusion: keep (add it)") the
      * source did not flag it sensitive, which is what a password manager's copy carries.
      */
-    fun accepts(mimeTypes: List<String>, coercedText: String?, sensitive: Boolean): Boolean {
+    fun accepts(mimeTypes: List<String>, coercedText: String?, sensitive: Boolean, learningAllowed: Boolean): Boolean {
+        if (!learningAllowed) return false
         if (sensitive) return false
         if (mimeTypes.isNotEmpty() && mimeTypes.none { it.startsWith("text/") }) return false
         return !coercedText.isNullOrEmpty()
     }
+
+    /**
+     * spec SS3.7: the text the keyboard keeps or pastes for a clip, with tracking stripped from
+     * its links when `clean_links` is on. Used both when a clip is stored and when a card is
+     * pasted, so a clip stored with the setting off is still pasted clean once it is on.
+     */
+    fun text(text: String, cleanLinks: Boolean): String = if (cleanLinks) LinkCleaner.cleanText(text) else text
 }
 
 /**
@@ -143,6 +153,9 @@ object ClipboardPanelGeometry {
     const val CLOSE_WIDTH_DP: Int = 36
     const val CLOSE_HEIGHT_DP: Int = 32
     const val TITLE: String = "Clipboard History"
+
+    /** app-shell.md SS31.4: the header while private mode (or a field's own flag) stops new copies being kept. */
+    const val TITLE_NOT_SAVING: String = "Clipboard History · private, new copies not saved"
     const val CLEAR_ALL: String = "Clear All"
     const val EMPTY: String = "No clipboard history"
     const val MENU_PIN: String = "Pin"
