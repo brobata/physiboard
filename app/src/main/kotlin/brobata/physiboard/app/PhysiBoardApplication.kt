@@ -7,6 +7,7 @@ import brobata.physiboard.app.settings.SettingsStore
 import brobata.physiboard.app.settings.ui.AppPackageChangeMonitor
 import brobata.physiboard.app.shell.AppDebugCaptureStore
 import brobata.physiboard.app.shell.AppLocaleApplier
+import brobata.physiboard.app.shell.GatedHttp
 import brobata.physiboard.app.shell.UpdateCheckScheduler
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.shell.AutocorrectionRecord
@@ -88,6 +89,9 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
     override fun onCreate() {
         super.onCreate()
         settingsStore = SettingsStore.open(this)
+        // app-shell.md SS31.2: the network gate reads `private_mode` through [settingsSource];
+        // until this line every request is refused.
+        GatedHttp.install(this)
         // dictionaries-languages.md SS11: sync AppCompatDelegate to the stored `app_language_tag`.
         // A `runBlocking` read straight off `settingsStore` used to sit here, on the main thread,
         // in both this process's launcher-Activity role and the keyboard-service role (no

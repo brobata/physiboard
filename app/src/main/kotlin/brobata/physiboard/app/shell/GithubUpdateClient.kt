@@ -1,12 +1,11 @@
 package brobata.physiboard.app.shell
 
+import brobata.physiboard.core.shell.NetworkPurpose
 import brobata.physiboard.core.shell.ReleaseFeed
 import brobata.physiboard.core.shell.UpdateCheckResult
 import brobata.physiboard.core.shell.UpdatePolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
 
 /**
  * The network half of the update checker (app-shell.md SS13.2): one GET to the GitHub releases
@@ -18,10 +17,14 @@ object GithubUpdateClient {
     private const val RELEASES_URL = "https://api.github.com/repos/brobata/physiboard/releases?per_page=20"
     private const val TIMEOUT_MS = 10_000
 
-    /** Null on any network failure (SS13.9): a caught exception, not a crash. */
+    /**
+     * Null on any network failure (SS13.9): a caught exception, not a crash. Private mode is one
+     * of those failures: [GatedHttp] refuses before anything is sent (SS31.2), so every update
+     * trigger, the daily job included, quietly finds nothing.
+     */
     suspend fun fetchReleasesBody(): String? = withContext(Dispatchers.IO) {
         runCatching {
-            (URL(RELEASES_URL).openConnection() as HttpURLConnection).run {
+            GatedHttp.open(NetworkPurpose.UPDATE_CHECK, RELEASES_URL).run {
                 connectTimeout = TIMEOUT_MS
                 readTimeout = TIMEOUT_MS
                 requestMethod = "GET"
