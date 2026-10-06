@@ -35,7 +35,7 @@ class SettingsCodecTest {
             textReplacementsEnabled = false, textReplacementLanguages = listOf("en", "fr"),
             customSubstitutions = mapOf("en" to SubstitutionSet("English", mapOf("teh" to "the", "adn" to "and"))),
             autoReplaceOnSpaceEnter = false, maxAutoReplaceDistance = 3, suggestionsEnabled = false,
-            accentMatching = false, useKeyboardProximity = false,
+            accentMatching = false, useKeyboardProximity = false, fixWordMixups = true,
         ),
         languages = LanguagePrefs(
             keyboardLayout = "qwertz", layoutAutoByLocale = false, altShiftLayoutSwitch = false, altEnterLayoutSwitch = true,

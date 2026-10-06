@@ -55,6 +55,14 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
             item {
                 SwitchRow("Keyboard Proximity Ranking", checked = correction.useKeyboardProximity, onCheckedChange = { set { p -> p.copy(useKeyboardProximity = it) } })
             }
+            item {
+                SwitchRow(
+                    "Fix mixed-up words",
+                    description = "Fixes a real word typed for its twin \u2014 its/it's, your/you're, their/there, then/than \u2014 by reading the words on both sides. Backspace right after puts back what you typed.",
+                    checked = correction.fixWordMixups,
+                    onCheckedChange = { set { p -> p.copy(fixWordMixups = it) } },
+                )
+            }
         }
     }
 }

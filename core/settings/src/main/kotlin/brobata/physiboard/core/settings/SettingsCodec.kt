@@ -58,6 +58,7 @@ object SettingsKeys {
     const val SUGGESTIONS_ENABLED = "suggestions_enabled"
     const val ACCENT_MATCHING = "accent_matching_enabled"
     const val KEYBOARD_PROXIMITY = "use_keyboard_proximity"
+    const val FIX_WORD_MIXUPS = "fix_word_mixups"
 
     // SS2.3 languages
     const val KEYBOARD_LAYOUT = "keyboard_layout"
@@ -340,6 +341,7 @@ object SettingsCodec {
         put(SettingsKeys.SUGGESTIONS_ENABLED, c.suggestionsEnabled.toString())
         put(SettingsKeys.ACCENT_MATCHING, c.accentMatching.toString())
         put(SettingsKeys.KEYBOARD_PROXIMITY, c.useKeyboardProximity.toString())
+        put(SettingsKeys.FIX_WORD_MIXUPS, c.fixWordMixups.toString())
     }
 
     private fun readCorrection(r: FlatReader): CorrectionPrefs {
@@ -358,6 +360,7 @@ object SettingsCodec {
             suggestionsEnabled = r.bool(SettingsKeys.SUGGESTIONS_ENABLED, d.suggestionsEnabled),
             accentMatching = r.bool(SettingsKeys.ACCENT_MATCHING, d.accentMatching),
             useKeyboardProximity = r.bool(SettingsKeys.KEYBOARD_PROXIMITY, d.useKeyboardProximity),
+            fixWordMixups = r.bool(SettingsKeys.FIX_WORD_MIXUPS, d.fixWordMixups),
         )
     }
 

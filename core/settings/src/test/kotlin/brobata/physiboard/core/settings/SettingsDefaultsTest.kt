@@ -24,6 +24,11 @@ class SettingsDefaultsTest {
     }
 
     @Test
+    fun `fixing mixed-up words ships off`() {
+        assertFalse(d.correction.fixWordMixups)
+    }
+
+    @Test
     fun `dictation first-run defaults follow dictation md SS15`() {
         assertTrue(d.dictation.fnLongPressSpeech)
         assertTrue(d.dictation.haptics)

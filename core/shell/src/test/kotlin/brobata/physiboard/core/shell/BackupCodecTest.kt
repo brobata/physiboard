@@ -173,4 +173,15 @@ class BackupCodecTest {
             assertEquals(0, outcome.skippedCount, "$key should not be skipped")
         }
     }
+
+    @Test
+    fun `fix_word_mixups goes out in a backup and comes back through a restore`() {
+        val on = Settings().let { it.copy(correction = it.correction.copy(fixWordMixups = true)) }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", on))!!
+        assertEquals("true", entries["fix_word_mixups"])
+        val backup = BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries)
+        val outcome = BackupRestore.restore(Settings(), backup)
+        assertEquals(0, outcome.skippedCount)
+        assertTrue(outcome.settings.correction.fixWordMixups)
+    }
 }

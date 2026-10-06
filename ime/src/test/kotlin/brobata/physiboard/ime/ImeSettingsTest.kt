@@ -271,7 +271,7 @@ class ImeSettingsTest {
 
     @Test
     fun `correction rows land in the autocorrect and ranking bundles`() {
-        val s = Settings(correction = CorrectionPrefs(textReplacementsEnabled = false, autoReplaceOnSpaceEnter = false, maxAutoReplaceDistance = 3, suggestionsEnabled = false, accentMatching = false, useKeyboardProximity = false))
+        val s = Settings(correction = CorrectionPrefs(textReplacementsEnabled = false, autoReplaceOnSpaceEnter = false, maxAutoReplaceDistance = 3, suggestionsEnabled = false, accentMatching = false, useKeyboardProximity = false, fixWordMixups = true))
         val k = ImeSettings.keyboardSettings(s)
         assertFalse(k.textInput.autocorrect.autoCorrectEnabled)
         assertFalse(k.textInput.autocorrect.autoReplaceOnSpaceEnter)
@@ -279,6 +279,7 @@ class ImeSettingsTest {
         assertFalse(k.textInput.autocorrect.suggestionsEnabled)
         assertFalse(k.textInput.autocorrect.accentMatchingEnabled)
         assertFalse(k.textInput.autocorrect.useKeyboardProximity)
+        assertTrue(k.textInput.autocorrect.fixWordMixups)
         assertFalse(k.textInput.rankingOptions.useKeyboardProximity)
         assertFalse(k.textInput.rankingOptions.accentMatchingEnabled)
     }

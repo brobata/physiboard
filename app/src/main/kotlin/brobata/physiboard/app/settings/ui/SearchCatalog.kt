@@ -72,6 +72,7 @@ object SearchCatalog {
         SearchEntry("Key mapping", "Key mapping", Routes.KEY_MAPPING, "key mapping fn sym orange side key vendor inventory"),
         // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.2-9.4; per-app-behavior.md
         // SS3.11; trackpad-caret-nav.md SS5.8: this module's feature work.
+        SearchEntry("Fix mixed-up words", "Auto-correction", Routes.AUTO_CORRECTION, "mixup mixed-up its it's your you're their there then than grammar context sentence homophone"),
         SearchEntry("Personal dictionary", "Auto-correction", Routes.PERSONAL_DICTIONARY, "personal dictionary user words add delete edit"),
         SearchEntry("Installed dictionaries", "Input Languages", Routes.INSTALLED_DICTIONARIES, "dictionary download import language install manage"),
         SearchEntry("Manage input styles", "Input Languages", Routes.INPUT_STYLES, "input style locale layout suggestion dictionary add edit"),

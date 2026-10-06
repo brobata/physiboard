@@ -134,6 +134,7 @@ internal object ImeSettings {
                     maxAutoReplaceDistance = s.correction.maxAutoReplaceDistance,
                     useKeyboardProximity = s.correction.useKeyboardProximity,
                     accentMatchingEnabled = s.correction.accentMatching,
+                    fixWordMixups = s.correction.fixWordMixups,
                 ),
                 rankingOptions = RankingOptions(
                     useKeyboardProximity = s.correction.useKeyboardProximity,
