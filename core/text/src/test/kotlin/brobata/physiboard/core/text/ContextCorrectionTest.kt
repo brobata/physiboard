@@ -86,6 +86,9 @@ class ContextCorrectionTest {
         assertEquals("tail", evaluation.debug.before)
         assertEquals("tail", evaluation.debug.after)
         assertEquals("previous it's -> its", evaluation.debug.reason)
+        // ... and the rewritten word before it, so `:ime` learns "wagged -> its", not "wagged -> it's".
+        assertEquals("it's", evaluation.debug.previousWordBefore)
+        assertEquals("its", evaluation.debug.previousWordAfter)
     }
 
     @Test

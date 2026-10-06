@@ -63,6 +63,14 @@ data class BoundaryDebugInfo(
      * string alone collapses every punctuation mark to `other`.
      */
     val boundaryChar: Char = ' ',
+    /**
+     * Set only when the mix-up fix rewrote the word before the one just finished (SS10's
+     * exception): that word as the field held it, and what replaced it. [before]/[after] still
+     * describe the word just finished. `:ime`'s next-word learning has already learned the word
+     * before as it was typed, one boundary earlier, and reads these to learn the fixed one instead.
+     */
+    val previousWordBefore: String? = null,
+    val previousWordAfter: String? = null,
 ) {
     companion object {
         /** spec app-shell.md SS11: `space`, `enter`, `suggestion_tap`, `other`; a boundary evaluation is never `suggestion_tap`. */
@@ -330,8 +338,13 @@ object BoundaryEngine {
         // before/after describe the word just finished, never the span: `:ime` learns "the
         // completed word" from them (SS4, SS7.3), and "its tail" is not a word. The mix-up itself
         // is named in the reason.
-        val mixupNote = if (mixupStart >= 0) "previous ${textBeforeCursor.substring(mixupStart, mixupStart + (original.length - trackedWord.length - 1))} -> $mixupReplacement" else ""
-        val debug = applied(label, settled, null).copy(reason = mixupNote)
+        val mixupOriginal = if (mixupStart >= 0) textBeforeCursor.substring(mixupStart, mixupStart + (original.length - trackedWord.length - 1)) else null
+        val mixupNote = if (mixupOriginal != null) "previous $mixupOriginal -> $mixupReplacement" else ""
+        val debug = applied(label, settled, null).copy(
+            reason = mixupNote,
+            previousWordBefore = mixupOriginal,
+            previousWordAfter = mixupReplacement.takeIf { mixupOriginal != null },
+        )
         return BoundaryEvaluation(memory.afterReplacement(original, replacement), BoundaryOutcome.Replaced(ops, original, replacement, addWordCandidate = null), debug)
     }
 

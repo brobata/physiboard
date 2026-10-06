@@ -249,6 +249,9 @@ internal class KeyboardPipeline(
     /** spec: SS4, "the next word is a sentence start" until a soft boundary completes a word. */
     private var nextWordPrefixKey: String = NgramStore.SENTENCE_START
 
+    /** The pair the last boundary learned (prefix, word), so a mix-up fix of that word one boundary later can take it back. */
+    private var lastLearnedPair: Pair<String, String>? = null
+
     /** `:ime` supplies the loaded rows once at start and after every reload; see [KeyboardSession]. */
     fun onNgramStoreLoaded(loaded: List<Bigram>) {
         ngramStore = ngramStore.mergedWith(loaded)
@@ -256,6 +259,9 @@ internal class KeyboardPipeline(
 
     /** spec: SS4. `:ime`'s seam to persist a newly learned pair off the main thread; a no-op until set. */
     var onBigramLearned: (locale: String, prefix: String, nextWord: String) -> Unit = { _, _, _ -> }
+
+    /** `:ime`'s seam to persist taking back one learn of a pair ([NgramStore.unlearn]); a no-op until set. */
+    var onBigramUnlearned: (locale: String, prefix: String, nextWord: String) -> Unit = { _, _, _ -> }
 
     /**
      * spec: SS4, "deleting a user word forgets it as a next word under every prefix" (SS5:
@@ -1238,8 +1244,25 @@ internal class KeyboardPipeline(
         val completedWord = debug.after.ifBlank { debug.before }
         val locale = resources.dictionaries.firstOrNull()?.language?.value ?: ImeSettings.DEFAULT_SUBTYPE_LOCALE
         val now = System.currentTimeMillis()
+        val fixedPrevious = debug.previousWordAfter
+        if (fixedPrevious != null) {
+            // SS10's mix-up fix rewrote the word before this one, which the previous boundary
+            // already learned as typed ("wagged -> it's"), and the prefix in hand is that typed
+            // word: take back that one learn, learn the fixed word in its place, and learn this
+            // word after the fixed one ("wagged -> its", "its -> tail"), never after the slip.
+            val last = lastLearnedPair
+            val typedPrevious = debug.previousWordBefore
+            if (last != null && typedPrevious != null && NgramPrefix.of(last.second) == NgramPrefix.of(typedPrevious)) {
+                ngramStore = ngramStore.unlearn(locale, last.first, last.second)
+                onBigramUnlearned(locale, last.first, last.second)
+                ngramStore = ngramStore.learn(locale, last.first, fixedPrevious, now)
+                onBigramLearned(locale, last.first, fixedPrevious)
+            }
+            nextWordPrefixKey = NgramPrefix.of(fixedPrevious)
+        }
         ngramStore = ngramStore.learn(locale, nextWordPrefixKey, completedWord, now)
         onBigramLearned(locale, nextWordPrefixKey, completedWord)
+        lastLearnedPair = nextWordPrefixKey to completedWord
         nextWordPrefixKey = if (BoundaryDebugInfo.isSoftBoundary(debug.boundaryChar)) NgramPrefix.of(completedWord) else NgramStore.SENTENCE_START
     }
 

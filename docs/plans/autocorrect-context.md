@@ -293,8 +293,11 @@ before the first boundary uses it.
 - `texting`, `texted`, `nonessentials` and similar are missing from the English list; adding them
   to `user_defaults.json` or the next list rebuild would remove two of the ten clean-text changes.
 - An undo of a combined fix (`it's taill` -> `its tail`) restores both words at once.
-- After a mix-up fix, the keyboard's own next-word learning has already learned the pair with the
-  old word (`it's -> tail`); harmless while the suggestion bar is gone, but it is learned.
+- After a mix-up fix, the keyboard's own next-word learning used to keep the pairs with the old
+  word (`wagged -> it's`, `it's -> tail`). Fixed after review: the boundary record names the
+  rewritten word, and `:ime` takes back the one learn of `wagged -> it's` (a count down by one, not
+  the pair's whole history), learns `wagged -> its`, and learns `its -> tail`. The database writes
+  now go through one thread in order, so the take-back cannot overtake the learn it takes back.
 - With an extra language loaded, its unknown words are weighed with the English table, so a
   Spanish slip leans towards an English word. Correct Spanish words are still known words.
 - A previous word at index 0 of a short read is trusted as the start of the text, as the rest of

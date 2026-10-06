@@ -408,7 +408,10 @@ the user added is left alone even when the primary list knows only the capitalis
   the pending space is replaced by the punctuation (see `text-input.md`).
 
 Boundaries also drive next-word learning (section 4): after the boundary, the completed word (the
-replacement if one happened) is learned against the previous word.
+replacement if one happened) is learned against the previous word. When the mix-up fix (section 10) rewrote the
+previous word, the pair learned one boundary earlier with the word as typed is taken back (its
+count drops by one; a pair learned once goes), the fixed word is learned in its place, and the
+completed word is learned against the fixed one.
 
 ### 7.4 Restricted fields and the legacy path
 

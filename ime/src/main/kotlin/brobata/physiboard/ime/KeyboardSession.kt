@@ -543,6 +543,7 @@ internal class KeyboardSession(
         // session has already learned before the load lands ([NgramStore.mergedWith]).
         pipeline.onBigramLearned = { locale, prefix, nextWord -> ngramLoader.learnAsync(locale, prefix, nextWord, System.currentTimeMillis()) }
         pipeline.onBigramForgotten = { locale, prefix, nextWord -> ngramLoader.forgetAsync(locale, prefix, nextWord) }
+        pipeline.onBigramUnlearned = { locale, prefix, nextWord -> ngramLoader.unlearnAsync(locale, prefix, nextWord) }
         ngramLoader.loadAsync { rows -> pipeline.onNgramStoreLoaded(rows) }
         // spec SS8.3: "when the keyboard service is created", with whatever `custom_input_styles`
         // the shipped defaults hold until the store's first emission (an empty array still

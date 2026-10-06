@@ -68,6 +68,18 @@ class NgramStore private constructor(private val rows: Map<RowKey, Bigram>) {
     }
 
     /**
+     * Takes back one learn of [nextWord] after [prefix]: the count drops by one, and a pair learned
+     * only once goes. For a pair learned by mistake (the word was rewritten after it was learned,
+     * autocorrect-suggestions.md SS10's mix-up fix), so the rest of its history is kept. A pair
+     * not present is a no-op.
+     */
+    fun unlearn(locale: String, prefix: String, nextWord: String): NgramStore {
+        val key = RowKey(locale, prefix, DictNormalization.normalizedKey(nextWord))
+        val existing = rows[key] ?: return this
+        return if (existing.count <= 1) NgramStore(rows - key) else NgramStore(rows + (key to existing.copy(count = existing.count - 1)))
+    }
+
+    /**
      * Forgets [nextWord] as a prediction under [prefix] for [locale]: the strip's long-press hide
      * on a next-word suggestion (spec SS5, "for a next-word suggestion it also forgets the
      * bigram"). A pair not present is a no-op.

@@ -32,6 +32,18 @@ class NgramStoreTest {
     }
 
     @Test
+    fun `unlearning takes back one learn, and a pair learned once goes`() {
+        var store = NgramStore.empty().learn("en", "bigger", "then", nowMillis = 100)
+        store = store.learn("en", "bigger", "then", nowMillis = 200)
+        store = store.unlearn("en", "bigger", "then")
+        assertEquals(1, store.predict("en", "bigger", limit = 3).single().count)
+        store = store.unlearn("en", "bigger", "then")
+        assertEquals(emptyList(), store.predict("en", "bigger", limit = 3))
+        // A pair never learned is left as it is.
+        assertEquals(emptyList(), store.unlearn("en", "bigger", "than").allRows())
+    }
+
+    @Test
     fun `predictions are ordered by count descending then recency descending`() {
         var store = NgramStore.empty()
         store = store.learn("en", "how", "are", nowMillis = 100)

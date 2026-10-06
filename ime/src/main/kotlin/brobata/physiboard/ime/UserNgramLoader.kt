@@ -6,6 +6,9 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.os.Handler
 import brobata.physiboard.core.dict.Bigram
 import brobata.physiboard.core.dict.DictNormalization
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 /**
  * The real `user_ngrams.db` SQLite database behind the bigram store's persistence. spec:
@@ -47,6 +50,15 @@ private class NgramDatabaseHelper(context: Context) : SQLiteOpenHelper(context, 
 internal class UserNgramLoader(context: Context, private val mainHandler: Handler) {
     private val helper = NgramDatabaseHelper(context.applicationContext)
 
+    /**
+     * Every write goes through one thread, in the order the keyboard made it: a mix-up fix takes
+     * back a learn made one word earlier ([unlearnAsync]), which must not overtake that learn. The
+     * thread ends after a short idle spell rather than living as long as the process.
+     */
+    private val writes = ThreadPoolExecutor(1, 1, 30L, TimeUnit.SECONDS, LinkedBlockingQueue()) { task ->
+        Thread(task, "physiboard-ngram-write").apply { isDaemon = true }
+    }.apply { allowCoreThreadTimeOut(true) }
+
     /** Loads every row into a plain list; [onLoaded] runs on the main thread. */
     fun loadAsync(onLoaded: (List<Bigram>) -> Unit) {
         Thread({
@@ -60,7 +72,7 @@ internal class UserNgramLoader(context: Context, private val mainHandler: Handle
      * last-used. One upsert, so this never has to read the row back into Kotlin first.
      */
     fun learnAsync(locale: String, prefix: String, nextWord: String, nowMillis: Long) {
-        Thread({
+        writes.execute {
             runCatching {
                 val db = helper.writableDatabase
                 val key = DictNormalization.normalizedKey(nextWord)
@@ -70,27 +82,47 @@ internal class UserNgramLoader(context: Context, private val mainHandler: Handle
                     arrayOf<Any>(locale, prefix, nextWord, key, nowMillis),
                 )
             }
-        }, "physiboard-ngram-learn").apply { isDaemon = true }.start()
+        }
+    }
+
+    /** Takes back one learn of a pair ([brobata.physiboard.core.dict.NgramStore.unlearn]): the count drops by one, and a row at zero goes. */
+    fun unlearnAsync(locale: String, prefix: String, nextWord: String) {
+        writes.execute {
+            runCatching {
+                val db = helper.writableDatabase
+                val key = DictNormalization.normalizedKey(nextWord)
+                val where = "locale = ? AND prefix = ? AND next_word_key = ?"
+                val args = arrayOf(locale, prefix, key)
+                db.beginTransaction()
+                try {
+                    db.execSQL("UPDATE bigrams SET count = count - 1 WHERE $where", arrayOf<Any>(locale, prefix, key))
+                    db.delete("bigrams", "$where AND count <= 0", args)
+                    db.setTransactionSuccessful()
+                } finally {
+                    db.endTransaction()
+                }
+            }
+        }
     }
 
     /** spec SS5: hiding a next-word suggestion "forgets that bigram". */
     fun forgetAsync(locale: String, prefix: String, nextWord: String) {
-        Thread({
+        writes.execute {
             runCatching {
                 val key = DictNormalization.normalizedKey(nextWord)
                 helper.writableDatabase.delete("bigrams", "locale = ? AND prefix = ? AND next_word_key = ?", arrayOf(locale, prefix, key))
             }
-        }, "physiboard-ngram-forget").apply { isDaemon = true }.start()
+        }
     }
 
     /** spec SS4: "deleting a user word forgets it as a next word under every prefix" (SS5: "forgets it as a next word everywhere"). */
     fun forgetEverywhereAsync(word: String) {
-        Thread({
+        writes.execute {
             runCatching {
                 val key = DictNormalization.normalizedKey(word)
                 helper.writableDatabase.delete("bigrams", "next_word_key = ?", arrayOf(key))
             }
-        }, "physiboard-ngram-forget-everywhere").apply { isDaemon = true }.start()
+        }
     }
 
     private fun readAll(): List<Bigram> {
