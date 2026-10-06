@@ -140,7 +140,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                 HomeTile("Keyboard", modifier = Modifier.weight(1f)) { onNavigate(Routes.KEYBOARD) }
             }
             Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HomeTile("Status Bar Theme", modifier = Modifier.weight(1f)) { onNavigate(Routes.STATUS_BAR_THEME) }
+                HomeTile("Theme", modifier = Modifier.weight(1f)) { onNavigate(Routes.STATUS_BAR_THEME) }
                 HomeTile(
                     "Status",
                     subLabel = if (probe.enabled && probe.selected) "all good" else "needs setup",

@@ -40,7 +40,7 @@ import brobata.physiboard.core.strip.ButtonSlots
 import brobata.physiboard.core.strip.StripSide
 
 /**
- * "Status Bar Theme" (settings-catalog.md SS9.2, status-bar.md SS9.4). The "Keyboard UI Preview"
+ * "Theme", formerly "Status Bar Theme" (settings-catalog.md SS9.2, status-bar.md SS9.4). The "Keyboard UI Preview"
  * lives under [StripThemeScreen]'s doc comment (a render, not a setting). Left and right button
  * slots use [ReorderableMultiChoiceRow] rather than the plain multi-choice row: [StatusBarPrefs]
  * keeps `leftButtons`/`rightButtons` ordered (status-bar.md SS6.3, "the strip... renders every
@@ -54,7 +54,7 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     fun set(transform: (StatusBarPrefs) -> StatusBarPrefs) = controller.update { it.copy(statusBar = transform(it.statusBar)) }
     var confirmReset by remember { mutableStateOf(false) }
 
-    SettingsScreenScaffold(title = "Status Bar Theme", onBack = onBack) {
+    SettingsScreenScaffold(title = "Theme", onBack = onBack) {
         RowList {
             item { DividerLabel("Choose a preset") }
             item {
