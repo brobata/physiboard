@@ -120,6 +120,7 @@ fun SettingsRootScreen(onNavigate: (String) -> Unit) {
                             ignoreDismissedReleases = false,
                             onNoNetwork = { toast(context, "Unable to reach GitHub.") },
                             onUpToDate = { toast(context, "App is up to date.") },
+                            onBlocked = { reason -> toast(context, reason) },
                         )
                     }
                 },
@@ -128,6 +129,7 @@ fun SettingsRootScreen(onNavigate: (String) -> Unit) {
                     backupLauncher.launch(name)
                 },
                 onRestoreClick = { restoreLauncher.launch(arrayOf("application/json", "application/zip", "*/*")) },
+                privateMode = controller.current.value.privacy.privateMode,
             )
         }
     }
@@ -205,6 +207,7 @@ private fun LazyListScope.rootRows(
     onUpdatesClick: () -> Unit,
     onBackupClick: () -> Unit,
     onRestoreClick: () -> Unit,
+    privateMode: Boolean,
 ) {
     item {
         NavigateRow(
@@ -221,6 +224,14 @@ private fun LazyListScope.rootRows(
     }
     item {
         NavigateRow(label = "Extras", description = "The quick launcher, languages and text expansion", onClick = { onNavigate(Routes.EXTRAS) })
+    }
+    item {
+        // app-shell.md SS31: private mode and clean links.
+        NavigateRow(
+            label = "Privacy",
+            description = if (privateMode) "Private mode is on: nothing is learned, no network requests" else "Private mode and clean links",
+            onClick = { onNavigate(Routes.PRIVACY) },
+        )
     }
     item {
         NavigateRow(label = "Status", description = "Check PhysiBoard is set up correctly", onClick = { onNavigate(Routes.STATUS) })

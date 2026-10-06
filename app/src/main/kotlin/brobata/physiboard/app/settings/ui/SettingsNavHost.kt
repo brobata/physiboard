@@ -41,6 +41,7 @@ import brobata.physiboard.app.settings.ui.screens.TextExpansionScreen
 import brobata.physiboard.app.settings.ui.screens.VoiceScreen
 import brobata.physiboard.app.settings.ui.screens.AssignedLauncherKeysScreen
 import brobata.physiboard.app.settings.ui.screens.ClipboardHistoryScreen
+import brobata.physiboard.app.settings.ui.screens.PrivacyScreen
 import brobata.physiboard.app.settings.ui.screens.CustomSubstitutionsEditScreen
 import brobata.physiboard.app.settings.ui.screens.CustomSubstitutionsScreen
 import brobata.physiboard.app.settings.ui.screens.CustomizeEntriesScreen
@@ -187,6 +188,7 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         composable(Routes.QUICK_LAUNCHER_ENTRIES) { QuickLauncherEntriesScreen(onBack = ::back) }
         composable(Routes.CUSTOMIZE_ENTRIES) { CustomizeEntriesScreen(onBack = ::back) }
         composable(Routes.CLIPBOARD_HISTORY) { ClipboardHistoryScreen(onBack = ::back) }
+        composable(Routes.PRIVACY) { PrivacyScreen(onBack = ::back) }
 
         composable(Routes.TEST_FIELD) { TestFieldScreen(onBack = ::back) }
 

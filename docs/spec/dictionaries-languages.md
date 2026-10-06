@@ -360,6 +360,11 @@ While the fetch runs the refresh button is replaced by a 24 dp spinner. On error
 still lists local dictionaries; the message "Failed to load dictionary list" is shown only when
 there is nothing local either. There is no automatic re-fetch and no background check.
 
+3.0: the manifest fetch, like the download below, goes through the network gate (app-shell.md
+section 31.2). In private mode nothing is sent; the screen lists what is installed and shows the
+reason "Private mode is on, so PhysiBoard makes no network requests." (as its error when nothing is installed,
+otherwise as a snackbar). A download tapped in private mode shows the same reason.
+
 ### 5.3 Download
 
 Tapping the download icon on a row that is online and not installed starts a download for
