@@ -97,6 +97,12 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (Str
             )
 
             NavigateRow(
+                label = "Sentence data",
+                description = "Autocorrect's word-pair counts come from Tatoeba (tatoeba.org), CC BY 2.0 FR",
+                onClick = { openInBrowser(context, "https://tatoeba.org") },
+            )
+
+            NavigateRow(
                 label = stringResource(R.string.app_language_title),
                 description = appLanguageDescription,
                 onClick = { onNavigate(Routes.APP_LANGUAGE) },
