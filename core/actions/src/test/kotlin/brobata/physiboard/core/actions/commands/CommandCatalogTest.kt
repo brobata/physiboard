@@ -85,6 +85,16 @@ class CommandCatalogTest {
         assertEquals(CommandIcon.GEAR, c.find(CommandIds.DEVICE_HOME)!!.icon)
         assertEquals(CommandIcon.COMMAND_KEY, c.find(CommandIds.VOICE_ASSISTANT)!!.icon)
         assertTrue(c.find("app:com.whatsapp")!!.hasAppIcon)
+        assertEquals(CommandIcon.PRIVATE, c.find(CommandIds.TOGGLE_PRIVATE_MODE)!!.icon)
+    }
+
+    @Test
+    fun `private mode is a PhysiBoard command on every surface, so a key, a Sym shortcut, the quick launcher and nav mode can all bind it`() {
+        val command = catalog().find(CommandIds.TOGGLE_PRIVATE_MODE)!!
+        assertEquals(CommandSource.PHYSIBOARD, command.source)
+        assertEquals(LaunchSpec.InternalAction(InternalActions.TOGGLE_PRIVATE_MODE), command.launch)
+        assertEquals(Command.ALL_SURFACES, command.surfaces)
+        assertTrue(AssignmentSheet.candidates(catalog()).any { it.id == CommandIds.TOGGLE_PRIVATE_MODE })
     }
 
     @Test

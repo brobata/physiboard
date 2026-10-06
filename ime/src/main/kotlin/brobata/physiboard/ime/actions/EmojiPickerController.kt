@@ -44,6 +44,8 @@ internal class EmojiPickerController(
     private val service: InputMethodService,
     private val handler: Handler,
     private val assets: EmojiAssets,
+    /** app-shell.md SS31: false in private mode or a field that asks for no learning; recents are then left as they are. */
+    private val learningAllowed: () -> Boolean,
 ) {
     interface Listener {
         fun onEmojiChosen(emoji: String)
@@ -390,9 +392,11 @@ internal class EmojiPickerController(
     private var deferRedrawUntilTabChange = false
 
     private fun choose(emoji: String) {
-        saveRecents(RecentEmojis.add(loadRecents(), emoji))
+        val before = loadRecents()
+        val after = RecentEmojis.afterChoice(before, emoji, learningAllowed())
+        if (after !== before) saveRecents(after)
         listener?.onEmojiChosen(emoji)
-        scheduleRecentsRedraw()
+        if (after !== before) scheduleRecentsRedraw()
     }
 
     /**

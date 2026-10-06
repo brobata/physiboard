@@ -184,4 +184,16 @@ class BackupCodecTest {
         assertEquals(0, outcome.skippedCount)
         assertTrue(outcome.settings.correction.fixWordMixups)
     }
+
+    @Test
+    fun `private mode and clean links go out in a backup and come back through a restore`() {
+        val changed = Settings().let { it.copy(privacy = it.privacy.copy(privateMode = true, cleanLinks = false)) }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", changed))!!
+        assertEquals("true", entries["private_mode"])
+        assertEquals("false", entries["clean_links"])
+        val outcome = BackupRestore.restore(Settings(), BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries))
+        assertEquals(0, outcome.skippedCount)
+        assertTrue(outcome.settings.privacy.privateMode)
+        assertFalse(outcome.settings.privacy.cleanLinks)
+    }
 }

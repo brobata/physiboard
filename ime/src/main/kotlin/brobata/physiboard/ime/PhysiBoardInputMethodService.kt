@@ -37,7 +37,7 @@ class PhysiBoardInputMethodService : InputMethodService() {
             settingsSource = (applicationContext as? SettingsSourceOwner)?.settingsSource,
             webApkHost = WebApkHostLookup.forContext(this),
             // app-shell.md SS10.2, SS10.7: a host without :app's wiring (a JVM test) simply reports nothing.
-            debugCaptureSink = (applicationContext as? DebugCaptureSinkOwner)?.debugCaptureSink,
+            rawDebugCaptureSink = (applicationContext as? DebugCaptureSinkOwner)?.debugCaptureSink,
         )
     }
 

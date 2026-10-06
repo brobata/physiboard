@@ -103,6 +103,7 @@ class SettingsCodecTest {
             tapHapticUseSystem = false, tapHapticDurationMs = 40,
             typingSoundMode = TypingSoundMode.TYPEWRITER, typingSoundOutputMode = TypingSoundOutputMode.NOTIFICATION,
         ),
+        privacy = PrivacyPrefs(privateMode = true, cleanLinks = false),
         shell = ShellState(tutorialCompleted = true, lastSeenWhatsNewVersion = "3.0.0", dismissedReleases = listOf("v3.0.1", "v3.0.2"), untestedDeviceNoticeSeen = true),
         captures = DeviceCaptures(
             fnCtrlPrevCaptured = true, fnCtrlPrevEnable = 1, fnCtrlPrevFunction = 7, sideKeyOriginalCaptured = true,

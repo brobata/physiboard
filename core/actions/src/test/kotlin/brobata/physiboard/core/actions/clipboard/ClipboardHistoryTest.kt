@@ -76,11 +76,25 @@ class ClipboardHistoryTest {
 
     @Test
     fun `the capture rule takes text clips and untyped clips, refuses empty and sensitive ones`() {
-        assertTrue(ClipCapture.accepts(listOf("text/plain"), "x", sensitive = false))
-        assertTrue(ClipCapture.accepts(emptyList(), "x", sensitive = false))
-        assertFalse(ClipCapture.accepts(listOf("image/png"), "x", sensitive = false))
-        assertFalse(ClipCapture.accepts(listOf("text/plain"), "", sensitive = false))
-        assertFalse(ClipCapture.accepts(listOf("text/plain"), "hunter2", sensitive = true), "SS13: 3.0 honours the sensitive flag")
+        assertTrue(ClipCapture.accepts(listOf("text/plain"), "x", sensitive = false, learningAllowed = true))
+        assertTrue(ClipCapture.accepts(emptyList(), "x", sensitive = false, learningAllowed = true))
+        assertFalse(ClipCapture.accepts(listOf("image/png"), "x", sensitive = false, learningAllowed = true))
+        assertFalse(ClipCapture.accepts(listOf("text/plain"), "", sensitive = false, learningAllowed = true))
+        assertFalse(ClipCapture.accepts(listOf("text/plain"), "hunter2", sensitive = true, learningAllowed = true), "SS13: 3.0 honours the sensitive flag")
+    }
+
+    @Test
+    fun `private mode, or a field that asks for no learning, captures nothing`() {
+        // app-shell.md SS31: learningAllowed is false in private mode and in an opted-out field.
+        assertFalse(ClipCapture.accepts(listOf("text/plain"), "x", sensitive = false, learningAllowed = false))
+        assertFalse(ClipCapture.accepts(emptyList(), "x", sensitive = false, learningAllowed = false))
+    }
+
+    @Test
+    fun `T77 a clip's text is cleaned only when clean links is on`() {
+        val copied = "Order here https://example.com/order?utm_source=ig&id=7"
+        assertEquals("Order here https://example.com/order?id=7", ClipCapture.text(copied, cleanLinks = true))
+        assertTrue(copied === ClipCapture.text(copied, cleanLinks = false))
     }
 
     @Test

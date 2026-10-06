@@ -117,4 +117,13 @@ class CaretBadgeTest {
     fun `T51 - the locked colour at faint alpha keeps its RGB and drops to alpha 140`() {
         assertEquals(BadgeColor(140, 0xDC, 0x26, 0x26), CaretBadgeColor.faint(0xFFDC2626.toInt()))
     }
+
+    @Test
+    fun `private mode shows its marker on its own and after the modifiers`() {
+        assertEquals(listOf(BadgeItem(ModifierGlyph.PRIVATE, GlyphStyle.LOCKED_FULL)), CaretBadge.items(ModifierGlyphInput(privateMode = true)))
+        assertEquals(
+            listOf(ModifierGlyph.SHIFT, ModifierGlyph.PRIVATE),
+            CaretBadge.items(ModifierGlyphInput(capsLockOn = true, privateMode = true)).map { it.modifier },
+        )
+    }
 }

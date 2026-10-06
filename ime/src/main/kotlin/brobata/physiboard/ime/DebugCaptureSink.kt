@@ -30,3 +30,26 @@ interface DebugCaptureSink {
 interface DebugCaptureSinkOwner {
     val debugCaptureSink: DebugCaptureSink
 }
+
+/**
+ * app-shell.md SS31: the debug capture records keys and corrected words, which is typed text.
+ * While [learningAllowed] is false (private mode, or a field that asks for no personalized
+ * learning) this drops everything instead of passing it to [delegate]: no key event, no field
+ * attach (it names the app being typed in) and no autocorrection record.
+ */
+internal class PrivacyFilteringDebugCaptureSink(
+    private val delegate: DebugCaptureSink,
+    private val learningAllowed: () -> Boolean,
+) : DebugCaptureSink {
+    override fun report(event: KeyboardEventRecord) {
+        if (learningAllowed()) delegate.report(event)
+    }
+
+    override fun reportFieldAttach(snapshot: ImeContextSnapshot, isPhysiBoardOwnPackage: Boolean) {
+        if (learningAllowed()) delegate.reportFieldAttach(snapshot, isPhysiBoardOwnPackage)
+    }
+
+    override fun recordAutocorrection(record: AutocorrectionRecord) {
+        if (learningAllowed()) delegate.recordAutocorrection(record)
+    }
+}

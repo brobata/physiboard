@@ -1,7 +1,11 @@
 package brobata.physiboard.core.pointer.caret
 
-/** Which modifier a badge glyph reports. spec: trackpad-caret-nav.md SS4.2 ("the fixed order Shift, Alt, Ctrl, Sym"). */
-enum class ModifierGlyph { SHIFT, ALT, CTRL, SYM }
+/**
+ * What a badge glyph reports. spec: trackpad-caret-nav.md SS4.2 ("the fixed order Shift, Alt,
+ * Ctrl, Sym"), then [PRIVATE], which is not a modifier: it is private mode's indicator
+ * (app-shell.md SS31.4), drawn last so the modifiers keep their places.
+ */
+enum class ModifierGlyph { SHIFT, ALT, CTRL, SYM, PRIVATE }
 
 /** How a glyph is drawn. spec: trackpad-caret-nav.md SS4.2, SS4.3 ("Colour: blue for one click, red for two... A held modifier is drawn faint"). */
 enum class GlyphStyle { LOCKED_FULL, ARMED_FULL, ARMED_FAINT }
@@ -31,6 +35,8 @@ data class ModifierGlyphInput(
     val ctrlPhysicallyHeld: Boolean = false,
     /** spec SS4.2: "Any Sym page open (page not 0)", "follows the Sym page, not a modifier flag". */
     val symPageOpen: Boolean = false,
+    /** app-shell.md SS31.4: the user's private mode is on, so the badge shows its marker whatever the modifiers are. */
+    val privateMode: Boolean = false,
 )
 
 /**
@@ -47,6 +53,7 @@ object CaretBadge {
         altItem(input),
         ctrlItem(input),
         symItem(input),
+        privateItem(input),
     )
 
     private fun shiftItem(input: ModifierGlyphInput): BadgeItem? = when {
@@ -72,6 +79,10 @@ object CaretBadge {
 
     private fun symItem(input: ModifierGlyphInput): BadgeItem? =
         if (input.symPageOpen) BadgeItem(ModifierGlyph.SYM, GlyphStyle.ARMED_FULL) else null
+
+    /** app-shell.md SS31.4: drawn in the locked colour, since it stays until switched off. */
+    private fun privateItem(input: ModifierGlyphInput): BadgeItem? =
+        if (input.privateMode) BadgeItem(ModifierGlyph.PRIVATE, GlyphStyle.LOCKED_FULL) else null
 }
 
 /**

@@ -107,6 +107,11 @@ fun InstalledDictionariesScreen(onBack: () -> Unit) {
                 rows = DictionaryCatalog.merge(local, manifestItems, ::ownLanguageName)
                 if (rows.isEmpty()) errorMessage = "Failed to load dictionary list"
             }
+            // app-shell.md SS31.2: private mode keeps the list offline; installed files still show.
+            is DictionaryDownloader.ManifestResult.Blocked -> {
+                rows = DictionaryCatalog.merge(local, manifestItems, ::ownLanguageName)
+                if (rows.isEmpty()) errorMessage = result.message else snackbar = result.message
+            }
         }
         loading = false
     }
@@ -124,6 +129,7 @@ fun InstalledDictionariesScreen(onBack: () -> Unit) {
                 DictionaryDownloader.DownloadResult.VerificationFailed -> snackbar = "Download verification failed"
                 DictionaryDownloader.DownloadResult.InvalidFormat -> snackbar = "Invalid dictionary format"
                 is DictionaryDownloader.DownloadResult.NetworkError -> snackbar = "Network error"
+                is DictionaryDownloader.DownloadResult.Blocked -> snackbar = result.message
             }
             downloadingCodes = downloadingCodes - languageCode
             refreshLocalOnly()

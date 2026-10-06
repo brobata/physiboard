@@ -220,7 +220,13 @@ with no declared type is also accepted), coerced to text, and stored unless the 
 The stored timestamp is the wall-clock time of capture, not the clip's own timestamp.
 
 There is no sensitive-content rule: a clip flagged sensitive by its source (a password manager's
-copy) is stored like any other and shown in full on the panel. This is a known gap.
+copy) is stored like any other and shown in full on the panel. This is a known gap. (3.0 refuses
+a clip flagged sensitive; see section 13.)
+
+3.0 additions: nothing is captured while learning is off, that is in private mode or while the
+field being typed in asks for no personalized learning (app-shell.md section 31.1); a copy made
+then is simply not kept, and the history already stored stays usable. A clip that is kept is
+stored with its links cleaned when `clean_links` is on (section 3.7).
 
 Duplicates: a clip whose text equals an existing entry's text (exact, case-sensitive) is not
 added again; the existing entry's timestamp is refreshed so it moves to the top of its group.
@@ -293,7 +299,7 @@ Interactions:
 
 | Action | Behaviour |
 |---|---|
-| Tap a card | The clip's text is committed into the app at the caret as finished text (no composing, no auto-space, no autocorrect). The panel stays open; `sym_auto_close` does not apply to it. |
+| Tap a card | The clip's text is committed into the app at the caret as finished text (no composing, no auto-space, no autocorrect). The panel stays open; `sym_auto_close` does not apply to it. 3.0: with `clean_links` on, its links are cleaned first (section 3.7), so a clip stored before the setting was on is still pasted clean. |
 | Long-press a card | A context menu with "Pin" (or "Unpin" when pinned) and "Delete". |
 | Pin / Unpin | Toggles the flag and refreshes the timestamp, so the entry jumps to the top of its new group; the list then scrolls to the top. Pinned entries also survive "Clear All" and retention. |
 | Delete | Removes the entry even if pinned (it is unpinned first, then removed). |
@@ -305,6 +311,10 @@ that does not change the count is refreshed by the menu action itself, and a cop
 is open appears at the next strip refresh that sees the new count. On refresh the scroll position
 is preserved unless a pin requested a scroll to top. The visible cards use immutable snapshots so
 a change of pinned state or timestamp is detected and redrawn.
+
+3.0: while learning is off (app-shell.md section 31.4) the header title reads "Clipboard History ·
+private, new copies not saved" instead of "Clipboard History", one line, ellipsised; it is
+re-read every time the page is shown or private mode is toggled with the page open.
 
 An older floating "clipboard history popup" with title, entries, pin and delete buttons (the
 comment calls it the Shift+Ctrl+V popup) is still compiled in but nothing opens it; it has no
@@ -319,6 +329,103 @@ trigger.
 
 Related but owned elsewhere: the strip slot preference that places the clipboard button
 (status-bar.md 6.3) and `sym_pages_config` `clipboardEnabled` (layers-sym-alt.md 4.1).
+
+3.0 adds `clean_links` (section 3.7) and `private_mode` (app-shell.md section 31); both are rows
+of settings-catalog.md section 2.17.
+
+### 3.7 Clean links (3.0)
+
+`clean_links`, boolean, default true, on Settings > Privacy > "Clean links". When on, links in
+clipboard text lose their tracking at the two places the keyboard handles that text itself:
+
+1. **Capture**: a clip accepted by section 3.1 is stored with its links cleaned. Two copies that
+   differ only in tracking therefore become one entry (the section 3.1 duplicate rule sees the
+   cleaned text).
+2. **Paste from the clipboard page**: a tapped card is cleaned again before it is committed.
+
+**Ctrl+V is not cleaned.** The keyboard does not paste with Ctrl+V: it asks the app to run its
+own paste (keys-and-modifiers.md section 7.3, the editor's context-menu action), so the app
+reads the system clipboard and the keyboard never sees the text. The system clipboard itself is
+never rewritten. The emoji picker's search field paste (section 4.5) is search text and is not
+cleaned either.
+
+What counts as a link: a run of text starting `http://` or `https://` (any letter case) up to
+the next whitespace, `<`, `>` or `"`. Trailing `.` `,` `;` `:` `!` `?` `'` `"` `…` are not part
+of it, nor is a closing `)`, `]` or `}` that the link did not open (so `(see https://x/a)` keeps
+its bracket outside, and `https://en.wikipedia.org/wiki/Foo_(bar)` keeps its own). Anything that
+is not such a link, and every character around one, is left exactly as it was. Text longer than
+65,536 characters is not scanned at all.
+
+For each link, in order:
+
+1. **Unwrap.** If the link is one of the redirect wrappers below and one of the wrapper's
+   parameters (tried in the order listed) percent-decodes, as UTF-8 with `+` read as a space, to
+   an `http`/`https` address with a host and no whitespace, the link is replaced by that address,
+   and the step repeats on the result up to 5 times (an Outlook Safe Link around a Google
+   redirect). The wrapper's own fragment goes with it; the target keeps its own. A target written
+   into the wrapper without encoding (it contains a literal `://`) is used only when it contains no
+   `?` and the wrapper has no `#`: otherwise the wrapper's `&` and `#` have already cut away parts
+   that may have been the target's, and the wrapper is left untouched rather than shortened. A
+   wrapper with no usable target (missing, a bad `%` escape, bytes that are not UTF-8, a non-web scheme such as
+   `javascript:`, a space) is left untouched.
+
+   | Wrapper (host, path) | Parameter(s) |
+   |---|---|
+   | `google.<country domain>` or `www.google.<…>` (`com`, `de`, `co.uk`, `com.au`, …), `/url` | `q`, then `url` |
+   | `l.facebook.com`, `lm.facebook.com`, `m.facebook.com`, `www.facebook.com`, `/l.php` | `u` |
+   | `l.messenger.com`, `/l.php` | `u` |
+   | `l.instagram.com`, `/` | `u` |
+   | `l.threads.net`, `l.threads.com`, `/` | `u` |
+   | `www.youtube.com`, `youtube.com`, `m.youtube.com`, `/redirect` | `q` |
+   | `out.reddit.com`, any path | `url` |
+   | `slack-redir.net`, `/link` | `url` |
+   | `steamcommunity.com`, `/linkfilter/` | `u`, then `url` |
+   | any `*.safelinks.protection.outlook.com`, `/` | `url` |
+   | `vk.com`, `m.vk.com`, `/away.php` | `to` |
+   | `duckduckgo.com`, `/l/` | `uddg` |
+   | `www.linkedin.com`, `linkedin.com`, `/redir/redirect` | `url` |
+   | `t.umblr.com`, `/redirect` | `z` |
+
+   A path written with or without its trailing `/` matches. Link shorteners (`t.co`, `bit.ly`)
+   are not wrappers: finding their target needs the network.
+
+2. **Strip.** The query (between the first `?` after the host and the `#`, if any) is split on
+   `&`. A parameter goes when its name, percent-decoded and lower-cased, is on one of these lists:
+
+   - **Everywhere**: any name starting `utm_`; `gclid`, `gclsrc`, `dclid`, `gbraid`, `wbraid`,
+     `gad_source`, `_gl`, `srsltid` (Google Ads and Analytics); `fbclid`, `igshid`, `igsh`,
+     `mibextid`, `fb_action_ids`, `fb_action_types`, `fb_ref`, `fb_source` (Meta); `msclkid`
+     (Microsoft); `mc_cid`, `mc_eid` (Mailchimp); `yclid`, `_openstat` (Yandex); `twclid`,
+     `ttclid`, `li_fat_id`, `epik` (X, TikTok, LinkedIn, Pinterest ads); `_hsenc`, `_hsmi`,
+     `__hstc`, `__hssc`, `__hsfp`, `hsctatracking` (HubSpot); `mkt_tok` (Marketo); `oly_anon_id`,
+     `oly_enc_id` (Omeda); `vero_id`, `vero_conv` (Vero); `wickedid` (Wicked Reports);
+     `rb_clickid` (Rakuten); `s_kwcid`, `ef_id` (Adobe).
+   - **Only on one site** (the domain itself or any subdomain), because the same name means
+     something real elsewhere (`t` is a start time on YouTube):
+
+     | Site | Parameters |
+     |---|---|
+     | `youtube.com`, `youtu.be` | `si`, `feature`, `pp` |
+     | `spotify.com`, `spotify.link` | `si` |
+     | `twitter.com`, `x.com` | `s`, `t`, `ref_src`, `ref_url` (elsewhere `ref_url` is often a working return address) |
+     | `instagram.com` | `igsh`, `igshid` |
+     | `threads.net`, `threads.com` | `xmt` |
+     | `tiktok.com` | `is_from_webapp`, `sender_device`, `sender_web_id`, `_r`, `_t`, `share_app_id`, `share_link_id`, `u_code` |
+     | `reddit.com` | `share_id`, `rdt` |
+     | `linkedin.com` | `trk`, `trackingid`, `lipi`, `trkemail`, `midtoken`, `midsig` |
+     | `facebook.com` | `__tn__`, `sfnsn` |
+     | `amazon.<country domain>` and its subdomains | `ref_`, `content-id`, any name starting `pd_rd_` or `pf_rd_` |
+     | Google, path starting `/search` | `ved`, `ei`, `sca_esv`, `sca_upv`, `sxsrf`, `gs_lcrp`, `gs_lp`, `sclient`, `sourceid`, `iflsig`, `oq`, `aqs`, `rlz`, `uact`, `bih`, `biw`, `dpr` |
+
+   A query containing `;` (an old parameter separator) is not touched at all, nor is a wrapper
+   whose query contains one. Every other parameter stays, in its order, with its exact original spelling and encoding
+   (nothing is decoded and written back). When something was removed, empty pieces (`&&`) are
+   dropped too; when nothing was, the link is returned exactly as it was, byte for byte. The `?`
+   goes only when no parameter is left. The fragment is never changed, even when it contains
+   something that looks like a parameter. Scheme, user info, host case and port are kept as
+   written.
+
+Cleaning is idempotent: a cleaned link cleans to itself.
 
 ## 4. The emoji picker (Sym page 4)
 
@@ -903,6 +1010,7 @@ assignments contain it):
 | `pastiera.main` | PhysiBoard / Open app settings | `open_main_activity` | assigned key, nav mode | Opens the app's main activity |
 | `pastiera.voice_assistant` | Voice assistant / Open it already listening | `start_voice_assistant` | all three | dictation.md section 11; "No voice assistant is set up on this device." on failure |
 | `pastiera.toggle_software_keyboard_mode` | Toggle Keyboard Mode / Switch Virtual / Hardware | `toggle_software_keyboard_mode` | all three | Toggles the temporary software keyboard mode and, when the toggle toasts are enabled, shows the resulting mode |
+| `physiboard.toggle_private_mode` (3.0) | Private mode / Turn private mode on or off | `toggle_private_mode` | all three | Flips `private_mode` at once and stores it, with a toast (app-shell.md section 31.3); search tokens "private", "incognito", "offline", "privacy"; icon: dark glasses |
 
 **App actions** (`app_actions`, "App actions"): each is an intent into a third-party app and is
 listed only when that app can resolve it. Ids and targets: `niagara.search` (`niagara://search`)
@@ -964,7 +1072,7 @@ unavailable", "No input context", "Nav action failed", "Unknown action", and the
 Where a command has an app drawable it is shown; otherwise a Material icon by rule, first match
 wins: apps: grid of apps; app actions: agenda -> event, tasker -> task check, homeassistant.assist
 and .voice -> microphone, other homeassistant -> home, other -> magnifier; `pastiera.quick_launcher`
--> magnifier; `pastiera.main` -> gear; media play/pause -> play, previous -> skip previous, next ->
+-> magnifier; `pastiera.main` -> gear; `physiboard.toggle_private_mode` -> dark glasses (3.0); media play/pause -> play, previous -> skip previous, next ->
 skip next; volume up/down/mute -> the volume glyphs; brightness -> sun; ids containing
 default_apps or `settings.android.apps` -> apps; input_method -> keyboard; accessibility ->
 accessibility figure; language or locale -> globe; bluetooth -> bluetooth; wifi or internet ->
@@ -1186,6 +1294,30 @@ Each case is an input sequence and the expected outcome, written so a JVM test c
 | T54 | typing sound gating | key with repeat 1, or Back, or no editable field | no sound |
 | T55 | tap haptic duration | stored 200 | read as 80; stored 1 read as 5 |
 | T56 | typing sound mode | stored `bogus` | read as `off` |
+| T57 | clean links (3.0) | `https://www.example.com/article?utm_source=newsletter&id=42&utm_medium=email&lang=en%2DGB&utm_campaign=fall#comments` | `https://www.example.com/article?id=42&lang=en%2DGB#comments` |
+| T58 | clean links | `https://example.com/page?utm_source=x&fbclid=IwAR0abc` | `https://example.com/page` (the `?` goes) |
+| T59 | clean links | a link with no tracking | the same string |
+| T60 | clean links | `https://youtu.be/dQw4w9WgXcQ?si=Ab3dEfGhIjKlMnOp&t=42` | `https://youtu.be/dQw4w9WgXcQ?t=42` |
+| T61 | clean links | `https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC?si=1a2b3c4d5e6f` | no `?si=` |
+| T62 | clean links | `https://example.com/search?si=1&t=20&s=abc` | unchanged (site-only names) |
+| T63 | clean links | `https://x.com/nasa/status/1234567890?s=20&t=AbCdEfGh` | `https://x.com/nasa/status/1234567890` |
+| T64 | clean links | Instagram `igsh`, Facebook `mibextid`, TikTok `is_from_webapp`/`_r`/`_t`, Reddit `share_id`, Amazon `pd_rd_*`/`pf_rd_*`/`ref_` | each removed, the product id and `th=1` kept |
+| T65 | clean links | `?UTM_Source=x&a=1&FBCLID=y`, `?utm%5Fsource=x&a=1` | `?a=1` both times |
+| T66 | clean links | Google `/search?q=…&client=firefox&sca_esv=…&ei=…&ved=…&oq=…&gs_lp=…` | `q` and `client` kept |
+| T67 | clean links | `?a&&b=` | unchanged; `?a&&utm_source=x&b=` gives `?a&b=` |
+| T68 | clean links | Google `/url?…&q=&…&url=https%3A%2F%2Ftxbayservice.com%2Fservices%3Fpage%3D2%26utm_source%3Dgoogle&usg=…` | `https://txbayservice.com/services?page=2` |
+| T69 | clean links | `l.facebook.com/l.php?u=…`, `l.messenger.com/l.php?u=…`, `l.instagram.com/?u=…` | the decoded target, cleaned |
+| T70 | clean links | YouTube `/redirect?q=`, `out.reddit.com?url=`, `slack-redir.net/link?url=`, Outlook Safe Links `?url=`, DuckDuckGo `/l/?uddg=`, LinkedIn `/redir/redirect?url=` | the decoded target |
+| T71 | clean links | an Outlook Safe Link around a Google redirect around `https://example.com/deep?utm_source=x` | `https://example.com/deep` |
+| T72 | clean links | a wrapper whose target is missing, a search term, `javascript:`, a bad escape, contains a space, or is `ftp:` | unchanged |
+| T73 | clean links | Google redirect to `…doc%23section-2` with its own `#wrapperfrag` | `https://example.com/doc#section-2` |
+| T74 | clean links | `mailto:`, `ftp:`, `example.com/page?utm_source=x` (no scheme), `https://` | unchanged |
+| T75 | clean links in text | `Menu: https://example.com/menu?utm_source=ig&day=fri.` and `(see https://en.wikipedia.org/wiki/Brisket_(food)?fbclid=1)` | the full stop and the outer bracket stay outside; `…Brisket_(food)` keeps its own |
+| T76 | clean links in text | text with no link to change; text over 65,536 characters | the same string |
+| T77 | clipboard text | `clean_links` on / off | cleaned / the same string |
+| T78 | clean links | `steamcommunity.com/linkfilter/?url=https://shop.example.com/item?id=1&color=red`, `…?url=https://docs.example.com/page#install`, `google.com/url?q=https://a.com/x?y=1&sa=D` | unchanged (never shortened); `google.com/url?q=https://example.com/a&sa=D` still gives `https://example.com/a` |
+| T79 | clean links | `https://a.com/login?ref_url=https%3A%2F%2Fb.com` | unchanged |
+| T80 | clean links | `https://example.com/?utm_source=x;id=1` | unchanged |
 
 ## 13. Keep / Drop for 3.0
 
@@ -1198,6 +1330,8 @@ Each case is an input sequence and the expected outcome, written so a JVM test c
 | Clipboard history capture, SQLite persistence, pinning, retention | keep | Used daily on the Titan; the maintainer's baseline puts the clipboard button on the strip |
 | Retention and enable settings rows | keep (build them) | The preferences exist and are backed up but have no UI; 3.0 should expose them or fix the retention default |
 | Sensitive-clip exclusion | keep (add it) | Password managers flag clips sensitive; 2.x stores them; 3.0 should honour the flag |
+| Clean links on capture and on paste from the clipboard page (3.0, section 3.7) | add, default on | Copied share links carry tracking; the list is fixed and tested, nothing outside a recognised link changes, and it touches no Space/Enter/Shift/Backspace path |
+| No clipboard capture while learning is off (3.0, app-shell.md section 31) | add | Private mode and fields that ask for no personalized learning must not leave copies behind |
 | The unused floating clipboard popup | drop | Nothing opens it |
 | Clipboard panel as a Sym page with a close button | keep | The only way to see history without a mouse |
 | Emoji picker with categories, tabs, recents, skin-tone popup | keep | The Titan has no emoji key; this is the emoji input |

@@ -387,6 +387,20 @@ Note that the 1.x migration and the restore translation drop `status_bar_variati
 prefixed `clicks_`, `static_variation_bar_`, `dynamic_variation_bar_` or `pastierina_` before
 the schema sees them, so only a backup made by a 2.x build can carry the survivors in.
 
+### 2.17 Privacy (3.0 addition; app-shell.md section 31, expansion-clipboard-pickers-launcher.md section 3.7)
+
+New in 3.0; 2.x had neither row, so the 2.x import never carries them. Both travel in backups
+and restore like every other row.
+
+| Key | Type | Code default | Baseline | What it changes | Screen and label |
+|---|---|---|---|---|---|
+| `private_mode` | boolean; anything else reads as false | false | | Private mode: the keyboard learns nothing (no personal words, no next-word pairs, no clipboard history capture, no recent emoji, no debug capture of typed text) and PhysiBoard makes no network request at all, until it is switched off. Also flipped by the "Private mode" command (`physiboard.toggle_private_mode`) from a key | Settings > Privacy > "Private mode": "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no network requests: no update checks and no dictionary downloads. Dictation is done by your phone's speech service, which may still go online …" |
+| `clean_links` | boolean; anything else reads as true | true | | Clean links: tracking parameters and redirect wrappers are removed from links in clipboard text the keyboard stores or pastes itself | Settings > Privacy > "Clean links": "Remove tracking from links you copy and paste from the clipboard panel, such as utm_source, fbclid or a YouTube share code, and open up Google and Facebook redirect links to the real address. …" |
+
+`clean_links` defaults on although it is new behaviour: it never intercepts Space, Enter, Shift or
+Backspace, it only rewrites clipboard text the keyboard itself keeps or pastes, and what it removes
+is a fixed, tested list.
+
 ## 3. Value shapes
 
 ### 3.1 The theme object
@@ -782,6 +796,8 @@ description is the screen title.
 | Text expansion | Smart Features | Smart Features (not Extras, where the page actually lives) | snippet abbreviation expand shortcut |
 | Exact typing | Exact typing | Exact typing | terminal termux disable smart per app raw exceptions |
 | Text box under the bar | Text box under the bar | Text box under the bar | teams hidden covered text box compose field under bar inset blink |
+| Private mode (3.0) | Privacy | Privacy | private privacy incognito offline learn learning history network |
+| Clean links (3.0) | Privacy | Privacy | clean links tracking utm fbclid gclid url redirect copy paste clipboard privacy |
 
 Target resolution differs by where the search was started:
 
@@ -837,6 +853,8 @@ control; ">" means the row navigates.
 
 - **Settings** (title "Settings")
   - search field "Search settings…"
+  - "Privacy" > Privacy (3.0): "Private mode and clean links", or "Private mode is on: nothing is
+    learned, no network requests" while it is on
   - "Status" > Status: "Check PhysiBoard is set up correctly"
   - "Backup now": "Export all settings and custom layouts to a ZIP" (section 7.1)
   - "Restore from file": "Import a PhysiBoard backup ZIP" (section 7.2)
@@ -847,6 +865,14 @@ control; ">" means the row navigates.
   - "Updates" ("Checking for updates…" while busy): "Check the latest release on GitHub."; shown
     only when GitHub update checks apply to this build; results are toasts "Unable to reach
     GitHub." / "App is up to date." or the update dialog
+- **Privacy** (title "Privacy", 3.0; section 2.17)
+  - switch "Private mode" (`private_mode`), with the note "On. The caret badge shows PRIVATE while
+    you type." while on
+  - divider "Automatically private"
+  - switch "Fields that ask for privacy", always on and not changeable: it states that a field
+    flagged "no personalized learning" is never learned from (app-shell.md section 31.1)
+  - divider "Links"
+  - switch "Clean links" (`clean_links`)
 - **Status** (title "Status"): rows "PhysiBoard enabled", "Active keyboard", "Input language",
   "Smart backlight" (On/Off), "App version", plus the privileged step outcomes (app-shell.md)
 - **T2E Tools** (title "T2E Tools", intro "Titan-specific tools. These change the phone itself

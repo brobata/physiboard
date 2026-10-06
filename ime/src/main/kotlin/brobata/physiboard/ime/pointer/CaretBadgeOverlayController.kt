@@ -71,11 +71,15 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
             return
         }
         val view = badgeView ?: createView() ?: return
-        view.items = items
+        // Private mode keeps the badge up for every keystroke (app-shell.md SS31.4), so a refresh
+        // that changes neither the glyphs nor the place costs no relayout.
+        val itemsChanged = view.items != items
+        if (itemsChanged) view.items = items
         view.measure(android.view.View.MeasureSpec.UNSPECIFIED, android.view.View.MeasureSpec.UNSPECIFIED)
         val size = BadgeSize(view.measuredWidth.toFloat(), view.measuredHeight.toFloat(), view.baselineOffsetPx)
         val position = CaretBadgePlacement.place(caret, size, ScreenGeometry(screenWidthPx), pxPerDp)
         val params = view.layoutParams as? WindowManager.LayoutParams ?: return
+        if (!itemsChanged && params.x == position.xPx && params.y == position.yPx) return
         params.x = position.xPx
         params.y = position.yPx
         runCatching { windowManager().updateViewLayout(view, params) }

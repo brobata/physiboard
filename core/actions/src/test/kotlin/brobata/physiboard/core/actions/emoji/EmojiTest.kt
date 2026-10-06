@@ -91,6 +91,14 @@ class EmojiTest {
     }
 
     @Test
+    fun `choosing an emoji in private mode leaves the recents as they were`() {
+        val recents = listOf("😃", "😀")
+        assertEquals(listOf("👍", "😃", "😀"), RecentEmojis.afterChoice(recents, "👍", learningAllowed = true))
+        assertTrue(recents === RecentEmojis.afterChoice(recents, "👍", learningAllowed = false))
+        assertTrue(recents === RecentEmojis.afterChoice(recents, "😀", learningAllowed = false))
+    }
+
+    @Test
     fun `T31 a captured key inserts the layout's character`() {
         val r = SearchCapture.onKeyDown(SearchFieldState.EMPTY, KeyId.Letter('Y'), ctrl = false, altOrMeta = false, layoutText = "z", eventChar = 'y')
         assertEquals("z", r.state.text)

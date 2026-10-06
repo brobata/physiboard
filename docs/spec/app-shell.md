@@ -541,6 +541,11 @@ so on a shipped phone it never produces output.
 Every trigger first checks "GitHub checks allowed"; when not allowed the check reports "no
 update" without touching the network.
 
+3.0: every trigger also goes through the network gate (section 31.2). In private mode nothing is
+sent: the automatic triggers and the daily job find "no update" (the job completes, it does not
+retry), and the "Updates" row shows the toast "Private mode is on, so PhysiBoard makes no
+network requests."
+
 ### 13.2 The request
 
 One request: `GET https://api.github.com/repos/brobata/physiboard/releases?per_page=20` with
@@ -951,6 +956,7 @@ locales.
 | `privileged_broker_status`, `privileged_broker_status_at` | string, long | absent | the seed for the verified broker status before the first live check (1) | internal | none |
 | `privileged_<step>_ok`, `_reason`, `_at` for backlight, overlay_grant, notification_ring, ring_backlight | boolean, string, long | absent | the last outcome of each privileged step, printed in the export (10.6) | internal | none |
 | `privileged_backlight_device_value`, `_at` | string, long | absent | the backlight value last read from the device, printed in the export | internal | none |
+| `private_mode` (3.0) | boolean | false | private mode: no learning, no network (31) | Settings > Privacy; the "Private mode" command | "Private mode" |
 
 Values written once by the first-run defaults (section 2, step 3), for the record:
 `auto_capitalize_first_letter` true, `fn_long_press_speech` true, `dictation_haptics` true,
@@ -1092,8 +1098,119 @@ Encodable as JVM tests without a device.
 | Release script with certificate pin | keep | the pin is what keeps updates installable |
 | F-Droid build flag | undecided | no F-Droid listing exists today |
 | Backup rules | keep | adjust file names to 3.0's |
+| Private mode, the network gate, honouring "no personalized learning" (section 31) | add (3.0) | a keyboard sees everything typed; the user needs one switch that provably stops it remembering anything or going online |
 
-## 31. Provenance
+## 31. Private mode and the network gate (3.0)
+
+New in 3.0; 2.x had no such mode. One setting, `private_mode` (boolean, default false; settings
+catalog section 2.17), stored like every other row, so it survives a restart and a backup.
+
+### 31.1 What stops learning
+
+Learning is off while either is true:
+
+- `private_mode` is on, or
+- the field being typed in has Android's "no personalized learning" flag
+  (`EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING` in its IME options), as incognito browser tabs
+  and some banking apps set. This needs no setting and cannot be switched off. The flag is read
+  when the keyboard attaches to a field, before the field's first keystroke or debug record, and
+  is dropped when the field finishes. It stops learning only: it does not take PhysiBoard
+  offline and shows no indicator.
+
+While learning is off, nothing new is remembered:
+
+| Path | While learning is off |
+|---|---|
+| Next-word pairs (`user_ngrams.db`, autocorrect-suggestions.md section 4) | no pair is learned, not even in memory for the session; a mix-up fix takes back no earlier learn. The context still follows the typing, so pairs already known are still offered. A pair whose first word was typed while learning was off is never learned afterwards: the context restarts at "sentence start" when learning comes back |
+| Personal words (autocorrect-suggestions.md section 6.2) | the add-word slot or gesture still types the word but does not save it; toast "Private: the word was typed but not saved" |
+| Clipboard history capture (expansion-clipboard-pickers-launcher.md section 3.1) | a copy is not kept |
+| Recent emoji (expansion-clipboard-pickers-launcher.md section 4.4) | choosing an emoji leaves the recents as they were |
+| Debug capture (sections 10 and 11) | no key event, no field attach and no autocorrection record reaches the store, whether Diagnostics is open or not; the developer log trail (`ime_overlay_debug_logging`) is silent too |
+
+What is already known keeps working: the dictionaries, personal and default words, learned
+pairs, text replacements, autocorrect and the clipboard history already stored. Deleting (a
+personal word, a clip, a hidden suggestion) still works, since it removes rather than remembers.
+There are no kaomoji recents in 3.0.
+
+### 31.2 The network gate
+
+Only the user's switch takes PhysiBoard offline. Every network request PhysiBoard makes passes
+one gate, which reads `private_mode` from the store at the moment of the request:
+
+| Purpose | Who asks | Refused |
+|---|---|---|
+| update check | the four triggers of section 13.1 | "no update"; the "Updates" row toasts "Private mode is on, so PhysiBoard makes no network requests." |
+| dictionary list | Installed dictionaries screen (dictionaries-languages.md section 5.2) | installed files still listed; the reason as a snackbar, or as the screen's error when nothing is installed |
+| dictionary download | the same screen's download button (section 5.3) | snackbar with the reason; nothing written |
+
+When the store cannot be read, the gate also refuses ("PhysiBoard could not read its settings,
+so it makes no network requests."): not knowing whether the user asked for offline is treated
+as yes. A store file that is corrupt is not "unreadable" here: it is replaced by an empty one and
+reads as the defaults (settings-catalog.md section 4.2), so private mode reads as off.
+
+The keyboard applies the same rule to learning: until the store's first value has arrived, nothing
+is learned, because `private_mode` might be on. A re-application of the built-in defaults before
+then (a layout switch) does not count as having read the store. A
+build-time test fails if any file other than the gate's one HTTP opener opens a network
+connection, so a future feature (a GIF search) has to name its purpose and pass the gate.
+
+Not PhysiBoard's network, and not changed by private mode: links the user taps in the app (About,
+the update dialog's "Open GitHub", "Report a problem") open in the browser; dictation uses the
+phone's own speech service, which may send audio to its provider (dictation.md), and the Privacy
+screen says so, which is why every wording says "no network requests" rather than "offline";
+the embedded ADB
+broker talks only to the phone's own adbd over loopback, and only during the privileged setup the
+user starts (broker-privileged-toolbox.md section 1).
+
+### 31.3 Switching it from the keyboard
+
+The command `physiboard.toggle_private_mode` ("Private mode", PhysiBoard source, every surface;
+expansion-clipboard-pickers-launcher.md section 8.2) flips the setting. It can be put on a key
+under Assigned launcher keys (fired with Sym + that key, or bare on the home screen when that is
+enabled), found in the quick launcher, or bound on the Fn layer / in nav mode as a `command`
+mapping with that id. The keyboard applies the new state at once, writes it to the store, and
+until the store's own update arrives (at most 5 s; a write that never lands stops counting then)
+an older update in flight does not switch it back. A toast says which way it went: "Private mode
+on: PhysiBoard learns nothing and makes no network requests" or "Private mode off". Before the
+store's first value has arrived the command changes nothing and toasts "PhysiBoard is still
+loading its settings; try again in a moment". Changing the switch in the settings app shows no
+toast.
+
+### 31.4 How it shows
+
+There is no bar (status-bar.md); the indicator lives where the keyboard already draws:
+
+- **Caret badge** (trackpad-caret-nav.md section 4): while `private_mode` is on, the badge shows
+  "PRIVATE" in its locked colour after any modifier glyphs, so it is beside the caret for every
+  keystroke. It needs what the badge always needs: `caret_modifier_badge` on, the "Display over
+  other apps" grant, and an app that reports its caret. A refresh that moves nothing costs no
+  window update.
+- **Clipboard page header**: "Clipboard History · private, new copies not saved" while learning
+  is off for either reason (expansion-clipboard-pickers-launcher.md section 3.5), updated in
+  place when that changes while the page is open.
+- **Toast** on every toggle from the keyboard (31.3).
+- **Settings**: the Privacy row's description on the Settings screen says "Private mode is on:
+  nothing is learned, no network requests".
+
+### 31.5 Test cases
+
+| # | Situation | Expected |
+|---|---|---|
+| P1 | private mode off, ordinary field | learning on, network on, no indicator |
+| P2 | private mode on | learning off, network refused for every purpose, indicator shown |
+| P3 | field with the "no personalized learning" flag, private mode off | learning off, network on, no indicator |
+| P4 | private mode on, type "smoked brisket. the brisket " | no pair learned |
+| P5 | pair smoked > brisket known, private mode on, type "the smoked " | "brisket" is the first next-word suggestion |
+| P6 | learning on, type "it is bigger then ", turn private mode on, type "mine " | the text is fixed to "than"; the earlier learn bigger > then stays; nothing new learned |
+| P7 | private mode on, a text copy | not captured |
+| P8 | private mode on, choose an emoji | recents unchanged |
+| P9 | private mode on, a key event, a field attach, an autocorrection | none reaches the debug store |
+| P10 | `private_mode` unreadable | network refused |
+| P10a | stored `private_mode` true, a layout switch before the store's first value | nothing learned |
+| P11 | any Kotlin source outside the gated opener and the ADB broker opens a connection | the build fails |
+| P12 | private mode in a backup | restored |
+
+## 32. Provenance
 
 - app/src/main/java/brobata/physiboard/MainActivity.kt
 - app/src/main/java/brobata/physiboard/OnboardingScreen.kt

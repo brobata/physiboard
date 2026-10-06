@@ -260,6 +260,11 @@ next word instead of going blank:
 Hiding a next-word suggestion from the strip (section 5) forgets that bigram; deleting a user
 word forgets it as a next word under every prefix.
 
+3.0: no pair is learned while learning is off (private mode, or a field flagged "no personalized
+learning"; app-shell.md section 31.1). The known pairs are still offered and the context still
+follows the typing; when learning comes back the context restarts at sentence start, so no pair
+ever begins with a word typed while it was off.
+
 ## 5. Tapping, hiding and deleting a suggestion
 
 **Tap.** The whole word around the cursor (up to 64 characters before and after, bounded as in
@@ -327,7 +332,9 @@ cleared when the cursor leaves that word, when a letter or digit is typed, on a 
 correction, on tapping it, and on context reset.
 
 The candidate is shown in the left slot with a yellow plus icon. Tapping it adds the word to the
-personal dictionary, clears the candidate, flashes the slot and refreshes the strip. Long-pressing
+personal dictionary, clears the candidate, flashes the slot and refreshes the strip. (3.0: while
+learning is off, app-shell.md section 31.1, the word is typed but not saved, with the toast
+"Private: the word was typed but not saved".) Long-pressing
 it opens the add-substitution sheet (section 8.5).
 
 **Gesture.** When `trackpad_gesture_add_word_enabled` is true, the left-third trackpad gesture
