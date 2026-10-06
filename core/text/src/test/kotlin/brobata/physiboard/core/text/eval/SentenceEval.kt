@@ -104,7 +104,7 @@ class SentenceEval(
             val reasons = HashMap<Int, String>()
             // Carried from boundary to boundary as TextInputPipeline carries it, so the mix-up fix
             // sees the previous word as typed here, in sequence; each sentence is a fresh field.
-            var memory = AutocorrectMemory()
+            var memory = AutocorrectMemory().afterWordStarted(fresh = true)
             val lastToken = if (stopAfterError && case.errorToken >= 0) minOf(case.errorToken + 1, typedTokens.size - 1) else typedTokens.size - 1
             for ((tokenIndex, token) in typedTokens.withIndex()) {
                 if (tokenIndex > lastToken) break
@@ -117,7 +117,7 @@ class SentenceEval(
                 val evaluation = EngineCall.boundary(tracked, window, boundary, dictionary, userWords, settings, rankingOptions, memory, contextModel, tuning)
                 durations.add(System.nanoTime() - started)
                 // The next word's first letter, as TextInputPipeline.handleLetter applies it.
-                memory = evaluation.memory.afterAnyCharacterTyped().afterLetterOrDigitTyped()
+                memory = evaluation.memory.afterAnyCharacterTyped().afterLetterOrDigitTyped().afterWordStarted(fresh = true)
                 reasons[tokenIndex] = evaluation.debug.reason.ifEmpty { evaluation.debug.source ?: "" }
                 val outcome = evaluation.outcome
                 if (outcome is BoundaryOutcome.Replaced) {

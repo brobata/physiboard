@@ -91,6 +91,15 @@ class ContextPipelineTest {
 
         fun enter() = key(Action.Edit(EditEffect.NEWLINE))
 
+        /** A new field that opens with [existing] in it, the caret at its end (a reopened draft). */
+        fun open(existing: String) {
+            text = existing
+            cursor = existing.length
+            state = TextInputState().forNewField()
+        }
+
+        fun ctrlBackspace() = key(Action.Edit(EditEffect.DELETE_WORD_BACKWARD))
+
         /** Text arriving in one commit (a paste, a Sym-page string): not typed letter by letter. */
         fun paste(text: String) = key(Action.Commit(text))
 
@@ -232,6 +241,34 @@ class ContextPipelineTest {
         // Typed after the restart, in sequence: judged again.
         restarted.type("then I think ill go ")
         assertEquals("The dog wagged it's tail then I think I'll go ", restarted.text)
+    }
+
+    @Test
+    fun `T-a field that opens with text in it, the old words are not ones typed here`() {
+        val draft = Session()
+        draft.open("The dog wagged it's")
+        draft.type(" tail ")
+        assertEquals("The dog wagged it's tail ", draft.text)
+        // A letter typed onto the end of an old word does not make that word one typed here.
+        val joined = Session()
+        joined.open("I think it")
+        joined.type("s a good idea ")
+        assertEquals("I think its a good idea ", joined.text)
+        // A word typed from empty after the opening text is, and the fix resumes with it.
+        val fresh = Session()
+        fresh.open("Hello")
+        fresh.type(" the dog wagged it's tail ")
+        assertEquals("Hello the dog wagged its tail ", fresh.text)
+    }
+
+    @Test
+    fun `T-after Ctrl+Backspace the next word typed from empty is judged as usual`() {
+        val session = Session()
+        session.type("The dog wagged thx")
+        session.ctrlBackspace()
+        assertEquals("The dog wagged ", session.text)
+        session.type("it's tail ")
+        assertEquals("The dog wagged its tail ", session.text)
     }
 
     @Test

@@ -663,8 +663,9 @@ settled first, then the previous one is judged with it. Both edits are one repla
 Backspace restores what was typed and rejects both words until the next letter (7.5).
 
 Amended 2026-10-06 (review): the previous word must also have been **typed here, in sequence**:
-typed letter by letter from an empty word, ended by a boundary the engine evaluated on a field
-read that agreed, with nothing since that could make "the word before" some other text. A cursor
+typed letter by letter from an empty word whose first letter a trusted read showed landing on
+nothing it would join (the start of the text, a space or a mark), ended by a boundary the engine
+evaluated on a field read that agreed (a Space with no word in progress finishes no word), with nothing since that could make "the word before" some other text. A cursor
 move the keyboard did not make, an input restart, a new field, an undo, a paste or other
 multi-character commit, Ctrl+Backspace, a Backspace behind the word being typed, a boundary
 passed without a trustworthy read (restricted field, drifting editor, a per-app Enter delivery)

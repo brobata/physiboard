@@ -181,11 +181,11 @@ class ContextCorrectionTest {
     fun `T-the word before must have been typed here, in sequence`() {
         assertEquals(BoundaryOutcome.CommitPlain, boundary("The dog wagged it's tail", memory = AutocorrectMemory()).outcome)
         // The boundary that ends a word typed from empty makes it the word before, typed in sequence.
-        val afterIts = boundary("The dog wagged it's", memory = AutocorrectMemory()).memory.afterLetterOrDigitTyped()
+        val afterIts = boundary("The dog wagged it's", memory = AutocorrectMemory().afterWordStarted(fresh = true)).memory.afterLetterOrDigitTyped()
         assertTrue(afterIts.previousWordTyped)
         assertIs<BoundaryOutcome.Replaced>(boundary("The dog wagged it's tail", memory = afterIts).outcome)
         // A word resynced from the field (not typed from empty) is not one typed here.
-        val resynced = AutocorrectMemory().afterTrackingLost(wordInProgressIsEmpty = false)
+        val resynced = AutocorrectMemory().afterTrackingLost()
         val afterResyncedIts = boundary("The dog wagged it's", memory = resynced).memory.afterLetterOrDigitTyped()
         assertEquals(BoundaryOutcome.CommitPlain, boundary("The dog wagged it's tail", memory = afterResyncedIts).outcome)
     }

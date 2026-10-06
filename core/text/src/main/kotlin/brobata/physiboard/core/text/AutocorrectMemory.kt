@@ -16,8 +16,10 @@ data class LastReplacement(val original: String, val replacement: String)
  *   from an empty word, and ended at a boundary the engine evaluated on a field read that agreed,
  *   with nothing since then (a cursor move, an input restart, a new field, an undo, a paste, a
  *   Backspace behind the word being typed) that could make "the word before" something else.
- * - [currentWordTyped]: the same for the word being typed now; at its boundary it becomes
- *   [previousWordTyped] for the next one.
+ * - [currentWordTyped]: the same for the word being typed now, decided when its first letter
+ *   is typed ([afterWordStarted]): only a letter typed onto an empty word, with a trusted read
+ *   showing nothing word-like right before it, starts a word typed here. At its boundary it becomes
+ *   [previousWordTyped] for the next one. A boundary with no word finishes nothing and moves neither.
  * - the pinned words: words the user chose on purpose, restored by Backspace undo or accepted
  *   from a suggestion. Unlike a rejection they survive the next word's letters, and they stay
  *   pinned while they are the word being typed or the word before it.
@@ -27,7 +29,7 @@ data class AutocorrectMemory(
     private val rejectedWords: Set<String> = emptySet(),
     private val pinnedWords: Set<String> = emptySet(),
     val previousWordTyped: Boolean = false,
-    val currentWordTyped: Boolean = true,
+    val currentWordTyped: Boolean = false,
 ) {
     /** A boundary replaced a word: remember the pair for a following Backspace. */
     fun afterReplacement(original: String, replacement: String): AutocorrectMemory =
@@ -56,9 +58,12 @@ data class AutocorrectMemory(
      */
     fun afterEvaluatedBoundary(trackedWord: String): AutocorrectMemory {
         val key = rejectionKey(trackedWord)
+        // An empty word (a second Space, a Space in a field just opened on old text) finished no
+        // word: promoting here would vouch for whatever the field happens to end with.
+        if (key.isEmpty()) return copy(pinnedWords = emptySet())
         return copy(
             previousWordTyped = currentWordTyped,
-            currentWordTyped = true,
+            currentWordTyped = false,
             pinnedWords = if (key.isNotEmpty() && key in pinnedWords) setOf(key) else emptySet(),
         )
     }
@@ -66,12 +71,20 @@ data class AutocorrectMemory(
     /**
      * The keyboard no longer knows how the text before the cursor came to be: the cursor moved,
      * the input restarted, text arrived that was not typed letter by letter, a boundary passed
-     * without a trustworthy read, or Backspace went behind the word being typed. The word before
-     * is not one typed here; the word being typed is, only when it is still empty
-     * ([wordInProgressIsEmpty]). Pins describe the text as it was and go too.
+     * without a trustworthy read, or Backspace went behind the word being typed. Neither the word
+     * before nor any word in progress is one typed here; the next word started from empty may be
+     * ([afterWordStarted]). Pins describe the text as it was and go too.
      */
-    fun afterTrackingLost(wordInProgressIsEmpty: Boolean): AutocorrectMemory =
-        copy(previousWordTyped = false, currentWordTyped = wordInProgressIsEmpty, pinnedWords = emptySet())
+    fun afterTrackingLost(): AutocorrectMemory =
+        copy(previousWordTyped = false, currentWordTyped = false, pinnedWords = emptySet())
+
+    /**
+     * The first letter of a word was typed onto an empty word. [fresh] says the field, read and
+     * trusted, showed the start of the text, a space or a mark before it, nothing a letter would
+     * join: the word is typed here from its first letter. Otherwise (no read, or the letter lands
+     * against old text, `it` + `s`) it is not.
+     */
+    fun afterWordStarted(fresh: Boolean): AutocorrectMemory = copy(currentWordTyped = fresh)
 
     /** [words] were chosen by the user on purpose (accepted from a suggestion, or put back by an undo). */
     fun withPinned(words: Collection<String>): AutocorrectMemory =
@@ -114,7 +127,7 @@ object AutocorrectUndo {
         // The words put back are the user's choice: pinned past the next word's letters, so the mix-up
         // fix cannot redo what this undo just took back once the rejection empties (SS10's exception).
         val newMemory = memory.copy(lastReplacement = null).withRejected(rejected)
-            .afterTrackingLost(wordInProgressIsEmpty = false).withPinned(words)
+            .afterTrackingLost().withPinned(words)
         return Result(ops, newMemory, addWordCandidate = last.original)
     }
 }
