@@ -133,6 +133,32 @@ class ContextPipelineTest {
     }
 
     @Test
+    fun `T-a comma or a question mark is a boundary too, and the fix never reaches across one`() {
+        val comma = Session()
+        comma.type("The dog wagged it's tail, ")
+        assertEquals("The dog wagged its tail, ", comma.text)
+        val question = Session()
+        question.type("Is it bigger then mine?")
+        assertEquals("Is it bigger than mine?", question.text)
+        // The word before the comma is not judged by the word after it.
+        val across = Session()
+        across.type("Yes its, tail ")
+        assertEquals("Yes its, tail ", across.text)
+    }
+
+    @Test
+    fun `T-Backspace after a fix at a period puts back the words as typed, the period with them`() {
+        val session = Session()
+        session.type("The dog wagged it's tail.")
+        assertEquals("The dog wagged its tail.", session.text)
+        session.backspace()
+        // §7.5 step 2: the replacement and the boundary after it go, the original comes back.
+        assertEquals("The dog wagged it's tail", session.text)
+        session.type(".")
+        assertEquals("The dog wagged it's tail.", session.text)
+    }
+
+    @Test
     fun `T-Enter is a boundary for the mix-up fix and the context correction alike`() {
         val session = Session()
         session.type("The dog wagged it's tail")
