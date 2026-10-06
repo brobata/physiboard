@@ -199,6 +199,10 @@ object SettingsKeys {
     const val TYPING_SOUND_MODE = "typing_sound_mode"
     const val TYPING_SOUND_OUTPUT_MODE = "typing_sound_output_mode"
 
+    // SS2.17 privacy (3.0's own rows)
+    const val PRIVATE_MODE = "private_mode"
+    const val CLEAN_LINKS = "clean_links"
+
     // SS2.15 shell
     const val TUTORIAL_COMPLETED = "tutorial_completed"
     const val LAST_SEEN_WHATS_NEW = "last_seen_whats_new_version"
@@ -248,6 +252,7 @@ object SettingsCodec {
         writeExpansion(settings.expansion)
         writeLauncher(settings.launcher)
         writeFeedback(settings.feedback)
+        writePrivacy(settings.privacy)
         writeShell(settings.shell)
         writeCaptures(settings.captures)
     }
@@ -269,6 +274,7 @@ object SettingsCodec {
             expansion = readExpansion(r),
             launcher = readLauncher(r),
             feedback = readFeedback(r),
+            privacy = readPrivacy(r),
             shell = readShell(r),
             captures = readCaptures(r),
         )
@@ -710,6 +716,23 @@ object SettingsCodec {
             acceptWithEnter = r.bool(SettingsKeys.SNIPPETS_ACCEPT_ENTER, d.acceptWithEnter),
             clipboardHistoryEnabled = r.bool(SettingsKeys.CLIPBOARD_HISTORY, d.clipboardHistoryEnabled),
             clipboardRetentionMinutes = r.long(SettingsKeys.CLIPBOARD_RETENTION, d.clipboardRetentionMinutes, 0L..Long.MAX_VALUE),
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Privacy (SS2.17)
+    // ---------------------------------------------------------------------------------------------
+
+    private fun MutableMap<String, String>.writePrivacy(p: PrivacyPrefs) {
+        put(SettingsKeys.PRIVATE_MODE, p.privateMode.toString())
+        put(SettingsKeys.CLEAN_LINKS, p.cleanLinks.toString())
+    }
+
+    private fun readPrivacy(r: FlatReader): PrivacyPrefs {
+        val d = PrivacyPrefs()
+        return PrivacyPrefs(
+            privateMode = r.bool(SettingsKeys.PRIVATE_MODE, d.privateMode),
+            cleanLinks = r.bool(SettingsKeys.CLEAN_LINKS, d.cleanLinks),
         )
     }
 

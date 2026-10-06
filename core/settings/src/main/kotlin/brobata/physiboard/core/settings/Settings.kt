@@ -46,6 +46,7 @@ data class Settings(
     val expansion: ExpansionPrefs = ExpansionPrefs(),
     val launcher: LauncherPrefs = LauncherPrefs(),
     val feedback: FeedbackPrefs = FeedbackPrefs(),
+    val privacy: PrivacyPrefs = PrivacyPrefs(),
     val shell: ShellState = ShellState(),
     val captures: DeviceCaptures = DeviceCaptures(),
 ) {
@@ -645,6 +646,19 @@ enum class TypingSoundOutputMode(val storedValue: String) {
         fun fromStored(value: String?): TypingSoundOutputMode = entries.firstOrNull { it.storedValue == value } ?: MEDIA
     }
 }
+
+/**
+ * Privacy. spec: app-shell.md SS31 (private mode) and expansion-clipboard-pickers-launcher.md
+ * SS3.7 (clean links); settings-catalog.md SS2.17.
+ *
+ * [privateMode] is off by default: it is a choice the user makes for a while, not a way to type.
+ * [cleanLinks] is on by default: it only rewrites links in clipboard text the keyboard keeps or
+ * pastes itself, and never touches a Space, Enter, Shift or Backspace.
+ */
+data class PrivacyPrefs(
+    val privateMode: Boolean = false,
+    val cleanLinks: Boolean = true,
+)
 
 /** The app shell's own markers (settings-catalog.md SS2.15) that must survive a reinstall. The migration and baseline markers are 2.x-only. */
 data class ShellState(
