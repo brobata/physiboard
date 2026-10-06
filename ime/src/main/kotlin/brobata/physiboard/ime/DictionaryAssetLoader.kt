@@ -2,6 +2,7 @@ package brobata.physiboard.ime
 
 import android.content.Context
 import android.os.Handler
+import android.util.Log
 import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.DictionaryOrigin
@@ -11,11 +12,49 @@ import java.io.File
 import java.io.IOException
 
 /**
- * What one background load delivers: the dictionary, and the language's word-pair table when the
- * bundled asset has one. [contextModel] is null for a language with no `.bigrams` asset or one
- * that will not parse; that only means "no sentence context", never a failed load.
+ * The order one background load runs in, apart from the reads themselves (which [readDictionary]
+ * and [readContextModel] do), so it can be checked on a plain JVM. The dictionary is handed over
+ * the moment it is built, before the word-pair table is even read: typing waits on the dictionary,
+ * never on the table (autocorrect-suggestions.md SS16 W5). [onDictionary] is always posted, with
+ * null when no dictionary was built, so the caller's in-flight marker clears whatever happened.
+ * A table that fails to read, to parse or to fit in memory (it is several megabytes of arrays,
+ * and an [OutOfMemoryError] there must not take the keyboard down with it) only means no context:
+ * [onContextModel] is posted only for a table that loaded. [onFailure] hears every caught failure.
  */
-internal class LoadedDictionary(val index: DictionaryIndex, val contextModel: ContextModel?)
+internal object DictionaryLoadSequence {
+    fun <D : Any, C : Any> run(
+        readDictionary: () -> D?,
+        readContextModel: () -> C?,
+        post: (() -> Unit) -> Unit,
+        onDictionary: (D?) -> Unit,
+        onContextModel: (C) -> Unit,
+        onFailure: (what: String, error: Throwable) -> Unit = { _, _ -> },
+    ) {
+        var dictionary: D? = null
+        try {
+            dictionary = readDictionary()
+        } catch (e: Exception) {
+            onFailure("dictionary", e)
+        } catch (e: OutOfMemoryError) {
+            onFailure("dictionary", e)
+        } finally {
+            // Posted even if an error nobody should catch is on its way out of this thread.
+            val built = dictionary
+            post { onDictionary(built) }
+        }
+        if (dictionary == null) return
+        val model = try {
+            readContextModel()
+        } catch (e: Exception) {
+            onFailure("context", e)
+            null
+        } catch (e: OutOfMemoryError) {
+            onFailure("context", e)
+            null
+        }
+        if (model != null) post { onContextModel(model) }
+    }
+}
 
 /**
  * Reads a dictionary for a language and builds a [DictionaryIndex] from it, off the caller's
@@ -30,10 +69,10 @@ internal class LoadedDictionary(val index: DictionaryIndex, val contextModel: Co
  * class's own SPEC GAP note on why this build uses `.pbd` under `dictionaries/`, not SS3's literal
  * `dictionaries_serialized/<lang>_base.dict` path, for every tier alike).
  *
- * The word-pair table (autocorrect-suggestions.md SS16 W5) rides the same background thread: the
- * bundled `dictionaries/<language>.bigrams` asset, read whichever tier the dictionary itself came
- * from, since the table is keyed by words and not by the dictionary file. A missing or damaged
- * table is silent and just means no context.
+ * The word-pair table (autocorrect-suggestions.md SS16 W5) rides the same background thread, after
+ * the dictionary has been handed over: the bundled `dictionaries/<language>.bigrams` asset, read
+ * whichever tier the dictionary itself came from, since the table is keyed by words and not by the
+ * dictionary file. A missing, damaged or too-large table just means no context.
  *
  * A dictionary can be tens of megabytes once other languages are added, so this never reads or
  * parses on the caller's thread: [loadAsync] returns immediately, and [onLoaded] fires later, on
@@ -51,16 +90,27 @@ internal class DictionaryAssetLoader(
     private val downloadedDir = File(context.filesDir, "dictionaries/downloaded")
     private val importedDir = File(context.filesDir, "dictionaries/imported")
 
-    /** Starts one background read of the resolved tier for [language]; [onLoaded] runs on the main thread, once, only when the dictionary itself was built. */
-    fun loadAsync(language: LanguageCode, onLoaded: (LoadedDictionary) -> Unit) {
+    /**
+     * Starts one background read of the resolved tier for [language]. [onDictionary] runs on the
+     * main thread exactly once, with the dictionary or null when none was built; [onContextModel]
+     * runs after it, only when the language's word-pair table loaded ([DictionaryLoadSequence]).
+     */
+    fun loadAsync(language: LanguageCode, onDictionary: (DictionaryIndex?) -> Unit, onContextModel: (ContextModel) -> Unit) {
         Thread({
-            val bytes = readResolvedBytes(language)
-            val index = bytes?.let(DictionaryIndex::fromPbdBytes)
-            // The phone drops verbose logs, and a silently missing dictionary reads as "autocorrect is broken".
-            DiagnosticLog.i(TAG) { "dictionary $language: bytes=${bytes?.size ?: "missing"}, index=${if (index != null) "loaded" else "FAILED"}" }
-            if (index == null) return@Thread
-            val contextModel = readContextModel(language)
-            mainHandler.post { onLoaded(LoadedDictionary(index, contextModel)) }
+            DictionaryLoadSequence.run(
+                readDictionary = {
+                    val bytes = readResolvedBytes(language)
+                    val index = bytes?.let(DictionaryIndex::fromPbdBytes)
+                    // The phone drops verbose logs, and a silently missing dictionary reads as "autocorrect is broken".
+                    DiagnosticLog.i(TAG) { "dictionary $language: bytes=${bytes?.size ?: "missing"}, index=${if (index != null) "loaded" else "FAILED"}" }
+                    index
+                },
+                readContextModel = { readContextModel(language) },
+                post = { mainHandler.post(it) },
+                onDictionary = onDictionary,
+                onContextModel = onContextModel,
+                onFailure = { what, error -> Log.e(TAG, "$what $language failed to load", error) },
+            )
         }, "physiboard-dict-loader-$language").apply { isDaemon = true }.start()
     }
 

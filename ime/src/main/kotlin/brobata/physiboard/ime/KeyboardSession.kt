@@ -426,6 +426,9 @@ internal class KeyboardSession(
     private val dictionaryLoadsInFlight = mutableMapOf<LanguageCode, Int>()
     private var dictionaryLoadGeneration = 0
 
+    /** Languages whose load built no dictionary in this generation: not read again until [reloadAllDictionaries] (an install or import) says something changed. */
+    private val dictionaryLoadsFailed = mutableSetOf<LanguageCode>()
+
     // spec dictionaries-languages.md SS7: the default and personal user words, loaded once at
     // startup and reloaded whenever the Personal Dictionary screen (or the strip's own add-word,
     // via [persistAddedWord]) changes them. `:core:text`'s `TextInputResources.userWords` is the
@@ -580,21 +583,36 @@ internal class KeyboardSession(
      * strip refreshes when it completes".
      */
     private fun loadDictionary(language: LanguageCode) {
-        if (language in loadedDictionaries || language in dictionaryLoadsInFlight) return
+        if (language in loadedDictionaries || language in dictionaryLoadsInFlight || language in dictionaryLoadsFailed) return
         val generation = dictionaryLoadGeneration
         dictionaryLoadsInFlight[language] = generation
-        dictionaryLoader.loadAsync(language) { loaded ->
-            // A completion whose generation no longer owns this language's in-flight entry was
-            // superseded by [reloadAllDictionaries] while it was running: neither its result nor
-            // its removal of the in-flight marker (which would belong to the fresher load by now)
-            // should apply.
-            if (dictionaryLoadsInFlight[language] != generation) return@loadAsync
-            dictionaryLoadsInFlight.remove(language)
-            loadedDictionaries[language] = loaded.index
-            loaded.contextModel?.let { loadedContextModels[language] = it }
-            rebuildDictionaries()
-            refreshCandidatesStrip()
-        }
+        dictionaryLoader.loadAsync(
+            language,
+            onDictionary = onDictionary@{ index ->
+                // A completion whose generation no longer owns this language's in-flight entry was
+                // superseded by [reloadAllDictionaries] while it was running: neither its result nor
+                // its removal of the in-flight marker (which would belong to the fresher load by now)
+                // should apply.
+                if (dictionaryLoadsInFlight[language] != generation) return@onDictionary
+                // Cleared whatever happened; a failure is remembered instead, so a missing or
+                // broken file is not re-read at every field start until a reload says it changed.
+                dictionaryLoadsInFlight.remove(language)
+                if (index == null) {
+                    dictionaryLoadsFailed += language
+                    return@onDictionary
+                }
+                loadedDictionaries[language] = index
+                rebuildDictionaries()
+                refreshCandidatesStrip()
+            },
+            onContextModel = onContextModel@{ model ->
+                // The table belongs to the dictionary this same load built: only while that one is
+                // still the language's dictionary (no reload since) is it this language's table.
+                if (generation != dictionaryLoadGeneration || language !in loadedDictionaries) return@onContextModel
+                loadedContextModels[language] = model
+                rebuildDictionaries()
+            },
+        )
     }
 
     /** spec SS8.4: "engines for languages no longer listed are dropped"; the primary comes first (`TextInputResources`' own contract). */
@@ -624,6 +642,7 @@ internal class KeyboardSession(
         loadedDictionaries.clear()
         loadedContextModels.clear()
         dictionaryLoadsInFlight.clear()
+        dictionaryLoadsFailed.clear()
         pipeline.resources = pipeline.resources.copy(dictionaries = emptyList(), contextModel = null)
         loadDictionary(primaryLanguage)
         extraLanguages.forEach(::loadDictionary)
