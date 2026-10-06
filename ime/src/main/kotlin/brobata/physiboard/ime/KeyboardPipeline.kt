@@ -423,7 +423,9 @@ internal class KeyboardPipeline(
      * one-shot and re-evaluates auto-cap) and line 497 (restart-scoped state is kept). Unlike
      * [onStartInput] this keeps the tracked word, resynced from [textBeforeCursor], and every other
      * fact that describes text still before the cursor, so autocorrect and Backspace-undo survive
-     * a restart instead of dying at the first one.
+     * a restart instead of dying at the first one. The one exception is the mix-up fix of the
+     * previous word, which waits for a word typed after the restart
+     * ([TextInputState.afterInputRestart]).
      */
     fun onRestartInput(
         field: FieldContext,
@@ -434,14 +436,14 @@ internal class KeyboardPipeline(
         activeField = field
         activeTrust = trust
         activeAppProfile = appProfile
-        val resynced = textBeforeCursor?.let { textInputState.currentWord.syncedFrom(it) } ?: textInputState.currentWord
+        val restarted = textInputState.afterInputRestart(textBeforeCursor)
         applyCapDecision(CapDecision.ClearOneShot)
         val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
         val (capState, decision) = AutoCapitalization.evaluate(
             textInputState.autoCap, activeField, settings.textInput.autoCap, capContext,
             suppressionContext = autoCapSuppressionContext(capContext),
         )
-        textInputState = textInputState.copy(currentWord = resynced, autoCap = capState)
+        textInputState = restarted.copy(autoCap = capState)
         applyCapDecision(decision)
     }
 

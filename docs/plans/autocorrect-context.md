@@ -112,7 +112,16 @@ corrected.
 Both edits are one replacement of the span from N-1 to the cursor, so one Backspace puts back
 exactly what was typed; the rejection it records covers each word, so the next Space neither redoes
 the mix-up nor re-corrects the word after it. An editor that reports nothing never reaches this
-(the drift check stops the boundary first). Off by default, as every new Space behaviour ships:
+(the drift check stops the boundary first).
+
+Fixed after review: the previous word must have been typed here, in sequence (from an empty
+word, ended by a boundary the engine evaluated, with no cursor move, input restart, undo, paste,
+suggestion accept or Backspace behind the current word since), and a word the user chose on
+purpose (put back by an undo, or accepted from a suggestion) is pinned past the next word's
+letters. Before, the rejection was the only guard and it emptied on the next letter, so
+`it's tail`, undone and continued as `tails`, was flipped again; an accepted `it's` was flipped by
+the next word; and tapping after old text and pressing Space judged a word typed long before.
+`ContextPipelineTest` replays each through the keyboard's pipeline. Off by default, as every new Space behaviour ships:
 Settings > Auto-correction > "Fix mixed-up words".
 
 ## Measurements

@@ -7,10 +7,27 @@ data class LastReplacement(val original: String, val replacement: String)
  * Undo memory and the rejected-word set behind autocorrect-suggestions.md SS7.5. 3.0 keeps one of
  * each, rather than 2.x's separate legacy-path bookkeeping (spec SS18, "Separate rejected sets
  * and undo memories: Drop; W4: one of each").
+ *
+ * It also carries the three facts the mix-up fix of the previous word (SS10's exception) needs
+ * about how the text before the cursor came to be, since that fix is the one correction that
+ * rewrites a word the user has already moved past:
+ *
+ * - [previousWordTyped]: the word before the one being typed was typed here, letter by letter
+ *   from an empty word, and ended at a boundary the engine evaluated on a field read that agreed,
+ *   with nothing since then (a cursor move, an input restart, a new field, an undo, a paste, a
+ *   Backspace behind the word being typed) that could make "the word before" something else.
+ * - [currentWordTyped]: the same for the word being typed now; at its boundary it becomes
+ *   [previousWordTyped] for the next one.
+ * - the pinned words: words the user chose on purpose, restored by Backspace undo or accepted
+ *   from a suggestion. Unlike a rejection they survive the next word's letters, and they stay
+ *   pinned while they are the word being typed or the word before it.
  */
 data class AutocorrectMemory(
     val lastReplacement: LastReplacement? = null,
     private val rejectedWords: Set<String> = emptySet(),
+    private val pinnedWords: Set<String> = emptySet(),
+    val previousWordTyped: Boolean = false,
+    val currentWordTyped: Boolean = true,
 ) {
     /** A boundary replaced a word: remember the pair for a following Backspace. */
     fun afterReplacement(original: String, replacement: String): AutocorrectMemory =
@@ -22,11 +39,43 @@ data class AutocorrectMemory(
     /** Any character was typed: the undo memory is cleared (spec: "cleared when any character is typed"). */
     fun afterAnyCharacterTyped(): AutocorrectMemory = copy(lastReplacement = null)
 
-    /** A letter or digit was typed: the rejected set empties, so a rejection survives only until the next word starts. */
+    /** A letter or digit was typed: the rejected set empties, so a rejection survives only until the next word starts. Pins are kept. */
     fun afterLetterOrDigitTyped(): AutocorrectMemory = copy(rejectedWords = emptySet())
 
     /** Whether [word] (case-insensitively, any apostrophe style) is currently in the rejected set. */
     fun isRejected(word: String): Boolean = rejectionKey(word) in rejectedWords
+
+    /** Whether [word] is one the user chose on purpose and the mix-up fix must leave alone. */
+    fun isPinned(word: String): Boolean = rejectionKey(word) in pinnedWords
+
+    /**
+     * The engine evaluated the boundary that ended [trackedWord] on a field read that agreed:
+     * that word is now the word before, typed here if it was typed from empty, and the next word
+     * starts from empty. A pin outlives the boundary only on the word just finished, which is the
+     * word before from now on.
+     */
+    fun afterEvaluatedBoundary(trackedWord: String): AutocorrectMemory {
+        val key = rejectionKey(trackedWord)
+        return copy(
+            previousWordTyped = currentWordTyped,
+            currentWordTyped = true,
+            pinnedWords = if (key.isNotEmpty() && key in pinnedWords) setOf(key) else emptySet(),
+        )
+    }
+
+    /**
+     * The keyboard no longer knows how the text before the cursor came to be: the cursor moved,
+     * the input restarted, text arrived that was not typed letter by letter, a boundary passed
+     * without a trustworthy read, or Backspace went behind the word being typed. The word before
+     * is not one typed here; the word being typed is, only when it is still empty
+     * ([wordInProgressIsEmpty]). Pins describe the text as it was and go too.
+     */
+    fun afterTrackingLost(wordInProgressIsEmpty: Boolean): AutocorrectMemory =
+        copy(previousWordTyped = false, currentWordTyped = wordInProgressIsEmpty, pinnedWords = emptySet())
+
+    /** [words] were chosen by the user on purpose (accepted from a suggestion, or put back by an undo). */
+    fun withPinned(words: Collection<String>): AutocorrectMemory =
+        copy(pinnedWords = pinnedWords + words.map(::rejectionKey).filter { it.isNotEmpty() })
 
     internal fun withRejected(words: Set<String>): AutocorrectMemory = copy(rejectedWords = rejectedWords + words.map(::rejectionKey))
 
@@ -62,7 +111,10 @@ object AutocorrectUndo {
         // mix-up nor re-corrects the word after it. spec: SS7.5 step 3, SS10.
         val words = last.original.split(' ').filter { it.isNotEmpty() }
         val rejected = setOfNotNull(last.original, apostropheRoot) + words
+        // The words put back are the user's choice: pinned past the next word's letters, so the mix-up
+        // fix cannot redo what this undo just took back once the rejection empties (SS10's exception).
         val newMemory = memory.copy(lastReplacement = null).withRejected(rejected)
+            .afterTrackingLost(wordInProgressIsEmpty = false).withPinned(words)
         return Result(ops, newMemory, addWordCandidate = last.original)
     }
 }

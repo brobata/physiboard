@@ -40,11 +40,14 @@ class ContextCorrectionTest {
     private val shipped = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 2, useKeyboardProximity = true)
     private val withMixups = shipped.copy(fixWordMixups = true)
 
+    /** What the keyboard carries into a boundary when the word before was typed here, in sequence (AutocorrectMemory). */
+    private val typedInSequence = AutocorrectMemory(previousWordTyped = true)
+
     /** The boundary at the end of [text] (Space), with the keyboard's own tracked word and window. */
     private fun boundary(
         text: String,
         settings: AutocorrectSettings = withMixups,
-        memory: AutocorrectMemory = AutocorrectMemory(),
+        memory: AutocorrectMemory = typedInSequence,
         userWords: UserWordStore = defaults,
         contextModel: ContextModel? = model,
     ): BoundaryEvaluation {
@@ -151,6 +154,37 @@ class ContextCorrectionTest {
         assertEquals(text, restored)
         // Space again, straight away: the rejection covers both words, so nothing is redone.
         assertEquals(BoundaryOutcome.CommitPlain, boundary(restored, memory = undo.result.memory).outcome)
+        // One more letter first ("tails"): the rejection has emptied, and the words put back are
+        // still the user's (pinned), even were the word before vouched for as typed in sequence.
+        val afterLetter = undo.result.memory.afterLetterOrDigitTyped().copy(previousWordTyped = true)
+        assertEquals(BoundaryOutcome.CommitPlain, boundary(restored + "s", memory = afterLetter).outcome)
+    }
+
+    @Test
+    fun `T-a word the user chose stays pinned past the next word's letters, and while it is the word before`() {
+        // Pinned (an undo put it back, or it was taken from a suggestion), then the next word's
+        // first letter empties the rejected set: the pin is what is left, and it holds.
+        val pinned = typedInSequence.withPinned(listOf("it's")).afterLetterOrDigitTyped()
+        assertEquals(BoundaryOutcome.CommitPlain, boundary("The dog wagged it's tail", memory = pinned).outcome)
+        // A pin on the word just finished carries to the next boundary, where it is the word before.
+        val afterIll = boundary("I think ill", memory = typedInSequence.withPinned(listOf("ill"))).memory.afterLetterOrDigitTyped()
+        assertTrue(afterIll.isPinned("ill"))
+        assertEquals(BoundaryOutcome.CommitPlain, boundary("I think ill go", memory = afterIll).outcome)
+        // And it goes once the word has moved two places back.
+        assertTrue(!boundary("I think ill go", memory = afterIll).memory.isPinned("ill"))
+    }
+
+    @Test
+    fun `T-the word before must have been typed here, in sequence`() {
+        assertEquals(BoundaryOutcome.CommitPlain, boundary("The dog wagged it's tail", memory = AutocorrectMemory()).outcome)
+        // The boundary that ends a word typed from empty makes it the word before, typed in sequence.
+        val afterIts = boundary("The dog wagged it's", memory = AutocorrectMemory()).memory.afterLetterOrDigitTyped()
+        assertTrue(afterIts.previousWordTyped)
+        assertIs<BoundaryOutcome.Replaced>(boundary("The dog wagged it's tail", memory = afterIts).outcome)
+        // A word resynced from the field (not typed from empty) is not one typed here.
+        val resynced = AutocorrectMemory().afterTrackingLost(wordInProgressIsEmpty = false)
+        val afterResyncedIts = boundary("The dog wagged it's", memory = resynced).memory.afterLetterOrDigitTyped()
+        assertEquals(BoundaryOutcome.CommitPlain, boundary("The dog wagged it's tail", memory = afterResyncedIts).outcome)
     }
 
     @Test

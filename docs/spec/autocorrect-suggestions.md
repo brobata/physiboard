@@ -443,6 +443,10 @@ replacement. The rejected set is cleared when the user types any letter or digit
 survives only until the next word starts. Rejection is checked for text replacements, case
 repair and automatic correction alike. It is never persisted.
 
+The words an undo puts back are also pinned for the mix-up fix (section 10's exception): a pin
+survives the next word's letters and lasts while the word is the one being typed or the one
+before it. A pin is never persisted either.
+
 The legacy path's undo (7.4) behaves the same, except that its rejected set is cleared on the
 next non-Backspace key that produces a letter or digit and it does not set an add-word candidate.
 
@@ -653,7 +657,19 @@ exactly one space in the text the field reported and the previous word stands on
 start, a space, or an opening quote or bracket before it); with the typed case kept (the pronoun
 `I'll` always capitalised). The current word is
 settled first, then the previous one is judged with it. Both edits are one replacement, so one
-Backspace restores what was typed and rejects both words until the next letter (7.5). A set is
+Backspace restores what was typed and rejects both words until the next letter (7.5).
+
+Amended 2026-10-06 (review): the previous word must also have been **typed here, in sequence**:
+typed letter by letter from an empty word, ended by a boundary the engine evaluated on a field
+read that agreed, with nothing since that could make "the word before" some other text. A cursor
+move the keyboard did not make, an input restart, a new field, an undo, a paste or other
+multi-character commit, Ctrl+Backspace, a Backspace behind the word being typed, a boundary
+passed without a trustworthy read (restricted field, drifting editor, a per-app Enter delivery)
+or a suggestion accept each end that; the fix resumes once a whole word has been typed after it.
+And a word the user chose on purpose is **pinned**: the words a Backspace undo puts back and a
+word accepted from a suggestion. A pin, unlike a rejection, survives the next word's letters, and
+lasts while the word is the one being typed or the one before it, so `wagged it's tail`, undone
+and continued as `tails`, stays `it's`. A set is
 kept only when the sentence harness (section 12) shows at least 10 measured flips, at least 60%
 of them fixed and no correct word changed on clean text; `docs/plans/autocorrect-context.md`
 has the per-set numbers and the sets dropped (`of`/`off` changed a correct word; `here`/`hear`

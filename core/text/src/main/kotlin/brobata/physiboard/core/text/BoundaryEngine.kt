@@ -115,6 +115,29 @@ object BoundaryEngine {
         contextModel: ContextModel? = null,
         contextTuning: ContextTuning = ContextTuning.DEFAULT,
     ): BoundaryEvaluation {
+        val evaluation = evaluateOnce(
+            trackedWord, textBeforeCursor, boundaryChar, ruleSets, dictionaries, userWords, settings, rankingOptions, lengthChangeAllowance,
+            memory, contextModel, contextTuning,
+        )
+        // Whatever the outcome, this boundary was evaluated on a read that agreed: the word just
+        // finished becomes the word before (AutocorrectMemory.afterEvaluatedBoundary).
+        return evaluation.copy(memory = evaluation.memory.afterEvaluatedBoundary(trackedWord))
+    }
+
+    private fun evaluateOnce(
+        trackedWord: String,
+        textBeforeCursor: String,
+        boundaryChar: Char,
+        ruleSets: List<RuleSet>,
+        dictionaries: List<DictionaryIndex>,
+        userWords: UserWordStore,
+        settings: AutocorrectSettings,
+        rankingOptions: RankingOptions,
+        lengthChangeAllowance: Int,
+        memory: AutocorrectMemory,
+        contextModel: ContextModel?,
+        contextTuning: ContextTuning,
+    ): BoundaryEvaluation {
         val trigger = BoundaryDebugInfo.triggerFor(boundaryChar)
         // spec app-shell.md SS11/T28: the one row this store treats as pure noise is an
         // `auto_replace_disabled` attempt with blank before and after, so that reason alone omits
@@ -220,7 +243,8 @@ object BoundaryEngine {
      * words are separated by exactly one space; an editor that reports nothing never gets this
      * far (DriftCheck). Both edits are one replacement of the span from the previous word to the
      * cursor, so one Backspace puts back exactly what was typed, and the rejection it records
-     * covers each word of it (SS7.5).
+     * covers each word of it (SS7.5). The previous word must have been typed here in sequence and
+     * not be pinned by the user ([AutocorrectMemory.previousWordTyped], [AutocorrectMemory.isPinned]).
      */
     private fun evaluateWithContext(
         trackedWord: String,
@@ -264,10 +288,14 @@ object BoundaryEngine {
         // could be that word itself (DriftCheck guarantees it for the keyboard; this keeps the
         // public function safe on its own). The previous word must stand on its own: the start of
         // the text, a space, or an opening quote or bracket before it, never a symbol (`@your`,
-        // `site.com/its`), and exactly one space after it.
+        // `site.com/its`), and exactly one space after it. It must also be a word typed here, in
+        // sequence, and not one the user chose on purpose: a word the field merely shows (the
+        // cursor was moved next to it, the input restarted) or one put back by an undo or taken
+        // from a suggestion is the user's text, not a slip (AutocorrectMemory).
         val mixupAllowed = settings.fixWordMixups && previous is Preceding.Word && previous.gap == " " &&
             WordChars.straightenAll(textBeforeCursor).endsWith(trackedWord) &&
-            standsAlone(textBeforeWord, previous.start) && !memory.isRejected(previous.text)
+            standsAlone(textBeforeWord, previous.start) && !memory.isRejected(previous.text) &&
+            memory.previousWordTyped && !memory.isPinned(previous.text)
         if (mixupAllowed) {
             val before = SentenceContext.before(textBeforeWord, previous.start, truncated)
             val beforeId = when (before) {

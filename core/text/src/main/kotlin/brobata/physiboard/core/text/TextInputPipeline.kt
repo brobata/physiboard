@@ -85,15 +85,31 @@ data class TextInputState(
      * field would not answer; resyncing to what the editor reports is the drift-recovery path
      * itself (rebuild-from-scratch.md "The editor is not a reliable narrator" point 1), so it is
      * not something a reduced trust withholds. Auto-cap is left to the caller, which owns the
-     * trust decision for that context rule.
+     * trust decision for that context rule. The words around the new cursor position were not
+     * typed in sequence here, so the mix-up fix leaves them alone ([AutocorrectMemory.afterTrackingLost]).
      */
-    fun afterExternalCursorMove(textBeforeCursor: String?): TextInputState = copy(
-        currentWord = textBeforeCursor?.let { currentWord.syncedFrom(it) } ?: currentWord.reset(),
-        deferredSpace = DeferredSpace.cancelled(),
-        autoSpacePending = false,
-        autocorrectMemory = autocorrectMemory.afterBoundaryWithoutReplacement(),
-        justCommittedSentenceEnd = false,
-    )
+    fun afterExternalCursorMove(textBeforeCursor: String?): TextInputState {
+        val word = textBeforeCursor?.let { currentWord.syncedFrom(it) } ?: currentWord.reset()
+        return copy(
+            currentWord = word,
+            deferredSpace = DeferredSpace.cancelled(),
+            autoSpacePending = false,
+            autocorrectMemory = autocorrectMemory.afterBoundaryWithoutReplacement().afterTrackingLost(wordInProgressIsEmpty = word.word.isEmpty()),
+            justCommittedSentenceEnd = false,
+        )
+    }
+
+    /**
+     * The same field's input restarted (a WebView does this freely mid-word). The tracked word is
+     * re-derived from [textBeforeCursor] and the undo memory survives, so Backspace still undoes
+     * a correction across a restart; but the keyboard cannot vouch for how the text before the
+     * cursor came to be any more, so the mix-up fix of the previous word waits for a word typed
+     * after the restart ([AutocorrectMemory.afterTrackingLost]).
+     */
+    fun afterInputRestart(textBeforeCursor: String?): TextInputState {
+        val word = textBeforeCursor?.let { currentWord.syncedFrom(it) } ?: currentWord
+        return copy(currentWord = word, autocorrectMemory = autocorrectMemory.afterTrackingLost(wordInProgressIsEmpty = word.word.isEmpty()))
+    }
 }
 
 /**
@@ -262,9 +278,11 @@ object TextInputPipeline {
         // spec SS7.2 step 2's "no input connection" and this drift-guard both mean the same thing
         // to the debug capture: the engine could not safely be consulted at all this keystroke.
         val noInputConnection = BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "not_applicable", reason = "no_input_connection", boundaryChar = boundaryChar)
+        // A boundary the engine did not see is one the mix-up fix cannot vouch for either.
+        val unverified = memory.afterBoundaryWithoutReplacement().afterTrackingLost(wordInProgressIsEmpty = true)
         if (!field.autocorrectAllowed) {
             val restricted = BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "not_applicable", reason = "auto_replace_disabled", boundaryChar = boundaryChar)
-            return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, restricted)
+            return BoundaryEvaluation(unverified, BoundaryOutcome.CommitPlain, restricted)
         }
         // spec autocorrect-suggestions.md SS7.2 step 3 wants 32 characters of context before the
         // word, and SS10's mix-up check needs the two words before it as well (64 covers two long
@@ -278,7 +296,7 @@ object TextInputPipeline {
                 trackedWord, editorWindow!!, boundaryChar, resources.ruleSets, resources.dictionaries, resources.userWords,
                 settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, memory, resources.contextModel,
             )
-            DriftCheck.Unavailable, DriftCheck.Disagreed -> BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, noInputConnection)
+            DriftCheck.Unavailable, DriftCheck.Disagreed -> BoundaryEvaluation(unverified, BoundaryOutcome.CommitPlain, noInputConnection)
         }
     }
 
@@ -335,7 +353,15 @@ object TextInputPipeline {
         // bypasses every smart feature. spec: SS5.3, SS17 ("Text expansion, dictation result,
         // clipboard paste: commit as plain text; deferred debt untouched, auto-space flag untouched").
         // justCommittedSentenceEnd's own contract: "cleared the instant anything else is committed".
-        return TextInputResult(listOf(EditorOp.CommitText(text)), state.copy(currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false))
+        // Text that was not typed letter by letter: the mix-up fix leaves the words in it alone.
+        return TextInputResult(
+            listOf(EditorOp.CommitText(text)),
+            state.copy(
+                currentWord = CurrentWordTracker.empty(),
+                justCommittedSentenceEnd = false,
+                autocorrectMemory = state.autocorrectMemory.afterTrackingLost(wordInProgressIsEmpty = true),
+            ),
+        )
     }
 
     private fun handleEdit(
@@ -709,7 +735,7 @@ object TextInputPipeline {
     private fun handleRestrictedSpace(state: TextInputState): TextInputResult = TextInputResult(
         listOf(EditorOp.PassThroughKey),
         state.copy(
-            autocorrectMemory = state.autocorrectMemory.afterBoundaryWithoutReplacement(),
+            autocorrectMemory = state.autocorrectMemory.afterBoundaryWithoutReplacement().afterTrackingLost(wordInProgressIsEmpty = true),
             currentWord = CurrentWordTracker.empty(),
             justCommittedSentenceEnd = false,
         ),
@@ -843,6 +869,8 @@ object TextInputPipeline {
         currentWord = CurrentWordTracker.empty(),
         autoSpacePending = false,
         justCommittedSentenceEnd = false,
+        // A boundary the engine never saw (per-app-behavior.md SS3.4 runs none).
+        autocorrectMemory = state.autocorrectMemory.afterTrackingLost(wordInProgressIsEmpty = true),
     )
 
     // ---------------------------------------------------------------------------------------
@@ -874,7 +902,16 @@ object TextInputPipeline {
             )
             Backspace.Decision.FallThrough -> TextInputResult(
                 listOf(EditorOp.PassThroughKey),
-                baseState.copy(currentWord = baseState.currentWord.onBackspace()),
+                baseState.copy(
+                    currentWord = baseState.currentWord.onBackspace(),
+                    // With no word being typed, this Backspace edits the text behind it (the space
+                    // after the word before, or that word itself): the mix-up fix stops vouching for it.
+                    autocorrectMemory = if (baseState.currentWord.word.isEmpty()) {
+                        baseState.autocorrectMemory.afterTrackingLost(wordInProgressIsEmpty = false)
+                    } else {
+                        baseState.autocorrectMemory
+                    },
+                ),
             )
         }
     }
@@ -887,7 +924,10 @@ object TextInputPipeline {
      * point 2, "a keystroke is never swallowed").
      */
     private fun handleDeleteWordBackward(editor: EditorSnapshot, trust: EditorTrust, state: TextInputState): TextInputResult {
-        val newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false, currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false)
+        val newState = state.copy(
+            deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false, currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false,
+            autocorrectMemory = state.autocorrectMemory.afterTrackingLost(wordInProgressIsEmpty = false),
+        )
         val hasSelection = trust.contextRulesAllowed && editor.fullText?.hasSelection == true
         val textBefore = editor.contextTextBeforeCursor(trust, state.currentWord.word)
         val ops = when {
@@ -974,7 +1014,10 @@ object TextInputPipeline {
             add(EditorOp.Haptic)
         }
 
-        var newState = state.copy(currentWord = CurrentWordTracker.empty(), autoSpacePending = appendSpace, justCommittedSentenceEnd = false)
+        // The accepted word is the user's own choice, and it was not typed letter by letter: the
+        // mix-up fix leaves it alone when the next word's boundary judges it (SS10's exception).
+        val memory = state.autocorrectMemory.afterTrackingLost(wordInProgressIsEmpty = appendSpace).withPinned(listOf(recased))
+        var newState = state.copy(currentWord = CurrentWordTracker.empty(), autoSpacePending = appendSpace, justCommittedSentenceEnd = false, autocorrectMemory = memory)
         if (autoCapOverride) newState = newState.copy(autoCap = newState.autoCap.consumedUnconditionally())
         return TextInputResult(ops, newState)
     }
