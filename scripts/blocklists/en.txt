@@ -1,0 +1,44 @@
+# Slurs kept out of the English word list, so autocorrect never suggests or corrects to them.
+# One word per line; read by scripts/build_dictionary.py (and --apply-blocklist for an existing
+# .pbd). Profanity (fuck, shit, ...) is deliberately NOT here: it is ordinary language.
+# Words whose everyday meaning is innocent (chink, coon, dyke, queer, homo, cracker, mick, ...)
+# are also not here; see docs/dictionaries.md.
+chinaman
+coolie
+coolies
+dago
+darkie
+darkies
+darky
+fag
+faggot
+faggots
+fags
+gook
+gooks
+honky
+injun
+jap
+japs
+kike
+kikes
+kraut
+krauts
+mulatto
+mulattoes
+nigger
+niggers
+polack
+redskin
+redskins
+retard
+retarded
+retards
+spic
+spick
+spicks
+squaw
+squaws
+wetback
+wop
+wops

@@ -24,7 +24,8 @@ class EnglishWordListAssetTest {
     fun `T-the bundled English asset parses and is the expected size`() {
         val loaded = assertNotNull(index, "app/src/main/assets/dictionaries/en.pbd is missing or failed to parse; run scripts/build_dictionary.py")
         assertEquals(LanguageCode.of("en"), loaded.language)
-        assertEquals(80_000, loaded.wordCount)
+        // 80,000 built, less the slurs in scripts/blocklists/en.txt.
+        assertEquals(79_961, loaded.wordCount)
     }
 
     @Test
@@ -44,6 +45,17 @@ class EnglishWordListAssetTest {
         val loaded = assertNotNull(index)
         val misspellings = listOf("alot", "teh", "thier", "untill", "definately", "seperate", "occured", "recieve", "goverment", "wierd")
         for (typo in misspellings) assertFalse(loaded.contains(typo), "expected '$typo' NOT to be a known word")
+    }
+
+    @Test
+    fun `T-no word in the slur blocklist is a known word, while ordinary profanity is`() {
+        val loaded = assertNotNull(index)
+        val blocklist = File(assertNotNull(repoRoot()), "scripts/blocklists/en.txt").readLines()
+            .map { it.substringBefore('#').trim() }
+            .filter { it.isNotEmpty() }
+        assertTrue(blocklist.size >= 30, "scripts/blocklists/en.txt looks empty or unreadable")
+        for (word in blocklist) assertFalse(loaded.contains(word), "'$word' is on the blocklist but still in en.pbd; run build_dictionary.py --apply-blocklist")
+        for (word in listOf("fuck", "shit", "damn")) assertTrue(loaded.contains(word), "profanity is ordinary language and stays: '$word'")
     }
 
     @Test

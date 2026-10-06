@@ -41,6 +41,12 @@ question for whoever resolves the other eighteen languages.
 
 Requires: pip install wordfreq pyspellchecker
 
+Words in `scripts/blocklists/<lang>.txt` (slurs) are skipped in step 3 as well. To apply a
+changed blocklist to the shipped list without rebuilding it:
+
+    python3 scripts/build_dictionary.py --lang en \\
+        --apply-blocklist app/src/main/assets/dictionaries/en.pbd
+
 Usage:
     python3 scripts/build_dictionary.py --lang en --size 80000 \\
         --out app/src/main/assets/dictionaries/en.pbd \\
@@ -161,6 +167,46 @@ def pyspellchecker_license_note(lang: str, available: bool) -> str:
     )
 
 
+BLOCKLIST_DIR = Path(__file__).resolve().parent / "blocklists"
+
+
+def load_blocklist(lang: str) -> set[str]:
+    """Slurs kept out of `lang`'s list (scripts/blocklists/<lang>.txt; `#` starts a comment).
+    A missing file blocks nothing."""
+    path = BLOCKLIST_DIR / f"{lang}.txt"
+    if not path.exists():
+        return set()
+    words = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        word = line.split("#", 1)[0].strip().lower()
+        if word:
+            words.add(word)
+    return words
+
+
+def read_pbd(data: bytes) -> tuple[str, list[WordEntry]]:
+    """Decodes `.pbd` bytes written by encode_pbd/PbdWriter into (language, entries)."""
+    magic, version = struct.unpack_from(">iH", data, 0)
+    if magic != MAGIC or version != FORMAT_VERSION:
+        raise ValueError("not a version-1 .pbd file")
+    language = data[6:6 + LANGUAGE_FIELD_BYTES].rstrip(b"\x00").decode("ascii")
+    pos = 4 + 2 + LANGUAGE_FIELD_BYTES + 2 + 4 + 4
+    while pos < len(data):
+        tag, length = struct.unpack_from(">ii", data, pos)
+        pos += 8
+        if tag == WORD_BLOCK_TAG:
+            (count,) = struct.unpack_from(">i", data, pos)
+            table = pos + 4
+            payload = table + count * 8
+            entries = []
+            for i in range(count):
+                offset, size, freq = struct.unpack_from(">iHH", data, table + i * 8)
+                entries.append(WordEntry(data[payload + offset:payload + offset + size].decode("utf-8"), freq))
+            return language, entries
+        pos += length
+    raise ValueError("no WORD block")
+
+
 def build_word_list(lang: str, size: int, multiplier: int, allow_missing_lexicon: bool) -> tuple[list[WordEntry], bool]:
     """Runs steps 1-5 of the recipe. Returns (entries, lexicon_was_used)."""
     try:
@@ -192,6 +238,7 @@ def build_word_list(lang: str, size: int, multiplier: int, allow_missing_lexicon
         )
 
     candidate_pool = top_n_list(lang, multiplier * size, wordlist="best")
+    blocked = load_blocklist(lang)
 
     survivors: list[str] = []
     for word in candidate_pool:
@@ -202,6 +249,8 @@ def build_word_list(lang: str, size: int, multiplier: int, allow_missing_lexicon
         if len(word) == 1 and word not in SINGLE_LETTER_ALLOWED:
             continue
         if lexicon_words is not None and word not in lexicon_words:
+            continue
+        if word in blocked:
             continue
         survivors.append(word)
 
@@ -234,7 +283,13 @@ def build_word_list(lang: str, size: int, multiplier: int, allow_missing_lexicon
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--lang", required=True, help="two-letter language code, e.g. en")
-    parser.add_argument("--out", required=True, type=Path, help="output .pbd path")
+    parser.add_argument("--out", type=Path, help="output .pbd path")
+    parser.add_argument(
+        "--apply-blocklist",
+        type=Path,
+        default=None,
+        help="instead of building, drop scripts/blocklists/<lang>.txt's words from this existing .pbd (rewritten in place unless --out is given)",
+    )
     parser.add_argument("--size", type=int, default=80000, help="target entry count (default 80000)")
     parser.add_argument("--multiplier", type=int, default=6, help="how many times --size to pull from the frequency ranking before filtering (default 6)")
     parser.add_argument("--tsv", type=Path, default=None, help="optional word<TAB>frequency dump, for the evaluation sweep")
@@ -248,6 +303,20 @@ def main() -> None:
     lang = args.lang.lower()
     if not re.match(r"^[a-z]{2}$", lang):
         sys.exit(f"error: --lang must be a two-letter code, got {args.lang!r}")
+
+    if args.apply_blocklist is not None:
+        source_lang, existing = read_pbd(args.apply_blocklist.read_bytes())
+        if source_lang != lang:
+            sys.exit(f"error: {args.apply_blocklist} is '{source_lang}', not '{lang}'")
+        blocked = load_blocklist(lang)
+        kept = [e for e in existing if e.word.lower() not in blocked]
+        out = args.out or args.apply_blocklist
+        out.write_bytes(encode_pbd(lang, kept))
+        removed = sorted(e.word for e in existing if e.word.lower() in blocked)
+        print(f"Removed {len(removed)} of {len(existing)} entries from {args.apply_blocklist} -> {out}: {', '.join(removed)}")
+        return
+    if args.out is None:
+        sys.exit("error: --out is required when building")
 
     entries, lexicon_used = build_word_list(lang, args.size, args.multiplier, args.allow_missing_lexicon)
     if not entries:
