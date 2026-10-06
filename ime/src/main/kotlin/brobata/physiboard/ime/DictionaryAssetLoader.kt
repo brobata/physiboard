@@ -2,12 +2,20 @@ package brobata.physiboard.ime
 
 import android.content.Context
 import android.os.Handler
+import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.DictionaryOrigin
 import brobata.physiboard.core.dict.DictionaryTierResolver
 import brobata.physiboard.core.dict.LanguageCode
 import java.io.File
 import java.io.IOException
+
+/**
+ * What one background load delivers: the dictionary, and the language's word-pair table when the
+ * bundled asset has one. [contextModel] is null for a language with no `.bigrams` asset or one
+ * that will not parse; that only means "no sentence context", never a failed load.
+ */
+internal class LoadedDictionary(val index: DictionaryIndex, val contextModel: ContextModel?)
 
 /**
  * Reads a dictionary for a language and builds a [DictionaryIndex] from it, off the caller's
@@ -21,6 +29,11 @@ import java.io.IOException
  * (`files/dictionaries/downloaded/<lang>.pbd`, `files/dictionaries/imported/<lang>.pbd`; see that
  * class's own SPEC GAP note on why this build uses `.pbd` under `dictionaries/`, not SS3's literal
  * `dictionaries_serialized/<lang>_base.dict` path, for every tier alike).
+ *
+ * The word-pair table (autocorrect-suggestions.md SS16 W5) rides the same background thread: the
+ * bundled `dictionaries/<language>.bigrams` asset, read whichever tier the dictionary itself came
+ * from, since the table is keyed by words and not by the dictionary file. A missing or damaged
+ * table is silent and just means no context.
  *
  * A dictionary can be tens of megabytes once other languages are added, so this never reads or
  * parses on the caller's thread: [loadAsync] returns immediately, and [onLoaded] fires later, on
@@ -38,15 +51,32 @@ internal class DictionaryAssetLoader(
     private val downloadedDir = File(context.filesDir, "dictionaries/downloaded")
     private val importedDir = File(context.filesDir, "dictionaries/imported")
 
-    /** Starts one background read of the resolved tier for [language]; [onLoaded] runs on the main thread, once, only on success. */
-    fun loadAsync(language: LanguageCode, onLoaded: (DictionaryIndex) -> Unit) {
+    /** Starts one background read of the resolved tier for [language]; [onLoaded] runs on the main thread, once, only when the dictionary itself was built. */
+    fun loadAsync(language: LanguageCode, onLoaded: (LoadedDictionary) -> Unit) {
         Thread({
             val bytes = readResolvedBytes(language)
             val index = bytes?.let(DictionaryIndex::fromPbdBytes)
             // The phone drops verbose logs, and a silently missing dictionary reads as "autocorrect is broken".
             DiagnosticLog.i(TAG) { "dictionary $language: bytes=${bytes?.size ?: "missing"}, index=${if (index != null) "loaded" else "FAILED"}" }
-            if (index != null) mainHandler.post { onLoaded(index) }
+            if (index == null) return@Thread
+            val contextModel = readContextModel(language)
+            mainHandler.post { onLoaded(LoadedDictionary(index, contextModel)) }
         }, "physiboard-dict-loader-$language").apply { isDaemon = true }.start()
+    }
+
+    private fun readContextModel(language: LanguageCode): ContextModel? {
+        val started = System.nanoTime()
+        val bytes = try {
+            context.assets.open("dictionaries/$language.bigrams").use { it.readBytes() }
+        } catch (e: IOException) {
+            null
+        }
+        val model = bytes?.let(ContextModel::read)
+        val millis = (System.nanoTime() - started) / 1_000_000
+        DiagnosticLog.i(TAG) {
+            "context $language: ${if (model != null) "loaded, vocabulary=${model.vocabularySize}, pairs=${model.pairCount}" else "none (${if (bytes == null) "no asset" else "unreadable"})"}, ${millis} ms"
+        }
+        return model
     }
 
     /** spec SS3's resolution, decided by [DictionaryTierResolver] and then read from wherever it points. */

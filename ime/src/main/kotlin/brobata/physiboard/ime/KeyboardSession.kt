@@ -37,6 +37,7 @@ import brobata.physiboard.core.actions.launcher.AssignmentSheet
 import brobata.physiboard.core.actions.picker.AddSubstitutionSheet
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
+import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictionaryBroadcastActions
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.LanguageCode
@@ -409,6 +410,9 @@ internal class KeyboardSession(
     /** The loaded dictionaries by language, primary and extras alike; [rebuildDictionaries] hands the wanted ones to the pipeline, primary first. */
     private val loadedDictionaries = linkedMapOf<LanguageCode, DictionaryIndex>()
 
+    /** The word-pair tables that came with them (autocorrect-suggestions.md SS16 W5); a language with none has no entry. Only the primary language's table reaches the pipeline. */
+    private val loadedContextModels = mutableMapOf<LanguageCode, ContextModel>()
+
     /**
      * Which [dictionaryLoadGeneration] owns the in-flight load for each language, not just whether
      * one is in flight: [reloadAllDictionaries] used to `clear()` a plain set here without
@@ -578,14 +582,15 @@ internal class KeyboardSession(
         if (language in loadedDictionaries || language in dictionaryLoadsInFlight) return
         val generation = dictionaryLoadGeneration
         dictionaryLoadsInFlight[language] = generation
-        dictionaryLoader.loadAsync(language) { index ->
+        dictionaryLoader.loadAsync(language) { loaded ->
             // A completion whose generation no longer owns this language's in-flight entry was
             // superseded by [reloadAllDictionaries] while it was running: neither its result nor
             // its removal of the in-flight marker (which would belong to the fresher load by now)
             // should apply.
             if (dictionaryLoadsInFlight[language] != generation) return@loadAsync
             dictionaryLoadsInFlight.remove(language)
-            loadedDictionaries[language] = index
+            loadedDictionaries[language] = loaded.index
+            loaded.contextModel?.let { loadedContextModels[language] = it }
             rebuildDictionaries()
             refreshCandidatesStrip()
         }
@@ -594,7 +599,12 @@ internal class KeyboardSession(
     /** spec SS8.4: "engines for languages no longer listed are dropped"; the primary comes first (`TextInputResources`' own contract). */
     private fun rebuildDictionaries() {
         val wanted = (listOf(primaryLanguage) + extraLanguages).mapNotNull { loadedDictionaries[it] }
-        if (wanted != pipeline.resources.dictionaries) pipeline.resources = pipeline.resources.copy(dictionaries = wanted)
+        // Context is read for the language being typed only: an extra language's table would
+        // judge words against the wrong sentences.
+        val context = loadedContextModels[primaryLanguage]
+        if (wanted != pipeline.resources.dictionaries || context !== pipeline.resources.contextModel) {
+            pipeline.resources = pipeline.resources.copy(dictionaries = wanted, contextModel = context)
+        }
     }
 
     /**
@@ -611,8 +621,9 @@ internal class KeyboardSession(
         // of racing the fresh load this call starts for the identical language.
         dictionaryLoadGeneration++
         loadedDictionaries.clear()
+        loadedContextModels.clear()
         dictionaryLoadsInFlight.clear()
-        pipeline.resources = pipeline.resources.copy(dictionaries = emptyList())
+        pipeline.resources = pipeline.resources.copy(dictionaries = emptyList(), contextModel = null)
         loadDictionary(primaryLanguage)
         extraLanguages.forEach(::loadDictionary)
     }
