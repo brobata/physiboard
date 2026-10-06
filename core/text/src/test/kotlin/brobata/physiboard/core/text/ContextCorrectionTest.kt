@@ -224,6 +224,35 @@ class ContextCorrectionTest {
     }
 
     @Test
+    fun `T-distance 0 blocks every slip but still adds a missing apostrophe or accent`() {
+        val off = shipped.copy(maxAutoReplaceDistance = 0)
+        assertEquals("I don't", applied("I dont", boundary("I dont", settings = off)))
+        assertEquals(BoundaryOutcome.CommitPlain, boundary("I want to slep", settings = off).outcome)
+        // The same as the path without a table does at 0 (§13).
+        assertEquals("I don't", applied("I dont", boundary("I dont", settings = off, contextModel = null)))
+    }
+
+    @Test
+    fun `T-with accent and spelling marks off, no apostrophe or accent is added`() {
+        val noMarks = shipped.copy(accentMatchingEnabled = false)
+        // `dont` is then judged as a slip like any other (`done` is one key away), never as `don't`.
+        assertTrue(applied("I dont", boundary("I dont", settings = noMarks)) != "I don't")
+        assertEquals(BoundaryOutcome.CommitPlain, boundary("I dont", settings = noMarks.copy(maxAutoReplaceDistance = 0)).outcome)
+        // Slips are still fixed.
+        assertEquals("I want to sleep", applied("I want to slep", boundary("I want to slep", settings = noMarks)))
+    }
+
+    @Test
+    fun `T-keyboard proximity is always on when the sentence is read, the key geometry is the model`() {
+        // `use_keyboard_proximity` steers only the path without a table (§13); with one, the slip
+        // costs come from the Titan's rows whatever the switch says.
+        val noProximity = shipped.copy(useKeyboardProximity = false)
+        for (text in listOf("I want to slep", "This is teh", "I definately")) {
+            assertEquals(applied(text, boundary(text, settings = shipped)), applied(text, boundary(text, settings = noProximity)), text)
+        }
+    }
+
+    @Test
     fun `T-without a table the engine decides exactly as it did before`() {
         // The legacy path keeps its own quirks; this only proves the table is what switches paths.
         val withTable = boundary("This is teh", settings = shipped)

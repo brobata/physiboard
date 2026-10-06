@@ -107,8 +107,8 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `auto_replace_on_space_enter` | boolean | false | true | Replace the word on Space or Enter | Auto-correction > "Automatic correction" |
 | `max_auto_replace_distance` | int 0 to 3 (0 = off) | 1 | 2 | Edit distance allowed for an automatic replacement | Auto-correction > "Maximum correction distance" |
 | `suggestions_enabled` | boolean | true | | The suggestion strip | Auto-correction > "Suggestions while typing" |
-| `accent_matching_enabled` | boolean | true | | Accent-insensitive matching | Auto-correction > "Accent & spelling marks" |
-| `use_keyboard_proximity` | boolean | false | true | Key-distance ranking | Auto-correction > "Keyboard Proximity Ranking" |
+| `accent_matching_enabled` | boolean | true | | Accent-insensitive matching; with a word-pair table, whether a correction may add a missing apostrophe or accent (`dont` -> `don't`) (autocorrect-suggestions.md SS13) | Auto-correction > "Accent & spelling marks" |
+| `use_keyboard_proximity` | boolean | false | true | Key-distance ranking on the path without a word-pair table; no effect on English, whose sentence-aware correction always weighs the Titan's key distances (autocorrect-suggestions.md SS13, SS16) | Auto-correction > "Keyboard Proximity Ranking" |
 | `fix_word_mixups` | boolean | false | | Swaps a real word typed for its twin (its/it's, your/you're, their/there, then/than) by reading the words on both sides; ships off until proven on the phone (autocorrect-suggestions.md SS10) | Auto-correction > "Fix mixed-up words" |
 | `use_edit_type_ranking` | boolean | false | | Insert > substitute > delete ranking | Auto-correction > "Edit Type Ranking" |
 | `user_dictionary_entries` | string, JSON array of objects `{"w": word, "f": frequency, "u": last used ms}` | none | | The personal dictionary | Auto-correction > "Personal dictionary" (User dictionary screen) |

@@ -50,10 +50,20 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
                 SwitchRow("Suggestions while typing", checked = correction.suggestionsEnabled, onCheckedChange = { set { p -> p.copy(suggestionsEnabled = it) } })
             }
             item {
-                SwitchRow("Accent & spelling marks", checked = correction.accentMatching, onCheckedChange = { set { p -> p.copy(accentMatching = it) } })
+                SwitchRow(
+                    "Accent & spelling marks",
+                    description = "Lets a correction add a missing apostrophe or accent, so dont can become don't.",
+                    checked = correction.accentMatching,
+                    onCheckedChange = { set { p -> p.copy(accentMatching = it) } },
+                )
             }
             item {
-                SwitchRow("Keyboard Proximity Ranking", checked = correction.useKeyboardProximity, onCheckedChange = { set { p -> p.copy(useKeyboardProximity = it) } })
+                SwitchRow(
+                    "Keyboard Proximity Ranking",
+                    description = "Ranks corrections by how close the keys are. English, which reads the sentence, always weighs the Titan's key distances; this switch is for the other languages.",
+                    checked = correction.useKeyboardProximity,
+                    onCheckedChange = { set { p -> p.copy(useKeyboardProximity = it) } },
+                )
             }
             item {
                 SwitchRow(

@@ -102,9 +102,16 @@ object ContextCorrection {
         if (letters.drop(1).any { it.isUpperCase() }) return Result.Leave("inner_capital")
         if (isKnownWithClitic(typed, dictionaries, userWords)) return Result.Leave("known_word")
 
+        // The typed word's own key may hold other spellings (`dont` -> `don't`, `cafe` -> `café`):
+        // they compete like any other candidate, but only by adding marks, never removing them,
+        // so `players'` and `Baháʼí` are never stripped back to a bare spelling; and only while
+        // `accent_matching_enabled` is on (§13: "Accent & spelling marks"), as on the path
+        // without a table.
+        val mayAddMarks = settings.accentMatchingEnabled && typed.none { WordChars.isApostrophe(it) || (it.isLetter() && it.code >= 0x80) }
         // Two edits in a word of four letters or fewer leave too little of it to say what was meant (`telo` is not `to`).
+        // `max_auto_replace_distance` 0 blocks every slip but not a repair of marks, which is distance 0 (§13).
         val maxDistance = minOf(if (letters.length <= 4) 1 else 2, settings.maxAutoReplaceDistance)
-        if (maxDistance <= 0) return Result.Leave("distance_too_high")
+        if (maxDistance <= 0 && !mayAddMarks) return Result.Leave("distance_too_high")
 
         val typedCapitalised = letters.first().isUpperCase()
         val previousId = when (previous) {
@@ -118,12 +125,8 @@ object ContextCorrection {
             else -> tuning.keepCapitalisedMidSentence
         } - tuning.keepPerLetter * maxOf(0, letters.length - 3)
         val typedKey = DictNormalization.normalizedKey(typed)
-        // The typed word's own key may hold other spellings (`dont` -> `don't`, `cafe` -> `café`):
-        // they compete like any other candidate, but only by adding marks, never removing them,
-        // so `players'` and `Baháʼí` are never stripped back to a bare spelling.
-        val mayAddMarks = typed.none { WordChars.isApostrophe(it) || (it.isLetter() && it.code >= 0x80) }
 
-        val candidates = gatherCandidates(typed, dictionaries, userWords, maxDistance, tuning.candidateLimit)
+        val candidates = gatherCandidates(typed, dictionaries, userWords, maxOf(0, maxDistance), tuning.candidateLimit)
         var best: String? = null
         var bestScore = Double.NEGATIVE_INFINITY
         var bestCost = 0.0

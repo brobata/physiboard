@@ -95,6 +95,15 @@ capital is no longer "case-repaired" to the dictionary's casing (`McDonald's` ->
 (its rule matcher now sees 64 characters before the word instead of 32, which changes nothing,
 since rules match at the end); every other bundled language is on it.
 
+Settings on this path (fixed after review; it used to ignore two of them):
+`max_auto_replace_distance` caps the distance as before, and at 0 ("Off") blocks every slip but
+still lets a missing apostrophe or accent be added (`I dont` -> `I don't`), as the old path and §13
+say; `accent_matching_enabled` off removes that repair (the typed word's other spellings are not
+candidates); `use_keyboard_proximity` has no effect here, by decision: the slip costs are the key
+geometry, so turning it off would mean pricing `tge` and `tme` alike for `the`, which no setting
+asks for. The switch keeps its meaning on the path without a table (every other language), and its
+subtitle says so.
+
 ### 3. The word before: the mix-up fix (`WordMixups`, behind `fix_word_mixups`, off)
 
 When word N's boundary arrives, after word N has been settled, word N-1 is judged if it is in a
