@@ -1,5 +1,6 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.RuleSet
 import brobata.physiboard.core.dict.UserWordStore
@@ -113,11 +114,17 @@ data class EditorSnapshot(
     val lineBeforeCursor: String? get() = textBeforeCursor?.substringAfterLast('\n')
 }
 
-/** The dictionaries, rule sets and personal store [BoundaryEngine] needs; primary dictionary first. */
+/**
+ * The dictionaries, rule sets and personal store [BoundaryEngine] needs; primary dictionary first.
+ * [contextModel] is the primary language's word-pair table (autocorrect-suggestions.md SS16 W5),
+ * or null when that language ships none or it has not loaded yet; null corrects exactly as the
+ * keyboard did before the table existed.
+ */
 data class TextInputResources(
     val ruleSets: List<RuleSet> = emptyList(),
     val dictionaries: List<DictionaryIndex> = emptyList(),
     val userWords: UserWordStore = UserWordStore.empty(),
+    val contextModel: ContextModel? = null,
 )
 
 /** Every setting this module reads, bundled so [TextInputPipeline.handle] takes one settings value. */
@@ -260,14 +267,16 @@ object TextInputPipeline {
             return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, restricted)
         }
         // spec autocorrect-suggestions.md SS7.2 step 3 wants 32 characters of context before the
-        // word; the window has to carry the word itself as well, or the drift check can never see
-        // the word it is comparing and every boundary on a word longer than the window reads as a
-        // disagreeing editor. The hard-boundary scan stops at the first real character either way.
-        val editorWindow = editor.contextTextBeforeCursor(trust, trackedWord)?.takeLast(trackedWord.length + 32)
+        // word, and SS10's mix-up check needs the two words before it as well (64 covers two long
+        // words and their spaces); the window has to carry the word itself too, or the drift check
+        // can never see the word it is comparing and every boundary on a word longer than the
+        // window reads as a disagreeing editor. The hard-boundary scan stops at the first real
+        // character either way.
+        val editorWindow = editor.contextTextBeforeCursor(trust, trackedWord)?.takeLast(trackedWord.length + BoundaryEngine.CONTEXT_WINDOW)
         return when (DriftCheck.evaluate(trackedWord, editorWindow)) {
             is DriftCheck.Agreed -> BoundaryEngine.evaluate(
                 trackedWord, editorWindow!!, boundaryChar, resources.ruleSets, resources.dictionaries, resources.userWords,
-                settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, memory,
+                settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, memory, resources.contextModel,
             )
             DriftCheck.Unavailable, DriftCheck.Disagreed -> BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, noInputConnection)
         }

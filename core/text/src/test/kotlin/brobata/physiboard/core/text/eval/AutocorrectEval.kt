@@ -102,7 +102,7 @@ object AutocorrectEval {
         val results = cases.map { case ->
             val evaluation = BoundaryEngine.evaluate(
                 trackedWord = case.typed,
-                textBeforeCursor32 = case.typed,
+                textBeforeCursor = case.typed,
                 boundaryChar = ' ',
                 ruleSets = emptyList(),
                 dictionaries = listOf(dictionary),

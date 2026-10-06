@@ -71,6 +71,8 @@ data class AutocorrectSettings(
     val useKeyboardProximity: Boolean = false,
     val useEditTypeRanking: Boolean = false,
     val accentMatchingEnabled: Boolean = true,
+    /** `fix_word_mixups`: the previous-word mix-up fix (its/it's, their/there, ...). spec: autocorrect-suggestions.md SS10. Ships off. */
+    val fixWordMixups: Boolean = false,
 ) {
     init {
         require(maxAutoReplaceDistance in 0..3) { "maxAutoReplaceDistance must be 0..3, was $maxAutoReplaceDistance" }

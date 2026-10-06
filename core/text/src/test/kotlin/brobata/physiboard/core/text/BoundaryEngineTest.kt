@@ -25,7 +25,7 @@ class BoundaryEngineTest {
         memory: AutocorrectMemory = AutocorrectMemory(),
     ) = BoundaryEngine.evaluate(
         trackedWord = word,
-        textBeforeCursor32 = word,
+        textBeforeCursor = word,
         boundaryChar = boundary,
         ruleSets = ruleSets,
         dictionaries = dictionaries,
@@ -148,7 +148,7 @@ class BoundaryEngineTest {
     fun `a hard boundary before the cursor blocks correction`() {
         val (_, outcome) = BoundaryEngine.evaluate(
             trackedWord = "lo",
-            textBeforeCursor32 = "@lo", // a non-word symbol directly before the tracked word
+            textBeforeCursor = "@lo", // a non-word symbol directly before the tracked word
             boundaryChar = ' ',
             ruleSets = emptyList(),
             dictionaries = listOf(dict("lo" to 10, "loo" to 200)),
@@ -171,7 +171,7 @@ class BoundaryEngineTest {
     fun `SS6-1 a user-added lowercase word is not case-repaired from the primary dictionary`() {
         val userWords = UserWordStore.empty().withPersonalWordAdded("paris", nowMillis = 0L)
         val (_, outcome) = BoundaryEngine.evaluate(
-            trackedWord = "paris", textBeforeCursor32 = "paris", boundaryChar = ' ',
+            trackedWord = "paris", textBeforeCursor = "paris", boundaryChar = ' ',
             ruleSets = emptyList(), dictionaries = listOf(dict("Paris" to 200)), userWords = userWords,
             settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true), rankingOptions = RankingOptions(),
             lengthChangeAllowance = 2, memory = AutocorrectMemory(),
@@ -196,7 +196,7 @@ class BoundaryEngineTest {
         // If the two are compared without folding, the word is never excluded from the 32-character
         // window, the scan stops on its own trailing letter, and the emoji before it is never seen.
         val (_, outcome) = BoundaryEngine.evaluate(
-            trackedWord = "we'll", textBeforeCursor32 = "\uD83D\uDE42 we\u2019ll", boundaryChar = ' ',
+            trackedWord = "we'll", textBeforeCursor = "\uD83D\uDE42 we\u2019ll", boundaryChar = ' ',
             ruleSets = emptyList(), dictionaries = listOf(dict("We'll" to 200)), userWords = UserWordStore.empty(),
             settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true), rankingOptions = RankingOptions(),
             lengthChangeAllowance = 2, memory = AutocorrectMemory(),
@@ -211,7 +211,7 @@ class BoundaryEngineTest {
         assertEquals(null, afterBlank.lastReplacement)
 
         val (afterHard, _) = BoundaryEngine.evaluate(
-            trackedWord = "lo", textBeforeCursor32 = "@lo", boundaryChar = ' ',
+            trackedWord = "lo", textBeforeCursor = "@lo", boundaryChar = ' ',
             ruleSets = emptyList(), dictionaries = listOf(dict("lo" to 10)), userWords = UserWordStore.empty(),
             settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true), rankingOptions = RankingOptions(),
             lengthChangeAllowance = 0, memory = memory,

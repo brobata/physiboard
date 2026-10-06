@@ -22,4 +22,14 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
     testLogging { events("failed") }
+    // The sentence harness (autocorrect-suggestions.md SS12) replays the shipped English dictionary
+    // and word-pair table where the app ships them, rather than a copy in test resources.
+    val shippedDictionaries = rootProject.file("app/src/main/assets/dictionaries")
+    inputs.dir(shippedDictionaries).withPropertyName("shippedDictionaries").withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("physiboard.assets.dictionaries", shippedDictionaries.absolutePath)
+    // Opt-in tuning sweep: -Pphysiboard.eval.sweep=true
+    providers.gradleProperty("physiboard.eval.sweep").orNull?.let { systemProperty("physiboard.eval.sweep", it) }
+    providers.gradleProperty("physiboard.eval.grid").orNull?.let { systemProperty("physiboard.eval.grid", it) }
+    providers.gradleProperty("physiboard.eval.split").orNull?.let { systemProperty("physiboard.eval.split", it) }
+    maxHeapSize = "6g"
 }

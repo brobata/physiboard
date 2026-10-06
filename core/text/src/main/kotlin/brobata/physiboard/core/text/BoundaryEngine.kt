@@ -1,11 +1,27 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictNormalization
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.RuleSet
 import brobata.physiboard.core.dict.SubstitutionMatcher
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordFrequency
+
+/**
+ * The measured constants of the context-aware path, bundled so the evaluation harness (SS12) can
+ * sweep them; the keyboard always runs [DEFAULT]. [mixupWords] are the confusion-set words the
+ * mix-up fix may act on (the shipped [WordMixups.sets] unless a measurement says otherwise).
+ */
+data class ContextTuning(
+    val correction: ContextCorrection.Tuning = ContextCorrection.DEFAULT_TUNING,
+    val mixups: WordMixups.Tuning = WordMixups.DEFAULT_TUNING,
+    val mixupWords: Set<String> = WordMixups.sets.flatten().toSet(),
+) {
+    companion object {
+        val DEFAULT: ContextTuning = ContextTuning()
+    }
+}
 
 /** What happened at a word boundary (Space, Enter, or boundary punctuation). spec: autocorrect-suggestions.md SS7.2. */
 sealed class BoundaryOutcome {
@@ -75,14 +91,19 @@ data class BoundaryEvaluation(val memory: AutocorrectMemory, val outcome: Bounda
  */
 object BoundaryEngine {
 
+    /** How many characters before the tracked word the caller should supply: two long words and their spaces. */
+    const val CONTEXT_WINDOW: Int = 64
+
     /**
-     * [textBeforeCursor32] is the 32-character hard-boundary scan window (SS7.2 step 3).
+     * [textBeforeCursor] is the text before the cursor ending with the tracked word, [CONTEXT_WINDOW]
+     * characters of context ahead of it: the hard-boundary scan window (SS7.2 step 3) and the
+     * previous words the context prior and the mix-up check read (SS9, SS10).
      * [trackedWord] is the current word as tracked, already re-synced from the field.
      * [dictionaries] is primary dictionary first. [memory] carries undo/rejection state forward.
      */
     fun evaluate(
         trackedWord: String,
-        textBeforeCursor32: String,
+        textBeforeCursor: String,
         boundaryChar: Char,
         ruleSets: List<RuleSet>,
         dictionaries: List<DictionaryIndex>,
@@ -91,6 +112,8 @@ object BoundaryEngine {
         rankingOptions: RankingOptions,
         lengthChangeAllowance: Int,
         memory: AutocorrectMemory,
+        contextModel: ContextModel? = null,
+        contextTuning: ContextTuning = ContextTuning.DEFAULT,
     ): BoundaryEvaluation {
         val trigger = BoundaryDebugInfo.triggerFor(boundaryChar)
         // spec app-shell.md SS11/T28: the one row this store treats as pure noise is an
@@ -113,7 +136,7 @@ object BoundaryEngine {
         // [trackedWord] folds apostrophes to the straight one (CurrentWordTracker); the field holds
         // the key as pressed, so the comparison folds the window the same way (WordChars.straightenAll),
         // exactly as DriftCheck does, or a curly apostrophe would keep the word inside the scan.
-        val textBeforeWord = if (WordChars.straightenAll(textBeforeCursor32).endsWith(trackedWord)) textBeforeCursor32.dropLast(trackedWord.length) else textBeforeCursor32
+        val textBeforeWord = if (WordChars.straightenAll(textBeforeCursor).endsWith(trackedWord)) textBeforeCursor.dropLast(trackedWord.length) else textBeforeCursor
         if (hasHardBoundaryBeforeCursor(textBeforeWord)) {
             return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, attempt("hard_boundary_before_cursor"))
         }
@@ -121,7 +144,7 @@ object BoundaryEngine {
         fun isKnown(word: String): Boolean = dictionaries.any { it.contains(word) } || userWords.isKnown(word)
 
         if (settings.autoCorrectEnabled) {
-            val textForMatch = textBeforeCursor32 + boundaryChar
+            val textForMatch = textBeforeCursor + boundaryChar
             val match = SubstitutionMatcher.match(textForMatch, ruleSets, ::isKnown)
             if (match != null) {
                 val ops = listOf(
@@ -141,6 +164,13 @@ object BoundaryEngine {
 
         if (!settings.autoReplaceOnSpaceEnter) {
             return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, attempt("auto_replace_disabled", before = ""))
+        }
+
+        if (contextModel != null) {
+            return evaluateWithContext(
+                trackedWord, textBeforeCursor, textBeforeWord, dictionaries, userWords, settings, lengthChangeAllowance, memory, contextModel,
+                contextTuning, ::skipped, ::applied,
+            )
         }
 
         val primaryDict = dictionaries.firstOrNull()
@@ -175,6 +205,129 @@ object BoundaryEngine {
         }
 
         return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, skipped("no_suggestion"))
+    }
+
+    /**
+     * Steps 8 and 9 of SS7.2 when the word-pair table is loaded (SS16 W2, W5), then the mix-up
+     * check of the previous word (SS10's exception). The word just finished is settled first:
+     * case repair, then for any word no dictionary or word store spells this way
+     * [ContextCorrection] (which also weighs an accent or apostrophe repair, `dont` -> `don't`). A
+     * word spelled exactly as some dictionary or word store has it is never replaced (SS10).
+     *
+     * Then, with `fix_word_mixups` on, the word before it is judged from both sides with the
+     * settled word on its right ([WordMixups]). The previous word is read from [textBeforeCursor]
+     * itself, so a fix can only ever rewrite text the field just reported, and only when the two
+     * words are separated by exactly one space; an editor that reports nothing never gets this
+     * far (DriftCheck). Both edits are one replacement of the span from the previous word to the
+     * cursor, so one Backspace puts back exactly what was typed, and the rejection it records
+     * covers each word of it (SS7.5).
+     */
+    private fun evaluateWithContext(
+        trackedWord: String,
+        textBeforeCursor: String,
+        textBeforeWord: String,
+        dictionaries: List<DictionaryIndex>,
+        userWords: UserWordStore,
+        settings: AutocorrectSettings,
+        lengthChangeAllowance: Int,
+        memory: AutocorrectMemory,
+        model: ContextModel,
+        tuning: ContextTuning,
+        skipped: (String, Int?) -> BoundaryDebugInfo,
+        applied: (String, String, Int?) -> BoundaryDebugInfo,
+    ): BoundaryEvaluation {
+        // A window as long as the caller was asked for was cut from a longer text: its first word may be cut too.
+        val truncated = textBeforeCursor.length >= trackedWord.length + CONTEXT_WINDOW
+        val previous = SentenceContext.before(textBeforeWord, textBeforeWord.length, truncated)
+
+        var settled = trackedWord
+        var source: String? = null
+        var reason: String
+        when {
+            memory.isRejected(trackedWord) -> reason = "rejected_by_user"
+            else -> {
+                val repaired = primaryCaseRepair(trackedWord, dictionaries.firstOrNull(), dictionaries, userWords)
+                when {
+                    repaired != null -> { settled = repaired; source = "PRIMARY_CASE"; reason = "" }
+                    ContextCorrection.isExactlyKnown(trackedWord, dictionaries, userWords) -> reason = "known_word"
+                    else -> when (val decision = ContextCorrection.decide(trackedWord, previous, model, dictionaries, userWords, settings, lengthChangeAllowance, tuning.correction)) {
+                        is ContextCorrection.Result.Commit -> { settled = decision.replacement; source = "CONTEXT"; reason = "" }
+                        is ContextCorrection.Result.Leave -> reason = decision.reason
+                    }
+                }
+            }
+        }
+
+        var mixupStart = -1
+        var mixupReplacement = ""
+        // The window must end with the word this engine was asked about, or "the previous word"
+        // could be that word itself (DriftCheck guarantees it for the keyboard; this keeps the
+        // public function safe on its own). The previous word must stand on its own: the start of
+        // the text, a space, or an opening quote or bracket before it, never a symbol (`@your`,
+        // `site.com/its`), and exactly one space after it.
+        val mixupAllowed = settings.fixWordMixups && previous is Preceding.Word && previous.gap == " " &&
+            WordChars.straightenAll(textBeforeCursor).endsWith(trackedWord) &&
+            standsAlone(textBeforeWord, previous.start) && !memory.isRejected(previous.text)
+        if (mixupAllowed) {
+            val before = SentenceContext.before(textBeforeWord, previous.start, truncated)
+            val beforeId = when (before) {
+                Preceding.SentenceStart -> ContextModel.SENTENCE_START
+                Preceding.Unknown -> ContextModel.NO_CONTEXT
+                is Preceding.Word -> model.idOf(before.key)
+            }
+            val twin = WordMixups.judge(previous.key, beforeId, WordChars.straightenAll(settled).lowercase(), model, tuning.mixups, tuning.mixupWords)
+            if (twin != null) {
+                mixupStart = previous.start
+                mixupReplacement = twinAsTyped(previous.text, twin, dictionaries, textBeforeCursor.substring(previous.start))
+            }
+        }
+
+        if (source == null && mixupStart < 0) {
+            return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, skipped(reason, null))
+        }
+        val original: String
+        val replacement: String
+        if (mixupStart >= 0) {
+            // The field's own text from the previous word to the cursor, apostrophes exactly as typed.
+            original = textBeforeCursor.substring(mixupStart)
+            // A word this boundary did not correct goes back exactly as the field holds it (a curly apostrophe stays curly).
+            val current = if (source == null) textBeforeCursor.takeLast(trackedWord.length) else settled
+            replacement = mixupReplacement + " " + current
+        } else {
+            original = trackedWord
+            replacement = settled
+        }
+        val ops = listOf(EditorOp.DeleteSurrounding(original.length, 0), EditorOp.CommitText(replacement), EditorOp.Haptic)
+        val label = listOfNotNull(source, if (mixupStart >= 0) "WORD_MIXUP" else null).joinToString("+")
+        // before/after describe the word just finished, never the span: `:ime` learns "the
+        // completed word" from them (SS4, SS7.3), and "its tail" is not a word. The mix-up itself
+        // is named in the reason.
+        val mixupNote = if (mixupStart >= 0) "previous ${textBeforeCursor.substring(mixupStart, mixupStart + (original.length - trackedWord.length - 1))} -> $mixupReplacement" else ""
+        val debug = applied(label, settled, null).copy(reason = mixupNote)
+        return BoundaryEvaluation(memory.afterReplacement(original, replacement), BoundaryOutcome.Replaced(ops, original, replacement, addWordCandidate = null), debug)
+    }
+
+    private const val OPENERS = "\"([{\u201C\u2018\u00AB"
+
+    /** Whether the word starting at [start] of [text] stands on its own: text start, whitespace or an opening quote or bracket before it. */
+    private fun standsAlone(text: String, start: Int): Boolean {
+        val before = text.getOrNull(start - 1) ?: return true
+        return before.isWhitespace() || before in OPENERS
+    }
+
+    /**
+     * The twin spelled as the dictionary has it (`I'll`, never `i'll`), then cased like the word it
+     * replaces, with the apostrophe style the user's own text uses.
+     */
+    private fun twinAsTyped(typed: String, twin: String, dictionaries: List<DictionaryIndex>, span: String): String {
+        val entries = mutableListOf<WordFrequency>()
+        dictionaries.firstOrNull()?.entriesForExactKey(twin, limit = 8, into = entries)
+        val spelled = entries.filter { WordChars.straightenAll(it.word).equals(twin, ignoreCase = true) }.maxByOrNull { it.frequency }?.word ?: twin
+        // The pronoun is a capital whatever the list says: `i'll` is always `I'll`.
+        val pronoun = if (spelled.startsWith("i'")) "I" + spelled.substring(1) else spelled
+        val cased = CasingRules.forTypedWord(typed, pronoun)
+        val curly = span.firstOrNull { WordChars.isApostrophe(it) && it != '\'' }
+        return if (curly != null) cased.replace('\'', curly) else cased
     }
 
     /**

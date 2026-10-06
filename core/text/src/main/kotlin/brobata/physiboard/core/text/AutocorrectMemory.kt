@@ -25,10 +25,12 @@ data class AutocorrectMemory(
     /** A letter or digit was typed: the rejected set empties, so a rejection survives only until the next word starts. */
     fun afterLetterOrDigitTyped(): AutocorrectMemory = copy(rejectedWords = emptySet())
 
-    /** Whether [word] (case-insensitively) is currently in the rejected set. */
-    fun isRejected(word: String): Boolean = word.lowercase() in rejectedWords
+    /** Whether [word] (case-insensitively, any apostrophe style) is currently in the rejected set. */
+    fun isRejected(word: String): Boolean = rejectionKey(word) in rejectedWords
 
-    internal fun withRejected(words: Set<String>): AutocorrectMemory = copy(rejectedWords = rejectedWords + words)
+    internal fun withRejected(words: Set<String>): AutocorrectMemory = copy(rejectedWords = rejectedWords + words.map(::rejectionKey))
+
+    private fun rejectionKey(word: String): String = WordChars.straightenAll(word).lowercase()
 }
 
 /**
@@ -55,7 +57,11 @@ object AutocorrectUndo {
 
         val deleteCount = last.replacement.length + trailing.length
         val ops = listOf(EditorOp.DeleteSurrounding(deleteCount, 0), EditorOp.CommitText(last.original))
-        val rejected = setOfNotNull(last.original.lowercase(), apostropheRoot?.lowercase())
+        // A mix-up fix replaces the previous word and the current one together ("it's tail" ->
+        // "its tail"); undoing it rejects each word, so the next boundary neither redoes the
+        // mix-up nor re-corrects the word after it. spec: SS7.5 step 3, SS10.
+        val words = last.original.split(' ').filter { it.isNotEmpty() }
+        val rejected = setOfNotNull(last.original, apostropheRoot) + words
         val newMemory = memory.copy(lastReplacement = null).withRejected(rejected)
         return Result(ops, newMemory, addWordCandidate = last.original)
     }
