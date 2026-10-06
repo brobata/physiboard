@@ -1421,7 +1421,7 @@ internal class KeyboardSession(
         // keyboard was busy the window lapsed and dictation never fired (2026-09-27, and the
         // reason the 2.x build answered this key at the very top of its own handler).
         if (stroke.key == KeyId.Modifier(ModifierKey.FN)) return@runCatching processFnStroke(stroke)
-        processKeyStroke(stroke)
+        processKeyStroke(stroke, event)
     }.getOrElse { error ->
         Log.e(TAG, "onKeyEvent crashed on keyCode=${event.keyCode}; letting the raw key through", error)
         false
@@ -1564,7 +1564,7 @@ internal class KeyboardSession(
         return true
     }
 
-    private fun processKeyStroke(stroke: KeyStroke): Boolean {
+    private fun processKeyStroke(stroke: KeyStroke, event: KeyEvent? = null): Boolean {
         val ic = service.currentInputConnection ?: return false
         // spec: expansion-clipboard-pickers-launcher.md SS9.1: "on every hardware key down with
         // repeat count 0 while an editable field is active" -- reaching this line already means an
@@ -1593,7 +1593,7 @@ internal class KeyboardSession(
         val glyphBefore = pipeline.modifierGlyphInput()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val tPipeline = System.nanoTime()
-        val consumed = applyResult(ic, result, readout)
+        val consumed = applyResult(ic, result, readout, keyTypes = event?.typedCharacter())
         val tApply = System.nanoTime()
         if (result.appMayEditField && stroke.edge == KeyEdge.DOWN && !AppliedEditAccounting.movesCursor(result.ops)) {
             AppliedEditAccounting.expectedCursorAfterPassThrough(stroke.key, readout.cursorAbsolute, hasSelection = !lastReportedSelectionCollapsed)?.let { expected ->
@@ -2105,7 +2105,7 @@ internal class KeyboardSession(
         runCatching {
             // spec SS2.3: "If the normal pipeline does not handle the replayed down, the raw down
             // ... [is] sent to the editor through the input connection instead."
-            if (!processKeyStroke(downStroke)) downEvent?.let { service.currentInputConnection?.sendKeyEvent(it) }
+            if (!processKeyStroke(downStroke, downEvent)) downEvent?.let { service.currentInputConnection?.sendKeyEvent(it) }
         }.onFailure { error -> Log.e(TAG, "trackpad replay (down) crashed", error) }
     }
 
@@ -2118,7 +2118,7 @@ internal class KeyboardSession(
         pendingTrackpadDownStroke = null
         pendingTrackpadUpEvent = null
         runCatching {
-            val downConsumed = downStroke?.let(::processKeyStroke) ?: false
+            val downConsumed = downStroke?.let { processKeyStroke(it, downEvent) } ?: false
             if (!downConsumed) downEvent?.let { service.currentInputConnection?.sendKeyEvent(it) }
             val upStroke = upEvent?.let(::normalizeStroke)
             val upConsumed = upStroke?.let(::processKeyStroke) ?: false
@@ -2151,7 +2151,7 @@ internal class KeyboardSession(
      * the one place in this whole feature where "was it delivered" can finally be answered, and
      * where a Ctrl-triggered send's Ctrl state actually gets cleared once that answer is yes.
      */
-    private fun applyResult(ic: InputConnection, result: PipelineResult, readout: EditorReadout): Boolean {
+    private fun applyResult(ic: InputConnection, result: PipelineResult, readout: EditorReadout, keyTypes: Char? = null): Boolean {
         if (result.ops.isNotEmpty()) {
             if (AppliedEditAccounting.movesCursor(result.ops)) {
                 ownEdit = OwnEditExpectation(
@@ -2166,7 +2166,12 @@ internal class KeyboardSession(
                 sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
                 haptic = ::performHaptic,
                 dispatchMediaKey = ::dispatchMediaKey,
-                typeAsKeys = if (result.altLayerStroke) ic::sendCharacterAsKeys else null,
+                typeAsKeys = characterDelivery(
+                    altLayerStroke = result.altLayerStroke,
+                    terminalMode = currentFieldKind == FieldKind.RAW_MODE_APP,
+                    keyTypes = keyTypes,
+                    sendAsKeys = ic::sendCharacterAsKeys,
+                ),
             )
         }
         // spec: the c440844 invariant. An edit this keyboard made to the text, or a key it handed

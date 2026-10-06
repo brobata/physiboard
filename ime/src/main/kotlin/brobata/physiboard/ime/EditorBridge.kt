@@ -139,6 +139,44 @@ internal fun InputConnection.applyEditorOps(
     }
 }
 
+/**
+ * How a single character the last op puts down reaches the app: the `typeAsKeys` argument of
+ * [applyEditorOps], or null for a plain commit.
+ *
+ * An Alt-layer stroke is typed as keys in every app (per-app-behavior.md D7). In a terminal-mode
+ * field (an app on the Terminal mode list, [brobata.physiboard.core.text.FieldKind.RAW_MODE_APP])
+ * every other character the physical key does not itself type is typed as keys too: a capital
+ * from a tapped Shift or caps lock, a Sym chord symbol. Chrome hands a one-character commit it
+ * cannot match to a recorded key down to the page as a key code 229 key down plus an insert, and
+ * xterm.js reads that insert back from its hidden text box on a zero-delay timer, which loses it
+ * whenever the next key reaches the page first and the page clears the box (PersaLink does after
+ * every input): a fast "Shift, M, a" typed "a" (D8). A character equal to [keyTypes], what the
+ * device key map gives the physical key down with its real meta state, stays a commit: Chrome
+ * replays the recorded key for it, which the page reads as the real key press it is. [keyTypes]
+ * is null when there is no physical key behind the character (a long press, a tap on screen).
+ */
+internal fun characterDelivery(
+    altLayerStroke: Boolean,
+    terminalMode: Boolean,
+    keyTypes: Char?,
+    sendAsKeys: (Char) -> Boolean,
+): ((Char) -> Boolean)? = when {
+    altLayerStroke -> sendAsKeys
+    terminalMode -> { ch -> ch != keyTypes && sendAsKeys(ch) }
+    else -> null
+}
+
+/**
+ * The character the device key map gives this physical key down with its own meta state, the
+ * same value Chrome compares a commit against (`KeyEvent.getUnicodeChar()`); null for a key that
+ * types nothing or a dead accent.
+ */
+internal fun KeyEvent.typedCharacter(): Char? {
+    val unicode = runCatching { getUnicodeChar(metaState) }.getOrDefault(0)
+    if (unicode == 0 || unicode and KeyCharacterMap.COMBINING_ACCENT != 0) return null
+    return unicode.toChar()
+}
+
 private fun InputConnection.commitTyped(text: String, typeAsKeys: ((Char) -> Boolean)?) {
     if (typeAsKeys != null && text.length == 1 && typeAsKeys(text[0])) return
     commitText(text, 1)
