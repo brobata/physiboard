@@ -45,6 +45,8 @@ required typeface (app-shell.md SS22.1) and is not PhysiBoard's work; the full l
 in `third_party/licenses/OFL-1.1.txt`.
 
 The bundled dictionaries carry their own terms; see [`docs/dictionaries.md`](docs/dictionaries.md).
+The English word-pair table is built from sentences of [Tatoeba](https://tatoeba.org), used under
+CC BY 2.0 FR.
 
 ## The 2.x line
 

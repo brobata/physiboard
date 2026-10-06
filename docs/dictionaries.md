@@ -104,3 +104,29 @@ waiting for the keyboard process to restart (SS17's Keep/Drop: "Per-process dict
 invalidated | Fix | Reload on install, import, uninstall"). Only English is bundled today, for the
 licensing reason described above, so switching to a style whose language is not `en` and has no
 downloaded or imported file loads no dictionary for it.
+
+## The word-pair table (`en.bigrams`)
+
+`app/src/main/assets/dictionaries/en.bigrams` tells autocorrect which words follow which, so it
+can read the sentence: `definately not` becomes `definitely not` (never `defiantly`), and `wagged
+it's tail` becomes `wagged its tail`. It holds about 500,000 pairs of dictionary words, each seen
+at least twice.
+
+It is built by `scripts/build_bigrams.py` from the English sentences of
+**[Tatoeba](https://tatoeba.org)**, used under **CC BY 2.0 FR**, which permits redistribution
+(commercial included) with attribution; this paragraph and the app's About screen are that
+attribution. Only counts of word pairs are shipped, never sentences. One sentence in ten, chosen
+by its Tatoeba id, is held out of the counts; a 6,000-sentence sample of those is the test corpus
+`core/text/src/test/resources/autocorrect/en_heldout_sentences.txt`, so the harness measures on
+text the table never saw.
+
+It is a separate asset rather than a block inside `en.pbd` because a downloaded or imported
+`en.pbd` replaces the bundled one, and the pair table must not disappear with it.
+
+Rebuild it with:
+
+```
+python3 scripts/build_bigrams.py --pbd app/src/main/assets/dictionaries/en.pbd \
+    --sentences eng_sentences.tsv --out app/src/main/assets/dictionaries/en.bigrams \
+    --heldout /tmp/heldout.txt
+```
