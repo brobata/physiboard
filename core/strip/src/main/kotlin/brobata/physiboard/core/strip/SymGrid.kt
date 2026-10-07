@@ -14,10 +14,15 @@ package brobata.physiboard.core.strip
 enum class SymGridPage(val pageNumber: Int) {
     EMOJI(SYM_PAGE_EMOJI),
     SYMBOLS(SYM_PAGE_SYMBOLS),
+
+    /** spec SS4.6 (3.0): the user's own key layers, pages 7 to 9. */
+    CUSTOM_1(SYM_PAGE_CUSTOM_1),
+    CUSTOM_2(SYM_PAGE_CUSTOM_1 + 1),
+    CUSTOM_3(SYM_PAGE_CUSTOM_1 + 2),
     ;
 
     companion object {
-        /** spec SS4.2, SS5.7: only pages 1 and 2 have a grid; every other page number (0 closed, 3, 4 panels) has none. */
+        /** spec SS4.2, SS5.7, SS4.6: pages 1, 2 and 7 to 9 have a grid; every other page number (0 closed, 3, 4, 6 panels) has none. */
         fun forPageNumber(pageNumber: Int): SymGridPage? = entries.firstOrNull { it.pageNumber == pageNumber }
     }
 }
@@ -94,7 +99,9 @@ data class SymGridGeometry(
     /** spec SS5.7: the character size for [page], "emoji at 0.75 of the key height" or "page 2 characters at 0.5". */
     fun characterPx(page: SymGridPage): Int = when (page) {
         SymGridPage.EMOJI -> emojiCharacterPx
-        SymGridPage.SYMBOLS -> symbolsCharacterPx
+        // spec SS4.6: a page of the user's own may hold symbols, emoji or short words; the
+        // smaller size keeps a word inside its key.
+        SymGridPage.SYMBOLS, SymGridPage.CUSTOM_1, SymGridPage.CUSTOM_2, SymGridPage.CUSTOM_3 -> symbolsCharacterPx
     }
 
     companion object {

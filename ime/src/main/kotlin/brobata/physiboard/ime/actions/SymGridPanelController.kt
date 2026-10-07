@@ -13,6 +13,7 @@ import brobata.physiboard.core.strip.SymGridCell
 import brobata.physiboard.core.strip.SymGridGeometry
 import brobata.physiboard.core.strip.SymGridLetter
 import brobata.physiboard.core.strip.SymGridModel
+import brobata.physiboard.core.strip.SYM_PAGE_CUSTOM_1
 import brobata.physiboard.core.strip.SymGridPage
 
 /**
@@ -152,6 +153,13 @@ internal class SymGridPanelController(service: InputMethodService) {
                     setTextColor(theme.textAndIcons)
                     setTypeface(typeface, android.graphics.Typeface.BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_PX, geometry.characterPx(page).toFloat())
+                    if (page.pageNumber >= SYM_PAGE_CUSTOM_1) {
+                        // layers-sym-alt.md SS4.6: a key of the user's own may hold a short word;
+                        // it shrinks to fit its key rather than spilling out of it.
+                        maxLines = 1
+                        val maxPx = geometry.characterPx(page).coerceAtLeast(MIN_CUSTOM_TEXT_PX + 1)
+                        setAutoSizeTextTypeUniformWithConfiguration(MIN_CUSTOM_TEXT_PX, maxPx, 1, TypedValue.COMPLEX_UNIT_PX)
+                    }
                 },
                 FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
             )
@@ -196,5 +204,8 @@ internal class SymGridPanelController(service: InputMethodService) {
         /** SPEC GAP: SS5.7 sizes only the big character (0.75 / 0.5 of the key height); the small letter label's size is unstated. 10 sp reads as "small" beside a 52-78 px character without crowding the 56 dp key. */
         const val LABEL_TEXT_SP = 10f
         const val GLYPH_TEXT_SP = 20f
+
+        /** The smallest a word on a page of the user's own shrinks to, in pixels. */
+        const val MIN_CUSTOM_TEXT_PX = 14
     }
 }

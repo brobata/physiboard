@@ -23,6 +23,7 @@ import brobata.physiboard.core.keys.SymPageEntry
 import brobata.physiboard.core.keys.SymPageId
 import brobata.physiboard.core.keys.SymPageMap
 import brobata.physiboard.core.keys.SymPagesConfig
+import brobata.physiboard.core.keys.Variations
 import brobata.physiboard.core.pointer.caret.CaretBadgeSettings
 import brobata.physiboard.core.pointer.keyboardswipe.KeyboardSwipeSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
@@ -206,14 +207,43 @@ internal object ImeSettings {
      * that file is real I/O (`:ime`'s `CtrlMappingFileLoader`), so this pure function only takes
      * the already-decoded table; null keeps [base]'s own shipped default, which is what every
      * existing caller that has not loaded a file yet still gets.
+     *
+     * [subtypeLocale] is the active input style's locale: layers-sym-alt.md SS8.2 orders the
+     * built-in accent table for its language, and `custom_variations` lays the user's own lists
+     * over it.
      */
-    fun layout(base: LayoutDescription, s: Settings, ctrlMappings: CtrlMappingTable? = null): LayoutDescription = base.copy(
+    fun layout(base: LayoutDescription, s: Settings, ctrlMappings: CtrlMappingTable? = null, subtypeLocale: String? = null): LayoutDescription = base.copy(
         emojiPage = toned(customSymPage(s.symPages.customEmojiPage) ?: base.emojiPage, s.symPages.defaultSkinTone),
         symbolsPage = toned(customSymPage(s.symPages.customSymbolsPage) ?: base.symbolsPage, s.symPages.defaultSkinTone),
         symPagesConfig = symPagesConfig(s.symPages.pages),
         longPress = LongPressSettings(mode = s.keys.longPressMode, thresholdMs = s.keys.longPressThresholdMs),
         ctrlMappings = ctrlMappings ?: base.ctrlMappings,
+        variations = Variations.effective(subtypeLocale, Variations.overridesFromStored(s.keys.customVariations)),
+        customPages = customPages(s),
     )
+
+    /**
+     * spec: layers-sym-alt.md SS4.6: the user's own pages 7 to 9, each a key layer built the way
+     * a custom Emoji or Symbols page is (SS4.4, letter keys only, no uppercase map) and toned the
+     * same way; a page with no entry is left out and has no characters.
+     */
+    private fun customPages(s: Settings): Map<SymPageId, SymPageMap> =
+        SymPageId.CUSTOM.zip(s.symPages.customPages).mapNotNull { (id, page) ->
+            customSymPage(page.mappings)?.let { id to toned(it, s.symPages.defaultSkinTone) }
+        }.toMap()
+
+    /**
+     * spec: layers-sym-alt.md SS5.10, SS4.6: the chooser names of the user's own pages that are
+     * set up (switched on, or holding at least one key), for [brobata.physiboard.core.keys.SymPageChooser.entries].
+     */
+    fun customPageNames(s: Settings): Map<SymPageId, String> {
+        val enabled = listOf(s.symPages.pages.custom1Enabled, s.symPages.pages.custom2Enabled, s.symPages.pages.custom3Enabled)
+        return SymPageId.CUSTOM.indices.mapNotNull { index ->
+            val page = s.symPages.customPages.getOrNull(index) ?: return@mapNotNull null
+            if (!enabled[index] && page.mappings.values.none { it.isNotEmpty() }) return@mapNotNull null
+            SymPageId.CUSTOM[index] to page.name
+        }.toMap()
+    }
 
     /**
      * spec: layers-sym-alt.md SS4.1, SS4.2: `sym_pages_config`'s enabled flags and cycle order
@@ -227,6 +257,9 @@ internal object ImeSettings {
         clipboardEnabled = stored.clipboardEnabled,
         emojiPickerEnabled = stored.emojiPickerEnabled,
         gifEnabled = stored.gifEnabled,
+        custom1Enabled = stored.custom1Enabled,
+        custom2Enabled = stored.custom2Enabled,
+        custom3Enabled = stored.custom3Enabled,
         order = stored.order.mapNotNull(::symPageId),
     )
 
@@ -236,6 +269,9 @@ internal object ImeSettings {
         brobata.physiboard.core.settings.SymPage.CLIPBOARD -> SymPageId.CLIPBOARD
         brobata.physiboard.core.settings.SymPage.EMOJI_PICKER -> SymPageId.EMOJI_PICKER
         brobata.physiboard.core.settings.SymPage.GIF -> SymPageId.GIF
+        brobata.physiboard.core.settings.SymPage.CUSTOM_1 -> SymPageId.CUSTOM_1
+        brobata.physiboard.core.settings.SymPage.CUSTOM_2 -> SymPageId.CUSTOM_2
+        brobata.physiboard.core.settings.SymPage.CUSTOM_3 -> SymPageId.CUSTOM_3
     }
 
     /**

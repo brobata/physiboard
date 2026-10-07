@@ -14,6 +14,10 @@ import brobata.physiboard.core.strip.StripTheme
  * transient [BottomOverlay] like the Sym pages; it decides nothing, it draws what the caller
  * (`KeyboardSession`, which owns `:core:actions`' `SkinToneChooser` rules) hands it and reports
  * a tap. It closes itself only through the caller.
+ *
+ * The accent chooser (layers-sym-alt.md SS8.4, [VariationChooserController]) draws through the
+ * same row: its choices are labelled 1 to 9 then 0 ([show]'s `digitOf`), in a smaller glyph so
+ * ten of them fit across.
  */
 internal class SkinTonePanelController(service: InputMethodService) {
 
@@ -22,10 +26,20 @@ internal class SkinTonePanelController(service: InputMethodService) {
     val isShown: Boolean get() = panel.isShown
 
     /**
-     * Shows [forms] with [keyLabels] under them (the letter printed with each digit, or null when
-     * no key picks it), above the strip by [aboveBottomPx].
+     * Shows [forms] with [keyLabels] under them (the letter printed with each form's digit, or
+     * null when no key picks it), above the strip by [aboveBottomPx]. [digitOf] is the digit
+     * labelling the form at an index (the skin tones count from 0); [glyphSp] the forms' size.
      */
-    fun show(forms: List<String>, keyLabels: List<String?>, theme: StripTheme, aboveBottomPx: Int, onPick: (String) -> Unit, onClose: () -> Unit) {
+    fun show(
+        forms: List<String>,
+        keyLabels: List<String?>,
+        theme: StripTheme,
+        aboveBottomPx: Int,
+        onPick: (String) -> Unit,
+        onClose: () -> Unit,
+        digitOf: (Int) -> Int = { it },
+        glyphSp: Float = GLYPH_SP,
+    ) {
         if (panel.isShown) panel.hide()
         val context = panel.overlayContext
         val row = LinearLayout(context).apply {
@@ -50,10 +64,13 @@ internal class SkinTonePanelController(service: InputMethodService) {
                 TextView(context).apply {
                     text = form
                     gravity = Gravity.CENTER
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, GLYPH_SP)
+                    maxLines = 1
+                    setTextColor(theme.textAndIcons)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, glyphSp)
                 },
             )
-            val label = keyLabels.getOrNull(index)?.let { "$index · $it" } ?: index.toString()
+            val digit = digitOf(index)
+            val label = keyLabels.getOrNull(index)?.let { "$digit · $it" } ?: digit.toString()
             cell.addView(
                 TextView(context).apply {
                     text = label

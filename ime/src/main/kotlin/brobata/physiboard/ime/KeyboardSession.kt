@@ -51,6 +51,7 @@ import brobata.physiboard.core.keys.KeyCommands
 import brobata.physiboard.core.keys.SymChooserTarget
 import brobata.physiboard.core.keys.SymPageChooser
 import brobata.physiboard.core.keys.SymPageId
+import brobata.physiboard.core.keys.SymPageMap
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.keys.ModifierIconState
 import brobata.physiboard.core.keys.StatusBarIcon
@@ -143,6 +144,7 @@ import brobata.physiboard.ime.actions.GifSender
 import brobata.physiboard.ime.actions.GifShelfStore
 import brobata.physiboard.ime.actions.SymGridPanelController
 import brobata.physiboard.ime.actions.SymPageChooserController
+import brobata.physiboard.ime.actions.VariationChooserController
 import brobata.physiboard.ime.actions.TypingSoundPlayer
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
 import brobata.physiboard.ime.pointer.KeyboardSwipeController
@@ -393,6 +395,23 @@ internal class KeyboardSession(
         }
     }
 
+    /** layers-sym-alt.md SS8.4: `long_press_variation_chooser`. */
+    private var variationChooserEnabled = true
+
+    /** layers-sym-alt.md SS8.4: the accent chooser a long press in Accent mode opens. */
+    private val variationChooser = VariationChooserController(service, handler).also { controller ->
+        controller.host = object : VariationChooserController.Host {
+            override val theme: StripTheme get() = pipeline.settings.statusBar.theme
+            override val aboveBottomPx: Int get() = stripHeightPx()
+            override fun deviceLayerText(key: KeyId): String? = pipeline.layout.deviceLayer[key]
+            override fun digitKeyLabel(digit: Int): String? = pipeline.layout.deviceLayer.entries.entries
+                .filter { (key, text) -> key is KeyId.Letter && text == digit.toString() }
+                .map { (key, _) -> (key as KeyId.Letter).qwertyLetter.toString() }
+                .minOrNull()
+            override fun replace(previous: String, picked: String): Boolean = replaceVariation(previous, picked)
+        }
+    }
+
     private val commandCatalog = AndroidCommandCatalog(service)
     private val quickLauncher = QuickLauncherController(service, handler, commandCatalog) { key, uppercase -> layoutText(key, uppercase) }
         .apply {
@@ -497,7 +516,7 @@ internal class KeyboardSession(
         lastShownStatusIcon = StatusBarIcon.None
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
-        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); symChooser.reset(); gifPage.onServiceDestroyed(); gifSender.onServiceDestroyed(); quickLauncher.onServiceDestroyed() }
+        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); variationChooser.reset(); symChooser.reset(); gifPage.onServiceDestroyed(); gifSender.onServiceDestroyed(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
@@ -814,7 +833,7 @@ internal class KeyboardSession(
         // whose file predates a later default that arrives with no save/"Revert to Default" of its
         // own to bump `nav_mode_mappings_updated` (an app update alone).
         persistCtrlMappingMigrationIfNeeded(settings.keys.navModeDefaultMappingsVersion)
-        pipeline.layout = ImeSettings.layout(InputStyleCatalog.layoutFor(currentStyle, shippedLayouts) ?: pipeline.layout, settings, ctrlMappings)
+        pipeline.layout = ImeSettings.layout(InputStyleCatalog.layoutFor(currentStyle, shippedLayouts) ?: pipeline.layout, settings, ctrlMappings, currentStyle.locale)
         // spec: status-bar.md SS9 and SS4: the theme, bar height and corner insets are the view's
         // construction facts, so a change to any of them rebuilds the candidates view; every other
         // strip row (visibility, apps, slots, the dip list) is read on the next refresh.
@@ -866,6 +885,7 @@ internal class KeyboardSession(
         clipboard.applyEnabledOnce(settings.expansion.clipboardHistoryEnabled)
         emojiPickerExpanded = settings.symPages.emojiPickerExpandedHeight
         defaultSkinTone = settings.symPages.defaultSkinTone
+        variationChooserEnabled = settings.keys.variationChooser
         symAutoClose = settings.symPages.autoClose
         symAutoCloseOnTouch = settings.symPages.autoCloseOnTouch
         quickLauncher.settings = ImeSettings.quickLauncherSettings(settings)
@@ -1109,6 +1129,8 @@ internal class KeyboardSession(
         gifPage.onAppSelectionChanged()
         // spec SS4.7: the skin-tone chooser belongs to the field it would type into.
         skinTones.reset()
+        // layers-sym-alt.md SS8.4: and so does the accent chooser.
+        variationChooser.reset()
         // layers-sym-alt.md SS5.10: so does the Sym page chooser.
         symChooser.reset()
         // spec SS5.3: "Action mode also ends when... the field finishes"; SS6.4: "the overlay is
@@ -1147,6 +1169,7 @@ internal class KeyboardSession(
             // spec SS4.7: the skin-tone chooser is a bottom overlay too, and a hold must not open
             // it after the window is gone.
             skinTones.reset()
+            variationChooser.reset()
             symChooser.reset()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
     }
@@ -1473,6 +1496,11 @@ internal class KeyboardSession(
         val normalized = normalizeStroke(event)
         normalized?.let { stroke ->
             if (skinTones.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, eventTimeMs = event.eventTime)) return@runCatching true
+        }
+        // layers-sym-alt.md SS8.4: the accent chooser's pick keys (while the long-pressed key is
+        // held, or after Alt), Back, and the held key's own auto-repeat.
+        normalized?.let { stroke ->
+            if (variationChooser.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, altHeld = event.isAltPressed)) return@runCatching true
         }
         // layers-sym-alt.md SS5.10: while the Sym page chooser is open, a letter opens its page,
         // Back or Sym closes it, and any other key closes it and goes on as usual.
@@ -1807,7 +1835,7 @@ internal class KeyboardSession(
     private fun openSymPageChooser(): Boolean {
         if (!pipeline.fieldContext.isReallyEditable) return false
         if (quickLauncher.isOpen) quickLauncher.dismiss()
-        symChooser.show(SymPageChooser.entries(pipeline.layout.symPagesConfig), pipeline.settings.statusBar.theme, stripHeightPx()) { target ->
+        symChooser.show(SymPageChooser.entries(pipeline.layout.symPagesConfig, ImeSettings.customPageNames(lastSettings)), pipeline.settings.statusBar.theme, stripHeightPx()) { target ->
             runCatching { openFromChooser(target) }.onFailure { error -> Log.e(TAG, "sym chooser pick crashed", error) }
         }
         return true
@@ -1973,6 +2001,10 @@ internal class KeyboardSession(
         val map = when (page) {
             SymGridPage.EMOJI -> pipeline.layout.emojiPage
             SymGridPage.SYMBOLS -> pipeline.layout.symbolsPage
+            // layers-sym-alt.md SS4.6: the user's own pages, empty until they hold a key.
+            SymGridPage.CUSTOM_1 -> pipeline.layout.customPages[SymPageId.CUSTOM_1] ?: SymPageMap()
+            SymGridPage.CUSTOM_2 -> pipeline.layout.customPages[SymPageId.CUSTOM_2] ?: SymPageMap()
+            SymGridPage.CUSTOM_3 -> pipeline.layout.customPages[SymPageId.CUSTOM_3] ?: SymPageMap()
         }
         return CharacterResolution.symPageCharacters(map, shiftEffective)
     }
@@ -2304,8 +2336,30 @@ internal class KeyboardSession(
             val readout = ic.readEditorState(nowMs, wholeDocument = false, fallbackCursorAbsolute = lastReportedSelStart)
             val result = pipeline.checkLongPressTick(nowMs, readout.snapshot) ?: return@runCatching
             applyResult(ic, result, readout)
+            // layers-sym-alt.md SS8.4: the key is still held, so the chooser's pick keys work at once.
+            result.variationChoice?.let { choice ->
+                if (variationChooserEnabled) variationChooser.open(choice.key, choice.choices, choice.committed)
+            }
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "onLongPressTick crashed", error) }
+    }
+
+    /**
+     * layers-sym-alt.md SS8.4: the accent chooser's pick, through the pipeline so the word being
+     * tracked follows and a terminal gets the character the way it gets every other (per-app-behavior.md
+     * SS4.6). False, with nothing changed, when the text before the caret no longer ends with
+     * [previous].
+     */
+    private fun replaceVariation(previous: String, picked: String): Boolean = runCatching {
+        val ic = service.currentInputConnection ?: return@runCatching false
+        val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = false, fallbackCursorAbsolute = lastReportedSelStart)
+        val result = pipeline.replaceVariation(previous, picked, readout.snapshot) ?: return@runCatching false
+        applyResult(ic, result, readout)
+        refreshCandidatesStrip()
+        true
+    }.getOrElse { error ->
+        Log.e(TAG, "accent pick crashed", error)
+        false
     }
 
     private fun scheduleLongPressIfNeeded() {

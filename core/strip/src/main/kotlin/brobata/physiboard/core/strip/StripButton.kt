@@ -40,6 +40,9 @@ const val SYM_PAGE_SYMBOLS: Int = 2
 const val SYM_PAGE_CLIPBOARD: Int = 3
 const val SYM_PAGE_EMOJI_PICKER: Int = 4
 
+/** layers-sym-alt.md SS4.6 (3.0): the first of the user's own pages; the other two are 8 and 9. */
+const val SYM_PAGE_CUSTOM_1: Int = 7
+
 /**
  * The haptic a button tap gives. spec: status-bar.md SS6.1, "Every tap gives the system
  * keyboard-tap haptic (undo and redo give the 25 ms haptic instead)".

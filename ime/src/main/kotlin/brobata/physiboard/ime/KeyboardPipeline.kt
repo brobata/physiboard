@@ -31,6 +31,7 @@ import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.keys.LayerResolver
 import brobata.physiboard.core.keys.LayoutDescription
+import brobata.physiboard.core.keys.LongPress
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.keys.ModifierMachine
@@ -39,6 +40,7 @@ import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
 import brobata.physiboard.core.text.ShiftArmSource
 import brobata.physiboard.core.keys.TypingSessionState
+import brobata.physiboard.core.keys.VariationChooser
 import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
 import brobata.physiboard.core.pointer.navmode.NavModeEntry
 import brobata.physiboard.core.pointer.navmode.NavModeMap
@@ -163,6 +165,9 @@ data class KeyboardSettings(
     val overlappingKeys: AccidentalPressSettings = AccidentalPressSettings(),
 )
 
+/** layers-sym-alt.md SS8.4: the held [key], every accent it offers, and the one the long press typed. */
+data class VariationChoice(val key: KeyId, val choices: List<String>, val committed: String)
+
 /**
  * What [KeyboardSession] must still do to the real `InputConnection` after one pipeline call.
  * [enterDelivery] is non-null only for the Enter deliveries per-app-behavior.md SS3.4 hands to
@@ -224,6 +229,8 @@ data class PipelineResult(
      * Also set for a long press in Alt mode ([checkLongPressTick]).
      */
     val altLayerStroke: Boolean = false,
+    /** layers-sym-alt.md SS8.4: a long press in Accent mode just typed the first of several accents; `:ime` may offer them all. */
+    val variationChoice: VariationChoice? = null,
 ) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
@@ -794,6 +801,7 @@ internal class KeyboardPipeline(
             hasTextBeforeCaret = editor.textBeforeCursor?.isNotEmpty() ?: true,
             canSwitchLayout = anotherSubtypeAvailable,
             terminalMode = activeField.kind == FieldKind.RAW_MODE_APP,
+            variationsAllowed = activeField.variationsAllowed,
         )
         // Read before resolution, which spends a one-shot Alt on this very key.
         val altLayerStroke = modifierState.isAltActive(effectiveStroke.meta.alt)
@@ -956,13 +964,37 @@ internal class KeyboardPipeline(
     // -----------------------------------------------------------------------------------------
 
     fun checkLongPressTick(nowMs: Long, editor: EditorSnapshot): PipelineResult? {
-        val resolution = LayerResolver.resolveLongPressTick(modifierState, typingState, nowMs, layout) ?: return null
+        val pending = typingState.pendingLongPress
+        // layers-sym-alt.md SS7.4: Accent mode replaces the letter only while the text before the
+        // caret still ends with it. A terminal empties its text box after every key
+        // (per-app-behavior.md D8), so there the read proves nothing and is not asked.
+        val textBeforeCaret = if (activeField.kind == FieldKind.RAW_MODE_APP) null else editor.textBeforeCursor
+        val resolution = LayerResolver.resolveLongPressTick(modifierState, typingState, nowMs, layout, textBeforeCaret) ?: return null
         modifierState = resolution.state
         typingState = resolution.typing
         val result = applyAction(resolution.action, shiftHeld = false, altActive = false, editor)
         // A long press in Alt mode types the Alt-layer character in place of the letter: the same
         // delivery as Alt+key, or a "." held out of M could match a held Alt+M Chrome still remembers.
-        return if (layout.longPress.mode == LongPressMode.ALT) result.copy(altLayerStroke = true) else result
+        if (layout.longPress.mode == LongPressMode.ALT) return result.copy(altLayerStroke = true)
+        // layers-sym-alt.md SS8.4: a letter with more than one accent offers them all.
+        val replacement = resolution.action as? Action.ReplaceRecent
+        if (pending != null && replacement != null && layout.longPress.mode == LongPressMode.VARIATIONS) {
+            val choices = LongPress.variationsFor(pending, layout)
+            if (VariationChooser.opens(choices)) return result.copy(variationChoice = VariationChoice(pending.key, choices, replacement.text))
+        }
+        return result
+    }
+
+    /**
+     * layers-sym-alt.md SS8.4: the accent chooser's pick. [previous] (what the long press or the
+     * last pick left) is replaced by [picked] through the same path as the long press itself, so
+     * the word being tracked follows; null, with nothing changed, when the text before the caret
+     * no longer ends with [previous].
+     */
+    fun replaceVariation(previous: String, picked: String, editor: EditorSnapshot): PipelineResult? {
+        val terminal = activeField.kind == FieldKind.RAW_MODE_APP
+        if (!VariationChooser.canReplace(editor.textBeforeCursor, previous, terminal)) return null
+        return applyAction(Action.ReplaceRecent(previous.length, picked), shiftHeld = false, altActive = false, editor)
     }
 
     // -----------------------------------------------------------------------------------------
