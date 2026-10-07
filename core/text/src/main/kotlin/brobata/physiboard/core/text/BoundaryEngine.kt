@@ -351,7 +351,7 @@ object BoundaryEngine {
     private const val OPENERS = "\"([{\u201C\u2018\u00AB"
 
     /** Whether the word starting at [start] of [text] stands on its own: text start, whitespace or an opening quote or bracket before it. */
-    private fun standsAlone(text: String, start: Int): Boolean {
+    internal fun standsAlone(text: String, start: Int): Boolean {
         val before = text.getOrNull(start - 1) ?: return true
         return before.isWhitespace() || before in OPENERS
     }
@@ -360,7 +360,7 @@ object BoundaryEngine {
      * The twin spelled as the dictionary has it (`I'll`, never `i'll`), then cased like the word it
      * replaces, with the apostrophe style the user's own text uses.
      */
-    private fun twinAsTyped(typed: String, twin: String, dictionaries: List<DictionaryIndex>, span: String): String {
+    internal fun twinAsTyped(typed: String, twin: String, dictionaries: List<DictionaryIndex>, span: String): String {
         val entries = mutableListOf<WordFrequency>()
         dictionaries.firstOrNull()?.entriesForExactKey(twin, limit = 8, into = entries)
         val spelled = entries.filter { WordChars.straightenAll(it.word).equals(twin, ignoreCase = true) }.maxByOrNull { it.frequency }?.word ?: twin
@@ -394,7 +394,7 @@ object BoundaryEngine {
      * lowercase spelling the user added, or one a secondary dictionary carries, is left alone
      * even when the primary list knows only the capitalised form.
      */
-    private fun primaryCaseRepair(word: String, primaryDict: DictionaryIndex?, dictionaries: List<DictionaryIndex>, userWords: UserWordStore): String? {
+    internal fun primaryCaseRepair(word: String, primaryDict: DictionaryIndex?, dictionaries: List<DictionaryIndex>, userWords: UserWordStore): String? {
         if (primaryDict == null) return null
         if (word.isEmpty() || word.none { it.isLetter() } || word.any { it.isUpperCase() }) return null
         if (spelledExactlyAsTyped(word, dictionaries, userWords)) return null

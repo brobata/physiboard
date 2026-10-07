@@ -23,6 +23,12 @@
          mid-typing; there is no preference for this, it is always on. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- The system spell checker (autocorrect-suggestions.md SS18) treats the words an app's "Add to
+         dictionary" saves in Android's user dictionary as known, so the underline goes away. Android
+         lets only the current keyboard and spell checker read that dictionary; it is read on the
+         phone and never leaves it. -->
+    <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
+
     <application>
         <service
             android:name="brobata.physiboard.ime.PhysiBoardInputMethodService"
@@ -35,6 +41,22 @@
             <meta-data
                 android:name="android.view.im"
                 android:resource="@xml/method" />
+        </service>
+
+        <!-- autocorrect-suggestions.md SS18: the system spell checker. Same process as the keyboard
+             (no android:process), so both read one copy of each dictionary. BIND_TEXT_SERVICE means
+             only the system can bind it. -->
+        <service
+            android:name="brobata.physiboard.ime.PhysiBoardSpellCheckerService"
+            android:label="@string/spell_checker_name"
+            android:permission="android.permission.BIND_TEXT_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.textservice.SpellCheckerService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.textservice.scs"
+                android:resource="@xml/spellchecker" />
         </service>
 
         <!-- spec dictation.md SS10: "translucent, title-less ... new task, clear top; excluded

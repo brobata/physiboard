@@ -76,6 +76,16 @@ object ContextCorrection {
     /** Contraction and possessive endings: a known word with one of these after an apostrophe is a word, not a typo (`must've`, `Sami's`). */
     private val CLITICS = setOf("s", "d", "ll", "re", "ve", "m", "t")
 
+    /** One candidate [rank] weighed: its dictionary spelling, its share of the whole (as-typed included), its slip cost. */
+    data class Weighed(val spelling: String, val share: Double, val cost: Double)
+
+    /**
+     * Every candidate [decide] weighs for [typed], best first (ties in the order they were found),
+     * and the share left to "meant as typed". The shares are of one total, so the first
+     * candidate's share is exactly what [decide] compares with [Tuning.commitShare].
+     */
+    data class Ranking(val candidates: List<Weighed>, val keepShare: Double)
+
     /**
      * Decides for [typed], a word no loaded dictionary or word store spells this way. [previous] is what
      * precedes it ([SentenceContext]); [lengthChangeAllowance] is §9's per-language allowance.
@@ -92,26 +102,71 @@ object ContextCorrection {
         /** Sees every candidate weighed, with its prior and slip cost, and then "as typed" with its weight; for the harness and debugging. */
         trace: ((candidate: String, prior: Double, cost: Double) -> Unit)? = null,
     ): Result {
-        // §9's minimum length, kept: a two-letter word is too short for its shape to say what was meant.
-        if (typed.length < 3) return Result.Leave("word_too_short")
-        if (typed.any { it.isDigit() }) return Result.Leave("not_a_word")
-        val letters = typed.filter { it.isLetter() }
-        if (letters.isEmpty()) return Result.Leave("not_a_word")
-        // An all-capitals word is an acronym and an inner capital is deliberate (iPhone, McKay).
-        if (letters.length >= 2 && letters.all { it.isUpperCase() }) return Result.Leave("acronym_typed")
-        if (letters.drop(1).any { it.isUpperCase() }) return Result.Leave("inner_capital")
-        if (isKnownWithClitic(typed, dictionaries, userWords)) return Result.Leave("known_word")
+        leaveUnweighed(typed, dictionaries, userWords, settings)?.let { return Result.Leave(it) }
+        val ranking = rank(typed, previous, model, dictionaries, userWords, settings, lengthChangeAllowance, tuning, trace)
+        return verdict(typed, ranking, tuning)
+    }
 
+    /**
+     * Why [typed] is left without weighing anything, or null when it is weighed: too short, not
+     * a word, an acronym or a deliberate inner capital, a known word with a contraction or
+     * possessive ending, or (with `max_auto_replace_distance` 0 and no marks to add) nothing
+     * allowed to reach it. The reasons are [Result.Leave]'s.
+     */
+    fun leaveUnweighed(typed: String, dictionaries: List<DictionaryIndex>, userWords: UserWordStore, settings: AutocorrectSettings): String? {
+        // §9's minimum length, kept: a two-letter word is too short for its shape to say what was meant.
+        if (typed.length < 3) return "word_too_short"
+        if (typed.any { it.isDigit() }) return "not_a_word"
+        val letters = typed.filter { it.isLetter() }
+        if (letters.isEmpty()) return "not_a_word"
+        // An all-capitals word is an acronym and an inner capital is deliberate (iPhone, McKay).
+        if (letters.length >= 2 && letters.all { it.isUpperCase() }) return "acronym_typed"
+        if (letters.drop(1).any { it.isUpperCase() }) return "inner_capital"
+        if (isKnownWithClitic(typed, dictionaries, userWords)) return "known_word"
+        if (maxDistanceFor(letters, settings) <= 0 && !mayAddMarks(typed, settings)) return "distance_too_high"
+        return null
+    }
+
+    /**
+     * What [decide] makes of a [ranking] of [typed]: the best candidate replaces it only with a
+     * decisive share, never when it is only the other regional spelling or the stem of an
+     * inflection, and recased the way the user typed it.
+     */
+    fun verdict(typed: String, ranking: Ranking, tuning: Tuning = DEFAULT_TUNING): Result {
+        val best = ranking.candidates.firstOrNull() ?: return Result.Leave("no_suggestion")
+        if (best.share < tuning.commitShare) return Result.Leave(if (best.share < ranking.keepShare) "kept_as_typed" else "too_close_to_call")
+        if (RegionalSpelling.isVariant(typed, best.spelling)) return Result.Leave("regional_spelling")
+        if (tuning.keepInflections && isInflectionOf(typed, best.spelling)) return Result.Leave("inflection_of_known_word")
+        val recased = CasingRules.forTypedWord(typed, best.spelling)
+        if (recased == typed) return Result.Leave("same_replacement")
+        return Result.Commit(recased, best.share, best.cost)
+    }
+
+    /**
+     * Weighs every dictionary word within reach of [typed] as a noisy channel, the same way for
+     * the keyboard's own decision ([decide]) and for anything that wants the alternatives in
+     * order (the system spell checker). [typed] should be a word [leaveUnweighed] lets through.
+     */
+    fun rank(
+        typed: String,
+        previous: Preceding,
+        model: ContextModel,
+        dictionaries: List<DictionaryIndex>,
+        userWords: UserWordStore,
+        settings: AutocorrectSettings,
+        lengthChangeAllowance: Int,
+        tuning: Tuning = DEFAULT_TUNING,
+        trace: ((candidate: String, prior: Double, cost: Double) -> Unit)? = null,
+    ): Ranking {
+        val letters = typed.filter { it.isLetter() }
+        if (letters.isEmpty()) return Ranking(emptyList(), 1.0)
         // The typed word's own key may hold other spellings (`dont` -> `don't`, `cafe` -> `café`):
         // they compete like any other candidate, but only by adding marks, never removing them,
         // so `players'` and `Baháʼí` are never stripped back to a bare spelling; and only while
         // `accent_matching_enabled` is on (§13: "Accent & spelling marks"), as on the path
         // without a table.
-        val mayAddMarks = settings.accentMatchingEnabled && typed.none { WordChars.isApostrophe(it) || (it.isLetter() && it.code >= 0x80) }
-        // Two edits in a word of four letters or fewer leave too little of it to say what was meant (`telo` is not `to`).
-        // `max_auto_replace_distance` 0 blocks every slip but not a repair of marks, which is distance 0 (§13).
-        val maxDistance = minOf(if (letters.length <= 4) 1 else 2, settings.maxAutoReplaceDistance)
-        if (maxDistance <= 0 && !mayAddMarks) return Result.Leave("distance_too_high")
+        val mayAddMarks = mayAddMarks(typed, settings)
+        val maxDistance = maxDistanceFor(letters, settings)
 
         val typedCapitalised = letters.first().isUpperCase()
         val previousId = when (previous) {
@@ -127,9 +182,7 @@ object ContextCorrection {
         val typedKey = DictNormalization.normalizedKey(typed)
 
         val candidates = gatherCandidates(typed, dictionaries, userWords, maxOf(0, maxDistance), tuning.candidateLimit)
-        var best: String? = null
-        var bestScore = Double.NEGATIVE_INFINITY
-        var bestCost = 0.0
+        val scored = ArrayList<Pair<Weighed, Double>>()
         var total = exp(keep)
         val seen = HashSet<String>()
         for (candidate in candidates) {
@@ -150,22 +203,21 @@ object ContextCorrection {
             val score = prior - tuning.channelScale * cost
             trace?.invoke(spelling, prior, cost)
             total += exp(score)
-            if (score > bestScore) {
-                bestScore = score
-                best = spelling
-                bestCost = cost
-            }
+            scored.add(Weighed(spelling, 0.0, cost) to score)
         }
         trace?.invoke("", keep, 0.0)
-        val chosen = best ?: return Result.Leave("no_suggestion")
-        val share = exp(bestScore) / total
-        if (share < tuning.commitShare) return Result.Leave(if (bestScore < keep) "kept_as_typed" else "too_close_to_call")
-        if (RegionalSpelling.isVariant(typed, chosen)) return Result.Leave("regional_spelling")
-        if (tuning.keepInflections && isInflectionOf(typed, chosen)) return Result.Leave("inflection_of_known_word")
-        val recased = CasingRules.forTypedWord(typed, chosen)
-        if (recased == typed) return Result.Leave("same_replacement")
-        return Result.Commit(recased, share, bestCost)
+        // Stable: of two equal scores the one found first stays first, as the single best always did.
+        val ranked = scored.sortedByDescending { it.second }.map { (weighed, score) -> weighed.copy(share = exp(score) / total) }
+        return Ranking(ranked, exp(keep) / total)
     }
+
+    // Two edits in a word of four letters or fewer leave too little of it to say what was meant (`telo` is not `to`).
+    // `max_auto_replace_distance` 0 blocks every slip but not a repair of marks, which is distance 0 (§13).
+    private fun maxDistanceFor(letters: String, settings: AutocorrectSettings): Int =
+        minOf(if (letters.length <= 4) 1 else 2, settings.maxAutoReplaceDistance)
+
+    private fun mayAddMarks(typed: String, settings: AutocorrectSettings): Boolean =
+        settings.accentMatchingEnabled && typed.none { WordChars.isApostrophe(it) || (it.isLetter() && it.code >= 0x80) }
 
     /**
      * Whether [typed] is [candidate] plus an inflection ending (`millennials`, `rehydrated`,
@@ -173,7 +225,7 @@ object ContextCorrection {
      * looking at a typo, which is §9's "pure affix change" rule kept for the endings English
      * actually adds. A doubled last letter (`toolss`) is still a slip.
      */
-    private fun isInflectionOf(typed: String, candidate: String): Boolean {
+    fun isInflectionOf(typed: String, candidate: String): Boolean {
         val t = WordChars.straightenAll(typed).lowercase()
         val c = WordChars.straightenAll(candidate).lowercase()
         if (!t.startsWith(c) || t.length == c.length) return false
@@ -198,7 +250,7 @@ object ContextCorrection {
     }
 
     /** `must've`, `should've`, `that'll`, `Sami's`, `players'`: a known word, or a name, before a contraction or possessive ending. */
-    private fun isKnownWithClitic(typed: String, dictionaries: List<DictionaryIndex>, userWords: UserWordStore): Boolean {
+    fun isKnownWithClitic(typed: String, dictionaries: List<DictionaryIndex>, userWords: UserWordStore): Boolean {
         val straight = WordChars.straightenAll(typed)
         val at = straight.lastIndexOf('\'')
         if (at <= 0) return false

@@ -1,6 +1,15 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import brobata.physiboard.app.settings.ui.IntClosedRange
 import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
@@ -8,6 +17,7 @@ import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
+import brobata.physiboard.app.settings.ui.SpellCheckerSettings
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.settings.CorrectionPrefs
 
@@ -22,6 +32,18 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
     val controller = LocalSettingsController.current
     val correction = controller.current.value.correction
     fun set(transform: (CorrectionPrefs) -> CorrectionPrefs) = controller.update { it.copy(correction = transform(it.correction)) }
+
+    // autocorrect-suggestions.md SS18: re-read on every return, since the choice is made in Android's own settings.
+    val context = LocalContext.current
+    var spellChecker by remember { mutableStateOf(SpellCheckerSettings.state(context)) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) spellChecker = SpellCheckerSettings.state(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     SettingsScreenScaffold(title = "Auto-correction", onBack = onBack) {
         RowList {
@@ -64,6 +86,9 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
                     checked = correction.useKeyboardProximity,
                     onCheckedChange = { set { p -> p.copy(useKeyboardProximity = it) } },
                 )
+            }
+            item {
+                NavigateRow("System spell checker", SpellCheckerSettings.description(spellChecker)) { SpellCheckerSettings.open(context) }
             }
             item {
                 SwitchRow(

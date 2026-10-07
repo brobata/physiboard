@@ -40,9 +40,6 @@ import brobata.physiboard.core.actions.launcher.AssignmentSheet
 import brobata.physiboard.core.actions.picker.AddSubstitutionSheet
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
-import brobata.physiboard.core.dict.ContextModel
-import brobata.physiboard.core.dict.DictionaryBroadcastActions
-import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.LanguageCode
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordSource
@@ -446,7 +443,7 @@ internal class KeyboardSession(
      * service destroyed: timers cancelled".
      */
     fun onServiceDestroyed() {
-        runCatching { service.unregisterReceiver(dictionaryChangeReceiver) }.onFailure { error -> Log.e(TAG, "dictionary receiver teardown crashed", error) }
+        shared.removeListener(sharedListener)
         runCatching { service.unregisterReceiver(runCommandNowReceiver) }.onFailure { error -> Log.e(TAG, "run-command receiver teardown crashed", error) }
         settingsScope.cancel()
         handler.removeCallbacks(longPressRunnable)
@@ -476,36 +473,37 @@ internal class KeyboardSession(
     // so switching to a style whose language is not `en` simply loads no dictionary for it
     // (DictionaryAssetLoader's own KDoc: a missing asset is a silent, already-handled failure),
     // not a crash; bundling the other eighteen is a documented gap of its own, unrelated to this.
-    private val dictionaryLoader = DictionaryAssetLoader(service, handler)
-
-    /** The loaded dictionaries by language, primary and extras alike; [rebuildDictionaries] hands the wanted ones to the pipeline, primary first. */
-    private val loadedDictionaries = linkedMapOf<LanguageCode, DictionaryIndex>()
-
-    /** The word-pair tables that came with them (autocorrect-suggestions.md SS16 W5); a language with none has no entry. Only the primary language's table reaches the pipeline. */
-    private val loadedContextModels = mutableMapOf<LanguageCode, ContextModel>()
+    /**
+     * The process's dictionaries, word-pair tables and user words, shared with the system spell
+     * checker ([SharedDictionaries]): loaded once per process, off the main thread, and reloaded
+     * there when an install, import or personal-dictionary edit is broadcast. This session asks
+     * for the languages it wants and hands what has loaded to the pipeline, primary first.
+     */
+    private val shared = SharedDictionaries.get(service)
 
     /**
-     * Which [dictionaryLoadGeneration] owns the in-flight load for each language, not just whether
-     * one is in flight: [reloadAllDictionaries] used to `clear()` a plain set here without
-     * cancelling the actual background thread [loadDictionary] had already started for it, so a
-     * slow load from before the reload could still land afterward and, with no ordering guarantee
-     * against the fresh reload's own load, overwrite it depending only on which one happened to
-     * post to the main thread last. Tagging each in-flight entry with the generation it belongs to
-     * lets a stale completion recognise itself as superseded (its generation no longer matches the
-     * map's current entry for that language) without touching the fresher load's own entry.
+     * Runs on the main thread after every change to [shared]: re-asks for what this session wants
+     * (a reload dropped everything), then hands it over. The strip refreshes only when what the
+     * pipeline holds changed, not for a change only the spell checker uses (another language,
+     * Android's user dictionary), since a refresh also closes an open quick-actions overlay.
      */
-    private val dictionaryLoadsInFlight = mutableMapOf<LanguageCode, Int>()
-    private var dictionaryLoadGeneration = 0
-
-    /** Languages whose load built no dictionary in this generation: not read again until [reloadAllDictionaries] (an install or import) says something changed. */
-    private val dictionaryLoadsFailed = mutableSetOf<LanguageCode>()
+    private val sharedListener: () -> Unit = {
+        loadDictionary(primaryLanguage)
+        extraLanguages.forEach(::loadDictionary)
+        val before = pipeline.resources
+        val words = shared.snapshot.userWords ?: UserWordStore.empty()
+        if (words !== before.userWords) pipeline.resources = pipeline.resources.copy(userWords = words)
+        rebuildDictionaries()
+        val after = pipeline.resources
+        if (after.userWords !== before.userWords || after.dictionaries != before.dictionaries || after.contextModel !== before.contextModel) refreshCandidatesStrip()
+    }
 
     // spec dictionaries-languages.md SS7: the default and personal user words, loaded once at
     // startup and reloaded whenever the Personal Dictionary screen (or the strip's own add-word,
     // via [persistAddedWord]) changes them. `:core:text`'s `TextInputResources.userWords` is the
     // only consumer; [UserWordFileLoader] only supplies the files and the background thread.
     private val userWordLoader = UserWordFileLoader(service, handler)
-    private var userWordStore: UserWordStore = UserWordStore.empty()
+    private val userWordStore: UserWordStore get() = shared.snapshot.userWords ?: UserWordStore.empty()
 
     /**
      * spec: autocorrect-suggestions.md SS4: `user_ngrams.db`'s persistence, loaded once at startup
@@ -514,20 +512,6 @@ internal class KeyboardSession(
      */
     private val ngramLoader = UserNgramLoader(service, handler)
 
-    /**
-     * spec SS17's Keep/Drop fix ("reload on install, import, uninstall") and SS7 ("...again
-     * whenever the broadcast `ACTION_USER_DICTIONARY_UPDATED` arrives"): the settings screens run
-     * in `:app`'s process, so the only way this process learns of a file it did not itself write
-     * is a package-internal broadcast. Registered in [init], unregistered in [onServiceDestroyed].
-     */
-    private val dictionaryChangeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                DictionaryBroadcastActions.DICTIONARY_CHANGED -> reloadAllDictionaries()
-                DictionaryBroadcastActions.USER_DICTIONARY_UPDATED -> loadUserWords()
-            }
-        }
-    }
 
     /**
      * spec: expansion-clipboard-pickers-launcher.md SS6.2/SS6.4: "when the sheet was opened by a
@@ -611,6 +595,7 @@ internal class KeyboardSession(
         // spec: autocorrect-suggestions.md SS2 point 3 and the "computation runs off the main
         // thread" rule: the keyboard must accept keystrokes immediately, typing with no
         // suggestions, and only start suggesting once this background load lands.
+        shared.addListener(sharedListener)
         loadDictionary(primaryLanguage)
         // spec dictionaries-languages.md SS7: the default and personal words load the same way,
         // off the main thread, and are merged in the moment they land.
@@ -625,11 +610,6 @@ internal class KeyboardSession(
         // the shipped defaults hold until the store's first emission (an empty array still
         // replaces Android's previous additional set, per SS8.3's own note).
         registerAdditionalSubtypes(Settings().languages.inputStyles)
-        val dictionaryChangeFilter = IntentFilter().apply {
-            addAction(DictionaryBroadcastActions.DICTIONARY_CHANGED)
-            addAction(DictionaryBroadcastActions.USER_DICTIONARY_UPDATED)
-        }
-        ContextCompat.registerReceiver(service, dictionaryChangeReceiver, dictionaryChangeFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         ContextCompat.registerReceiver(
             service, runCommandNowReceiver, IntentFilter(AssignmentSheet.ACTION_RUN_COMMAND_NOW), ContextCompat.RECEIVER_NOT_EXPORTED,
         )
@@ -658,80 +638,22 @@ internal class KeyboardSession(
      * language "that has not finished loading is simply absent... the load is scheduled and the
      * strip refreshes when it completes".
      */
-    private fun loadDictionary(language: LanguageCode) {
-        if (language in loadedDictionaries || language in dictionaryLoadsInFlight || language in dictionaryLoadsFailed) return
-        val generation = dictionaryLoadGeneration
-        dictionaryLoadsInFlight[language] = generation
-        dictionaryLoader.loadAsync(
-            language,
-            onDictionary = onDictionary@{ index ->
-                // A completion whose generation no longer owns this language's in-flight entry was
-                // superseded by [reloadAllDictionaries] while it was running: neither its result nor
-                // its removal of the in-flight marker (which would belong to the fresher load by now)
-                // should apply.
-                if (dictionaryLoadsInFlight[language] != generation) return@onDictionary
-                // Cleared whatever happened; a failure is remembered instead, so a missing or
-                // broken file is not re-read at every field start until a reload says it changed.
-                dictionaryLoadsInFlight.remove(language)
-                if (index == null) {
-                    dictionaryLoadsFailed += language
-                    return@onDictionary
-                }
-                loadedDictionaries[language] = index
-                rebuildDictionaries()
-                refreshCandidatesStrip()
-            },
-            onContextModel = onContextModel@{ model ->
-                // The table belongs to the dictionary this same load built: only while that one is
-                // still the language's dictionary (no reload since) is it this language's table.
-                if (generation != dictionaryLoadGeneration || language !in loadedDictionaries) return@onContextModel
-                loadedContextModels[language] = model
-                rebuildDictionaries()
-            },
-        )
-    }
+    private fun loadDictionary(language: LanguageCode) = shared.request(language)
 
     /** spec SS8.4: "engines for languages no longer listed are dropped"; the primary comes first (`TextInputResources`' own contract). */
     private fun rebuildDictionaries() {
-        val wanted = (listOf(primaryLanguage) + extraLanguages).mapNotNull { loadedDictionaries[it] }
+        val loaded = shared.snapshot
+        val wanted = (listOf(primaryLanguage) + extraLanguages).mapNotNull { loaded.dictionaries[it] }
         // Context is read for the language being typed only: an extra language's table would
         // judge words against the wrong sentences.
-        val context = loadedContextModels[primaryLanguage]
+        val context = loaded.contextModels[primaryLanguage]
         if (wanted != pipeline.resources.dictionaries || context !== pipeline.resources.contextModel) {
             pipeline.resources = pipeline.resources.copy(dictionaries = wanted, contextModel = context)
         }
     }
 
-    /**
-     * spec SS17's Keep/Drop fix ("Per-process dictionary cache never invalidated | Fix | Reload
-     * on install, import, uninstall"): an install, import or uninstall on the settings screen
-     * cannot know which language changed from here (the broadcast carries none), and a dictionary
-     * is cheap enough to reload compared to typing with a stale one, so every cached dictionary is
-     * dropped and the ones this session actually wants (primary and extras) are loaded again at
-     * once, immediately, rather than waiting for the next field or the next process start.
-     */
-    private fun reloadAllDictionaries() {
-        // Bumped before clearing, so any load already in flight for a language this call also
-        // re-requests recognises itself as stale when it completes (see [loadDictionary]) instead
-        // of racing the fresh load this call starts for the identical language.
-        dictionaryLoadGeneration++
-        loadedDictionaries.clear()
-        loadedContextModels.clear()
-        dictionaryLoadsInFlight.clear()
-        dictionaryLoadsFailed.clear()
-        pipeline.resources = pipeline.resources.copy(dictionaries = emptyList(), contextModel = null)
-        loadDictionary(primaryLanguage)
-        extraLanguages.forEach(::loadDictionary)
-    }
-
-    /** spec SS7: loads the default and personal word files into [userWordStore] and the pipeline; reload is the same path a broadcast triggers. */
-    private fun loadUserWords() {
-        userWordLoader.loadAsync { store ->
-            userWordStore = store
-            pipeline.resources = pipeline.resources.copy(userWords = store)
-            refreshCandidatesStrip()
-        }
-    }
+    /** spec SS7: re-reads the default and personal word files at service start, as before the store was shared; [sharedListener] hands them to the pipeline. */
+    private fun loadUserWords() = shared.reloadUserWords()
 
     /**
      * spec SS7: "a word added from the strip is merged into the primary dictionary at once".
@@ -740,9 +662,9 @@ internal class KeyboardSession(
      * keystroke, and durable across a process restart.
      */
     private fun persistAddedWord(word: String) {
-        userWordStore = userWordStore.withPersonalWordAdded(word, System.currentTimeMillis())
-        pipeline.resources = pipeline.resources.copy(userWords = userWordStore)
-        userWordLoader.savePersonalAsync(userWordStore.personalWords(), ::reportPersonalWordSaveResult)
+        val updated = userWordStore.withPersonalWordAdded(word, System.currentTimeMillis())
+        shared.setUserWords(updated)
+        userWordLoader.savePersonalAsync(updated.personalWords(), ::reportPersonalWordSaveResult)
     }
 
     /**
@@ -802,9 +724,9 @@ internal class KeyboardSession(
      * (SS4, SS5) is [KeyboardPipeline.forgetWordAsNextWordEverywhere].
      */
     private fun deletePersonalWord(word: String) {
-        userWordStore = userWordStore.withPersonalWordRemoved(word)
-        pipeline.resources = pipeline.resources.copy(userWords = userWordStore)
-        userWordLoader.savePersonalAsync(userWordStore.personalWords(), ::reportPersonalWordSaveResult)
+        val updated = userWordStore.withPersonalWordRemoved(word)
+        shared.setUserWords(updated)
+        userWordLoader.savePersonalAsync(updated.personalWords(), ::reportPersonalWordSaveResult)
         pipeline.forgetWordAsNextWordEverywhere(word)
         ngramLoader.forgetEverywhereAsync(word)
     }
@@ -2728,7 +2650,7 @@ internal class KeyboardSession(
                     // *primary* dictionary specifically. `pipeline.resources.dictionaries.isNotEmpty()`
                     // used to answer "any dictionary at all", which reports ready too early when an
                     // additional suggestion language's load lands before the primary one's own.
-                    dictionaryInstalled = primaryLanguage in loadedDictionaries,
+                    dictionaryInstalled = primaryLanguage in shared.snapshot.dictionaries,
                         subtypeLocale = currentStyle.locale, // spec dictionaries-languages.md SS9.2: the language button's text follows the active input style.
                         clipboardOverlayOpen = clipboardPanel.isShown,
                     ),

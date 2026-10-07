@@ -21,35 +21,42 @@ class DictionaryLoadSequenceTest {
         onDictionary = { events += "dictionary $it" },
         onContextModel = { events += "table $it" },
         onFailure = { what, error -> events += "failed $what ${error::class.simpleName}" },
+        onFinished = { events += "finished" },
     )
 
     @Test
     fun `the dictionary is handed over before the table is read`() {
         load(readDictionary = { "en" }, readContextModel = { "pairs" })
-        assertEquals(listOf("dictionary en", "table read", "table pairs"), events)
+        assertEquals(listOf("dictionary en", "table read", "table pairs", "finished"), events)
     }
 
     @Test
     fun `a table that runs out of memory costs the context, not the dictionary or the thread`() {
         load(readDictionary = { "en" }, readContextModel = { throw OutOfMemoryError("4.7 MB of arrays") })
-        assertEquals(listOf("dictionary en", "table read", "failed context OutOfMemoryError"), events)
+        assertEquals(listOf("dictionary en", "table read", "failed context OutOfMemoryError", "finished"), events)
     }
 
     @Test
     fun `a table that fails to read or parse is no context`() {
         load(readDictionary = { "en" }, readContextModel = { throw IllegalStateException("bad offsets") })
-        assertEquals(listOf("dictionary en", "table read", "failed context IllegalStateException"), events)
+        assertEquals(listOf("dictionary en", "table read", "failed context IllegalStateException", "finished"), events)
         events.clear()
         load(readDictionary = { "en" }, readContextModel = { null })
-        assertEquals(listOf("dictionary en", "table read"), events)
+        assertEquals(listOf("dictionary en", "table read", "finished"), events)
     }
 
     @Test
     fun `a dictionary that fails is still reported, as null, and no table is read`() {
         load(readDictionary = { null }, readContextModel = { "pairs" })
-        assertEquals(listOf("dictionary null"), events)
+        assertEquals(listOf("dictionary null", "finished"), events)
         events.clear()
         load(readDictionary = { throw OutOfMemoryError() }, readContextModel = { "pairs" })
-        assertEquals(listOf("failed dictionary OutOfMemoryError", "dictionary null"), events)
+        assertEquals(listOf("failed dictionary OutOfMemoryError", "dictionary null", "finished"), events)
+    }
+
+    @Test
+    fun `an error nobody catches still reports the load finished`() {
+        runCatching { load(readDictionary = { "en" }, readContextModel = { throw StackOverflowError() }) }
+        assertEquals(listOf("dictionary en", "table read", "finished"), events)
     }
 }

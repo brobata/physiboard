@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  autocorrect-suggestions.md SS18: the system spell checker's languages, the nineteen
+  PhysiBoard has dictionaries for (dictionaries-languages.md SS1.1). English is bundled; the
+  others check only once their dictionary is downloaded or imported, and flag nothing until then.
+  Its settings entry opens PhysiBoard's own settings.
+-->
+<spell-checker xmlns:android="http://schemas.android.com/apk/res/android"
+    android:label="@string/spell_checker_name"
+    android:settingsActivity="brobata.physiboard.app.MainActivity">
+    <subtype android:label="@string/subtype_english" android:languageTag="en" android:subtypeLocale="en" />
+    <subtype android:label="@string/spell_czech" android:languageTag="cs" android:subtypeLocale="cs" />
+    <subtype android:label="@string/subtype_danish" android:languageTag="da" android:subtypeLocale="da" />
+    <subtype android:label="@string/subtype_german" android:languageTag="de" android:subtypeLocale="de" />
+    <subtype android:label="@string/spell_greek" android:languageTag="el" android:subtypeLocale="el" />
+    <subtype android:label="@string/subtype_spanish" android:languageTag="es" android:subtypeLocale="es" />
+    <subtype android:label="@string/subtype_french" android:languageTag="fr" android:subtypeLocale="fr" />
+    <subtype android:label="@string/spell_gaelic" android:languageTag="gd" android:subtypeLocale="gd" />
+    <subtype android:label="@string/spell_hungarian" android:languageTag="hu" android:subtypeLocale="hu" />
+    <subtype android:label="@string/subtype_italian" android:languageTag="it" android:subtypeLocale="it" />
+    <subtype android:label="@string/spell_dutch" android:languageTag="nl" android:subtypeLocale="nl" />
+    <subtype android:label="@string/subtype_norwegian" android:languageTag="no" android:subtypeLocale="no" />
+    <subtype android:label="@string/subtype_polish" android:languageTag="pl" android:subtypeLocale="pl" />
+    <subtype android:label="@string/subtype_portuguese" android:languageTag="pt" android:subtypeLocale="pt" />
+    <subtype android:label="@string/subtype_russian" android:languageTag="ru" android:subtypeLocale="ru" />
+    <subtype android:label="@string/spell_swedish" android:languageTag="sv" android:subtypeLocale="sv" />
+    <subtype android:label="@string/spell_turkish" android:languageTag="tr" android:subtypeLocale="tr" />
+    <subtype android:label="@string/subtype_ukrainian" android:languageTag="uk" android:subtypeLocale="uk" />
+    <subtype android:label="@string/spell_vietnamese" android:languageTag="vi" android:subtypeLocale="vi" />
+</spell-checker>

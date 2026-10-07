@@ -20,6 +20,8 @@ import java.io.IOException
  * A table that fails to read, to parse or to fit in memory (it is several megabytes of arrays,
  * and an [OutOfMemoryError] there must not take the keyboard down with it) only means no context:
  * [onContextModel] is posted only for a table that loaded. [onFailure] hears every caught failure.
+ * [onFinished] is posted last, once the load has done all it will (dictionary and table, or
+ * neither), so a caller waiting for the language to be complete knows when to stop waiting.
  */
 internal object DictionaryLoadSequence {
     fun <D : Any, C : Any> run(
@@ -29,30 +31,36 @@ internal object DictionaryLoadSequence {
         onDictionary: (D?) -> Unit,
         onContextModel: (C) -> Unit,
         onFailure: (what: String, error: Throwable) -> Unit = { _, _ -> },
+        onFinished: () -> Unit = {},
     ) {
-        var dictionary: D? = null
         try {
-            dictionary = readDictionary()
-        } catch (e: Exception) {
-            onFailure("dictionary", e)
-        } catch (e: OutOfMemoryError) {
-            onFailure("dictionary", e)
+            var dictionary: D? = null
+            try {
+                dictionary = readDictionary()
+            } catch (e: Exception) {
+                onFailure("dictionary", e)
+            } catch (e: OutOfMemoryError) {
+                onFailure("dictionary", e)
+            } finally {
+                // Posted even if an error nobody should catch is on its way out of this thread.
+                val built = dictionary
+                post { onDictionary(built) }
+            }
+            if (dictionary == null) return
+            val model = try {
+                readContextModel()
+            } catch (e: Exception) {
+                onFailure("context", e)
+                null
+            } catch (e: OutOfMemoryError) {
+                onFailure("context", e)
+                null
+            }
+            if (model != null) post { onContextModel(model) }
         } finally {
-            // Posted even if an error nobody should catch is on its way out of this thread.
-            val built = dictionary
-            post { onDictionary(built) }
+            // Whatever happened, including an error nobody should catch: a waiter must not wait for ever.
+            post(onFinished)
         }
-        if (dictionary == null) return
-        val model = try {
-            readContextModel()
-        } catch (e: Exception) {
-            onFailure("context", e)
-            null
-        } catch (e: OutOfMemoryError) {
-            onFailure("context", e)
-            null
-        }
-        if (model != null) post { onContextModel(model) }
     }
 }
 
@@ -95,7 +103,7 @@ internal class DictionaryAssetLoader(
      * main thread exactly once, with the dictionary or null when none was built; [onContextModel]
      * runs after it, only when the language's word-pair table loaded ([DictionaryLoadSequence]).
      */
-    fun loadAsync(language: LanguageCode, onDictionary: (DictionaryIndex?) -> Unit, onContextModel: (ContextModel) -> Unit) {
+    fun loadAsync(language: LanguageCode, onDictionary: (DictionaryIndex?) -> Unit, onContextModel: (ContextModel) -> Unit, onFinished: () -> Unit = {}) {
         Thread({
             DictionaryLoadSequence.run(
                 readDictionary = {
@@ -110,6 +118,7 @@ internal class DictionaryAssetLoader(
                 onDictionary = onDictionary,
                 onContextModel = onContextModel,
                 onFailure = { what, error -> Log.e(TAG, "$what $language failed to load", error) },
+                onFinished = onFinished,
             )
         }, "physiboard-dict-loader-$language").apply { isDaemon = true }.start()
     }
