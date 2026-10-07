@@ -1142,6 +1142,8 @@ one gate, which reads `private_mode` from the store at the moment of the request
 | update check | the four triggers of section 13.1 | "no update"; the "Updates" row toasts "Private mode is on, so PhysiBoard makes no network requests." |
 | dictionary list | Installed dictionaries screen (dictionaries-languages.md section 5.2) | installed files still listed; the reason as a snackbar, or as the screen's error when nothing is installed |
 | dictionary download | the same screen's download button (section 5.3) | snackbar with the reason; nothing written |
+| GIF search | the GIF page's trending and search lists (layers-sym-alt.md section 4.5) | the page shows the reason in place of results |
+| GIF download | the GIF page's previews and the GIF being sent | previews stay blank; a send toasts the reason |
 
 When the store cannot be read, the gate also refuses ("PhysiBoard could not read its settings,
 so it makes no network requests."): not knowing whether the user asked for offline is treated
@@ -1152,7 +1154,9 @@ The keyboard applies the same rule to learning: until the store's first value ha
 is learned, because `private_mode` might be on. A re-application of the built-in defaults before
 then (a layout switch) does not count as having read the store. A
 build-time test fails if any file other than the gate's one HTTP opener opens a network
-connection, so a future feature (a GIF search) has to name its purpose and pass the gate.
+connection, so a future feature has to name its purpose and pass the gate. The keyboard reaches
+the gate through a seam the app hands it (a gated GET built on the same opener), so the GIF
+page's requests are opened in that one file too.
 
 Not PhysiBoard's network, and not changed by private mode: links the user taps in the app (About,
 the update dialog's "Open GitHub", "Report a problem") open in the browser; dictation uses the
