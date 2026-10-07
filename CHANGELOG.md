@@ -15,7 +15,9 @@ behavioral specification rather than the old code.
 - The candidates strip doubling as a status bar, with configurable buttons and a per-app dip.
 - Per-app Enter behavior, exact (uncorrected) typing, and WebAPK host expansion.
 - Text expansion (snippets), clipboard history, and emoji and Unicode pickers as overlays.
-- Dictation with its own silence timer and re-listen handling.
+- Dictation that runs until you stop it (Fn again, any key, or a silence limit you choose),
+  with the engine's on-device recognizer, music paused for the session, and a status bar icon
+  while it listens.
 - The screen trackpad and caret badge for cursor and selection control on the touchscreen.
 - Keyboard backlight, a smart backlight mode, and a notification ring, driven through an
   embedded ADB broker paired over Wireless Debugging.

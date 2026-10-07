@@ -1160,8 +1160,10 @@ page's requests are opened in that one file too.
 
 Not PhysiBoard's network, and not changed by private mode: links the user taps in the app (About,
 the update dialog's "Open GitHub", "Report a problem") open in the browser; dictation uses the
-phone's own speech service, which may send audio to its provider (dictation.md), and the Privacy
-screen says so, which is why every wording says "no network requests" rather than "offline";
+phone's own speech service, which private mode asks to keep on the phone (dictation.md 4.3:
+`EXTRA_PREFER_OFFLINE` is forced on and the online fallback is refused), though the service
+itself is not PhysiBoard's and the Privacy screen says so, which is why every wording says "no
+network requests" rather than "offline";
 the embedded ADB
 broker talks only to the phone's own adbd over loopback, and only during the privileged setup the
 user starts (broker-privileged-toolbox.md section 1).

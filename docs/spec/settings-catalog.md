@@ -253,10 +253,12 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `fn_long_press_speech` | boolean | false | true | Holding Fn dictates | Keyboard > Voice > Triggers > "Long-press Fn for speech input" |
 | `dictation_haptics` | boolean | true | same | Vibrate on start and stop (also gated on the system haptic setting) | Keyboard > Sound & Haptics > "Vibrate on dictation start/stop" |
 | `dictation_haptic_strength` | string `light`, `standard`, `strong` | `strong` | | Pulse length | Sound & Haptics > "Vibration strength" (only while the row above is on) |
-| `dictation_end_silence_ms` | int 0 to 10000; 0 = engine default | 0 | 2000 | End-of-speech pause | Voice > Transcription > "End-of-speech pause" |
-| `dictation_mask_offensive` | boolean | true | false | Engine masks profanity | Voice > "Block offensive words" |
+| `dictation_stop_after_silence_ms` | int 0 to 60000; 0 = runs until stopped (60 s safety) | 0 | | Silence limit (dictation.md 6.4) | Voice > Transcription > "Stop after silence" |
+| `dictation_stop_on_typing` | boolean | true | | Any key other than a modifier ends the session before doing its work | Voice > "Typing stops dictation" |
+| `dictation_prefer_offline` | boolean | true | | The engine's on-device recognizer first; one online fallback when the pack is missing | Voice > "Keep speech on the phone" |
+| `dictation_pause_media` | boolean | true | | Exclusive transient audio focus for the session | Voice > "Pause music while dictating" |
+| `dictation_mask_offensive` | boolean | false | false | Engine masks profanity | Voice > "Block offensive words" |
 | `dictation_engine` | string: `""` system default, `ondevice`, or a flattened component name | `""` | `com.google.android.tts/com.google.android.apps.speech.tts.googletts.service.GoogleTTSRecognitionService` (D4) | Which recognizer | Voice > "Speech engine" |
-| `dictation_continuous_session` | boolean | true | | One long session timed by the engine | Voice > "Let the engine time the pause" |
 | `dictation_auto_punctuation` | boolean | true | | Engine punctuates | Voice > "Automatic punctuation" |
 | `sym_long_press_assistant` | boolean | false | | Hold Sym opens the assistant | Voice > Voice assistant > "Hold Sym for the assistant" |
 | `side_key_assistant` | boolean | false | true | Orange side key long press opens the assistant | Voice > "Orange key opens the assistant" |
@@ -481,7 +483,8 @@ they are the "Baseline" column of section 2 and, for reference, the complete lis
 `alt_ctrl_speech_shortcut` false, `alt_shift_layout_switch` true, `app_enter_behavior_overrides`
 (four apps), `app_enter_behavior_preset` enter_send_shift_newline, `app_raw_mode_packages`
 {PersaLink WebAPK}, `auto_capitalize_first_letter` true, `auto_replace_on_space_enter` true,
-`auto_show_keyboard` true, `caret_badge_armed_color` -15656921, `dictation_end_silence_ms` 2000,
+`auto_show_keyboard` true, `caret_badge_armed_color` -15656921, `dictation_end_silence_ms` 2000
+(ignored by the 3.0 importer: the 2.x pause has no 3.0 counterpart, dictation.md 13),
 `dictation_engine` (Google), `dictation_haptics` true, `dictation_mask_offensive` false,
 `emoji_picker_expanded_height` false, `fn_long_press_speech` true, `keyboard_layout` qwerty,
 `keyboard_theme_hardware` (section 3.1), `launcher_shortcuts` (Space = quick launcher),
@@ -790,13 +793,15 @@ description is the screen title.
 | Long-press Fn for speech input | Voice | Voice | voice dictation microphone speech fn hold |
 | Vibrate on dictation start/stop | Voice | Voice | vibrate vibration haptic dictation voice |
 | Vibration strength | Voice | Voice | vibration strength stronger firmer haptic dictation voice |
-| End-of-speech pause | Voice | Voice | pause silence timeout cutoff dictation voice |
+| Stop after silence | Voice | Voice | pause silence timeout cutoff stop dictation voice never |
+| Typing stops dictation | Voice | Voice | typing key stop end dictation voice |
+| Keep speech on the phone | Voice | Voice | offline on-device private speech pack download dictation voice |
+| Pause music while dictating | Voice | Voice | music media audio focus pause audible spotify dictation voice |
 | Block offensive words | Voice | Voice | profanity censor swear offensive f*** |
 | Hold Sym for the assistant | Voice | Voice | assistant gemini sym hold long press voice ask siri |
 | Orange key opens the assistant | Voice | Voice | assistant gemini orange side key func1 shortcut voice ask |
 | How the assistant opens | Voice | Voice | assistant action intent listening gemini voice command hands free assist |
 | Speech engine | Voice | Voice | engine recognizer speech service google on-device offline dictation voice |
-| Let the engine time the pause | Voice | Voice | continuous segmented session pause cutoff dictation voice |
 | Automatic punctuation | Voice | Voice | punctuation comma period capitalization formatting dictation voice |
 | Capitalize at text start | Smart Features | Smart Features | capital uppercase sentence autocap |
 | Double Space inserts period | Smart Features | Smart Features | period full stop double space |
@@ -948,8 +953,9 @@ control; ">" means the row navigates.
   - "Voice" > "Hold Fn to dictate, and the assistant triggers"
     - intro; header "Triggers": "Long-press Fn for speech input"
     - header "Transcription": "Speech engine" picker (system default, on-device, each installed
-      service); "Automatic punctuation"; "Block offensive words"; "End-of-speech pause" slider
-      ("System default" at 0, else "N s"); "Let the engine time the pause"
+      service); "Automatic punctuation"; "Block offensive words"; "Stop after silence" slider
+      ("Never: Fn or any key stops it" at 0, else "N s of silence"); "Typing stops dictation";
+      "Keep speech on the phone"; "Pause music while dictating"
     - header "Voice assistant": "Orange key opens the assistant"; "Hold Sym for the assistant";
       "How the assistant opens" (Auto / Voice command / Hands free / Assist)
   - "Status Bar Theme" > "Colours, LEDs, and which buttons sit on the bar"
@@ -1229,7 +1235,7 @@ Each is a JVM test over an in-memory preference store and the asset text.
     "dash": `en_dash`. Quote style "welsh": `german_guillemets`.
 32. `notification_ring_minutes` written 2: read 2 (no clamp on the store; the slider clamps 1 to
     60). `screen_trackpad_step_px` written 200: read 64. `quick_launcher_width_percent` written
-    10: read 50. `dictation_end_silence_ms` written 20000: stored 10000.
+    10: read 50. `dictation_stop_after_silence_ms` written 90000: stored 60000.
 
 ## 13. Keep / Drop for 3.0
 
