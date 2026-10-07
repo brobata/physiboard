@@ -110,7 +110,9 @@ object LongPress {
      * matches what was committed"), so a letter the app already changed is left alone.
      */
     fun replacement(pending: Pending, layout: LayoutDescription, textBeforeCaret: String? = null): Action {
-        if (pending.mode == LongPressMode.VARIATIONS && textBeforeCaret != null && !textBeforeCaret.endsWith(pending.committedText)) return Action.Ignored
+        // An empty read is no answer either: a letter was just committed, and a web field
+        // answers "" after every letter (the Titan, 2026-09-25).
+        if (pending.mode == LongPressMode.VARIATIONS && !textBeforeCaret.isNullOrEmpty() && !textBeforeCaret.endsWith(pending.committedText)) return Action.Ignored
         val text = when (pending.mode) {
             LongPressMode.ALT -> layout.deviceLayer[pending.key]
             LongPressMode.SHIFT ->

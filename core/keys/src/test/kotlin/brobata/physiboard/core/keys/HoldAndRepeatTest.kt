@@ -172,6 +172,7 @@ class HoldAndRepeatTest {
         assertEquals(Action.Ignored, LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l, textBeforeCaret = "hello")?.action)
         assertEquals(Action.ReplaceRecent(1, "ü"), LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l, textBeforeCaret = "hu")?.action)
         assertEquals(Action.ReplaceRecent(1, "ü"), LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l, textBeforeCaret = null)?.action, "an unreadable field is trusted")
+        assertEquals(Action.ReplaceRecent(1, "ü"), LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l, textBeforeCaret = "")?.action, "a web field's empty read is trusted")
     }
 
     @Test

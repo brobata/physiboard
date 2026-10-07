@@ -109,6 +109,17 @@ class LongPressAccentTest {
     }
 
     @Test
+    fun `a web field that reads back empty still gets the accent and the chooser`() {
+        val p = pipeline(accentSettings(), "pl_PL")
+        val editor = Editor()
+        press(p, editor, 'A')
+        val tick = assertNotNull(p.checkLongPressTick(400, EditorSnapshot(textBeforeCursor = "", nowMs = 400)))
+        assertEquals(listOf(EditorOp.ReplaceBeforeCursor(1, "ą")), tick.ops.filterIsInstance<EditorOp.ReplaceBeforeCursor>())
+        assertNotNull(tick.variationChoice)
+        assertNotNull(p.replaceVariation("ą", "à", EditorSnapshot(textBeforeCursor = "", nowMs = 500)))
+    }
+
+    @Test
     fun `an email field takes no accents, so a held letter never arms`() {
         val p = pipeline(accentSettings(), "pl_PL", FieldContext(FieldKind.EMAIL))
         val editor = Editor()

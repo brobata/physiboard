@@ -233,8 +233,9 @@ object VariationChooser {
      * spec SS8.4: a pick replaces the text the long press (or the last pick) left only when the
      * text just before the caret still ends with it; otherwise nothing changes. [textBeforeCaret]
      * null means the field could not be read, which is trusted as unchanged, like a terminal's
-     * text box ([terminalMode]), which the terminal empties after every key.
+     * text box ([terminalMode]), which the terminal empties after every key. An empty read is
+     * trusted too: the accent was just typed, and a web field answers "" after every letter.
      */
     fun canReplace(textBeforeCaret: String?, committed: String, terminalMode: Boolean): Boolean =
-        terminalMode || textBeforeCaret == null || textBeforeCaret.endsWith(committed)
+        terminalMode || textBeforeCaret.isNullOrEmpty() || textBeforeCaret.endsWith(committed)
 }

@@ -194,15 +194,20 @@ fun CustomizeSymKeyboardScreen(
         // spec SS4.6: one of the user's own pages: a name, the grid, and a way to empty it.
         val index = customIndex(page)!!
         val custom = symPages.customPages.getOrElse(index) { CustomSymPage() }
+        // Typed into local state: the store trims a name on the way back, which would eat a
+        // space typed between two words, and its round trip lags fast typing.
+        var nameText by remember(index) { mutableStateOf(custom.name) }
         SettingsScreenScaffold(title = "Edit ${displayName(page, symPages.customPages)}", onBack = { editingPage = null }) {
             RowList {
                 item {
                     TextFieldRow(
                         label = "Page name",
                         description = "Shown in the page chooser (Sym, Sym, then ${chooserLetter(page)}). Leave empty for \"${defaultCustomName(index)}\".",
-                        value = custom.name,
-                        onValueChange = { name ->
-                            controller.update { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(index) { p -> p.copy(name = name.take(CustomSymPage.MAX_NAME_LENGTH)) })) }
+                        value = nameText,
+                        onValueChange = { typed ->
+                            val name = typed.take(CustomSymPage.MAX_NAME_LENGTH)
+                            nameText = name
+                            controller.update { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(index) { p -> p.copy(name = name) })) }
                         },
                     )
                 }

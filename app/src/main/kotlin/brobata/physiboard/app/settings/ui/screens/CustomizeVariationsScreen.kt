@@ -55,10 +55,21 @@ fun CustomizeVariationsScreen(onBack: () -> Unit) {
     var adding by remember { mutableStateOf<Char?>(null) }
     val table = Variations.effective(previewLanguage, Variations.overridesFromStored(stored))
 
-    fun save(character: Char, list: List<String>?) {
+    /**
+     * Applies [change] to the list as stored at write time (the built-in list in the previewed
+     * order when there is none), so two quick taps never undo each other; null [change] resets.
+     */
+    fun save(character: Char, change: ((List<String>) -> List<String>)?) {
+        val language = previewLanguage
         controller.update { settings ->
             val key = character.toString()
-            val updated = if (list == null) settings.keys.customVariations - key else settings.keys.customVariations + (key to Variations.clean(list))
+            val current = settings.keys.customVariations
+            val updated = if (change == null) {
+                current - key
+            } else {
+                val base = current[key] ?: Variations.defaults(language)[character].orEmpty()
+                current + (key to Variations.clean(change(base)))
+            }
             settings.copy(keys = settings.keys.copy(customVariations = updated))
         }
     }
@@ -122,9 +133,9 @@ fun CustomizeVariationsScreen(onBack: () -> Unit) {
                                 entry = entry,
                                 canMoveUp = index > 0,
                                 canMoveDown = index < list.lastIndex,
-                                onMoveUp = { save(character, list.moved(index, index - 1)) },
-                                onMoveDown = { save(character, list.moved(index, index + 1)) },
-                                onRemove = { save(character, list.filterIndexed { i, _ -> i != index }) },
+                                onMoveUp = { save(character) { it.moved(index, index - 1) } },
+                                onMoveDown = { save(character) { it.moved(index, index + 1) } },
+                                onRemove = { save(character) { stored -> stored.filterIndexed { i, _ -> i != index } } },
                             )
                         }
                     }
@@ -157,7 +168,7 @@ fun CustomizeVariationsScreen(onBack: () -> Unit) {
             onDismiss = { adding = null },
             onChoose = { chosen ->
                 adding = null
-                if (chosen.isNotEmpty()) save(character, table.listFor(character) + chosen)
+                if (chosen.isNotEmpty()) save(character) { it + chosen }
             },
         )
     }

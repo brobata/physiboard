@@ -837,7 +837,8 @@ batch edit), not a composing-region swap: a web terminal is on record dropping c
 (per-app-behavior.md D7), and in 3.0 no input can come between the letter and the timer (another
 letter re-arms the long press for itself, an Alt or Ctrl key cancels it), so the anchor has
 nothing to protect. What is kept is the check: the letter is replaced only while the field's
-text before the caret still ends with it; an unreadable field is trusted. In a terminal-mode
+text before the caret still ends with it; an unreadable field, or one that reads back empty
+(a web field answers "" after every letter), is trusted. In a terminal-mode
 app (per-app-behavior.md 4.6) the check is skipped, since the terminal empties its text box
 after every key, and the accent reaches the app like any other character (a commit, or key
 presses for a character a key produces). The long press does not arm at all in a field that
@@ -1018,8 +1019,8 @@ hold e for ę, then d), so a bare letter picks only while the long-pressed key i
 | Any other key (a letter once the held key is up, a letter with no listed digit, Space, Enter, Backspace, Shift, Sym, Ctrl) | closes the bar, then does exactly what it would have done |
 
 A tap on a variation in the bar picks it the same way. A pick replaces the variation the long
-press typed only while the field's text before the caret still ends with it, an unreadable
-field being trusted; otherwise nothing changes. A terminal-mode app skips that check
+press typed only while the field's text before the caret still ends with it, an unreadable or
+empty read being trusted; otherwise nothing changes. A terminal-mode app skips that check
 and gets the character the way it gets every other (per-app-behavior.md 4.6). Picking the
 variation already typed changes nothing. The pick goes through the same path as the long press
 itself, so the word being tracked follows. The bar also closes after 10 seconds without a key,
@@ -1471,7 +1472,8 @@ Variations (3.0, section 8):
 79. Chooser open: A's auto-repeat is consumed; a Shift repeat passes on with the bar open;
     Back closes it, consumed; Space and H close it and pass on.
 80. A pick of ą → à: allowed when the text before the caret is "zażółć ą", refused for
-    "zażółć a", allowed when the field cannot be read, allowed in a terminal.
+    "zażółć a", allowed when the field cannot be read or reads back empty, allowed in a
+    terminal.
 
 ## 15. Keep / Drop for 3.0
 

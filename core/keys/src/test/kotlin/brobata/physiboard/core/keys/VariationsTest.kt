@@ -152,6 +152,7 @@ class VariationsTest {
         assertTrue(VariationChooser.canReplace("zażółć ą", "ą", terminalMode = false))
         assertFalse(VariationChooser.canReplace("zażółć a", "ą", terminalMode = false))
         assertTrue(VariationChooser.canReplace(null, "ą", terminalMode = false), "an unreadable field is trusted")
+        assertTrue(VariationChooser.canReplace("", "ą", terminalMode = false), "an empty read (a web field) is trusted")
         assertTrue(VariationChooser.canReplace("", "ą", terminalMode = true), "a terminal empties its text box after every key")
     }
 }
