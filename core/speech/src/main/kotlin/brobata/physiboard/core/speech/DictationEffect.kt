@@ -11,6 +11,17 @@ sealed class DictationEffect {
     /** spec SS3, SS6.5: destroy the in-flight request; no more callbacks from it are expected or acted on. */
     object CancelListening : DictationEffect()
 
+    /**
+     * spec SS6.8: keep the keyboard visible to the input-method service for the whole session.
+     * Android grants a keyboard the microphone only while the system considers it shown (the
+     * visible binding carries the microphone capability); with the window hidden the recording
+     * is silently fed zeros (D22). Issued before the first request, released at every ending.
+     */
+    object HoldImeVisible : DictationEffect()
+
+    /** spec SS6.8: the keyboard may hide again. */
+    object ReleaseImeVisible : DictationEffect()
+
     /** spec SS6.7: take exclusive transient audio focus for the session, so music pauses once. */
     object AcquireAudioFocus : DictationEffect()
 

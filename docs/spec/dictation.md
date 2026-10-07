@@ -68,8 +68,11 @@ camera or on a page with no text field does nothing.
 
 ### 2.2 Other triggers
 
-The strip's microphone button (status-bar document) fires the same trigger on tap. The Alt+Ctrl
-chord and the keycode-667 microphone key of 2.x are gone (section 17).
+The strip's microphone button (status-bar document) fires the same trigger on tap, and so does
+the **"Dictation" command** (id `physiboard.toggle_dictation`, internal action
+`toggle_dictation`, "Start or stop dictation, like holding Fn"), bindable to any launcher key,
+Fn-layer slot or nav-mode key and offered by the quick launcher (launcher document 8.2). The
+Alt+Ctrl chord and the keycode-667 microphone key of 2.x are gone (section 17).
 
 ### 2.3 The assistant triggers are not dictation
 
@@ -85,18 +88,21 @@ insert text; section 11 covers them.
 2. Capture the package of the current editor as the session's owner (section 3) and the text
    before the cursor as the first utterance's frozen context (7.5).
 3. Plan the request (section 5) from the settings and the engine's refusal latch (6.3).
-4. If `dictation_pause_media` is on, take exclusive transient audio focus (6.7), before the
+4. Hold the keyboard visible for the system (6.8): without it the microphone is silenced.
+5. If `dictation_pause_media` is on, take exclusive transient audio focus (6.7), before the
    microphone opens.
-5. Create a recognizer for the engine id (4.2) and issue the request. If no recognizer can be
-   created, or the request cannot be issued, the session ends with a message (6.6).
+6. Once the system's own answer for the keyboard's RECORD_AUDIO reads allowed (6.8), create a
+   recognizer for the engine id (4.2) and issue the request. If no recognizer can be created, or
+   the request cannot be issued, the session ends with a message (6.6).
 
 The session is now `STARTING`. It becomes `LISTENING` on the engine's "ready for speech"; the
 start cue plays at the first audio level report (8.1).
 
 ## 3. Ways a session ends
 
-Every ending gives audio focus back (6.7), plays the stop cue if the start cue played (8.1), and
-releases the recognizer so the next session binds a fresh one (D20).
+Every ending gives audio focus back (6.7), releases the keyboard's visibility hold (6.8), plays
+the stop cue if the start cue played (8.1), and releases the recognizer so the next session binds
+a fresh one (D20).
 
 | Cause | What happens | Words on screen |
 |---|---|---|
@@ -403,6 +409,58 @@ player stays paused for the whole session and resumes once, at the stop cue.
 A **permanent** loss (`AUDIOFOCUS_LOSS`: a call, a video the user started) ends the session at
 once, committing the words on screen. A failed focus request (during a call, for instance) is
 logged and the session goes on without it.
+
+### 6.8 The microphone and the keyboard window
+
+RECORD_AUDIO is a "while in use" permission: the system evaluates it at the moment a recording
+starts, from the uid's process state and its **microphone capability**
+(`AppOpsUidStateTracker.evalModeInternal`: an op whose capability is
+`PROCESS_CAPABILITY_FOREGROUND_MICROPHONE` is ignored unless the uid holds that capability). The
+recognizer records on the keyboard's behalf (its attribution chain names the keyboard as the
+next source), so the keyboard's own grant is what counts; when it fails, audioserver logs
+`App op 27 missing, silencing record` and the engine hears zeros for the whole request (D22).
+
+An input method holds that capability only while the input-method service considers it
+**shown**: `InputMethodManagerService.showCurrentInputLocked` binds the keyboard a second time
+with `IME_VISIBLE_BIND_FLAGS` (`BIND_TREAT_LIKE_ACTIVITY | BIND_FOREGROUND_SERVICE |
+BIND_INCLUDE_CAPABILITIES | BIND_SHOWING_UI`), and `hideCurrentInputLocked` drops that binding.
+On the Titan that is the difference between `curProcState=5` with a `FGS LACT UI CAPS`
+connection record and `curProcState=16` with none (D22). The keyboard's own candidates window
+(the strip) does not go through that path: it is shown by `setCandidatesViewShown`, which the
+service never sees as "the input is shown". So a hardware-keyboard session with the strip
+collapsed (PersaLink, a web terminal in the raw-mode list) had a 0 by 0 window, no visible
+binding, and a silenced microphone; the one transcribed session of 2026-10-07 ran in Messages,
+which had itself asked for the keyboard (`SHOW_SOFT_INPUT fromUser`).
+
+So the session **holds the keyboard visible**: at the trigger, before anything else, the keyboard
+calls `requestShowSelf(0)`, which reaches `showCurrentInputLocked` and the visible binding. On
+this phone that shows nothing new: the platform asks `onShowInputRequested`, which answers no for
+a hardware keyboard, and the candidates window stays exactly as it was; the keyboard ignores
+that one refusal for the per-app dip (status-bar document 12.2), since it is not an app asking.
+The request is repeated on every field start while the session runs (a web terminal restarts its
+field on every key), since it is idempotent for the service. Every request of the session waits
+for the grant: the keyboard polls the system's own answer
+(`AppOpsManager.unsafeCheckOpNoThrow(OPSTR_RECORD_AUDIO)`, the same `evalMode`) every 40 ms, up
+to 400 ms, and issues the request as soon as it reads allowed; after 400 ms it issues it anyway
+and logs an error. A re-listen normally reads allowed at once; one that does not (the keyboard
+was hidden under the running session: an app's own hide, Back with stop-on-typing off) holds
+the keyboard visible again first and then waits.
+
+At every ending the hold is released. The service is told to hide (`requestHideSelf(0)`) only
+when all of these hold: the ending was not caused by a field change (the next field, or none,
+is the system's to decide, and a hide sent now would land on it); the app had not itself asked
+for the keyboard during this field (then the system hides it when the app says so); and nothing
+of the keyboard is on screen anyway (a collapsed or hidden strip). A strip the user can see
+stays, because the platform's hide would take the strip down with it.
+
+A key bound to the "Dictation" command (2.2) first passes the key hook of section 3, which with
+`dictation_stop_on_typing` on has already ended the session; the command that follows within
+1500 ms is that same press and starts nothing. With no session running and no editable field,
+the command fails with "No input context".
+
+Why not a foreground service of type microphone: Android 14 and later refuse to start one from
+the background, and the keyboard with its window hidden is exactly that; an input method's own
+visible binding is the mechanism Android provides for voice typing, and it needs no notification.
 
 ## 7. Text insertion
 
@@ -715,6 +773,7 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | D19 | The vendor shortcut layer in `system_server` (`A85ShortcutFunction`) sees both an `ACTION_DOWN` and an `ACTION_UP` for scancode 251 (keycode CTRL_LEFT), ~600 to 800 ms apart; neither reaches the input method. Back (scancode 158), Enter (28) and the letters deliver clean down and up pairs. | the same log, lines 305, 527, 3104, 3105 and the Back/Enter/letter events |
 | D20 | A recognizer kept between sessions goes stale: Android unbinds the remote service while nothing is listening, and the next request reached a dead connection ("Connection to speech recognition service lost, but no #startListening has been invoked yet"). | the maintainer's Titan, 2026-09-26 |
 | D21 | Google's segmented session reports the whole session's transcript so far in every partial and segment. | the maintainer's Titan, 2026-09-25 |
+| D22 | 2026-10-07 16:30, PersaLink (Chrome WebAPK, strip collapsed to a 0 by 0 window, `InputDispatcher ... info.frame: (2, 1200, 2, 1200)`): at each PhysiBoard request (16:30:27.548, 37.330, 48.977, 58.759) audioserver logged `App op 27 missing, silencing record AttributionSourceState{... packageName: com.google.android.tts ... next: ...}` within ~15 ms, the engine heard nothing, and `appops get brobata.physiboard.dev3 RECORD_AUDIO` showed `Uid mode: foreground` with a fresh `rejectTime`. `dumpsys input_method` read `mVisibleBound=false`, `dumpsys activity processes` `curProcState=16 curCapability=--------` with one IME connection (`!FG IMPB SLTA !VIS`, flags 0x40880005); later, with Chrome having shown the keyboard, `mVisibleBound=true`, `curProcState=5` and a second connection `FGS LACT UI CAPS` (flags 0x2c001001). The 16:28:43 session in Messages (Messages had sent `SHOW_SOFT_INPUT fromUser true`) was not silenced and reached `#onResults withSpeech: true`; the 16:31:11 session was Chrome's own Web Speech, not the keyboard's. | scratchpad `dictation-evidence-2.log`; the read-only `dumpsys`/`appops` queries of the same day; AOSP `InputMethodBindingController.IME_VISIBLE_BIND_FLAGS`, `InputMethodManagerService.showCurrentInputLocked`/`hideCurrentInputLocked`, `AppOpsUidStateTrackerImpl.evalModeInternal` |
 
 ## 15. Edge cases, quirks, known bugs
 
@@ -744,6 +803,11 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | Notification vibration off, system haptic feedback on | cues play | plain vibration, no notification attributes (D5) |
 | System haptic feedback off | no cues, whatever `dictation_haptics` says | effective value is gated on the system toggle |
 | Status bar hidden | the system status bar's microphone icon is the only visual sign | 9 |
+| Strip collapsed or hidden when the session starts | the keyboard is held visible for the system with nothing new on screen; released with a hide at the end | 6.8 |
+| The app had asked for the keyboard during this field | the hold is a no-op for the system; nothing is hidden at the end | 6.8 |
+| Session ends because the user moved to another field or app | nothing is hidden; the system decides the keyboard for the new field | 6.8 |
+| A launcher key bound to "Dictation" pressed while listening | the key hook ends the session; the command is that same press and starts nothing | 2.2, 6.8 |
+| The grant takes longer than 400 ms | the request goes out anyway and an error is logged; the engine's first five seconds may be silent | 6.8 |
 | `ondevice` chosen on the Titan 2 | the row is not offered; a stored value falls to the system default | D18 |
 | Language tag falls back to `en-US` | only when neither the subtype nor the device locale yields a language | 5.1 |
 
@@ -767,6 +831,7 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | T10 | editor rejected the insert | partial cleared; session ends with cancel |
 | T11 | any ending | exactly one `ReleaseAudioFocus`; stop cue only after a start cue |
 | T12 | whitespace-only final with a partial | committed from the partial |
+| T13 | trigger; every ending | `HoldImeVisible` is the first effect; every ending has exactly one `ReleaseImeVisible` |
 | D14 | two 5 s quiet errors then speech | two silent re-listens, no message, words land, one start cue |
 | D15 | plain final for a segmented request | committed; plain re-listen; latch; next sentence lands |
 | D16 | server disconnected mid-partial | partial committed; stop cue; focus back; "Network error." |
@@ -810,6 +875,8 @@ echo, direct commit, deleted words never typed back) and the cue table.
 | Typing stops dictation | new | the stop that needs no second thought |
 | Start cue at ready | drop | tied to the open microphone instead (first audio report) |
 | Status bar icon while listening | new | the strip may be hidden; the icon needs no permission |
+| The keyboard held visible for the system during a session | new | the only way an input method gets the microphone capability (D22) |
+| "Dictation" catalog command | new | a second trigger for any bindable key; the same action as the Fn burst |
 | Fresh recognizer per session | keep | D20 |
 | Session echo stripping | keep | D21 |
 | Partials as composing text with the cursor after | keep | D3 |

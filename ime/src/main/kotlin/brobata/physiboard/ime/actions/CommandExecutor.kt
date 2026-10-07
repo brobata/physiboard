@@ -36,6 +36,8 @@ internal class CommandExecutor(
     private val togglePrivateMode: () -> Boolean,
     /** layers-sym-alt.md SS5.10: false when there is no text field to open a page for. */
     private val openSymPageChooser: () -> Boolean = { false },
+    /** dictation.md SS2.2: the catalog's "Dictation" command, the same action as the Fn burst. */
+    private val toggleDictation: () -> Boolean = { false },
 ) {
 
     fun run(resolved: ShortcutRun, silent: Boolean = false): Boolean = when (resolved) {
@@ -95,6 +97,7 @@ internal class CommandExecutor(
         InternalActions.START_VOICE_ASSISTANT -> startVoiceAssistant() || fail(CommandFailure.NO_VOICE_ASSISTANT, silent)
         InternalActions.TOGGLE_SOFTWARE_KEYBOARD_MODE -> fail(CommandFailure.COMMAND_NOT_AVAILABLE, silent)
         InternalActions.TOGGLE_PRIVATE_MODE -> togglePrivateMode() || fail(CommandFailure.COMMAND_FAILED, silent)
+        InternalActions.TOGGLE_DICTATION -> toggleDictation() || fail(CommandFailure.NO_INPUT_CONTEXT, silent)
         InternalActions.OPEN_SYM_PAGE_CHOOSER -> openSymPageChooser() || fail(CommandFailure.NO_INPUT_CONTEXT, silent)
         InternalActions.OPEN_HOME -> startIntent(LaunchSpec.IntentUri(Intent.ACTION_MAIN, categories = listOf(Intent.CATEGORY_HOME)), silent)
         InternalActions.MEDIA_PLAY_PAUSE -> mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, silent)

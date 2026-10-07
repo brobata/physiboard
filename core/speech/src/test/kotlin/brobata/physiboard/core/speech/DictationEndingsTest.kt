@@ -65,7 +65,7 @@ class DictationEndingsTest {
         val ended = composing().send(DictationEvent.Error(DictationErrorCode.SERVER), now = 300L)
         assertNull(ended.session)
         assertEquals(commit, ended.textOps)
-        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ShowMessage(DictationMessage.NETWORK_ERROR)), ended.effects)
+        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible, DictationEffect.ShowMessage(DictationMessage.NETWORK_ERROR)), ended.effects)
     }
 
     @Test

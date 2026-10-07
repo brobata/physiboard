@@ -430,6 +430,7 @@ internal class KeyboardSession(
         runNavAction = ::runNavAction,
         togglePrivateMode = ::togglePrivateMode,
         openSymPageChooser = ::openSymPageChooser,
+        toggleDictation = ::toggleDictationCommand,
     )
     private val launcherKeys = LauncherKeysController(service, handler, commandCatalog, commandExecutor, quickLauncher) { nowMs ->
         pipeline.onPowerShortcutTimeout(nowMs)
@@ -494,6 +495,27 @@ internal class KeyboardSession(
     private var currentFieldKind: FieldKind = FieldKind.NOT_EDITABLE
 
     fun onDictationTrigger() = dictationController.trigger(currentPackageName)
+
+    /** When a key going down ended the session (dictation.md SS3), so a command the same key runs is that stop, not a new start. */
+    private var dictationEndedByKeyAtMs: Long? = null
+
+    /**
+     * dictation.md SS2.2: the catalog's "Dictation" command. A key bound to it first passes the
+     * key hook of [onKeyEvent], which with `dictation_stop_on_typing` on has already ended the
+     * running session; the command that follows (at once, or from a launcher key's own timing)
+     * is that same press, and must not reopen the microphone. With no session to stop and no
+     * field to write into, there is nothing to start.
+     */
+    private fun toggleDictationCommand(): Boolean {
+        val endedByKey = dictationEndedByKeyAtMs
+        if (endedByKey != null && SystemClock.uptimeMillis() - endedByKey < DICTATION_KEY_STOP_WINDOW_MS) {
+            dictationEndedByKeyAtMs = null
+            return true
+        }
+        if (!dictationController.isActive && currentFieldKind == FieldKind.NOT_EDITABLE) return false
+        onDictationTrigger()
+        return true
+    }
 
     /**
      * The service is going away. Every callback this session posted on the main handler (the
@@ -645,6 +667,8 @@ internal class KeyboardSession(
         // Dictation starts asynchronously, so the first report is also the first moment the strip
         // can learn the session is active; the refresh is equality-guarded and cheap.
         dictationController.onActiveChanged = { _ -> runCatching { refreshCandidatesStrip() }.onFailure { error -> Log.e(TAG, "dictation state refresh crashed", error) } }
+        dictationController.onHoldImeVisible = ::holdImeVisibleForDictation
+        dictationController.onReleaseImeVisible = ::releaseImeVisibleForDictation
         dictationController.onAudioLevel = { level ->
             runCatching {
                 refreshCandidatesStrip()
@@ -1077,7 +1101,15 @@ internal class KeyboardSession(
         // An app that refuses to be resized for a keyboard needs the strip to blink before it
         // will lay out clear of it; see [dipForListedAppOnFieldStart].
         if (field.isReallyEditable) handler.post { dipForListedAppOnFieldStart() }
-        dictationController.onEditorFieldOpened(reportedPackage)
+        fieldChangeInProgress = true
+        try {
+            dictationController.onEditorFieldOpened(reportedPackage)
+        } finally {
+            fieldChangeInProgress = false
+        }
+        // dictation.md SS6.8: a field restarting under a running session (a web terminal does it
+        // on every key) must not cost the hold; the request is idempotent for the system.
+        if (imeHeldForDictation && dictationController.isActive) requestOwnShow()
         clipboard.onFieldStarted()
         // spec SS2.4: matches are cleared "on every start of input".
         handler.removeCallbacks(expansionRefreshRunnable)
@@ -1120,7 +1152,13 @@ internal class KeyboardSession(
         currentFieldKind = FieldKind.NOT_EDITABLE
         pipeline.onFinishInput()
         requestCandidatesShown(false)
-        dictationController.onEditorFieldClosed()
+        fieldChangeInProgress = true
+        try {
+            dictationController.onEditorFieldClosed()
+        } finally {
+            fieldChangeInProgress = false
+        }
+        appAskedForKeyboardThisField = false
         // spec: SS4.6, "forgotten and the badge hidden when the editor finishes".
         lastCaretGeometry = null
         caretBadge.hide()
@@ -1176,11 +1214,71 @@ internal class KeyboardSession(
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
     }
 
+    // -----------------------------------------------------------------------------------------
+    // The keyboard held visible for dictation. spec: dictation.md SS6.8, D22.
+    // -----------------------------------------------------------------------------------------
+
+    /** True from the session's hold to its release; re-asserted on every field start in between. */
+    private var imeHeldForDictation = false
+
+    /** True between the session's own show request and the platform's callback for it, so that callback is not taken for an app's. */
+    private var ownShowRequestPending = false
+    private val ownShowRequestToken = Any()
+
+    /** The app asked the system to show the keyboard during this field (a tap in its box); the system's own hide will follow its lead, not the session's. */
+    private var appAskedForKeyboardThisField = false
+
+    /** True while a field change is being told to the session, so an ending it causes never hides the keyboard the next field is about to decide on. */
+    private var fieldChangeInProgress = false
+
+    /**
+     * spec SS6.8: asks the input-method service to show this keyboard, which is the one path
+     * that binds the keyboard with the microphone capability (D22). On this phone the request
+     * shows nothing new: the platform asks [onShowInputRequested], which says no for a hardware
+     * keyboard, and the candidates window stays exactly as it was; only the system's bookkeeping
+     * changes.
+     */
+    private fun holdImeVisibleForDictation() {
+        imeHeldForDictation = true
+        requestOwnShow()
+    }
+
+    private fun requestOwnShow() {
+        ownShowRequestPending = true
+        runCatching { service.requestShowSelf(0) }.onFailure { error -> Log.e(TAG, "requestShowSelf crashed", error) }
+        // The callback normally arrives within the same frame; a request the platform dropped
+        // (no focused client) must not leave the flag armed for an app's real request later. One
+        // timer at a time: a web terminal restarts its field on every key, and an earlier
+        // request's leftover clear must not disarm a later request's callback.
+        handler.removeCallbacksAndMessages(ownShowRequestToken)
+        handler.postDelayed({ ownShowRequestPending = false }, ownShowRequestToken, OWN_SHOW_REQUEST_WINDOW_MS)
+    }
+
+    /**
+     * spec SS6.8: the hold ends with the session. The system is told to hide only when there is
+     * nothing of the keyboard on screen anyway (a collapsed or hidden strip): a strip the user
+     * can see stays, because the platform's hide would take it down with it.
+     */
+    private fun releaseImeVisibleForDictation() {
+        if (!imeHeldForDictation) return
+        imeHeldForDictation = false
+        // An ending caused by a field change (the next field, or none) leaves the system to
+        // decide the keyboard's visibility for that field; a hide sent now would land on it.
+        if (fieldChangeInProgress) return
+        // The app asked for the keyboard itself: the system hides it when the app says so.
+        if (appAskedForKeyboardThisField) return
+        val rendered = runCatching { statusBar?.isRenderedOnScreen() ?: false }.getOrDefault(false)
+        if (!rendered) runCatching { service.requestHideSelf(0) }.onFailure { error -> Log.e(TAG, "requestHideSelf crashed", error) }
+    }
+
     /** spec: status-bar.md SS13, "When the window is shown again the strip is refreshed immediately." */
     fun onKeyboardWindowShown() {
         runCatching {
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
             pipeline.onWindowShown(textBeforeCursor)
+            // dictation.md SS9: the status bar icon is shown again with the window, in case the
+            // window's own hide took it down.
+            if (lastShownStatusIcon != StatusBarIcon.None) lastShownStatusIcon = StatusBarIcon.None
             refreshCandidatesStrip()
             // spec trackpad-caret-nav.md SS3.3: re-attached "whenever ... the keyboard window is shown".
             attachKeyboardSwipeListener()
@@ -1201,6 +1299,14 @@ internal class KeyboardSession(
      * the strip now and arms the 200 ms re-show.
      */
     fun onShowInputRequested(configurationChange: Boolean, refused: Boolean) {
+        // dictation.md SS6.8: the request the session itself made is not an app asking for a
+        // keyboard, so it is never the start of a per-app dip and never counts as the app's.
+        if (ownShowRequestPending) {
+            ownShowRequestPending = false
+            handler.removeCallbacksAndMessages(ownShowRequestToken)
+            return
+        }
+        appAskedForKeyboardThisField = true
         if (!refused) return
         runCatching {
             val rendered = statusBar?.isRenderedOnScreen() ?: false
@@ -1504,6 +1610,7 @@ internal class KeyboardSession(
         normalized?.let { stroke ->
             if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key !is KeyId.Modifier && dictationController.isActive) {
                 dictationController.onKeyDown()
+                if (!dictationController.isActive) dictationEndedByKeyAtMs = SystemClock.uptimeMillis()
             }
         }
         normalized?.let { stroke ->
@@ -3003,6 +3110,9 @@ internal class KeyboardSession(
         const val NAV_MODE_HAPTIC_MS = 70L
 
         /** spec: text-input.md SS2's one unified 240-character read. */
+        const val OWN_SHOW_REQUEST_WINDOW_MS = 1_000L
+        /** A Dictation command this soon after a key ended the session is that key's own press. */
+        const val DICTATION_KEY_STOP_WINDOW_MS = 1_500L
         const val TEXT_BEFORE_CURSOR_READ = 240
 
         /** `keyboard_layout`'s own default (`Settings.kt`'s `LanguagePrefs`); layers-sym-alt.md SS9.2's first bundled layout. Kept for reference; [shippedLayouts] now builds from `TitanLayouts.bundled()` directly. */

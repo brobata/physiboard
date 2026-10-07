@@ -96,6 +96,6 @@ class DictationEngineRequiredScenariosTest {
         val failed = h.send(DictationEvent.Error(DictationErrorCode.AUDIO), now = 600L)
         assertNull(failed.session)
         assertEquals("Keep ", h.field.text)
-        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ShowMessage(DictationMessage.SPEECH_RECOGNITION_ERROR)), failed.effects)
+        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible, DictationEffect.ShowMessage(DictationMessage.SPEECH_RECOGNITION_ERROR)), failed.effects)
     }
 }

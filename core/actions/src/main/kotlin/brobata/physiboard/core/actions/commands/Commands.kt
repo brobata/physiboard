@@ -148,6 +148,9 @@ object InternalActions {
 
     /** 3.0's own: opens the Sym page chooser (layers-sym-alt.md SS5.10). */
     const val OPEN_SYM_PAGE_CHOOSER = "open_sym_page_chooser"
+
+    /** 3.0's own: starts or stops dictation, the same action as the Fn burst (dictation.md SS2.2). */
+    const val TOGGLE_DICTATION = "toggle_dictation"
     const val OPEN_HOME = "device_home"
     const val MEDIA_PLAY_PAUSE = "media_play_pause"
     const val MEDIA_PREVIOUS = "media_previous"
@@ -173,6 +176,9 @@ object CommandIds {
 
     /** layers-sym-alt.md SS5.10: the same id `:core:keys` emits for a Sym double tap. */
     const val SYM_PAGE_CHOOSER = brobata.physiboard.core.keys.KeyCommands.OPEN_SYM_PAGE_CHOOSER
+
+    /** dictation.md SS2.2: the same id `:core:keys` emits for the Fn burst. */
+    const val DICTATION = brobata.physiboard.core.keys.KeyCommands.TOGGLE_DICTATION
     const val APP_PREFIX = "app:"
     const val DEVICE_HOME = "device.home"
     const val MEDIA_PLAY_PAUSE = "device.media.play_pause"
@@ -229,6 +235,8 @@ object BuiltInCommands {
         Command(CommandIds.SYM_PAGE_CHOOSER, CommandSource.PHYSIBOARD, "Sym page chooser", "Pick a Sym page by its letter",
             LaunchSpec.InternalAction(InternalActions.OPEN_SYM_PAGE_CHOOSER), setOf(CommandSurface.ASSIGNED_KEY, CommandSurface.NAV_MODE),
             listOf("sym", "page", "emoji", "symbols", "gif", "kaomoji", "clipboard", "chooser")),
+        Command(CommandIds.DICTATION, CommandSource.PHYSIBOARD, "Dictation", "Start or stop dictation, like holding Fn",
+            LaunchSpec.InternalAction(InternalActions.TOGGLE_DICTATION), Command.ALL_SURFACES, listOf("dictation", "dictate", "voice", "speech", "microphone", "mic", "talk")),
     )
 
     /** One app with a launcher activity: id `app:<package>`, label the app name, subtitle the package, all three surfaces, tokens name and package. */

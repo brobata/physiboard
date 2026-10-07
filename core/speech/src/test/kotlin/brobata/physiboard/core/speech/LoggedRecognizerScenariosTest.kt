@@ -76,7 +76,7 @@ class LoggedRecognizerScenariosTest {
         assertNull(died.session)
         assertEquals("Half a thought ", h.field.text)
         assertEquals(
-            listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ShowMessage(DictationMessage.NETWORK_ERROR)),
+            listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible, DictationEffect.ShowMessage(DictationMessage.NETWORK_ERROR)),
             died.effects,
         )
     }
@@ -129,7 +129,7 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.SegmentResult("on my way."), now = 2_700L)
         val end = h.send(DictationEvent.SegmentedSessionEnded, now = 2_750L)
         assertNull(end.session)
-        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus), end.effects)
+        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible), end.effects)
         assertEquals("On my way. ", h.field.text)
     }
 
@@ -141,7 +141,7 @@ class LoggedRecognizerScenariosTest {
         h.drainEffects()
         val fired = h.runClockTo(4_000L).last()
         assertNull(fired.session)
-        assertEquals(listOf(DictationEffect.CancelListening, DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus), fired.effects)
+        assertEquals(listOf(DictationEffect.CancelListening, DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible), fired.effects)
         assertEquals("On my way ", h.field.text)
     }
 
@@ -160,7 +160,7 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.PartialResult("see you at"), now = 2_000L)
         val typed = h.send(DictationEvent.KeyDown, now = 2_100L)
         assertNull(typed.session)
-        assertEquals(listOf(DictationEffect.CancelListening, DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus), typed.effects)
+        assertEquals(listOf(DictationEffect.CancelListening, DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible), typed.effects)
         assertEquals("See you at ", h.field.text)
         // Whatever the cancelled request still says is ignored.
         val late = h.send(DictationEvent.SegmentResult("see you at five"), now = 2_200L)
@@ -184,7 +184,7 @@ class LoggedRecognizerScenariosTest {
     fun `music - focus is taken before the microphone opens and given back on every ending`() {
         val h = harness()
         val started = h.send(DictationEvent.Trigger("app", ""), now = 0L)
-        assertEquals(listOf(DictationEffect.AcquireAudioFocus, DictationEffect.StartListening(started.session!!.request)), started.effects)
+        assertEquals(listOf(DictationEffect.HoldImeVisible, DictationEffect.AcquireAudioFocus, DictationEffect.StartListening(started.session!!.request)), started.effects)
 
         // Another app taking the audio for good stops dictation at once.
         h.send(DictationEvent.ReadyForSpeech, now = 10L)
@@ -229,7 +229,7 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.Trigger("app", ""), now = 0L)
         val failed = h.send(DictationEvent.StartFailed(DictationStartFailureReason.RECOGNITION_UNAVAILABLE), now = 5L)
         assertNull(failed.session)
-        assertEquals(listOf(DictationEffect.ReleaseAudioFocus, DictationEffect.ShowMessage(DictationMessage.SPEECH_RECOGNITION_NOT_AVAILABLE)), failed.effects)
+        assertEquals(listOf(DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible, DictationEffect.ShowMessage(DictationMessage.SPEECH_RECOGNITION_NOT_AVAILABLE)), failed.effects)
     }
 
     @Test
@@ -238,7 +238,7 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.Trigger("app", ""), now = 0L)
         val second = h.send(DictationEvent.Trigger("app", ""), now = 200L)
         assertNull(second.session)
-        assertEquals(listOf(DictationEffect.CancelListening, DictationEffect.ReleaseAudioFocus), second.effects)
+        assertEquals(listOf(DictationEffect.CancelListening, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible), second.effects)
         assertEquals(1, h.starts())
     }
 

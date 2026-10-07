@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.app.AppOpsManager
 import android.inputmethodservice.InputMethodService
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -15,6 +16,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -112,6 +114,13 @@ internal class DictationController(
     var onAudioLevel: ((Float) -> Unit)? = null
 
     /**
+     * spec SS6.8: the session needs the keyboard to count as shown for the system, or the
+     * microphone is silently fed zeros (D22). [KeyboardSession] owns the window and answers these.
+     */
+    var onHoldImeVisible: (() -> Unit)? = null
+    var onReleaseImeVisible: (() -> Unit)? = null
+
+    /**
      * Fires when [isActive] flips, so the strip and the status icon can re-render. Without it the
      * button turned red on the trigger and stayed red after the session ended, because nothing
      * asked the strip to look again (Titan, 2026-09-25).
@@ -198,6 +207,7 @@ internal class DictationController(
     fun onServiceDestroyed() {
         if (isActive) runCatching { onActiveChanged?.invoke(false) }
         handler.removeCallbacks(clockRunnable)
+        cancelPendingStart()
         runCatching { service.unregisterReceiver(permissionReceiver) }
         runCatching { recognizer?.destroy() }
         recognizer = null
@@ -241,6 +251,7 @@ internal class DictationController(
         // start and then typed nothing). Every session gets a recognizer of its own; the
         // ending's own cancel (above) has already run against it by now.
         if (wasActive && session == null) {
+            cancelPendingStart()
             releaseRecognizer()
             // Anything still staged belonged to the session that just ended; it must not be
             // written into whatever the next one says.
@@ -252,9 +263,17 @@ internal class DictationController(
 
     private fun applyEffect(effect: DictationEffect) {
         when (effect) {
-            is DictationEffect.StartListening -> startListening(effect.request)
-            DictationEffect.StopListening -> runCatching { recognizer?.stopListening() }
-            DictationEffect.CancelListening -> runCatching { recognizer?.cancel() }
+            is DictationEffect.StartListening -> startListeningOnceMicrophoneAllowed(effect.request)
+            DictationEffect.StopListening -> {
+                cancelPendingStart()
+                runCatching { recognizer?.stopListening() }
+            }
+            DictationEffect.CancelListening -> {
+                cancelPendingStart()
+                runCatching { recognizer?.cancel() }
+            }
+            DictationEffect.HoldImeVisible -> runCatching { onHoldImeVisible?.invoke() }.onFailure { error -> Log.e(TAG, "hold IME visible crashed", error) }
+            DictationEffect.ReleaseImeVisible -> runCatching { onReleaseImeVisible?.invoke() }.onFailure { error -> Log.e(TAG, "release IME visible crashed", error) }
             DictationEffect.AcquireAudioFocus -> requestAudioFocus()
             DictationEffect.ReleaseAudioFocus -> abandonAudioFocus()
             DictationEffect.PlayStartCue -> playCue(isStart = true)
@@ -324,6 +343,55 @@ internal class DictationController(
         val request = focusRequest ?: return
         focusRequest = null
         runCatching { audioManager?.abandonAudioFocusRequest(request) }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The microphone grant. spec SS6.8.
+    // -----------------------------------------------------------------------------------------
+
+    private val appOps: AppOpsManager? by lazy { runCatching { service.getSystemService(AppOpsManager::class.java) }.getOrNull() }
+    private var pendingStart: Runnable? = null
+
+    /**
+     * spec SS6.8: RECORD_AUDIO is a "while in use" permission, evaluated by the uid's process
+     * state and microphone capability at the moment the recording starts. The visibility hold
+     * ([onHoldImeVisible]) is what grants that capability, but it lands over a binder round trip
+     * and a service rebind, and the first request of the session must not race it (on the
+     * Titan the engine's record was silenced for its whole five seconds when it did, D22). So
+     * the request waits, in 40 ms steps up to 400 ms, until the system's own answer for this
+     * package reads allowed, and goes out at once when it already does (every re-listen).
+     */
+    private fun startListeningOnceMicrophoneAllowed(request: RecognizerRequest, attempt: Int = 0) {
+        cancelPendingStart()
+        if (session == null) return
+        if (attempt >= MIC_GRANT_MAX_ATTEMPTS || microphoneAllowedNow()) {
+            if (attempt >= MIC_GRANT_MAX_ATTEMPTS) Log.e(TAG, "microphone still not allowed after ${attempt * MIC_GRANT_POLL_MS} ms; listening anyway")
+            else if (attempt > 0) DiagnosticLog.i(TAG) { "microphone allowed after ${attempt * MIC_GRANT_POLL_MS} ms" }
+            startListening(request)
+            return
+        }
+        // The grant is missing: the keyboard was hidden under the running session (an app's own
+        // hide, Back with stop-on-typing off), which dropped the visible binding. Hold again
+        // before waiting; a refused show puts nothing on screen (SS6.8).
+        if (attempt == 0) runCatching { onHoldImeVisible?.invoke() }.onFailure { error -> Log.e(TAG, "re-hold IME visible crashed", error) }
+        val runnable = Runnable {
+            pendingStart = null
+            startListeningOnceMicrophoneAllowed(request, attempt + 1)
+        }
+        pendingStart = runnable
+        handler.postDelayed(runnable, MIC_GRANT_POLL_MS)
+    }
+
+    private fun cancelPendingStart() {
+        pendingStart?.let { handler.removeCallbacks(it) }
+        pendingStart = null
+    }
+
+    /** The system's own foreground evaluation of RECORD_AUDIO for this package right now (AppOpsUidStateTracker.evalMode, D22). */
+    private fun microphoneAllowedNow(): Boolean {
+        val ops = appOps ?: return true
+        return runCatching { ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_RECORD_AUDIO, Process.myUid(), service.packageName) == AppOpsManager.MODE_ALLOWED }
+            .getOrDefault(true)
     }
 
     // -----------------------------------------------------------------------------------------
@@ -497,6 +565,8 @@ internal class DictationController(
 
     private companion object {
         const val TEXT_BEFORE_SESSION_WINDOW = 240
+        const val MIC_GRANT_POLL_MS = 40L
+        const val MIC_GRANT_MAX_ATTEMPTS = 10
         const val TAG = "PhysiBoardDictation"
         /** Google's recognizer's own continuous-dictation flag; see [buildRecognizerIntent]. */
         const val GOOGLE_DICTATION_MODE_EXTRA = "android.speech.extra.DICTATION_MODE"

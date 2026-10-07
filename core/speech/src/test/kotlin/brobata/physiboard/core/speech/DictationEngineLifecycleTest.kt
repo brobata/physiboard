@@ -87,7 +87,7 @@ class DictationEngineLifecycleTest {
         val final = h.send(DictationEvent.FinalResult(null), now = 1_100L)
         assertNull(final.session)
         assertEquals("Hello ", h.field.text, "an empty final finishes from the partial (D3)")
-        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus), final.effects)
+        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible), final.effects)
     }
 
     @Test
@@ -132,6 +132,28 @@ class DictationEngineLifecycleTest {
         val early = noCue.send(DictationEvent.KeyDown, now = 5L)
         assertEquals(0, early.effects.count { it is DictationEffect.PlayStopCue })
         assertEquals(1, early.effects.count { it is DictationEffect.ReleaseAudioFocus })
+    }
+
+    @Test
+    fun `T13 the keyboard is held visible from before the first request to every ending, exactly once`() {
+        val h = DictationHarness()
+        val started = h.send(DictationEvent.Trigger("app", ""), now = 0L)
+        assertEquals(DictationEffect.HoldImeVisible, started.effects.first(), "held before anything else, so the microphone grant is in place for the request")
+        val endings = listOf<(DictationHarness) -> DictationOutcome>(
+            { it.send(DictationEvent.KeyDown, 100L) },
+            { it.send(DictationEvent.Error(DictationErrorCode.AUDIO), 100L) },
+            { it.send(DictationEvent.StartFailed(DictationStartFailureReason.OTHER_FAILURE), 100L) },
+            { it.send(DictationEvent.EditorFieldOpened("other"), 100L) },
+            { it.send(DictationEvent.Trigger("app", null), 100L) },
+        )
+        for (end in endings) {
+            val hh = DictationHarness()
+            hh.send(DictationEvent.Trigger("app", ""), now = 0L)
+            val ended = end(hh)
+            assertNull(ended.session)
+            assertEquals(1, ended.effects.count { it is DictationEffect.ReleaseImeVisible })
+            assertEquals(1, hh.effects.count { it is DictationEffect.HoldImeVisible })
+        }
     }
 
     @Test

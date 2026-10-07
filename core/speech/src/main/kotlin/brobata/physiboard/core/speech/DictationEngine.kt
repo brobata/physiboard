@@ -89,6 +89,9 @@ object DictationEngine {
         val request = RecognizerRequestPlanner.plan(settings, segmentedRefusalLatch)
         val fresh = DictationSession.fresh(event.ownerPackage, now, request, settings, event.textBeforeSession)
         val effects = buildList {
+            // spec SS6.8: the keyboard must count as shown before the microphone opens, or the
+            // recording is silenced (D22); `:ime` waits for that grant before issuing the request.
+            add(DictationEffect.HoldImeVisible)
             // spec SS6.7: focus is taken before the microphone opens, so music is already paused
             // by the time the first word is spoken.
             if (settings.pauseMedia) add(DictationEffect.AcquireAudioFocus)
@@ -427,7 +430,8 @@ object DictationEngine {
 
     /**
      * spec SS8.1: "the stop cue plays when the session ends, and only if a start cue was played for
-     * it." spec SS6.7: focus taken at the start is given back at every ending. [cancelRecognizer]
+     * it." spec SS6.7, SS6.8: focus and the keyboard's visibility hold, taken at the start, are
+     * given back at every ending. [cancelRecognizer]
      * distinguishes an ending that must still tear the in-flight request down from one where the
      * recognizer's own terminal callback already ended it.
      */
@@ -439,6 +443,7 @@ object DictationEngine {
         if (cancelRecognizer) add(DictationEffect.CancelListening)
         if (session.cuePlayed) add(DictationEffect.PlayStopCue)
         if (session.audioFocusHeld) add(DictationEffect.ReleaseAudioFocus)
+        add(DictationEffect.ReleaseImeVisible)
         message?.let { add(DictationEffect.ShowMessage(it)) }
     }
 }
