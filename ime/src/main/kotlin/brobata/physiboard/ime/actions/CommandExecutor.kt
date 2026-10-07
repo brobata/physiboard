@@ -34,6 +34,8 @@ internal class CommandExecutor(
     private val runNavAction: (mappingType: String, value: String) -> Boolean,
     /** app-shell.md SS31.3: flips `private_mode`; the keyboard shows its own toast. */
     private val togglePrivateMode: () -> Boolean,
+    /** layers-sym-alt.md SS5.10: false when there is no text field to open a page for. */
+    private val openSymPageChooser: () -> Boolean = { false },
 ) {
 
     fun run(resolved: ShortcutRun, silent: Boolean = false): Boolean = when (resolved) {
@@ -93,6 +95,7 @@ internal class CommandExecutor(
         InternalActions.START_VOICE_ASSISTANT -> startVoiceAssistant() || fail(CommandFailure.NO_VOICE_ASSISTANT, silent)
         InternalActions.TOGGLE_SOFTWARE_KEYBOARD_MODE -> fail(CommandFailure.COMMAND_NOT_AVAILABLE, silent)
         InternalActions.TOGGLE_PRIVATE_MODE -> togglePrivateMode() || fail(CommandFailure.COMMAND_FAILED, silent)
+        InternalActions.OPEN_SYM_PAGE_CHOOSER -> openSymPageChooser() || fail(CommandFailure.NO_INPUT_CONTEXT, silent)
         InternalActions.OPEN_HOME -> startIntent(LaunchSpec.IntentUri(Intent.ACTION_MAIN, categories = listOf(Intent.CATEGORY_HOME)), silent)
         InternalActions.MEDIA_PLAY_PAUSE -> mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, silent)
         InternalActions.MEDIA_PREVIOUS -> mediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS, silent)

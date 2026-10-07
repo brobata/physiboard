@@ -51,6 +51,9 @@ import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyCommands
+import brobata.physiboard.core.keys.SymChooserTarget
+import brobata.physiboard.core.keys.SymPageChooser
+import brobata.physiboard.core.keys.SymPageId
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.keys.ModifierIconState
 import brobata.physiboard.core.keys.StatusBarIcon
@@ -137,7 +140,12 @@ import brobata.physiboard.ime.actions.ExpansionPopupController
 import brobata.physiboard.ime.actions.LauncherKeysController
 import brobata.physiboard.ime.actions.QuickLauncherController
 import brobata.physiboard.ime.actions.SkinToneHoldController
+import brobata.physiboard.ime.actions.GifPageController
+import brobata.physiboard.ime.actions.GifPreviews
+import brobata.physiboard.ime.actions.GifSender
+import brobata.physiboard.ime.actions.GifShelfStore
 import brobata.physiboard.ime.actions.SymGridPanelController
+import brobata.physiboard.ime.actions.SymPageChooserController
 import brobata.physiboard.ime.actions.TypingSoundPlayer
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
 import brobata.physiboard.ime.pointer.KeyboardSwipeController
@@ -338,6 +346,35 @@ internal class KeyboardSession(
     private val emojiPicker = EmojiPickerController(service, handler, emojiAssets, learningAllowed = { privacy.learningAllowed })
     /** spec layers-sym-alt.md SS5.7: the on-screen grid for the Emoji (page 1) and Symbols (page 2) key layers. */
     private val symGridPanel = SymGridPanelController(service)
+
+    /**
+     * layers-sym-alt.md SS4.5: the GIF page (Sym page 6). Its requests reach the network only
+     * through `:app`'s gated opener ([brobata.physiboard.core.shell.GatedFetcherOwner]); a host
+     * without one (a JVM test) has no network at all.
+     */
+    private val gifFetcher: () -> brobata.physiboard.core.shell.GatedFetcher? = {
+        (service.applicationContext as? brobata.physiboard.core.shell.GatedFetcherOwner)?.gatedFetcher
+    }
+    private val gifShelf = GifShelfStore(service)
+    private val gifPage = GifPageController(
+        service, handler, BuildConfig.KLIPY_API_KEY, gifFetcher, GifPreviews(gifFetcher), gifShelf,
+        learningAllowed = { privacy.learningAllowed },
+        offlineReason = ::gifOfflineReason,
+    )
+    private val gifSender = GifSender(service, gifFetcher, offlineReason = ::gifOfflineReason, inputSession = { inputSession })
+
+    /** Bumped at every field start and finish, so a GIF still downloading can tell its field is gone (layers-sym-alt.md 4.5). */
+    private var inputSession = 0
+
+    /** app-shell.md SS31.2: the gate's own sentence, said at once, while the keyboard already knows nothing may go out. */
+    private fun gifOfflineReason(): String? = when {
+        privacy.privateMode -> brobata.physiboard.core.shell.NetworkGate.BLOCKED_PRIVATE
+        !privacy.privateModeKnown -> brobata.physiboard.core.shell.NetworkGate.BLOCKED_UNKNOWN
+        else -> null
+    }
+
+    /** layers-sym-alt.md SS5.10: the Sym page chooser a Sym double tap (or its command) opens. */
+    private val symChooser = SymPageChooserController(service, handler)
     private var emojiPickerExpanded = false
     private var symAutoClose = true
     private var symAutoCloseOnTouch = true
@@ -374,6 +411,7 @@ internal class KeyboardSession(
         startVoiceAssistant = ::startVoiceAssistant,
         runNavAction = ::runNavAction,
         togglePrivateMode = ::togglePrivateMode,
+        openSymPageChooser = ::openSymPageChooser,
     )
     private val launcherKeys = LauncherKeysController(service, handler, commandCatalog, commandExecutor, quickLauncher) { nowMs ->
         pipeline.onPowerShortcutTimeout(nowMs)
@@ -462,7 +500,7 @@ internal class KeyboardSession(
         lastShownStatusIcon = StatusBarIcon.None
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
-        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); quickLauncher.onServiceDestroyed() }
+        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); symChooser.reset(); gifPage.onServiceDestroyed(); gifSender.onServiceDestroyed(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
@@ -1031,6 +1069,7 @@ internal class KeyboardSession(
     // -----------------------------------------------------------------------------------------
 
     fun onStartInput(info: EditorInfo?, restarting: Boolean) {
+        inputSession++
         handler.removeCallbacks(longPressRunnable)
         // spec: trackpad-caret-nav.md SS4.6, "forgotten... when monitoring restarts for a new
         // editor" and SS4.7, "every new editor drops it": the old caret and retry count belong to
@@ -1128,6 +1167,7 @@ internal class KeyboardSession(
     }
 
     fun onFinishInput() {
+        inputSession++
         handler.removeCallbacks(longPressRunnable)
         // app-shell.md SS31.1: the flag belonged to the field that just closed.
         privacy = privacy.copy(fieldAsksNoLearning = false)
@@ -1144,8 +1184,11 @@ internal class KeyboardSession(
         handler.removeCallbacks(expansionRefreshRunnable)
         expansionPopup.hide()
         emojiPicker.onAppSelectionChanged()
+        gifPage.onAppSelectionChanged()
         // spec SS4.7: the skin-tone chooser belongs to the field it would type into.
         skinTones.reset()
+        // layers-sym-alt.md SS5.10: so does the Sym page chooser.
+        symChooser.reset()
         // spec SS5.3: "Action mode also ends when... the field finishes"; SS6.4: "the overlay is
         // also closed whenever the connection to the app changes".
         statusBar?.exitActionMode()
@@ -1182,6 +1225,7 @@ internal class KeyboardSession(
             // spec SS4.7: the skin-tone chooser is a bottom overlay too, and a hold must not open
             // it after the window is gone.
             skinTones.reset()
+            symChooser.reset()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
     }
 
@@ -1430,7 +1474,7 @@ internal class KeyboardSession(
             // expansion-clipboard-pickers-launcher.md SS4.5: "while capture is on, the app's caret
             // position is monitored (the single caret-monitoring switch is shared with the caret
             // badge and is reconciled so neither feature turns it off under the other)".
-            val wanted = CursorUpdateRequestPolicy.wantsReports(caretBadge.settings.enabled, emojiSearchNeedsCaret = emojiPicker.isShown && emojiPicker.captureOn)
+            val wanted = CursorUpdateRequestPolicy.wantsReports(caretBadge.settings.enabled, emojiSearchNeedsCaret = (emojiPicker.isShown && emojiPicker.captureOn) || (gifPage.isShown && gifPage.captureOn))
             val flags = if (wanted) InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR else 0
             if (ic.requestCursorUpdates(flags)) {
                 cursorUpdateState = CursorUpdateRetrySchedule.onRequestAccepted(cursorUpdateState)
@@ -1457,6 +1501,7 @@ internal class KeyboardSession(
             // spec SS4.5: the app's own caret moved between two captured keys, so capture drops;
             // this is not part of the tracker resync and stays immediate.
             emojiPicker.onAppSelectionChanged()
+            gifPage.onAppSelectionChanged()
             // spec autocorrect-suggestions.md SS1.2: the tracker resync this triggers is debounced
             // 120 ms, and a second selection change arriving first cancels the pending one, so the
             // strip never re-syncs against a cursor position the user has already moved past.
@@ -1507,8 +1552,15 @@ internal class KeyboardSession(
         normalized?.let { stroke ->
             if (skinTones.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, eventTimeMs = event.eventTime)) return@runCatching true
         }
+        // layers-sym-alt.md SS5.10: while the Sym page chooser is open, a letter opens its page,
+        // Back or Sym closes it, and any other key closes it and goes on as usual.
+        normalized?.let { stroke ->
+            if (symChooser.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount)) return@runCatching true
+        }
         // spec expansion-clipboard-pickers-launcher.md SS4.5: while page 4's search captures, hardware keys type into it.
         if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalized?.key)) return@runCatching true
+        // layers-sym-alt.md SS4.5: the GIF page's search field captures the same way.
+        if (gifPage.isShown && gifPage.captureOn && gifPage.onHardwareKey(event, normalized?.key)) return@runCatching true
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
@@ -1802,6 +1854,53 @@ internal class KeyboardSession(
         override fun onClose() = closeSymPanel()
     }
 
+    /** layers-sym-alt.md SS4.5: a tapped GIF goes in like any page character, closing the page first under `sym_auto_close_on_touch`. */
+    private val gifPageListener = object : GifPageController.Listener {
+        override fun onSend(item: brobata.physiboard.core.actions.gif.GifItem) {
+            runCatching {
+                if (symAutoClose && symAutoCloseOnTouch) closeSymPanel()
+                gifSender.send(
+                    item,
+                    onSent = {
+                        gifPage.onSent(item)
+                        noteFieldEditedDuringDictation()
+                        refreshCandidatesStrip()
+                    },
+                    onMessage = { message -> runCatching { android.widget.Toast.makeText(service, message, android.widget.Toast.LENGTH_SHORT).show() } },
+                )
+            }.onFailure { error -> Log.e(TAG, "gif send crashed", error) }
+        }
+
+        override fun onClose() = closeSymPanel()
+        override fun layoutText(key: KeyId, uppercase: Boolean): String? = this@KeyboardSession.layoutText(key, uppercase)
+    }
+
+    /**
+     * layers-sym-alt.md SS5.10: shows the chooser over whatever is open. Needs a text field, like
+     * every Sym page; returns false without one.
+     */
+    private fun openSymPageChooser(): Boolean {
+        if (!pipeline.fieldContext.isReallyEditable) return false
+        if (quickLauncher.isOpen) quickLauncher.dismiss()
+        symChooser.show(SymPageChooser.entries(pipeline.layout.symPagesConfig), pipeline.settings.statusBar.theme, stripHeightPx()) { target ->
+            runCatching { openFromChooser(target) }.onFailure { error -> Log.e(TAG, "sym chooser pick crashed", error) }
+        }
+        return true
+    }
+
+    /** layers-sym-alt.md SS5.10: opens [target]'s page even when it is off for the cycle; the picker opens in the chosen mode. */
+    private fun openFromChooser(target: SymChooserTarget) {
+        when (target) {
+            SymChooserTarget.EMOJI_PICKER -> emojiPicker.presetMode(brobata.physiboard.core.actions.emoji.PickerMode.EMOJI)
+            SymChooserTarget.KAOMOJI -> emojiPicker.presetMode(brobata.physiboard.core.actions.emoji.PickerMode.KAOMOJI)
+            SymChooserTarget.UNICODE_SYMBOLS -> emojiPicker.presetMode(brobata.physiboard.core.actions.emoji.PickerMode.SYMBOLS)
+            else -> Unit
+        }
+        pipeline.openSymPage(target.page.pageNumber)
+        syncSymPanels()
+        refreshCandidatesStrip()
+    }
+
     private val emojiPickerListener = object : EmojiPickerController.Listener {
         override fun onChosen(text: String) = commitFromTouch(text)
 
@@ -1919,6 +2018,13 @@ internal class KeyboardSession(
                 emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), defaultSkinTone, emojiPickerListener)
             } else {
                 emojiPicker.hide()
+            }
+            if (page == SymPageId.GIF.pageNumber) {
+                // layers-sym-alt.md SS4.5: opened from the chooser while switched off for the cycle,
+                // the page asks KLIPY for nothing until the user searches.
+                gifPage.show(theme, stripHeightPx(), gifPageListener, loadAtOnce = pipeline.layout.symPagesConfig.gifEnabled)
+            } else {
+                gifPage.hide()
             }
             val gridPage = SymGridPage.forPageNumber(page)
             if (gridPage != null) {
@@ -2369,6 +2475,8 @@ internal class KeyboardSession(
             // app-shell.md SS31.3: private mode bound on the Fn layer or in nav mode (a `command`
             // mapping). Other catalogue ids are not run from here yet; this one is, by name.
             CommandIds.TOGGLE_PRIVATE_MODE -> runCatching { togglePrivateMode() }.onFailure { error -> Log.e(TAG, "private mode toggle crashed", error) }
+            // layers-sym-alt.md SS5.10: a Sym double tap, or the command on the Fn layer.
+            KeyCommands.OPEN_SYM_PAGE_CHOOSER -> runCatching { openSymPageChooser() }.onFailure { error -> Log.e(TAG, "sym page chooser crashed", error) }
         }
     }
 

@@ -58,6 +58,19 @@
             android:taskAffinity="brobata.physiboard.assistanttrigger"
             android:launchMode="singleInstance"
             android:noHistory="true" />
+
+        <!-- layers-sym-alt.md SS4.5: a GIF sent from the GIF page reaches the app as a content URI
+             (InputConnection.commitContent) with a one-off read grant; only the cache path
+             `gif-share/` is exposed, and it holds at most the last few GIFs sent. -->
+        <provider
+            android:name="brobata.physiboard.ime.actions.GifFileProvider"
+            android:authorities="${applicationId}.gifshare"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/gif_share_paths" />
+        </provider>
     </application>
 
 </manifest>

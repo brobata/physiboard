@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -16,6 +18,10 @@ android {
         // Carried into any app that depends on this module, so R8 always keeps the service the
         // system instantiates by class name (docs/release.md, "Shrinking").
         consumerProguardFiles("proguard-rules.pro")
+        // layers-sym-alt.md SS4.5: the KLIPY key for the GIF page. From the Gradle property
+        // `klipy.apiKey` (-Pklipy.apiKey=..., or ~/.gradle/gradle.properties) or the same line in
+        // the untracked local.properties. Blank means the page says GIF search is not set up.
+        buildConfigField("String", "KLIPY_API_KEY", "\"${klipyApiKey().replace("\\", "").replace("\"", "")}\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -24,6 +30,16 @@ android {
     // DiagnosticLog.i (KeyboardSession.kt, DictionaryAssetLoader.kt) reads this to compile the
     // phone-testing Log.i trail to nothing outside `sideload`/`debug` (docs/release.md, "Logging").
     buildFeatures { buildConfig = true }
+}
+
+/** The KLIPY API key, never committed: a Gradle property first, then local.properties, else blank. */
+fun klipyApiKey(): String {
+    (findProperty("klipy.apiKey") as? String)?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+    val local = rootProject.file("local.properties")
+    if (!local.isFile) return ""
+    val props = Properties()
+    local.inputStream().use { props.load(it) }
+    return props.getProperty("klipy.apiKey")?.trim().orEmpty()
 }
 
 kotlin {
