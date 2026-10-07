@@ -448,7 +448,7 @@ object LayerResolver {
         // per-app-behavior.md SS4.6: in a terminal, Ctrl+A is ^A, not "select all", and a tapped
         // or latched Ctrl is as much Ctrl as a held one. Only a held Fn's opt-in nav grid keeps
         // the mappings that send real keys (arrows, Tab, Esc) or run a command.
-        if (context.terminalMode && !state.ctrl.latchFromNavMode) {
+        if (context.terminalMode && !state.ctrl.latchFromNavMode && isTerminalCtrlKey(stroke.key)) {
             val navGridKeepsMapping = navGrid && (mapping is CtrlMapping.Keycode || mapping is CtrlMapping.Command)
             if (!navGridKeepsMapping) {
                 return Resolution(if (physicalCombo) state else consumedOneShot, clearedTyping, Action.ForwardAsCtrlCombo(shortcutKeycode))
@@ -465,6 +465,23 @@ object LayerResolver {
         }
         return Resolution(consumedOneShot, clearedTyping, action)
     }
+
+    /**
+     * The keys a terminal reads with Ctrl: everything that types or edits. Back, volume, Home,
+     * app switch, the media keys and swipe-to-delete keep their own handling under Ctrl, so a
+     * latched Ctrl never takes Back or the volume keys from the system.
+     */
+    private fun isTerminalCtrlKey(key: KeyId): Boolean = when (key) {
+        is KeyId.Letter, is KeyId.Digit, is KeyId.Punctuation -> true
+        is KeyId.Control -> key.key in TERMINAL_CTRL_CONTROLS
+        is KeyId.Modifier -> false
+    }
+
+    private val TERMINAL_CTRL_CONTROLS = setOf(
+        ControlKey.SPACE, ControlKey.ENTER, ControlKey.BACKSPACE, ControlKey.TAB, ControlKey.ESCAPE,
+        ControlKey.DPAD_UP, ControlKey.DPAD_DOWN, ControlKey.DPAD_LEFT, ControlKey.DPAD_RIGHT,
+        ControlKey.MOVE_HOME, ControlKey.MOVE_END, ControlKey.PAGE_UP, ControlKey.PAGE_DOWN, ControlKey.FORWARD_DELETE,
+    )
 
     private fun shortcutKeycodeFor(key: KeyId, layout: LayoutDescription, settings: ModifierSettings): KeyId {
         if (!settings.layoutAwareCtrlShortcuts) return key

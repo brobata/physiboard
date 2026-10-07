@@ -134,6 +134,19 @@ class TerminalModeKeysTest {
         assertEquals(KeyId.Control(ControlKey.DPAD_LEFT), keys.stroke(KeyId.Control(ControlKey.DPAD_LEFT)).forwardAsCtrlCombo)
     }
 
+    @Test
+    fun `a latched Ctrl never takes Back or the volume keys from the system`() {
+        val keys = Keys(terminal, settings)
+        keys.tapCtrl()
+        keys.tapCtrl()
+        for (control in listOf(ControlKey.BACK, ControlKey.VOLUME_DOWN, ControlKey.VOLUME_UP)) {
+            val down = keys.stroke(KeyId.Control(control))
+            assertFalse(down.consumed, "$control must reach the system")
+            assertNull(down.forwardAsCtrlCombo, "$control")
+        }
+        assertEquals(KeyId.Letter('C'), keys.stroke(KeyId.Letter('C')).forwardAsCtrlCombo, "the latch is still on")
+    }
+
     private companion object {
         val CTRL = KeyId.Modifier(ModifierKey.CTRL)
     }
