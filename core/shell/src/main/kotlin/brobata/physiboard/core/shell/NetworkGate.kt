@@ -9,6 +9,12 @@ enum class NetworkPurpose(val label: String) {
     UPDATE_CHECK("update check"),
     DICTIONARY_MANIFEST("dictionary list"),
     DICTIONARY_DOWNLOAD("dictionary download"),
+
+    /** The GIF page's search and trending lists (layers-sym-alt.md SS4.5). */
+    GIF_SEARCH("GIF search"),
+
+    /** A GIF preview or the GIF being sent, from the provider's media servers. */
+    GIF_MEDIA("GIF download"),
 }
 
 /** The gate's answer for one request. */
