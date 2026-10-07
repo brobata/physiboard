@@ -145,6 +145,16 @@ internal class DictationController(
         if (session != null) dispatch(DictationEvent.KeyDown)
     }
 
+    /**
+     * app-shell.md SS31, dictation.md SS4.3: private mode keeps speech on the phone. Turning it on
+     * while a session has already gone online ends that session; the next one plans offline.
+     */
+    fun onPrivateModeChanged(privateMode: Boolean) {
+        if (settings.privateMode == privateMode) return
+        settings = settings.copy(privateMode = privateMode)
+        if (privateMode && session != null) dispatch(DictationEvent.PrivateModeTurnedOn)
+    }
+
     private fun hasMicPermission(): Boolean =
         ContextCompat.checkSelfPermission(service, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
@@ -210,17 +220,6 @@ internal class DictationController(
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
         session = outcome.session
         if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
-        // A recognizer kept between sessions goes stale: Android unbinds the remote speech
-        // service while nothing is listening, and the next request reaches a dead connection
-        // ("Connection to speech recognition service lost, but no #startListening has been
-        // invoked yet", the maintainer's Titan, 2026-09-26: dictation took a long time to
-        // start and then typed nothing). Every session gets a recognizer of its own.
-        if (wasActive && session == null) {
-            releaseRecognizer()
-            // Anything still staged belonged to the session that just ended; it must not be
-            // written into whatever the next one says.
-            directCommit = DirectCommitState()
-        }
         outcome.newSegmentedRefusalLatch?.let { segmentedRefusalLatch = it }
         // spec SS3: "The field rejected an insert (exception while writing)": the one write this
         // whole feature makes that can throw (a hostile or misbehaving editor), so it is the one
@@ -235,6 +234,18 @@ internal class DictationController(
         }
         val wroteCleanly = runCatching { currentInputConnection()?.applyDictationTextOps(textOps) }.isSuccess
         outcome.effects.forEach(::applyEffect)
+        // A recognizer kept between sessions goes stale: Android unbinds the remote speech
+        // service while nothing is listening, and the next request reaches a dead connection
+        // ("Connection to speech recognition service lost, but no #startListening has been
+        // invoked yet", the maintainer's Titan, 2026-09-26: dictation took a long time to
+        // start and then typed nothing). Every session gets a recognizer of its own; the
+        // ending's own cancel (above) has already run against it by now.
+        if (wasActive && session == null) {
+            releaseRecognizer()
+            // Anything still staged belonged to the session that just ended; it must not be
+            // written into whatever the next one says.
+            directCommit = DirectCommitState()
+        }
         rescheduleClock()
         if (!wroteCleanly) onEditorRejectedInsert()
     }

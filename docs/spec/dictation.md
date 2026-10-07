@@ -195,7 +195,8 @@ When the on-device recognizer has no pack for the session's language (code 12 or
   isn't installed. Download it in Speech Services by Google, or turn off \"Keep speech on the
   phone\"." respectively.
 
-Private mode forces `EXTRA_PREFER_OFFLINE` on whatever the setting says. The pack is downloaded
+Private mode forces `EXTRA_PREFER_OFFLINE` on whatever the setting says; turned on in the middle
+of a session that has already gone online, it stops that session gracefully. The pack is downloaded
 in the engine's own settings (Speech Services by Google > Offline speech recognition); the
 platform's `triggerModelDownload` is not used.
 
@@ -267,7 +268,8 @@ the session to `LISTENING` and arms a 300 ms cue fallback. The **start cue plays
 first audio level report** of the session, which is the proof that the microphone is open and
 audio is flowing (on the Titan, about 40 ms after the request, D14), or at the fallback for an
 engine that reports no levels. It plays once per session: later "ready" reports and level
-reports (re-listens, 6.2) do nothing. A trigger before the cue ends the session (section 2).
+reports (re-listens, 6.2) do nothing. A trigger before "ready" ends the session at once; from
+"ready" on it is the graceful stop (section 2).
 
 Users start talking at the cue. The cue follows the open microphone rather than the request, so
 the first syllable is not spoken into a microphone that is still opening; the 2.x cue was tied to
@@ -293,9 +295,11 @@ after which the engine's silence was reported as "No speech input detected", is 
 exactly that: two five-second engine timeouts and the toast). The only thing that ends a silent
 session is the silence limit (6.4).
 
-A quiet error that arrives **within 700 ms of its request** is the engine failing fast, not
-silence: the re-listen waits 500 ms and the failure is counted; five in a row end the session
-with "Speech recognition error." (6.6). Any speech resets the count.
+An ending that **brought no words and arrived within 700 ms of its request** (a quiet error, an
+empty final, an instant end of the segmented session) is the engine failing fast, not silence:
+the re-listen waits 500 ms and the failure is counted; five in a row end the session with
+"Speech recognition error." (6.6). Any speech, or any ending that brought words, resets the
+count.
 
 ### 6.3 Segmented sessions and the refusal latch
 
@@ -348,7 +352,8 @@ as if the user had stopped speaking at this point"), moves the session to `STOPP
 pending re-listen or busy retry, and arms a **1500 ms stop watchdog**. The session then ends on
 the first of:
 
-- a final, a segment, or the end of the segmented session: committed (7.3), session ends;
+- a final or the end of the segmented session: committed (7.3), session ends; a segment is
+  committed and the session waits for the end that follows it (or the watchdog);
 - any error, quiet or not: the partial on screen is committed, session ends, **no message**
   (a "no speech" answer to a stop is the normal case when the user said nothing after the last
   segment);
@@ -367,7 +372,7 @@ For every engine error the rules are tried top to bottom; the first match wins.
 |---|---|---|
 | 1 | session `STOPPING` | commit the partial; end quietly (6.5) |
 | 2 | segmented refusal (6.3) | re-issue plain; latch; log line |
-| 3 | quiet error (7 or 6) | commit the partial; re-listen at once, or after 500 ms if it came within 700 ms of the request; the fifth fast failure in a row ends the session with "Speech recognition error." |
+| 3 | quiet error (7 or 6) | commit the partial; re-listen at once, or after 500 ms if it came within 700 ms of the request and brought no words; the fifth fast failure in a row ends the session with "Speech recognition error." (6.2) |
 | 4 | busy (8) | retry after 300 ms; the fifth in a row ends the session with "Speech recognition error." |
 | 5 | language (12 or 13) | per 4.3: once online, or end with the pack message |
 | 6 | anything else | commit the partial; end the session with the message below |

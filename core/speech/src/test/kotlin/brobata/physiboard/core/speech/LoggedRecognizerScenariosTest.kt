@@ -346,6 +346,45 @@ class LoggedRecognizerScenariosTest {
     }
 
     @Test
+    fun `an engine answering every request with an empty final or an instant end is backed off the same way`() {
+        for (ending in listOf<DictationEvent>(DictationEvent.FinalResult(null), DictationEvent.SegmentedSessionEnded)) {
+            val h = harness().start()
+            h.drainEffects()
+            var now = 100L
+            repeat(4) {
+                val o = h.send(ending, now)
+                assertNotNull(o.session, "$ending")
+                assertTrue(o.effects.none { it is DictationEffect.StartListening }, "$ending within 700 ms waits, it does not re-listen at once")
+                assertTrue(h.runClockTo(now + 500L).single().effects.any { it is DictationEffect.StartListening })
+                now += 600L
+            }
+            val gaveUp = h.send(ending, now)
+            assertNull(gaveUp.session, "$ending")
+            assertTrue(DictationEffect.ShowMessage(DictationMessage.SPEECH_RECOGNITION_ERROR) in gaveUp.effects)
+        }
+        // An ending that brought words is never a failure, however fast.
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("quick"), now = 100L)
+        val quick = h.send(DictationEvent.SegmentedSessionEnded, now = 200L)
+        assertTrue(quick.effects.any { it is DictationEffect.StartListening })
+        assertEquals(0, quick.session?.consecutiveFailures)
+    }
+
+    @Test
+    fun `private mode turned on mid-session stops a session that went online, and leaves an offline one alone`() {
+        val online = harness().start()
+        online.send(DictationEvent.Error(DictationErrorCode.LANGUAGE_UNAVAILABLE), now = 300L) // fell back online
+        val stopped = online.send(DictationEvent.PrivateModeTurnedOn, now = 1_000L)
+        assertEquals(DictationPhase.STOPPING, stopped.session?.phase)
+        assertEquals(listOf(DictationEffect.StopListening), stopped.effects)
+
+        val offline = harness().start()
+        val unchanged = offline.send(DictationEvent.PrivateModeTurnedOn, now = 1_000L)
+        assertEquals(DictationPhase.LISTENING, unchanged.session?.phase)
+        assertTrue(unchanged.effects.isEmpty())
+    }
+
+    @Test
     fun `busy retries after 300 ms`() {
         val h = harness().start()
         val busy = h.send(DictationEvent.Error(DictationErrorCode.RECOGNIZER_BUSY), now = 100L)

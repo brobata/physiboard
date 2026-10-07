@@ -49,6 +49,9 @@ sealed class DictationEvent {
      */
     object KeyDown : DictationEvent()
 
+    /** spec SS4.3: private mode was turned on; a session whose request is online stops, since its audio must not keep leaving the phone. */
+    object PrivateModeTurnedOn : DictationEvent()
+
     /** spec SS6.7: another app took audio focus for good (not the engine's own transient request); the session stops at once. */
     object AudioFocusLost : DictationEvent()
 

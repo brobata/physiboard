@@ -230,7 +230,7 @@ internal class KeyboardSession(
         pipeline.learningAllowed = privacy.learningAllowed
         DiagnosticLog.privateNow = !privacy.learningAllowed
         // dictation.md SS4.3, app-shell.md SS31.2: private mode keeps speech on the phone.
-        dictationController.settings = dictationController.settings.copy(privateMode = privacy.privateMode)
+        dictationController.onPrivateModeChanged(privacy.privateMode)
         refreshCaretBadge()
         // The clipboard page's header says whether copies are being kept; keep it true while it is open.
         clipboardPanel.setNotSaving(!privacy.learningAllowed)
@@ -1496,6 +1496,16 @@ internal class KeyboardSession(
         // spec expansion-clipboard-pickers-launcher.md SS4.7: the skin-tone chooser's keys, and
         // the auto-repeat of a key held on an emoji that takes tones, ahead of everything else.
         val normalized = normalizeStroke(event)
+        // dictation.md SS3: a key other than a modifier going down while dictation runs stops it
+        // first (the controller applies `dictation_stop_on_typing`); the key then does its
+        // usual work below, whichever path takes it: a chooser, the trackpad's held Space, the
+        // firmware swipe keycode or the ordinary pipeline. Fn is a modifier here, so the burst
+        // that stops a session by design still reaches the trigger, not this.
+        normalized?.let { stroke ->
+            if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key !is KeyId.Modifier && dictationController.isActive) {
+                dictationController.onKeyDown()
+            }
+        }
         normalized?.let { stroke ->
             if (skinTones.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, eventTimeMs = event.eventTime)) return@runCatching true
         }
@@ -1516,13 +1526,6 @@ internal class KeyboardSession(
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
-        // dictation.md SS3: a key other than a modifier going down while dictation runs stops it
-        // first (the controller applies `dictation_stop_on_typing`); the key then does its
-        // usual work below. Fn is a modifier here, so the burst that stops a session by design
-        // still reaches the trigger, not this.
-        if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key !is KeyId.Modifier && dictationController.isActive) {
-            dictationController.onKeyDown()
-        }
         // The Fn key never reaches an editor, so it must not pay an editor's price. This phone
         // sends no key-down for Fn at all, only a burst of repeats about 50 ms apart, and the
         // trigger wants five of them inside a 200 ms window. Sending each one down the ordinary
@@ -2180,6 +2183,9 @@ internal class KeyboardSession(
         ic.deleteSurroundingText(text.length - start, 0)
         if (trailing.isNotEmpty()) ic.commitText(trailing, 1)
         ic.endBatchEdit()
+        // A swipe is not a key, so the key hook above never saw it; the field changed under a
+        // listening session all the same (dictation.md SS7.4).
+        noteFieldEditedDuringDictation()
         return true
     }
 
@@ -2422,7 +2428,7 @@ internal class KeyboardSession(
         return delivered
     }
 
-    /** Only reachable with `dictation_stop_on_typing` off: with it on, the key down already ended the session before its edit. */
+    /** Reachable with `dictation_stop_on_typing` off (with it on, the key down already ended the session before its edit) and from the swipe deletes, which are not keys. */
     private fun noteFieldEditedDuringDictation() {
         if (dictationController.isActive) dictationController.onUserEditedComposingText()
     }

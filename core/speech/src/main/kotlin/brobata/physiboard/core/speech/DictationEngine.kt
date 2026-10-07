@@ -42,7 +42,7 @@ object DictationEngine {
             is DictationEvent.Trigger -> throw IllegalStateException("Trigger is handled before a session is required")
             DictationEvent.ReadyForSpeech -> handleReady(session, now)
             DictationEvent.FirstAudio -> handleFirstAudio(session)
-            DictationEvent.BeginningOfSpeech -> DictationOutcome(session.copy(lastSpeechMs = now))
+            DictationEvent.BeginningOfSpeech -> DictationOutcome(session.copy(lastSpeechMs = now, consecutiveFailures = 0))
             DictationEvent.EndOfSpeech -> DictationOutcome(session)
             is DictationEvent.PartialResult -> handlePartialResult(session, event.text, now, textSettings)
             is DictationEvent.FinalResult -> handleFinalResult(session, event.text, now, textSettings)
@@ -51,6 +51,8 @@ object DictationEngine {
             is DictationEvent.Error -> handleError(session, event.code, now, settings, textSettings)
             DictationEvent.KeyDown -> if (settings.stopOnTyping) endNow(session, textSettings) else DictationOutcome(session)
             DictationEvent.AudioFocusLost -> endNow(session, textSettings)
+            DictationEvent.PrivateModeTurnedOn ->
+                if (!session.request.preferOffline && session.phase != DictationPhase.STOPPING) requestStop(session, now) else DictationOutcome(session)
             DictationEvent.EditorFieldClosed -> DictationOutcome(session.copy(editorGoneDeadlineMs = now + DictationTiming.EDITOR_GONE_GRACE_MS))
             is DictationEvent.EditorFieldOpened -> handleEditorFieldOpened(session, event.ownerPackage)
             DictationEvent.UserEditedComposingText -> DictationOutcome(session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated)))
@@ -191,19 +193,38 @@ object DictationEngine {
             heardSpeech = heard,
             lastSpeechMs = if (finished.plainText != null) now else session.lastSpeechMs,
             request = request,
-            requestStartMs = now,
-            consecutiveFailures = 0,
-            utterance = afterFinish(session.utterance, finished),
         )
-        return DictationOutcome(
-            next,
-            buildList {
-                if (ignoredSegmented) add(DictationEffect.LogMessage(DictationMessage.SEGMENTED_REFUSED))
-                add(DictationEffect.StartListening(request))
-            },
-            finished.ops,
+        val relistened = relistenAfterEngineEnding(next, finished, now, textSettings)
+        return relistened.copy(
+            effects = if (ignoredSegmented) listOf(DictationEffect.LogMessage(DictationMessage.SEGMENTED_REFUSED)) + relistened.effects else relistened.effects,
             newSegmentedRefusalLatch = if (ignoredSegmented) true else null,
         )
+    }
+
+    /**
+     * spec SS6.2: the engine ended its request (a quiet error, a plain final, the end of a
+     * segmented session); the words it was holding are committed and the next request goes out.
+     * An ending that brought no words and came within 700 ms of its request is the engine
+     * failing fast, not silence: the re-listen waits 500 ms and is counted, and the fifth in a
+     * row ends the session with one message, so a broken engine or language pack never has
+     * the microphone opened and closed in a tight loop for the whole silence limit.
+     */
+    private fun relistenAfterEngineEnding(session: DictationSession, finished: UtteranceFinisher.Finished, now: Long, textSettings: DictationTextSettings): DictationOutcome {
+        val fast = finished.plainText == null && now - session.requestStartMs < DictationTiming.FAST_FAILURE_WINDOW_MS
+        val failures = if (fast) session.consecutiveFailures + 1 else 0
+        if (failures >= DictationTiming.MAX_CONSECUTIVE_FAILURES) {
+            return DictationOutcome(null, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR), finished.ops)
+        }
+        val next = session.copy(
+            requestStartMs = now,
+            consecutiveFailures = failures,
+            utterance = afterFinish(session.utterance, finished),
+        )
+        return if (fast) {
+            DictationOutcome(next.copy(relistenDeadlineMs = now + DictationTiming.FAST_FAILURE_BACKOFF_MS), textOps = finished.ops)
+        } else {
+            DictationOutcome(next, listOf(DictationEffect.StartListening(session.request)), finished.ops)
+        }
     }
 
     /** spec SS6.2: one utterance inside a segmented session; committed like a final, and the session simply goes on. */
@@ -229,12 +250,7 @@ object DictationEngine {
         if (session.phase == DictationPhase.STOPPING) {
             return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
         }
-        val next = session.copy(
-            requestStartMs = now,
-            consecutiveFailures = 0,
-            utterance = afterFinish(session.utterance, finished),
-        )
-        return DictationOutcome(next, listOf(DictationEffect.StartListening(session.request)), finished.ops)
+        return relistenAfterEngineEnding(session, finished, now, textSettings)
     }
 
     /**
@@ -308,22 +324,7 @@ object DictationEngine {
         // holding is finished, and the keyboard listens again at once. There is no cap on how
         // often this happens while the user is silent; the silence limit of SS6.4 is the cap.
         if (DictationErrorClassifier.isQuiet(code)) {
-            val finished = finishPendingIfAny(session.utterance, textSettings)
-            val fast = now - session.requestStartMs < DictationTiming.FAST_FAILURE_WINDOW_MS
-            val failures = if (fast) session.consecutiveFailures + 1 else 0
-            if (failures >= DictationTiming.MAX_CONSECUTIVE_FAILURES) {
-                return DictationOutcome(null, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR), finished.ops)
-            }
-            val next = session.copy(
-                requestStartMs = now,
-                consecutiveFailures = failures,
-                utterance = afterFinish(session.utterance, finished),
-            )
-            return if (fast) {
-                DictationOutcome(next.copy(relistenDeadlineMs = now + DictationTiming.FAST_FAILURE_BACKOFF_MS), textOps = finished.ops)
-            } else {
-                DictationOutcome(next, listOf(DictationEffect.StartListening(session.request)), finished.ops)
-            }
+            return relistenAfterEngineEnding(session, finishPendingIfAny(session.utterance, textSettings), now, textSettings)
         }
 
         // Rule 4: busy (SS6.6): the previous request is still winding down; retry after 300 ms.
