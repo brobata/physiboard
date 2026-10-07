@@ -40,10 +40,12 @@ import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.app.settings.ui.TextFieldRow
 import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
 import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.emoji.SkinTones
 import brobata.physiboard.core.keys.KeyId
+import brobata.physiboard.core.settings.CustomSymPage
 import brobata.physiboard.core.settings.SymPage
 import brobata.physiboard.core.settings.SymPagesConfig
 import brobata.physiboard.device.titan.TitanLayouts
@@ -57,7 +59,8 @@ import brobata.physiboard.device.titan.TitanLayouts
  *
  * The Device page (5) does not exist in 3.0 ([SymPage]'s own KDoc: dropped), so this screen's
  * "Arrange SYM pages order" has no Device row, pencil or "under construction" badge; it has the
- * GIF page (SS4.5) instead, off by default and labelled as the one page that goes online.
+ * GIF page (SS4.5) instead, off by default and labelled as the one page that goes online, and
+ * the user's own three pages (SS4.6), each with a pencil that opens its name and grid.
  */
 @Composable
 fun CustomizeSymKeyboardScreen(
@@ -108,7 +111,7 @@ fun CustomizeSymKeyboardScreen(
                 item { SectionHeader("Arrange SYM pages order") }
                 item {
                     Text(
-                        "Drag or use the arrows to set the cycle order. The switch only controls whether an item appears in the cycle.",
+                        "Drag or use the arrows to set the cycle order. The switch only controls whether an item appears in the cycle. My page 1 to 3 are your own key layers: tap ✏ to fill one, then switch it on.",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     )
@@ -117,13 +120,14 @@ fun CustomizeSymKeyboardScreen(
                     val entry = symPages.pages.order[index]
                     SymPageOrderRow(
                         page = entry,
+                        name = displayName(entry, symPages.customPages),
                         enabled = enabledFor(symPages.pages, entry),
                         canMoveUp = index > 0,
                         canMoveDown = index < symPages.pages.order.lastIndex,
                         onMoveUp = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index - 1)))) } },
                         onMoveDown = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index + 1)))) } },
                         onToggleEnabled = { checked -> controller.update { it.copy(symPages = it.symPages.copy(pages = withEnabled(it.symPages.pages, entry, checked))) } },
-                        onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS) ({ editingPage = entry }) else null,
+                        onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS || customIndex(entry) != null) ({ editingPage = entry }) else null,
                     )
                 }
                 item {
@@ -186,6 +190,43 @@ fun CustomizeSymKeyboardScreen(
                 }
             }
         }
+    } else if (customIndex(page) != null) {
+        // spec SS4.6: one of the user's own pages: a name, the grid, and a way to empty it.
+        val index = customIndex(page)!!
+        val custom = symPages.customPages.getOrElse(index) { CustomSymPage() }
+        SettingsScreenScaffold(title = "Edit ${displayName(page, symPages.customPages)}", onBack = { editingPage = null }) {
+            RowList {
+                item {
+                    TextFieldRow(
+                        label = "Page name",
+                        description = "Shown in the page chooser (Sym, Sym, then ${chooserLetter(page)}). Leave empty for \"${defaultCustomName(index)}\".",
+                        value = custom.name,
+                        onValueChange = { name ->
+                            controller.update { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(index) { p -> p.copy(name = name.take(CustomSymPage.MAX_NAME_LENGTH)) })) }
+                        },
+                    )
+                }
+                item {
+                    Text(
+                        "Tap a key to choose what it types on this page: any character, symbol, emoji or short text. Turn the page on in the list before this one to reach it with Sym.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+                item {
+                    SymEditGrid(
+                        characters = ('A'..'Z').associateWith { letter -> custom.mappings["KEYCODE_$letter"].orEmpty() },
+                        onKeyTapped = { letter -> pickerLetter = letter },
+                    )
+                }
+                item {
+                    TextButton(
+                        onClick = { showResetConfirm = true },
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    ) { Text("Clear page", color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        }
     } else {
         val isEmoji = page == SymPage.EMOJI
         SettingsScreenScaffold(title = if (isEmoji) "Edit Emoji Layer" else "Edit Symbols Layer", onBack = { editingPage = null }) {
@@ -215,7 +256,24 @@ fun CustomizeSymKeyboardScreen(
             }
         }
         val isEmoji = editingPage == SymPage.EMOJI
-        if (isEmoji) {
+        val customPage = editingPage?.let(::customIndex)
+        if (customPage != null) {
+            // spec SS4.6: any text at all; the empty choice clears the key.
+            UnicodeCharacterDialog(
+                letter = letter,
+                resetLabel = "Clear this key",
+                onDismiss = { close() },
+                onChoose = { chosen ->
+                    controller.update {
+                        val pages = it.symPages.customPages.withPage(customPage) { p ->
+                            p.copy(mappings = if (chosen.isEmpty()) p.mappings - "KEYCODE_$letter" else p.mappings + ("KEYCODE_$letter" to chosen))
+                        }
+                        it.copy(symPages = it.symPages.copy(customPages = pages))
+                    }
+                    close()
+                },
+            )
+        } else if (isEmoji) {
             EmojiPickerDialog(
                 letter = letter,
                 onDismiss = { close() },
@@ -239,7 +297,21 @@ fun CustomizeSymKeyboardScreen(
         }
     }
 
-    if (showResetConfirm) {
+    val clearingPage = editingPage?.let(::customIndex)
+    if (showResetConfirm && clearingPage != null) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = { Text("Clear page") },
+            text = { Text("Remove every key from this page? Its name stays. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResetConfirm = false
+                    controller.update { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(clearingPage) { p -> p.copy(mappings = emptyMap()) })) }
+                }) { Text("Clear", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") } },
+        )
+    } else if (showResetConfirm) {
         val isEmoji = editingPage == SymPage.EMOJI
         AlertDialog(
             onDismissRequest = { showResetConfirm = false },
@@ -262,8 +334,32 @@ fun CustomizeSymKeyboardScreen(
 private fun symPageForNumber(page: Int): SymPage? = when (page) {
     1 -> SymPage.EMOJI
     2 -> SymPage.SYMBOLS
+    // spec SS4.6: the pencil and a long press on one of the user's own pages (7 to 9).
+    7 -> SymPage.CUSTOM_1
+    8 -> SymPage.CUSTOM_2
+    9 -> SymPage.CUSTOM_3
     else -> null
 }
+
+/** spec SS4.6: which of the user's own pages [page] is (0 to 2), or null for a shipped page. */
+private fun customIndex(page: SymPage): Int? = when (page) {
+    SymPage.CUSTOM_1 -> 0
+    SymPage.CUSTOM_2 -> 1
+    SymPage.CUSTOM_3 -> 2
+    else -> null
+}
+
+private fun defaultCustomName(index: Int): String = "My page ${index + 1}"
+
+/** spec SS5.10: the chooser letter of one of the user's own pages. */
+private fun chooserLetter(page: SymPage): Char = when (page) {
+    SymPage.CUSTOM_1 -> 'M'
+    SymPage.CUSTOM_2 -> 'N'
+    else -> 'B'
+}
+
+private fun List<CustomSymPage>.withPage(index: Int, change: (CustomSymPage) -> CustomSymPage): List<CustomSymPage> =
+    List(CustomSymPage.COUNT) { i -> getOrElse(i) { CustomSymPage() }.let { if (i == index) change(it) else it } }
 
 /** spec SS5.8's `INITIAL_SYM_KEY_CODE`: an Android `KeyEvent.KEYCODE_A`..`KEYCODE_Z` value (29..54). */
 private fun letterForKeyCode(keyCode: Int): Char? {
@@ -279,6 +375,9 @@ private fun enabledFor(pages: SymPagesConfig, page: SymPage): Boolean = when (pa
     SymPage.CLIPBOARD -> pages.clipboardEnabled
     SymPage.EMOJI_PICKER -> pages.emojiPickerEnabled
     SymPage.GIF -> pages.gifEnabled
+    SymPage.CUSTOM_1 -> pages.custom1Enabled
+    SymPage.CUSTOM_2 -> pages.custom2Enabled
+    SymPage.CUSTOM_3 -> pages.custom3Enabled
 }
 
 private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean): SymPagesConfig = when (page) {
@@ -287,14 +386,21 @@ private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean):
     SymPage.CLIPBOARD -> pages.copy(clipboardEnabled = checked)
     SymPage.EMOJI_PICKER -> pages.copy(emojiPickerEnabled = checked)
     SymPage.GIF -> pages.copy(gifEnabled = checked)
+    SymPage.CUSTOM_1 -> pages.copy(custom1Enabled = checked)
+    SymPage.CUSTOM_2 -> pages.copy(custom2Enabled = checked)
+    SymPage.CUSTOM_3 -> pages.copy(custom3Enabled = checked)
 }
 
-private fun displayName(page: SymPage): String = when (page) {
+private fun displayName(page: SymPage, customPages: List<CustomSymPage>): String = when (page) {
     SymPage.EMOJI -> "Emoji"
     SymPage.SYMBOLS -> "Symbols"
     SymPage.CLIPBOARD -> "Clipboard"
     SymPage.EMOJI_PICKER -> "Emoji Picker"
     SymPage.GIF -> "GIFs"
+    SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3 -> {
+        val index = customIndex(page)!!
+        customPages.getOrNull(index)?.name?.trim()?.ifEmpty { null } ?: defaultCustomName(index)
+    }
 }
 
 /**
@@ -304,12 +410,14 @@ private fun displayName(page: SymPage): String = when (page) {
 private fun kindLabel(page: SymPage): String = when (page) {
     SymPage.EMOJI, SymPage.SYMBOLS -> "Key layer"
     SymPage.GIF -> "Panel · searches KLIPY online"
+    SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3 -> "Key layer · your own · chooser letter ${chooserLetter(page)}"
     else -> "Panel"
 }
 
 @Composable
 private fun SymPageOrderRow(
     page: SymPage,
+    name: String,
     enabled: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -323,7 +431,7 @@ private fun SymPageOrderRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(displayName(page), style = MaterialTheme.typography.bodyLarge)
+            Text(name, style = MaterialTheme.typography.bodyLarge)
             Text(kindLabel(page), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (onEdit != null) {

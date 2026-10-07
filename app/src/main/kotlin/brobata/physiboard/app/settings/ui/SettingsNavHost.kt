@@ -32,6 +32,8 @@ import brobata.physiboard.app.settings.ui.screens.QuickLauncherScreen
 import brobata.physiboard.app.settings.ui.screens.ScreenTrackpadScreen
 import brobata.physiboard.app.settings.ui.screens.SettingsRootScreen
 import brobata.physiboard.app.settings.ui.screens.SmartFeaturesScreen
+import brobata.physiboard.app.settings.ui.screens.LongPressScreen
+import brobata.physiboard.app.settings.ui.screens.CustomizeVariationsScreen
 import brobata.physiboard.app.settings.ui.screens.SoundHapticsScreen
 import brobata.physiboard.app.settings.ui.screens.StatusBarThemeScreen
 import brobata.physiboard.app.settings.ui.screens.StripThemeScreen
@@ -147,6 +149,8 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         composable(Routes.STATUS_BAR_THEME) { StatusBarThemeScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.CUSTOMIZE_COLORS) { StripThemeScreen(onBack = ::back) }
         composable(Routes.SOUND_HAPTICS) { SoundHapticsScreen(onBack = ::back) }
+        composable(Routes.LONG_PRESS) { LongPressScreen(onBack = ::back, onNavigate = ::navigate) }
+        composable(Routes.CUSTOMIZE_VARIATIONS) { CustomizeVariationsScreen(onBack = ::back) }
         composable(Routes.ENTER_KEY_BEHAVIOUR) { EnterKeyBehaviourScreen(onBack = ::back, onNavigate = ::navigate) }
 
         composable(Routes.QUICK_LAUNCHER) { QuickLauncherScreen(onBack = ::back, onNavigate = ::navigate) }

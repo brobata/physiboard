@@ -38,7 +38,7 @@ import brobata.physiboard.core.actions.picker.UnicodeCharacterCatalog
  * caller removes the key from the custom map rather than storing "").
  */
 @Composable
-fun UnicodeCharacterDialog(letter: Char? = null, onDismiss: () -> Unit, onChoose: (String) -> Unit) {
+fun UnicodeCharacterDialog(letter: Char? = null, resetLabel: String = "Reset to Default", onDismiss: () -> Unit, onChoose: (String) -> Unit) {
     val categories = UnicodeCharacterCatalog.CATEGORIES
     var selected by remember { mutableStateOf(categories.first().label) }
     var custom by remember { mutableStateOf("") }
@@ -59,7 +59,7 @@ fun UnicodeCharacterDialog(letter: Char? = null, onDismiss: () -> Unit, onChoose
                     )
                     Button(onClick = { if (custom.isNotBlank()) onChoose(custom) }, enabled = custom.isNotBlank(), modifier = Modifier.padding(start = 8.dp)) { Text("Add") }
                 }
-                TextButton(onClick = { onChoose("") }, modifier = Modifier.fillMaxWidth()) { Text("Reset to Default") }
+                TextButton(onClick = { onChoose("") }, modifier = Modifier.fillMaxWidth()) { Text(resetLabel) }
                 LazyRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     items(categories) { category ->
                         FilterChip(

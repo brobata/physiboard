@@ -93,6 +93,13 @@ object SearchCatalog {
         SearchEntry("Default skin tone", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji skin tone colour color fitzpatrick hand people default"),
         SearchEntry("Double-tap Sym for the page chooser", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym double tap chooser page letter open kaomoji gif"),
         SearchEntry("GIFs", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "gif gifs klipy tenor animated sym page search"),
+        SearchEntry("My Sym pages", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "my page own custom sym layer extra symbols characters keys personal"),
+        // keys-and-modifiers.md SS8, layers-sym-alt.md SS8: long press and the accent lists.
+        SearchEntry("Long press", "Long press", Routes.LONG_PRESS, "long press hold held key alt symbol capital uppercase accents diacritics variations sym emoji"),
+        SearchEntry("Long press types", "Long press", Routes.LONG_PRESS, "long press mode accent variation capital alt symbol sym emoji diacritics"),
+        SearchEntry("Hold time", "Long press", Routes.LONG_PRESS, "hold time long press threshold delay milliseconds ms"),
+        SearchEntry("Show every accent", "Long press", Routes.LONG_PRESS, "accents diacritics variations chooser bar pick number"),
+        SearchEntry("Customize Variations", "Long press", Routes.CUSTOMIZE_VARIATIONS, "accents diacritics variations letters ą ć ę ł ń ó ś ź ż é è ü ö ä ß ñ ç polish french german"),
     )
 
     /** spec: SS8, "the trimmed query is a case-insensitive substring of the title, of the screen title, or of the keywords." Results keep catalogue order. */

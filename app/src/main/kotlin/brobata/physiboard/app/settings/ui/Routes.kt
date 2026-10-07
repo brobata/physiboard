@@ -27,6 +27,10 @@ object Routes {
     const val TEXT_EXPANSION = "text_expansion"
     const val TEST_FIELD = "test_field"
 
+    // keys-and-modifiers.md SS8, layers-sym-alt.md SS8.3: the long-press screen and the accent lists.
+    const val LONG_PRESS = "long_press"
+    const val CUSTOMIZE_VARIATIONS = "customize_variations"
+
     // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
     const val SMART_BACKLIGHT = "smart_backlight"
     const val REMOVE_BLOAT = "remove_bloat"
