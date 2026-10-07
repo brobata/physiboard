@@ -24,11 +24,25 @@ class DictationErrorClassifierTest {
     }
 
     @Test
-    fun `T49 rule 8 toast text`() {
-        assertEquals(DictationMessage.NO_TEXT_RECOGNIZED, DictationErrorClassifier.toastFor(DictationErrorCode.NO_MATCH))
-        assertEquals(DictationMessage.NO_SPEECH_INPUT_DETECTED, DictationErrorClassifier.toastFor(DictationErrorCode.SPEECH_TIMEOUT))
+    fun `T49 the message for an error that ends the session`() {
         assertEquals(DictationMessage.MIC_PERMISSION_DENIED, DictationErrorClassifier.toastFor(DictationErrorCode.INSUFFICIENT_PERMISSIONS))
         assertEquals(DictationMessage.NETWORK_ERROR, DictationErrorClassifier.toastFor(DictationErrorCode.NETWORK))
-        assertEquals(DictationMessage.SPEECH_RECOGNITION_ERROR, DictationErrorClassifier.toastFor(DictationErrorCode.SERVER))
+        assertEquals(DictationMessage.NETWORK_ERROR, DictationErrorClassifier.toastFor(DictationErrorCode.SERVER))
+        assertEquals(DictationMessage.NETWORK_ERROR, DictationErrorClassifier.toastFor(DictationErrorCode.SERVER_DISCONNECTED))
+        assertEquals(DictationMessage.OFFLINE_LANGUAGE_MISSING, DictationErrorClassifier.toastFor(DictationErrorCode.LANGUAGE_UNAVAILABLE))
+        assertEquals(DictationMessage.SPEECH_RECOGNITION_ERROR, DictationErrorClassifier.toastFor(DictationErrorCode.AUDIO))
+        assertEquals(DictationMessage.SPEECH_RECOGNITION_ERROR, DictationErrorClassifier.toastFor(DictationErrorCode.CANNOT_CHECK_SUPPORT))
+    }
+
+    @Test
+    fun `the quiet, busy, language and network families`() {
+        assertTrue(DictationErrorClassifier.isQuiet(DictationErrorCode.NO_MATCH))
+        assertTrue(DictationErrorClassifier.isQuiet(DictationErrorCode.SPEECH_TIMEOUT))
+        assertTrue(DictationErrorClassifier.isBusy(DictationErrorCode.RECOGNIZER_BUSY))
+        assertTrue(DictationErrorClassifier.isLanguage(DictationErrorCode.LANGUAGE_NOT_SUPPORTED))
+        assertTrue(DictationErrorClassifier.isLanguage(DictationErrorCode.LANGUAGE_UNAVAILABLE))
+        assertTrue(DictationErrorClassifier.isNetwork(DictationErrorCode.NETWORK_TIMEOUT))
+        assertFalse(DictationErrorClassifier.isNetwork(DictationErrorCode.CLIENT))
+        assertTrue(DictationErrorClassifier.isSegmentedRefusal(DictationErrorCode.CANNOT_CHECK_SUPPORT), "an unknown-to-SS1 code counts as a refusal early on")
     }
 }

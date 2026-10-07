@@ -1,23 +1,29 @@
 package brobata.physiboard.core.speech
 
 /**
- * The session-shaping settings this module reads. There is no `:settings` module yet
- * (docs/plans/rebuild-from-scratch.md build order step 6, and this task's own instruction not to
- * build one), so every field here is a caller-supplied value with the spec's own default; a real
- * settings store later means constructing this from that store instead of the defaults, not
- * changing anything in [DictationEngine]. spec: dictation.md SS13.
+ * The session-shaping settings this module reads, each the spec's own default. spec: dictation.md
+ * SS13. `:ime` builds one of these from the settings store and hands it to [DictationEngine] on
+ * every call; nothing in here is Android.
  *
  * [androidApiLevel] is a plain `Int` (`Build.VERSION.SDK_INT`'s value, never the class itself) so
- * this module never needs an `android.*` import to make the API-33 decision in SS6.3.
+ * this module never needs an `android.*` import to make the API-33 decisions in SS5.
  */
 data class DictationSettings(
-    val pauseMs: Long = 2_000L,
-    val segmentedSessionEnabled: Boolean = true,
+    /** `dictation_stop_after_silence_ms`: 0 means never (the session runs until stopped, within the safety limits of SS6.4). */
+    val stopAfterSilenceMs: Long = 0L,
     val androidApiLevel: Int = 0,
-    /** `dictation_mask_offensive`, the per-request profanity masking (spec SS4.2); the catalogue's code default. */
-    val maskOffensive: Boolean = true,
-    /** `dictation_auto_punctuation`: ask the engine to punctuate and capitalise, Android 13 and later only (spec SS4.2). */
+    /** `dictation_mask_offensive`, the per-request profanity masking (spec SS5). */
+    val maskOffensive: Boolean = false,
+    /** `dictation_auto_punctuation`: ask the engine to punctuate and capitalise, Android 13 and later only (spec SS5). */
     val autoPunctuation: Boolean = true,
+    /** `dictation_prefer_offline`: ask for the engine's on-device recognizer first (spec SS4.3). */
+    val preferOffline: Boolean = true,
+    /** `dictation_pause_media`: hold exclusive audio focus for the whole session so music pauses once and resumes once (spec SS6.7). */
+    val pauseMedia: Boolean = true,
+    /** `dictation_stop_on_typing`: any key other than a modifier stops the session and then does its usual work (spec SS3). */
+    val stopOnTyping: Boolean = true,
+    /** app-shell.md SS31: private mode forces the on-device recognizer and allows no online fallback. */
+    val privateMode: Boolean = false,
     /** `dictation_haptics`: the start and stop cues (spec SS8.1); the system haptic toggle gates them again at play time. */
     val hapticsEnabled: Boolean = true,
     /** `dictation_haptic_strength`: which of SS8.1's three pulse tables the cues use. */
@@ -27,20 +33,37 @@ data class DictationSettings(
 )
 
 /**
- * What the recognizer request carries beyond the pause. spec: dictation.md SS4.2: masking is
- * "the value of `dictation_mask_offensive`", and formatting is asked for "on Android 13 or
- * later, when `dictation_auto_punctuation` is on". Decided here so the API-level gate is a JVM
- * fact, not something `:ime` re-derives beside the intent.
+ * One request to the recognizer, as `:core:speech` decided it. `:ime` only translates these fields
+ * onto the platform intent; it decides none of them. spec: dictation.md SS5.
  */
-data class RecognizerRequestOptions(val maskOffensive: Boolean, val enableFormatting: Boolean) {
-    companion object {
-        private const val MIN_API_LEVEL_FOR_FORMATTING = 33
+data class RecognizerRequest(
+    /** SS5: ask for one long segmented session (Android 13+), one result per utterance, no restart between them. */
+    val segmented: Boolean,
+    /** SS4.3: ask for the engine's on-device recognizer only. */
+    val preferOffline: Boolean,
+    /** SS5: ask the engine to punctuate and capitalise (Android 13+). */
+    val enableFormatting: Boolean,
+    val maskOffensive: Boolean,
+    /** SS5: the complete-silence length the engine is given; the keyboard's own silence limit plus a margin. */
+    val completeSilenceMs: Long,
+)
 
-        fun from(settings: DictationSettings): RecognizerRequestOptions = RecognizerRequestOptions(
-            maskOffensive = settings.maskOffensive,
-            enableFormatting = settings.autoPunctuation && settings.androidApiLevel >= MIN_API_LEVEL_FOR_FORMATTING,
-        )
-    }
+/**
+ * Plans the request for a new session from the settings and what earlier sessions learned about
+ * the engine. spec: dictation.md SS5, SS6.3.
+ */
+object RecognizerRequestPlanner {
+    private const val MIN_API_LEVEL_FOR_SEGMENTED = 33
+    private const val MIN_API_LEVEL_FOR_FORMATTING = 33
+
+    fun plan(settings: DictationSettings, segmentedRefusalLatch: Boolean): RecognizerRequest = RecognizerRequest(
+        segmented = settings.androidApiLevel >= MIN_API_LEVEL_FOR_SEGMENTED && !segmentedRefusalLatch,
+        // app-shell.md SS31: private mode never lets audio leave the phone.
+        preferOffline = settings.preferOffline || settings.privateMode,
+        enableFormatting = settings.autoPunctuation && settings.androidApiLevel >= MIN_API_LEVEL_FOR_FORMATTING,
+        maskOffensive = settings.maskOffensive,
+        completeSilenceMs = DictationTiming.engineSilenceMs(settings.stopAfterSilenceMs),
+    )
 }
 
 /**
@@ -56,27 +79,3 @@ data class DictationTextSettings(
     val capitalizeAfterSentenceEnd: Boolean = true,
     val capitalizationAllowed: Boolean = true,
 )
-
-/** spec: dictation.md SS6.3, SS6.4: which timer is currently deciding how long the session waits. */
-enum class DictationMode { SEGMENTED, RESTART_LOOP }
-
-/**
- * Decides segmented vs restart-loop mode once, at session start. spec: dictation.md SS6.3: "Used
- * for a session when all of: Android 13 or later; `dictation_continuous_session` on; the engine
- * has not refused segmented sessions since the recognizer was created; the pause is greater than
- * 0." Any of those failing falls back to SS6.4's restart loop.
- */
-object DictationModeDecision {
-    private const val MIN_API_LEVEL_FOR_SEGMENTED = 33
-
-    fun decide(settings: DictationSettings, segmentedRefusalLatch: Boolean): DictationMode =
-        if (settings.androidApiLevel >= MIN_API_LEVEL_FOR_SEGMENTED &&
-            settings.segmentedSessionEnabled &&
-            !segmentedRefusalLatch &&
-            settings.pauseMs > 0L
-        ) {
-            DictationMode.SEGMENTED
-        } else {
-            DictationMode.RESTART_LOOP
-        }
-}

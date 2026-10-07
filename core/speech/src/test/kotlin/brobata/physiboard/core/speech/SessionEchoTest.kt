@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
  * whole screen and extends beyond the input box"). spec: dictation.md SS7.1 to SS7.3.
  */
 class SessionEchoTest {
-    private val segmented = DictationSettings(pauseMs = 2000L, androidApiLevel = 34)
+    private val segmented = DictationSettings(androidApiLevel = 34)
     private val textSettings = DictationTextSettings()
     private fun handle(state: DictationSession?, event: DictationEvent, now: Long, settings: DictationSettings = segmented) =
         DictationEngine.handle(state, event, now, settings, textSettings, segmentedRefusalLatch = false)

@@ -3,44 +3,66 @@ package brobata.physiboard.core.speech
 /**
  * Every duration the dictation state machine reasons about, named and cited so a future change can
  * find its justification without re-deriving it from a magic number. spec: dictation.md SS6, SS14.
+ *
+ * None of these timers ever restarts the recognizer while the user is speaking: the only restarts
+ * this module issues follow an ending the recognizer itself reported (a quiet error, an ordinary
+ * final, the end of a segmented session), which by definition happens in silence.
  */
 object DictationTiming {
 
     /**
-     * spec SS6.2, D2: Google's engines close the microphone about 2 s after any sound and report
-     * "no match" if no words came through, so a user drawing breath before speaking would otherwise
-     * be told nothing was heard. While the session has not yet heard speech, a quiet or busy error
-     * keeps re-listening for up to this long since the session started.
+     * spec SS6.5: after an explicit stop asks the engine for its last words, how long to wait for
+     * them before the words already on screen are committed and the session is closed anyway.
      */
-    const val FIRST_WORDS_GRACE_MS = 10_000L
+    const val STOP_WATCHDOG_MS = 1_500L
 
-    /** spec SS6.2: the grace also caps how many re-listens it will spend, not just how long. */
-    const val FIRST_WORDS_GRACE_MAX_RESTARTS = 5
-
-    /** spec SS6.2: "A busy error re-listens after a 300 ms delay (a busy engine is usually the previous request still winding down)." */
+    /** spec SS6.6: "A busy error re-listens after a 300 ms delay (a busy engine is usually the previous request still winding down)." */
     const val BUSY_RETRY_DELAY_MS = 300L
 
-    /** spec SS6.3: the window in which an early failure with zero segments seen counts as the engine refusing the segmented request. */
+    /**
+     * spec SS6.6: a quiet error or busy answer arriving this soon after the request began is the
+     * engine failing fast, not silence; such answers are re-listened after [FAST_FAILURE_BACKOFF_MS]
+     * and counted, so a broken engine cannot be hammered for ever.
+     */
+    const val FAST_FAILURE_WINDOW_MS = 700L
+
+    /** spec SS6.6: the delay before re-listening after a fast failure. */
+    const val FAST_FAILURE_BACKOFF_MS = 500L
+
+    /** spec SS6.6: consecutive fast failures (or busy answers) that end the session with a real error. */
+    const val MAX_CONSECUTIVE_FAILURES = 5
+
+    /** spec SS6.3: the window in which an early failure with nothing heard counts as the engine refusing the segmented request. */
     const val SEGMENTED_REFUSAL_WINDOW_MS = 1_200L
 
-    /** spec SS6.4: below this age, a continuation's quiet error is a fast failure loop, not ordinary silence. */
-    const val CONTINUATION_FAILURE_WINDOW_MS = 700L
+    /**
+     * spec SS8.1: the start cue follows the first audio level report (the microphone is open and
+     * audio is flowing); an engine that reports no levels gets the cue this long after "ready".
+     */
+    const val CUE_FALLBACK_MS = 300L
 
-    /** spec SS6.4: the silence timer never runs shorter than this, however small the configured pause is. */
-    const val SILENCE_TIMER_FLOOR_MS = 400L
+    /**
+     * spec SS6.4: with "Stop after silence" off, a session still ends by itself after this much
+     * continuous silence, so a microphone left open does not transcribe the room for ever.
+     */
+    const val SAFETY_SILENCE_MS = 60_000L
 
-    /** spec SS6.4: "the keyboard arms its silence timer for max(pause - 1000, 400) ms (the engine has already waited about 1 s of silence before delivering the final)." */
-    const val SILENCE_TIMER_PAUSE_OFFSET_MS = 1_000L
+    /** spec SS6.4: no session outlives this, whatever is heard. */
+    const val SESSION_CAP_MS = 10 * 60_000L
 
-    /** spec SS6.3: the segmented watchdog and the stop-requested watchdog both run this far past the configured pause. */
-    const val SEGMENTED_WATCHDOG_OFFSET_MS = 5_000L
+    /**
+     * spec SS5: the engine is asked to end its segmented session this much later than the
+     * keyboard's own silence limit, so the keyboard's timer is the one that decides and the
+     * engine's own ending never races it.
+     */
+    const val ENGINE_SILENCE_MARGIN_MS = 1_000L
 
     /** spec SS3: "the app closes its text field and no new field replaces it within 500 ms." */
     const val EDITOR_GONE_GRACE_MS = 500L
 
-    /** spec SS6.4: the restart-loop silence timer, floored so a tiny configured pause never arms an unusably short timer. */
-    fun silenceTimerMs(pauseMs: Long): Long = (pauseMs - SILENCE_TIMER_PAUSE_OFFSET_MS).coerceAtLeast(SILENCE_TIMER_FLOOR_MS)
+    /** spec SS6.4: how long the session waits in silence before stopping by itself; `stopAfterSilenceMs` 0 means the safety limit. */
+    fun silenceLimitMs(stopAfterSilenceMs: Long): Long = if (stopAfterSilenceMs > 0L) stopAfterSilenceMs else SAFETY_SILENCE_MS
 
-    /** spec SS6.3: the segmented watchdog's deadline for one configured pause. */
-    fun watchdogMs(pauseMs: Long): Long = pauseMs + SEGMENTED_WATCHDOG_OFFSET_MS
+    /** spec SS5: the complete-silence length handed to the engine for a given silence limit. */
+    fun engineSilenceMs(stopAfterSilenceMs: Long): Long = silenceLimitMs(stopAfterSilenceMs) + ENGINE_SILENCE_MARGIN_MS
 }

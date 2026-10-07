@@ -6,200 +6,139 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * Drives [DictationEngine] through the exact SS16 sequences a device test cannot produce
- * reliably: error-ordering rows T41-T48, the cue count of T50, and the editor-lifecycle rows
- * T55-T57.
- */
+/** spec: dictation.md SS16, the lifecycle rows T1 to T12, each driven through [DictationHarness]. */
 class DictationEngineLifecycleTest {
 
-    private val settings = DictationSettings(pauseMs = 2500L, segmentedSessionEnabled = true, androidApiLevel = 33)
-    private val textSettings = DictationTextSettings()
-
-    private fun session(
-        mode: DictationMode = DictationMode.RESTART_LOOP,
-        active: Boolean = true,
-        stopRequested: Boolean = false,
-        isContinuation: Boolean = false,
-        requestStartMs: Long = 0L,
-        segmentsSeen: Int = 0,
-        heardSpeech: Boolean = false,
-        pending: PendingUtterance = PendingUtterance.None,
-        silenceDeadlineMs: Long? = null,
-        watchdogDeadlineMs: Long? = null,
-        editorGoneDeadlineMs: Long? = null,
-        ownerPackage: String? = "app",
-    ) = DictationSession(
-        ownerPackage = ownerPackage,
-        sessionStartMs = 0L,
-        active = active,
-        stopRequested = stopRequested,
-        heardSpeech = heardSpeech,
-        restartsUsed = 0,
-        mode = mode,
-        isContinuation = isContinuation,
-        requestStartMs = requestStartMs,
-        segmentsSeen = segmentsSeen,
-        utterance = UtteranceState(UtteranceContext(""), pending),
-        silenceDeadlineMs = silenceDeadlineMs,
-        watchdogDeadlineMs = watchdogDeadlineMs,
-        editorGoneDeadlineMs = editorGoneDeadlineMs,
-    )
-
-    private fun handle(state: DictationSession?, event: DictationEvent, now: Long, latch: Boolean = false) =
-        DictationEngine.handle(state, event, now, settings, textSettings, latch)
-
-    @Test
-    fun `T41 a segmented refusal within the window retries as plain and sets the latch`() {
-        val state = session(mode = DictationMode.SEGMENTED, segmentsSeen = 0, requestStartMs = 0L)
-        val outcome = handle(state, DictationEvent.Error(DictationErrorCode.CLIENT), now = 900L)
-        assertEquals(DictationMode.RESTART_LOOP, outcome.session?.mode)
-        assertEquals(listOf(DictationEffect.StartListening(DictationMode.RESTART_LOOP)), outcome.effects)
-        assertEquals(true, outcome.newSegmentedRefusalLatch)
+    private fun started(settings: DictationSettings = DictationSettings(androidApiLevel = 36)): DictationHarness {
+        val h = DictationHarness(settings)
+        h.send(DictationEvent.Trigger("app", ""), now = 0L)
+        h.send(DictationEvent.ReadyForSpeech, now = 10L)
+        h.send(DictationEvent.FirstAudio, now = 40L)
+        return h
     }
 
     @Test
-    fun `T42 a network error is not a refusal and reaches rule 8`() {
-        val state = session(mode = DictationMode.SEGMENTED, segmentsSeen = 0, requestStartMs = 0L)
-        val outcome = handle(state, DictationEvent.Error(DictationErrorCode.NETWORK), now = 900L)
-        assertNull(outcome.session)
-        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ShowMessage(DictationMessage.NETWORK_ERROR)), outcome.effects)
-        assertNull(outcome.newSegmentedRefusalLatch)
+    fun `T1 a trigger with no session starts one in the STARTING phase with the planned request`() {
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 10_000L))
+        val started = h.send(DictationEvent.Trigger("app", "Hello "), now = 0L)
+        val session = assertNotNull(started.session)
+        assertEquals(DictationPhase.STARTING, session.phase)
+        assertEquals("app", session.ownerPackage)
+        assertEquals("Hello ", session.utterance.context.textBeforeUtterance)
+        assertEquals(10_000L, session.silenceLimitMs)
+        assertEquals(11_000L, session.request.completeSilenceMs)
+        assertEquals(true, session.request.segmented)
     }
 
     @Test
-    fun `T43 outside the 1200ms window a client error is not a refusal either`() {
-        val state = session(mode = DictationMode.SEGMENTED, segmentsSeen = 0, requestStartMs = 0L)
-        val outcome = handle(state, DictationEvent.Error(DictationErrorCode.CLIENT), now = 1300L)
-        assertNull(outcome.session)
-        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ShowMessage(DictationMessage.SPEECH_RECOGNITION_ERROR)), outcome.effects)
+    fun `T2 ready moves the session to LISTENING and arms the cue fallback`() {
+        val h = DictationHarness()
+        h.send(DictationEvent.Trigger("app", ""), now = 0L)
+        val ready = h.send(DictationEvent.ReadyForSpeech, now = 10L)
+        assertEquals(DictationPhase.LISTENING, ready.session?.phase)
+        assertEquals(310L, ready.session?.cueFallbackDeadlineMs)
     }
 
     @Test
-    fun `T44 a continuation quiet error past 700ms continues while the silence timer is pending`() {
-        val state = session(isContinuation = true, requestStartMs = 9200L, silenceDeadlineMs = 15_000L, pending = PendingUtterance.Live("hello"))
-        val outcome = handle(state, DictationEvent.Error(DictationErrorCode.SPEECH_TIMEOUT), now = 10_000L)
-        assertNotNull(outcome.session)
-        assertEquals(listOf(DictationEffect.StartListening(DictationMode.RESTART_LOOP)), outcome.effects)
-        assertTrue(outcome.textOps.isNotEmpty(), "the pending partial must still be finished")
+    fun `T3 the first audio report plays the cue and clears the fallback`() {
+        val h = DictationHarness()
+        h.send(DictationEvent.Trigger("app", ""), now = 0L)
+        h.send(DictationEvent.ReadyForSpeech, now = 10L)
+        val audio = h.send(DictationEvent.FirstAudio, now = 40L)
+        assertEquals(listOf(DictationEffect.PlayStartCue), audio.effects)
+        assertEquals(true, audio.session?.cuePlayed)
+        assertNull(audio.session?.cueFallbackDeadlineMs)
     }
 
     @Test
-    fun `T45 a continuation quiet error whose timer already fired just ends`() {
-        val state = session(isContinuation = true, requestStartMs = 9200L, silenceDeadlineMs = null, pending = PendingUtterance.Live("hello"))
-        val outcome = handle(state, DictationEvent.Error(DictationErrorCode.SPEECH_TIMEOUT), now = 10_000L)
-        assertNull(outcome.session)
-        assertEquals(listOf(DictationEffect.PlayStopCue), outcome.effects)
-        assertTrue(outcome.textOps.isNotEmpty(), "the pending partial is still finished, not discarded")
+    fun `T4 a trigger while LISTENING asks the engine to stop and arms the watchdog`() {
+        val h = started()
+        val stop = h.send(DictationEvent.Trigger("app", null), now = 1_000L)
+        assertEquals(DictationPhase.STOPPING, stop.session?.phase)
+        assertEquals(2_500L, stop.session?.stopWatchdogDeadlineMs)
+        assertEquals(listOf(DictationEffect.StopListening), stop.effects)
+        assertNull(stop.session?.silenceDeadlineMs, "no silence limit while stopping")
     }
 
     @Test
-    fun `T46 a fast continuation failure with no partial reaches rule 8`() {
-        val state = session(isContinuation = true, requestStartMs = 9700L)
-        val outcome = handle(state, DictationEvent.Error(DictationErrorCode.NO_MATCH), now = 10_000L)
-        assertNull(outcome.session)
-        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ShowMessage(DictationMessage.NO_TEXT_RECOGNIZED)), outcome.effects)
-        assertTrue(outcome.textOps.isEmpty())
+    fun `T5 a trigger while STOPPING ends the session at once`() {
+        val h = started()
+        h.send(DictationEvent.Trigger("app", null), now = 1_000L)
+        val again = h.send(DictationEvent.Trigger("app", null), now = 1_200L)
+        assertNull(again.session)
+        assertTrue(DictationEffect.CancelListening in again.effects)
     }
 
     @Test
-    fun `T47 segmented with segments already seen ends quietly`() {
-        val state = session(mode = DictationMode.SEGMENTED, segmentsSeen = 2, heardSpeech = true)
-        val outcome = handle(state, DictationEvent.Error(DictationErrorCode.NO_MATCH), now = 5000L)
-        assertNull(outcome.session)
-        assertEquals(listOf(DictationEffect.PlayStopCue), outcome.effects)
+    fun `T6 a final while LISTENING commits and re-listens at once, dropping the segmented ask`() {
+        val h = started()
+        val final = h.send(DictationEvent.FinalResult("hello"), now = 1_000L)
+        assertEquals("Hello ", h.field.text)
+        assertEquals(DictationEffect.StartListening(final.session!!.request), final.effects.last())
+        assertEquals(false, final.session.request.segmented)
+        assertEquals(true, final.newSegmentedRefusalLatch)
     }
 
     @Test
-    fun `T48 an event with no session is ignored`() {
-        val outcome = handle(null, DictationEvent.Error(DictationErrorCode.NO_MATCH), now = 5000L)
-        assertNull(outcome.session)
-        assertTrue(outcome.effects.isEmpty())
-        assertTrue(outcome.textOps.isEmpty())
+    fun `T7 a final while STOPPING commits and ends`() {
+        val h = started()
+        h.send(DictationEvent.PartialResult("hello"), now = 500L)
+        h.send(DictationEvent.Trigger("app", null), now = 1_000L)
+        val final = h.send(DictationEvent.FinalResult(null), now = 1_100L)
+        assertNull(final.session)
+        assertEquals("Hello ", h.field.text, "an empty final finishes from the partial (D3)")
+        assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus), final.effects)
     }
 
     @Test
-    fun `T50 exactly one start cue and one stop cue, and a stray callback after end is ignored`() {
-        val started = handle(null, DictationEvent.Trigger("app", ""), now = 0L)
-        val ready = handle(started.session, DictationEvent.ReadyForSpeech, now = 10L)
-        assertEquals(listOf(DictationEffect.PlayStartCue), ready.effects)
-
-        val ended = handle(ready.session, DictationEvent.Error(DictationErrorCode.SERVER), now = 20L)
-        assertNull(ended.session)
-        assertTrue(ended.effects.contains(DictationEffect.PlayStopCue))
-
-        val strayCallback = handle(ended.session, DictationEvent.Error(DictationErrorCode.SERVER), now = 30L)
-        assertTrue(strayCallback.effects.isEmpty(), "a callback after the session ended must not vibrate again")
-    }
-
-    // SS6.3: "The watchdog is also armed ... when the engine reports end of speech." This task's
-    // first finding: there was no event for onEndOfSpeech() at all before this.
-
-    @Test
-    fun `end of speech arms the segmented watchdog`() {
-        val state = session(mode = DictationMode.SEGMENTED, watchdogDeadlineMs = null)
-        val outcome = handle(state, DictationEvent.EndOfSpeech, now = 1000L)
-        assertEquals(1000L + DictationTiming.watchdogMs(settings.pauseMs), outcome.session?.watchdogDeadlineMs)
-        assertTrue(outcome.effects.isEmpty(), "arming the watchdog is a pure state change, not an effect")
+    fun `T8 a segment commits and the session goes on with no new request`() {
+        val h = started()
+        h.drainEffects()
+        val segment = h.send(DictationEvent.SegmentResult("hello"), now = 1_000L)
+        assertEquals("Hello ", h.field.text)
+        assertTrue(segment.effects.isEmpty())
+        assertEquals(1_000L, segment.session?.lastSpeechMs)
     }
 
     @Test
-    fun `end of speech does nothing in restart-loop mode`() {
-        val state = session(mode = DictationMode.RESTART_LOOP, watchdogDeadlineMs = null)
-        val outcome = handle(state, DictationEvent.EndOfSpeech, now = 1000L)
-        assertNull(outcome.session?.watchdogDeadlineMs, "restart-loop mode has no watchdog to arm here")
-    }
-
-    // SS2.6 steps 4 and 7: this task's third finding. A start failure now carries a reason, and
-    // the engine turns it into the spec's log-only message; never a toast.
-
-    @Test
-    fun `a start failure reports 'Speech recognition not available' and never toasts`() {
-        val outcome = handle(session(active = false), DictationEvent.StartFailed(DictationStartFailureReason.RECOGNITION_UNAVAILABLE), now = 100L)
-        assertNull(outcome.session)
-        assertEquals(listOf(DictationEffect.LogMessage(DictationMessage.SPEECH_RECOGNITION_NOT_AVAILABLE)), outcome.effects)
+    fun `T9 speech refreshes the silence limit`() {
+        val h = started(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 5_000L))
+        assertEquals(5_000L, h.session?.silenceDeadlineMs)
+        h.send(DictationEvent.BeginningOfSpeech, now = 3_000L)
+        assertEquals(8_000L, h.session?.silenceDeadlineMs)
+        h.send(DictationEvent.PartialResult("a"), now = 4_000L)
+        assertEquals(9_000L, h.session?.silenceDeadlineMs)
     }
 
     @Test
-    fun `a start failure from a security exception reports 'Microphone permission denied'`() {
-        val outcome = handle(session(active = false), DictationEvent.StartFailed(DictationStartFailureReason.SECURITY_FAILURE), now = 100L)
-        assertEquals(listOf(DictationEffect.LogMessage(DictationMessage.MIC_PERMISSION_DENIED)), outcome.effects)
+    fun `T10 an editor rejecting the insert clears the partial and ends`() {
+        val h = started()
+        h.send(DictationEvent.PartialResult("half"), now = 500L)
+        val rejected = h.send(DictationEvent.EditorRejectedInsert, now = 600L)
+        assertNull(rejected.session)
+        assertEquals("", h.field.text)
+        assertTrue(DictationEffect.CancelListening in rejected.effects)
     }
 
     @Test
-    fun `any other start failure reports 'Speech recognition error'`() {
-        val outcome = handle(session(active = false), DictationEvent.StartFailed(DictationStartFailureReason.OTHER_FAILURE), now = 100L)
-        assertEquals(listOf(DictationEffect.LogMessage(DictationMessage.SPEECH_RECOGNITION_ERROR)), outcome.effects)
+    fun `T11 every ending releases focus exactly once and plays the stop cue only after a start cue`() {
+        val h = started()
+        val end = h.send(DictationEvent.KeyDown, now = 500L)
+        assertEquals(1, end.effects.count { it is DictationEffect.ReleaseAudioFocus })
+        assertEquals(1, end.effects.count { it is DictationEffect.PlayStopCue })
+
+        val noCue = DictationHarness()
+        noCue.send(DictationEvent.Trigger("app", ""), now = 0L)
+        val early = noCue.send(DictationEvent.KeyDown, now = 5L)
+        assertEquals(0, early.effects.count { it is DictationEffect.PlayStopCue })
+        assertEquals(1, early.effects.count { it is DictationEffect.ReleaseAudioFocus })
     }
 
     @Test
-    fun `T55 a new field in the same app cancels the editor-gone grace`() {
-        val closed = handle(session(), DictationEvent.EditorFieldClosed, now = 1000L)
-        assertEquals(1500L, closed.session?.editorGoneDeadlineMs)
-
-        val reopened = handle(closed.session, DictationEvent.EditorFieldOpened("app"), now = 1200L)
-        assertNotNull(reopened.session)
-        assertNull(reopened.session.editorGoneDeadlineMs)
-
-        val tick = handle(reopened.session, DictationEvent.ClockTick, now = 1500L)
-        assertNotNull(tick.session, "nothing should happen once the grace was cancelled")
-        assertTrue(tick.effects.isEmpty())
-    }
-
-    @Test
-    fun `T56 the field closing with nothing to replace it ends the session at 500ms`() {
-        val closed = handle(session(), DictationEvent.EditorFieldClosed, now = 1000L)
-        val tick = handle(closed.session, DictationEvent.ClockTick, now = 1500L)
-        assertNull(tick.session)
-        assertTrue(tick.effects.contains(DictationEffect.CancelListening))
-        assertTrue(tick.effects.contains(DictationEffect.PlayStopCue))
-    }
-
-    @Test
-    fun `T57 a field from a different app ends the session immediately`() {
-        val outcome = handle(session(ownerPackage = "app"), DictationEvent.EditorFieldOpened("other.app"), now = 1000L)
-        assertNull(outcome.session)
-        assertTrue(outcome.effects.contains(DictationEffect.CancelListening))
-        assertTrue(outcome.effects.contains(DictationEffect.PlayStopCue))
+    fun `T12 a whitespace-only final finishes from the last partial instead of writing the whitespace`() {
+        val h = started()
+        h.send(DictationEvent.PartialResult("half a thought"), now = 500L)
+        h.send(DictationEvent.FinalResult("   "), now = 1_000L)
+        assertEquals("Half a thought ", h.field.text)
     }
 }

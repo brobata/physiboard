@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
  */
 class DeletedWordsNeverRetypedTest {
 
-    private val settings = DictationSettings(pauseMs = 2000L)
+    private val settings = DictationSettings(androidApiLevel = 36, stopOnTyping = false)
     private val textSettings = DictationTextSettings()
 
     private fun handle(state: DictationSession?, event: DictationEvent, now: Long) =

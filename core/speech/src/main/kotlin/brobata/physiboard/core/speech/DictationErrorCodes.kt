@@ -18,22 +18,28 @@ object DictationErrorCode {
     const val SERVER_DISCONNECTED = 11
     const val LANGUAGE_NOT_SUPPORTED = 12
     const val LANGUAGE_UNAVAILABLE = 13
+    const val CANNOT_CHECK_SUPPORT = 14
+    const val CANNOT_LISTEN_TO_DOWNLOAD_EVENTS = 15
 }
 
 /**
- * Classifies one error code into the three shapes the session lifecycle cares about, so no branch
- * anywhere else in this module tests a code by hand. spec: dictation.md SS1, SS6.2, SS6.3, SS6.6.
+ * Classifies one error code into the shapes the session lifecycle cares about, so no branch
+ * anywhere else in this module tests a code by hand. spec: dictation.md SS1, SS6.3, SS6.6.
  */
 object DictationErrorClassifier {
 
     /** spec SS1: "Quiet error: the engine reporting 'no match' (code 7) or 'speech timeout' (code 6)." */
     fun isQuiet(code: Int): Boolean = code == DictationErrorCode.NO_MATCH || code == DictationErrorCode.SPEECH_TIMEOUT
 
-    /** spec SS6.2: a busy engine ("recognizer busy") gets its own 300 ms retry, not an immediate re-listen. */
+    /** spec SS6.6: a busy engine ("recognizer busy") gets its own 300 ms retry, not an immediate re-listen. */
     fun isBusy(code: Int): Boolean = code == DictationErrorCode.RECOGNIZER_BUSY
 
-    /** spec SS1: "Every other engine error code is a real error." */
-    fun isReal(code: Int): Boolean = !isQuiet(code)
+    /** spec SS4.3: the language is not installed for the recognizer asked for (12) or not downloaded yet (13). */
+    fun isLanguage(code: Int): Boolean = code == DictationErrorCode.LANGUAGE_NOT_SUPPORTED || code == DictationErrorCode.LANGUAGE_UNAVAILABLE
+
+    /** spec SS6.6: the network and server family, the one family whose message names the network. */
+    fun isNetwork(code: Int): Boolean =
+        code == DictationErrorCode.NETWORK || code == DictationErrorCode.NETWORK_TIMEOUT || code == DictationErrorCode.SERVER || code == DictationErrorCode.SERVER_DISCONNECTED
 
     /**
      * spec SS6.3 "Refusal": code 5 (client), or any code not in {1,2,3,4,6,7,8,9,10,11,12,13}, i.e.
@@ -50,35 +56,39 @@ object DictationErrorClassifier {
 
     fun isSegmentedRefusal(code: Int): Boolean = code !in NEVER_A_REFUSAL
 
-    /** spec SS6.6 rule 8's toast table. */
-    fun toastFor(code: Int): DictationMessage = when (code) {
-        DictationErrorCode.NO_MATCH -> DictationMessage.NO_TEXT_RECOGNIZED
-        DictationErrorCode.SPEECH_TIMEOUT -> DictationMessage.NO_SPEECH_INPUT_DETECTED
-        DictationErrorCode.INSUFFICIENT_PERMISSIONS -> DictationMessage.MIC_PERMISSION_DENIED
-        DictationErrorCode.NETWORK -> DictationMessage.NETWORK_ERROR
+    /** spec SS6.6's message table for the errors that end a session. Quiet errors never reach this: they re-listen. */
+    fun toastFor(code: Int): DictationMessage = when {
+        code == DictationErrorCode.INSUFFICIENT_PERMISSIONS -> DictationMessage.MIC_PERMISSION_DENIED
+        isNetwork(code) -> DictationMessage.NETWORK_ERROR
+        isLanguage(code) -> DictationMessage.OFFLINE_LANGUAGE_MISSING
         else -> DictationMessage.SPEECH_RECOGNITION_ERROR
     }
 }
 
 /**
- * spec: dictation.md SS6.6's toast text and SS2.6's log-only messages that reach the user. [text]
- * is the exact spec string so `:ime` never invents its own wording for either surface (a toast via
- * `DictationEffect.ShowMessage`, a log line via `DictationEffect.LogMessage`).
+ * spec: dictation.md SS6.6's message text. [text] is the exact spec string so `:ime` never invents
+ * its own wording for either surface (a toast via `DictationEffect.ShowMessage`, a log line via
+ * `DictationEffect.LogMessage`).
  */
 enum class DictationMessage(val text: String) {
-    NO_TEXT_RECOGNIZED("No text recognized. Try again."),
-    NO_SPEECH_INPUT_DETECTED("No speech input detected."),
     MIC_PERMISSION_DENIED("Microphone permission denied."),
     NETWORK_ERROR("Network error."),
     SPEECH_RECOGNITION_ERROR("Speech recognition error."),
-    /** spec SS2.6 step 4: "Speech recognition not available." Log-only, never a toast. */
-    SPEECH_RECOGNITION_NOT_AVAILABLE("Speech recognition not available."),
+    SPEECH_RECOGNITION_NOT_AVAILABLE("Speech recognition isn't available on this phone."),
+    /** spec SS4.3: the on-device recognizer has no pack for the language and nothing else may be used. */
+    OFFLINE_LANGUAGE_MISSING("The offline speech pack for this language isn't installed. Download it in Speech Services by Google, or turn off \"Keep speech on the phone\"."),
+    /** spec SS4.3, app-shell.md SS31: the same, in private mode, where going online is not an option. */
+    PRIVATE_MODE_NEEDS_OFFLINE_LANGUAGE("Private mode keeps speech on the phone, and the offline speech pack for this language isn't installed."),
+    /** spec SS4.3: the log line for the one silent fallback, offline to online. */
+    FELL_BACK_TO_ONLINE("offline recognizer has no pack for this language; this session goes online"),
+    /** spec SS6.3: the log line for the other silent fallback, segmented to plain. */
+    SEGMENTED_REFUSED("segmented session refused by the engine; falling back to one request per utterance"),
 }
 
 /**
  * spec SS2.6 steps 4 and 7: why the very first request of a session could not be issued, before
  * the engine ever got a chance to answer. `:ime` classifies the platform failure into one of these;
- * [DictationEngine] turns it into the matching log-only [DictationMessage].
+ * [DictationEngine] turns it into the matching [DictationMessage].
  */
 enum class DictationStartFailureReason {
     /** step 4: no recognizer exists for the engine id and none could be created either. */
@@ -89,7 +99,7 @@ enum class DictationStartFailureReason {
     OTHER_FAILURE,
 }
 
-/** spec SS2.6 steps 4 and 7: which log-only message each start-failure reason reports. */
+/** spec SS2.6 steps 4 and 7: which message each start-failure reason shows. */
 object DictationStartFailureMessages {
     fun forReason(reason: DictationStartFailureReason): DictationMessage = when (reason) {
         DictationStartFailureReason.RECOGNITION_UNAVAILABLE -> DictationMessage.SPEECH_RECOGNITION_NOT_AVAILABLE

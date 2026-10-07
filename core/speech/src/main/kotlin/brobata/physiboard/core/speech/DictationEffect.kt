@@ -2,25 +2,31 @@ package brobata.physiboard.core.speech
 
 /** One thing `:ime` must do to the real world after a [DictationEngine.handle] call. spec: dictation.md SS2, SS3, SS6, SS8.1. */
 sealed class DictationEffect {
-    /** Issue a request in [mode]. */
-    data class StartListening(val mode: DictationMode) : DictationEffect()
+    /** Issue [request] to the recognizer. */
+    data class StartListening(val request: RecognizerRequest) : DictationEffect()
 
-    /** spec SS3, SS6.5: ask the engine to stop, so it delivers whatever it already has as a final. */
+    /** spec SS3, SS6.5: ask the engine to stop, so it delivers whatever it already has. */
     object StopListening : DictationEffect()
 
-    /** spec SS3, SS6.4: destroy the in-flight request; no more callbacks from it are expected or acted on. */
+    /** spec SS3, SS6.5: destroy the in-flight request; no more callbacks from it are expected or acted on. */
     object CancelListening : DictationEffect()
 
-    /** spec SS6.1: plays once per session, at the first [DictationEvent.ReadyForSpeech]. */
+    /** spec SS6.7: take exclusive transient audio focus for the session, so music pauses once. */
+    object AcquireAudioFocus : DictationEffect()
+
+    /** spec SS6.7: give audio focus back, so music resumes once. */
+    object ReleaseAudioFocus : DictationEffect()
+
+    /** spec SS8.1: plays once per session, when the microphone is open. */
     object PlayStartCue : DictationEffect()
 
     /** spec SS8.1: "the stop cue plays when the session ends, and only if a start cue was played for it." */
     object PlayStopCue : DictationEffect()
 
-    /** spec SS6.6: the toast text for a real error. */
+    /** spec SS6.6: a message the user sees. */
     data class ShowMessage(val message: DictationMessage) : DictationEffect()
 
-    /** spec SS2.6 steps 4 and 7: a start failure's message is log-only; "the user sees nothing." */
+    /** spec SS6.6: a message for the log only. */
     data class LogMessage(val message: DictationMessage) : DictationEffect()
 }
 
@@ -30,10 +36,10 @@ sealed class DictationEffect {
  * transition decided it, the new value of the segmented-refusal latch.
  *
  * [newSegmentedRefusalLatch] is not part of [session] because the latch outlives one session: spec
- * SS6.3, "the refusal latch is set (segmented mode is not asked for again until the recognizer is
- * rebuilt, which happens when the engine setting changes)". The caller stores it per recognizer and
- * passes it back into the next [DictationEngine.handle] call as `segmentedRefusalLatch`; `null` here
- * means this transition has no opinion and the caller's stored value is unchanged.
+ * SS6.3, "the refusal latch is set (segmented mode is not asked for again until the engine setting
+ * changes)". The caller stores it per engine and passes it back into the next
+ * [DictationEngine.handle] call as `segmentedRefusalLatch`; `null` here means this transition has
+ * no opinion and the caller's stored value is unchanged.
  */
 data class DictationOutcome(
     val session: DictationSession?,

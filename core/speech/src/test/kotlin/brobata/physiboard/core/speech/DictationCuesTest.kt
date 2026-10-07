@@ -34,12 +34,18 @@ class DictationCuesTest {
     }
 
     @Test
-    fun `the request masks profanity by the setting and asks for formatting only on Android 13 with auto punctuation on`() {
-        val on33 = DictationSettings(androidApiLevel = 33)
-        assertEquals(RecognizerRequestOptions(maskOffensive = true, enableFormatting = true), RecognizerRequestOptions.from(on33))
-        assertEquals(RecognizerRequestOptions(maskOffensive = false, enableFormatting = true), RecognizerRequestOptions.from(on33.copy(maskOffensive = false)))
-        assertFalse(RecognizerRequestOptions.from(on33.copy(autoPunctuation = false)).enableFormatting)
-        assertFalse(RecognizerRequestOptions.from(on33.copy(androidApiLevel = 32)).enableFormatting)
+    fun `the request plan follows the settings - segmented and formatting need Android 13, private mode forces offline`() {
+        val on33 = DictationSettings(androidApiLevel = 33, maskOffensive = true)
+        val planned = RecognizerRequestPlanner.plan(on33, segmentedRefusalLatch = false)
+        assertEquals(RecognizerRequest(segmented = true, preferOffline = true, enableFormatting = true, maskOffensive = true, completeSilenceMs = 61_000L), planned)
+        assertFalse(RecognizerRequestPlanner.plan(on33.copy(maskOffensive = false), false).maskOffensive)
+        assertFalse(RecognizerRequestPlanner.plan(on33.copy(autoPunctuation = false), false).enableFormatting)
+        assertFalse(RecognizerRequestPlanner.plan(on33.copy(androidApiLevel = 32), false).enableFormatting)
+        assertFalse(RecognizerRequestPlanner.plan(on33.copy(androidApiLevel = 32), false).segmented)
+        assertFalse(RecognizerRequestPlanner.plan(on33, segmentedRefusalLatch = true).segmented)
+        assertFalse(RecognizerRequestPlanner.plan(on33.copy(preferOffline = false), false).preferOffline)
+        assertEquals(true, RecognizerRequestPlanner.plan(on33.copy(preferOffline = false, privateMode = true), false).preferOffline)
+        assertEquals(6_000L, RecognizerRequestPlanner.plan(on33.copy(stopAfterSilenceMs = 5_000L), false).completeSilenceMs)
     }
 
     @Test
