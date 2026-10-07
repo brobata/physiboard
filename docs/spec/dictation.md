@@ -226,11 +226,21 @@ with:
   masking on; the first-run default is off);
 - prefer offline: per 4.3 (on by default; forced on in private mode; turned off for the one
   online fallback);
-- complete silence length: the silence limit (section 1) plus 1000 ms, as a **long**. This is
+- complete silence length: the silence limit (section 1) plus 1000 ms, as an **int**. This is
   the length that ends a segmented session; the margin keeps the keyboard's own silence timer
-  (6.4) ahead of the engine's, so the keyboard decides. Google's parser accepted the 2.x long
-  without the type warning it printed for the segmented-session extra (D15), so a long is the
-  type it expects;
+  (6.4) ahead of the engine's, so the keyboard decides. Google reads it with `getIntExtra`
+  (D23): the long that 2.x and the first two 3.0 builds sent was thrown away ("expected Integer
+  but value was a java.lang.Long. The default value 0 was returned"), after which the service
+  ignored the segmented request too ("EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS is not
+  set with positive value; ignoring EXTRA_SEGMENTED_SESSION"). So no build had ever actually
+  asked Google for a segmented session, and every request ran in its `AMBIENT_ONESHOT` domain
+  and ended at the first breath; that, not the keyboard's timers, is the restart the user sees
+  as the privacy indicator blinking;
+- minimum length: the same value, as an **int** (`EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS`,
+  "the recognizer will not stop recognizing speech before this amount of time"), so that even an
+  engine that ignores the segmented request keeps one request open across pauses and streams
+  its hypothesis as partials (which 7.2 and 7.3 already handle); Fn's stop still ends it at
+  once through `stopListening`;
 - `android.speech.extra.DICTATION_MODE` = true: Google's own continuous-dictation flag, the one
   Chrome's Web Speech glue sets for a continuous session (D17). Undocumented, so nothing depends
   on it; it is sent because it costs nothing and the engine that ignores it ignores it;
@@ -248,6 +258,12 @@ with:
 
 Not sent: the "possibly complete silence" hint (the platform says to leave it alone), a prompt,
 a maximum-results count (with formatting the engine returns two hypotheses by design).
+
+Whether Google honours the segmented request or the minimum length once they are sent as ints
+is not yet observed on the Titan (every earlier log had them discarded); the first log with
+`applicationDomain` other than `AMBIENT_ONESHOT`, or a `SODA session` outliving a pause,
+settles it. If it honours neither, the next step is the seamless restart of 6.2's last
+paragraph.
 
 A request is segmented when the Android version is 13 or later and the engine has not refused
 segmented sessions (6.3). `dictation_continuous_session` is gone: segmented mode is simply used
@@ -294,8 +310,13 @@ message:
   its own reasons);
 - an ordinary final (the engine ran one request per utterance; see 6.3 for the latch).
 
-These endings only ever arrive in silence, so the ~100 ms the microphone takes to reopen (D14)
-is the one thing that can be lost, and only if the user starts a word exactly then. There is no
+These endings only ever arrive in silence, so the ~40 to 100 ms the microphone takes to reopen
+(D14, D23) is the one thing that can be lost, and only if the user starts a word exactly then.
+Should the engine keep ending at every breath even with the request of section 5 honoured, the
+planned next step is to overlap requests: open the next request on a second recognizer before
+the first delivers its final (Google's service runs two on-device sessions concurrently,
+`ConcurrentSodaManager ... enableConcurrency: true`, D23), and let 7.2's echo stripping remove
+the words both heard. Not built yet. There is no
 cap on how many times this happens: the 2.x "first-words grace" of ten seconds or five restarts,
 after which the engine's silence was reported as "No speech input detected", is gone (D14 shows
 exactly that: two five-second engine timeouts and the toast). The only thing that ends a silent
@@ -773,6 +794,7 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | D19 | The vendor shortcut layer in `system_server` (`A85ShortcutFunction`) sees both an `ACTION_DOWN` and an `ACTION_UP` for scancode 251 (keycode CTRL_LEFT), ~600 to 800 ms apart; neither reaches the input method. Back (scancode 158), Enter (28) and the letters deliver clean down and up pairs. | the same log, lines 305, 527, 3104, 3105 and the Back/Enter/letter events |
 | D20 | A recognizer kept between sessions goes stale: Android unbinds the remote service while nothing is listening, and the next request reached a dead connection ("Connection to speech recognition service lost, but no #startListening has been invoked yet"). | the maintainer's Titan, 2026-09-26 |
 | D21 | Google's segmented session reports the whole session's transcript so far in every partial and segment. | the maintainer's Titan, 2026-09-25 |
+| D23 | 2026-10-07 17:09, Chrome tab: at every request `W/Bundle: Key android.speech.extras.SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS expected Integer but value was a java.lang.Long. The default value 0 was returned` (stack: `Intent.getIntExtra` from `GoogleTTSRecognitionService.onStartListening`) then `E/RecognitionServiceInten: EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS is not set with positive value; ignoring EXTRA_SEGMENTED_SESSION`; `applicationDomain: AMBIENT_ONESHOT` on every request; no `App op 27` line; the offline engine ran (`Offline recognizer`, en-US pack v3072); each request ended at the first ~1 s pause (`SODA session stopped due to: MIC_END_OF_DATA` after 4.3 and 5.4 s) and the next began ~40 ms later. The third request (29.515) ran 10 020 ms of audio with `onStartOfSpeech` at 31.833 and ended with `Final recognition has been created. Size: 0` and NO_SPEECH_DETECTED, with no partial ever reported; a Chrome field re-attach (`SHOW_SOFT_INPUT` + `ATTACH_NEW_INPUT`, 35.47) and the keyboard's own show request fell inside it, and nothing on the keyboard's side cancelled, stopped or restarted the request (its focus held from 19.524 to 42.046). The engine's `SodaDetectionHandler#connect: enableConcurrency: true`. | scratchpad `third.log` lines 28235 to 30755 |
 | D22 | 2026-10-07 16:30, PersaLink (Chrome WebAPK, strip collapsed to a 0 by 0 window, `InputDispatcher ... info.frame: (2, 1200, 2, 1200)`): at each PhysiBoard request (16:30:27.548, 37.330, 48.977, 58.759) audioserver logged `App op 27 missing, silencing record AttributionSourceState{... packageName: com.google.android.tts ... next: ...}` within ~15 ms, the engine heard nothing, and `appops get brobata.physiboard.dev3 RECORD_AUDIO` showed `Uid mode: foreground` with a fresh `rejectTime`. `dumpsys input_method` read `mVisibleBound=false`, `dumpsys activity processes` `curProcState=16 curCapability=--------` with one IME connection (`!FG IMPB SLTA !VIS`, flags 0x40880005); later, with Chrome having shown the keyboard, `mVisibleBound=true`, `curProcState=5` and a second connection `FGS LACT UI CAPS` (flags 0x2c001001). The 16:28:43 session in Messages (Messages had sent `SHOW_SOFT_INPUT fromUser true`) was not silenced and reached `#onResults withSpeech: true`; the 16:31:11 session was Chrome's own Web Speech, not the keyboard's. | scratchpad `dictation-evidence-2.log`; the read-only `dumpsys`/`appops` queries of the same day; AOSP `InputMethodBindingController.IME_VISIBLE_BIND_FLAGS`, `InputMethodManagerService.showCurrentInputLocked`/`hideCurrentInputLocked`, `AppOpsUidStateTrackerImpl.evalModeInternal` |
 
 ## 15. Edge cases, quirks, known bugs

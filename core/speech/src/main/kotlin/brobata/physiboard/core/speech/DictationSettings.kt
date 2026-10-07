@@ -44,8 +44,10 @@ data class RecognizerRequest(
     /** SS5: ask the engine to punctuate and capitalise (Android 13+). */
     val enableFormatting: Boolean,
     val maskOffensive: Boolean,
-    /** SS5: the complete-silence length the engine is given; the keyboard's own silence limit plus a margin. */
+    /** SS5: the complete-silence length the engine is given, as an int on the wire (D23); the keyboard's own silence limit plus a margin. */
     val completeSilenceMs: Long,
+    /** SS5: the minimum length of the request, as an int on the wire; the engine "will not stop recognizing speech before this amount of time". */
+    val minimumLengthMs: Long,
 )
 
 /**
@@ -63,6 +65,7 @@ object RecognizerRequestPlanner {
         enableFormatting = settings.autoPunctuation && settings.androidApiLevel >= MIN_API_LEVEL_FOR_FORMATTING,
         maskOffensive = settings.maskOffensive,
         completeSilenceMs = DictationTiming.engineSilenceMs(settings.stopAfterSilenceMs),
+        minimumLengthMs = DictationTiming.engineSilenceMs(settings.stopAfterSilenceMs),
     )
 }
 

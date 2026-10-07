@@ -385,6 +385,25 @@ class LoggedRecognizerScenariosTest {
     }
 
     @Test
+    fun `D23 - a field re-attaching in the same app mid-utterance touches neither the request nor the words`() {
+        // 17:09:35.47: Chrome re-attached its field (SHOW_SOFT_INPUT + ATTACH_NEW_INPUT) while
+        // the user was mid-sentence. The keyboard sees a finish and a start of input in the same
+        // app; the session must not cancel, stop, restart or drop anything over it.
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("the first half"), now = 2_000L)
+        h.drainEffects()
+        val closed = h.send(DictationEvent.EditorFieldClosed, now = 2_500L)
+        val opened = h.send(DictationEvent.EditorFieldOpened("app"), now = 2_505L)
+        assertTrue(closed.effects.isEmpty() && opened.effects.isEmpty(), "no effect at all over the re-attach")
+        assertNull(opened.session?.editorGoneDeadlineMs)
+        assertTrue(h.runClockTo(3_500L).all { it.effects.isEmpty() })
+        h.send(DictationEvent.PartialResult("the first half and the second"), now = 4_000L)
+        h.send(DictationEvent.SegmentResult("the first half and the second."), now = 5_000L)
+        assertEquals("The first half and the second. ", h.field.text)
+        assertTrue(h.drainEffects().none { it is DictationEffect.StartListening || it is DictationEffect.CancelListening || it is DictationEffect.StopListening })
+    }
+
+    @Test
     fun `busy retries after 300 ms`() {
         val h = harness().start()
         val busy = h.send(DictationEvent.Error(DictationErrorCode.RECOGNIZER_BUSY), now = 100L)

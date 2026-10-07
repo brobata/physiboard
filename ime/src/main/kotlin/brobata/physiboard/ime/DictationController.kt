@@ -399,7 +399,7 @@ internal class DictationController(
     // -----------------------------------------------------------------------------------------
 
     private fun startListening(request: RecognizerRequest) {
-        DiagnosticLog.i(TAG) { "start listening segmented=${request.segmented} offline=${request.preferOffline} silenceMs=${request.completeSilenceMs}" }
+        DiagnosticLog.i(TAG) { "start listening segmented=${request.segmented} offline=${request.preferOffline} silenceMs=${request.completeSilenceMs} minimumMs=${request.minimumLengthMs}" }
         val speechRecognizer = ensureRecognizer()
         if (speechRecognizer == null) {
             // spec SS2.6 step 4: no recognizer could be created.
@@ -484,10 +484,13 @@ internal class DictationController(
             // format (punctuate) unless this is set (D15's "EXTRA_ENABLE_FORMATTING can't be
             // used when EXTRA_PREFER_OFFLINE is false").
             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, request.preferOffline)
-            // SS5: a long, not an int. Google's parser read the 2.x long without the Bundle
-            // type warning it printed for the segmented-session extra (D15), so this is the
-            // type it expects.
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, request.completeSilenceMs)
+            // SS5, D23: INTS. Google reads both lengths with getIntExtra; a long is thrown away
+            // ("expected Integer but value was a java.lang.Long. The default value 0 was
+            // returned" ... "is not set with positive value; ignoring EXTRA_SEGMENTED_SESSION"),
+            // which is why no build, 2.x included, had ever asked for a segmented session, and
+            // why the engine ended every request at the first breath.
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, request.completeSilenceMs.toInt())
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, request.minimumLengthMs.toInt())
             // SS5: Google's own dictation-mode flag, the one Chrome's Web Speech glue sets for a
             // continuous session (D17). Undocumented, so nothing here depends on it; the
             // segmented-session extra below is the documented request for the same thing.
