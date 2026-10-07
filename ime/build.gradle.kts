@@ -24,6 +24,8 @@ android {
     // DiagnosticLog.i (KeyboardSession.kt, DictionaryAssetLoader.kt) reads this to compile the
     // phone-testing Log.i trail to nothing outside `sideload`/`debug` (docs/release.md, "Logging").
     buildFeatures { buildConfig = true }
+    // The spell checker's session test runs on Robolectric (JUnit 4, through the vintage engine).
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 kotlin {
@@ -53,6 +55,9 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+    testRuntimeOnly(libs.junit.vintage.engine)
 }
 
 tasks.withType<Test> {

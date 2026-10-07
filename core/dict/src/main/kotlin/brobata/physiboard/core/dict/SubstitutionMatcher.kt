@@ -39,7 +39,7 @@ object SubstitutionMatcher {
     /**
      * Finds the applying rule, or null when none does. [isKnownWord] backs the guard on a
      * last-word match (§8.3 step 4): this implementation enforces it (the Keep/Drop decision
-     * in autocorrect-suggestions.md §18 calls for the guard to be "actually enforced", since in
+     * in autocorrect-suggestions.md §19 calls for the guard to be "actually enforced", since in
      * 2.x an always-non-empty enabled-language list made it a permanent no-op).
      */
     fun match(textBeforeCursor: String, ruleSets: List<RuleSet>, isKnownWord: (String) -> Boolean): SubstitutionMatch? {

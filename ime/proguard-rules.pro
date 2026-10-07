@@ -10,3 +10,7 @@
 # dictation.md SS10: a keyboard service cannot show the runtime RECORD_AUDIO dialog itself, so this
 # is launched from the service above by class name.
 -keep class brobata.physiboard.ime.DictationPermissionActivity { *; }
+
+# autocorrect-suggestions.md SS18: the system spell checker, bound by the framework by the name in
+# the manifest (android.permission.BIND_TEXT_SERVICE).
+-keep class brobata.physiboard.ime.PhysiBoardSpellCheckerService { *; }

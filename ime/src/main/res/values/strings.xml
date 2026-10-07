@@ -14,4 +14,14 @@
     <string name="subtype_russian">Русский</string>
     <string name="subtype_serbian">Српски</string>
     <string name="subtype_ukrainian">Українська</string>
+    <!-- autocorrect-suggestions.md SS18: the system spell checker's name and the languages it adds to the twelve above. -->
+    <string name="spell_checker_name">PhysiBoard</string>
+    <string name="spell_czech">Čeština</string>
+    <string name="spell_greek">Ελληνικά</string>
+    <string name="spell_gaelic">Gàidhlig</string>
+    <string name="spell_hungarian">Magyar</string>
+    <string name="spell_dutch">Nederlands</string>
+    <string name="spell_swedish">Svenska</string>
+    <string name="spell_turkish">Türkçe</string>
+    <string name="spell_vietnamese">Tiếng Việt</string>
 </resources>

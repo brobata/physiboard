@@ -115,7 +115,7 @@ class RuleSetCodecTest {
         return null
     }
 
-    // --- the shipped it.json and fr.json (autocorrect-suggestions.md SS8.1, SS18 gap) ---
+    // --- the shipped it.json and fr.json (autocorrect-suggestions.md SS8.1, SS19 gap) ---
 
     private val shippedItalian: RuleSet? by lazy { shippedAssetBody("it")?.let { RuleSetCodec.parse("it", it) } }
     private val shippedFrench: RuleSet? by lazy { shippedAssetBody("fr")?.let { RuleSetCodec.parse("fr", it) } }
