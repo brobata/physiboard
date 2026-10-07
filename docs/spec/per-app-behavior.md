@@ -438,6 +438,38 @@ writes immediately.
 package chosen (the WebAPK shell name for a web app, never the host). Removing removes that
 name. Preserved verbatim by settings migration and reset.
 
+### 4.6 Keys in a terminal-mode app
+
+The same list also decides how keys reach the app, so a terminal gets exactly the keys pressed.
+In a field classified "app raw mode" (section 4.1):
+
+| Key | What reaches the app |
+|---|---|
+| A letter, Space | as before: a one-character commit, which Chrome replays as the recorded key (D7) |
+| A character the physical key does not type itself: a tapped Shift's or caps lock's capital, a Sym chord symbol, a Sym page character | the key presses Android's virtual key map gives for it (Shift included where needed), sent with `sendKeyEvent`; a character no key produces is still committed (D8) |
+| An Alt-layer character | key presses, as in every app (D7) |
+| Ctrl in any form (held Fn chord, a tapped one-shot, a double-tap latch) plus a key | a real Ctrl combo. A held chord whose event already carries Ctrl passes through as the physical event; otherwise the keyboard sends Ctrl plus the key (the layout-aware shortcut key, section 7.3 of `keys-and-modifiers.md`), with Shift when Shift is held. The Fn Layer map's editor actions (select all, copy, cut, paste, undo, the selection and word moves) and "no mapping" fallbacks such as Ctrl+Backspace's word delete do not run: Ctrl+A is ^A, Ctrl+Z is ^Z, Ctrl+C is ^C, Ctrl+D is ^D, Ctrl+E is ^E. A tapped Ctrl is spent by the key, a latched one stays until tapped off |
+| Esc, Tab, the arrows, Home/End, PgUp/PgDn | the key itself (they were already passed through) |
+
+Kept as elsewhere, so they can take a key a terminal might want (documented, not changed):
+
+- With `nav_mode_ctrl_hold_enabled` on (off by default), a held Fn's chords use the Fn Layer
+  map: its key mappings (Fn+E up, Fn+S/D/F, Fn+J/K/L arrows, Fn+Q Esc, Fn+T Tab, Fn+Y/H page)
+  and commands still run; its editor actions become Ctrl combos as above.
+- Ctrl+Space switches layout when another layout is installed (`ctrl_space_layout_switch`),
+  Alt+Shift and Alt+Enter likewise; with one layout they reach the app.
+- Ctrl+Enter follows the app's Enter behaviour row (section 3) when it has one.
+- Sym held plus C, V, X or A runs copy, paste, cut or select all (`sym_edit_shortcuts`); Sym plus
+  a key with a launcher shortcut runs the shortcut.
+- Holding Fn alone for dictation (`fn_long_press_speech`), holding Space for the screen trackpad
+  (`screen_trackpad_enabled`), and long press on letters (an Alt-layer or variation character
+  replaces the letter, so a held key does not auto-repeat it).
+
+Nothing takes screen space: the bar is gone in every app, the caret badge is a floating
+overlay, and the only panels are the Sym pages, which a Sym tap opens and which close after one
+character (`sym_auto_close`), exactly as in other apps. A Sym chord (Sym held plus a key) types
+its symbol with nothing opened.
+
 ## 5. The other per-app lists
 
 For completeness, the package-name lists that exist elsewhere, so a rewrite builds one list

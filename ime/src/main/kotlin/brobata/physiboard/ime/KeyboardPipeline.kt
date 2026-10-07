@@ -769,6 +769,7 @@ internal class KeyboardPipeline(
             hasSelection = editor.fullText?.hasSelection ?: false,
             hasTextBeforeCaret = editor.textBeforeCursor?.isNotEmpty() ?: true,
             canSwitchLayout = anotherSubtypeAvailable,
+            terminalMode = activeField.kind == FieldKind.RAW_MODE_APP,
         )
         // Read before resolution, which spends a one-shot Alt on this very key.
         val altLayerStroke = modifierState.isAltActive(effectiveStroke.meta.alt)
@@ -784,8 +785,20 @@ internal class KeyboardPipeline(
         // The one exception is [redirectEnterForPerAppBehavior]'s own narrow override, see its KDoc.
         val ctrlActive = modifierState.isCtrlActive(effectiveStroke.meta.ctrl)
         val shiftActive = effectiveStroke.meta.shift || modifierState.shift.layerLatched
+        val action = redirectEnterForPerAppBehavior(effectiveStroke, resolution.action)
+        // per-app-behavior.md SS4.6: a terminal's Ctrl combo whose physical event does not already
+        // carry it (a tapped or latched Ctrl, or a key the layout-aware shortcut renamed) is sent
+        // as the real combo rather than letting the bare key through.
+        if (action is Action.ForwardAsCtrlCombo && context.terminalMode &&
+            !(effectiveStroke.meta.ctrl && action.key == effectiveStroke.key)
+        ) {
+            return PipelineResult.CONSUMED_NO_OP.copy(
+                forwardAsCtrlCombo = action.key,
+                appMayEditField = AppliedEditAccounting.appEditsWithPassThrough(action.key, ctrlActive = true),
+            )
+        }
         val result = applyAction(
-            redirectEnterForPerAppBehavior(effectiveStroke, resolution.action),
+            action,
             shiftHeld = effectiveStroke.meta.shift,
             altActive = modifierState.isAltActive(effectiveStroke.meta.alt),
             editor,

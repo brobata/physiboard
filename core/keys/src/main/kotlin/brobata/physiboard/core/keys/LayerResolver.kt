@@ -31,6 +31,11 @@ object LayerResolver {
         val hasSelection: Boolean = false,
         val hasTextBeforeCaret: Boolean = true,
         val canSwitchLayout: Boolean = false,
+        /**
+         * The field belongs to an app on the Terminal mode list (per-app-behavior.md SS4.6):
+         * Ctrl in any form reaches the app as a real Ctrl combo, never as an editor command.
+         */
+        val terminalMode: Boolean = false,
     )
 
     /** spec: keys-and-modifiers.md SS7.7 (the three forward-delete-alternative switches) and SS7.1 (swipe-to-delete). */
@@ -438,6 +443,16 @@ object LayerResolver {
             state.copy(ctrl = state.ctrl.copy(oneShot = false))
         } else {
             state
+        }
+
+        // per-app-behavior.md SS4.6: in a terminal, Ctrl+A is ^A, not "select all", and a tapped
+        // or latched Ctrl is as much Ctrl as a held one. Only a held Fn's opt-in nav grid keeps
+        // the mappings that send real keys (arrows, Tab, Esc) or run a command.
+        if (context.terminalMode && !state.ctrl.latchFromNavMode) {
+            val navGridKeepsMapping = navGrid && (mapping is CtrlMapping.Keycode || mapping is CtrlMapping.Command)
+            if (!navGridKeepsMapping) {
+                return Resolution(if (physicalCombo) state else consumedOneShot, clearedTyping, Action.ForwardAsCtrlCombo(shortcutKeycode))
+            }
         }
 
         val shiftActive = state.shift.pressed || stroke.meta.shift

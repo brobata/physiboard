@@ -1618,7 +1618,7 @@ internal class KeyboardSession(
         // spec trackpad-caret-nav.md SS5.5's `native_ctrl` row, "with no field": nav mode's Ctrl
         // is a latch, not a physical hold, so the raw stroke carries no Ctrl meta bit for the app
         // to see; this synthesizes the real combo instead of the bare letter that used to reach it.
-        result.forwardAsCtrlCombo?.let { key -> runCatching { sendNavModeCtrlCombo(key) }.onFailure { error -> Log.e(TAG, "nav mode Ctrl combo synth crashed", error) } }
+        result.forwardAsCtrlCombo?.let { key -> runCatching { sendCtrlCombo(key, event, withShift = stroke.meta.shift && currentFieldKind == FieldKind.RAW_MODE_APP) }.onFailure { error -> Log.e(TAG, "Ctrl combo synth crashed", error) } }
         result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
         if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
         syncSymPanels()
@@ -2490,11 +2490,21 @@ internal class KeyboardSession(
      * map [KeyboardPipeline]'s own KDoc says this needed (`:device:titan`'s `KeyNormalizer` only
      * goes the other way). A [key] the map cannot resolve to a real keycode is a no-op.
      */
-    private fun sendNavModeCtrlCombo(key: KeyId) {
+    /**
+     * Sends [key] to the editor as a real Ctrl combo: nav mode's latched Ctrl with no field
+     * (trackpad-caret-nav.md SS5.5), and a terminal's tapped or latched Ctrl
+     * (per-app-behavior.md SS4.6). A key the shared keycode table does not name (a digit or a
+     * punctuation key, for ^[ or ^]) is sent with the physical [event]'s own keycode when that
+     * event is the key itself; Shift held is kept, for the Ctrl+Shift combos some terminals use.
+     */
+    private fun sendCtrlCombo(key: KeyId, event: KeyEvent?, withShift: Boolean) {
         val ic = service.currentInputConnection ?: return
-        val keyCode = AssignableKeys.keycodeOf(key) ?: return
+        val keyCode = AssignableKeys.keycodeOf(key)
+            ?: event?.takeIf { normalizeStroke(it)?.key == key }?.keyCode
+            ?: return
         val now = SystemClock.uptimeMillis()
-        val meta = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        val shift = if (withShift) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
+        val meta = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON or shift
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
     }

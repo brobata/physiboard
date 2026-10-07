@@ -586,6 +586,11 @@ In a numeric field, a mapped `copy`, `cut`, `paste` or `select_all` runs even fo
 combo (so Fn+V pastes instead of typing the Alt-layer digit or sending Ctrl+V); a `native_ctrl`
 mapping in a numeric field still forwards the raw combo.
 
+In a Terminal mode app (`per-app-behavior.md` section 4.6) steps 2 and 3 differ: Ctrl in any form
+sends the shortcut key as a real Ctrl combo (synthesised when the event does not already carry
+Ctrl), consuming a one-shot as above; only the nav grid's `keycode` and `command` mappings still
+run.
+
 ### 7.4 Neither Alt nor Ctrl
 
 1. The typed character is resolved: uppercase when Shift is one-shot, or the Shift layer latch
