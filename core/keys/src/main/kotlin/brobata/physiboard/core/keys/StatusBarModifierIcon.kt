@@ -10,12 +10,16 @@ enum class ModifierIconState { OFF, ACTIVE, LOCKED }
 /**
  * Which of the status bar's icon slots applies right now. spec: keys-and-modifiers.md SS13.1
  * ("The 26 non-empty combinations select one of 26 icons... all-off shows no icon, unless a Sym
- * page is open, in which case a Sym icon is shown") and trackpad-caret-nav.md SS5.7 ("The same
- * icon slot otherwise shows the modifier icon... nav mode wins").
+ * page is open, in which case a Sym icon is shown"), trackpad-caret-nav.md SS5.7 ("The same
+ * icon slot otherwise shows the modifier icon... nav mode wins") and dictation.md SS9 (a
+ * listening session wins over all of them).
  */
 sealed class StatusBarIcon {
     /** All three modifiers off and no Sym page open: `InputMethodService.hideStatusIcon`. */
     data object None : StatusBarIcon()
+
+    /** Dictation is listening (dictation.md SS9): the one sign that needs no keyboard window and no overlay permission; wins the slot. */
+    data object Dictation : StatusBarIcon()
 
     /** Nav mode is latched: wins over every other state this slot could show. */
     data object Nav : StatusBarIcon()
@@ -37,7 +41,15 @@ sealed class StatusBarIcon {
  */
 object StatusBarModifierIcon {
 
-    fun choose(shift: ModifierIconState, ctrl: ModifierIconState, alt: ModifierIconState, symPageOpen: Boolean, navModeActive: Boolean): StatusBarIcon = when {
+    fun choose(
+        shift: ModifierIconState,
+        ctrl: ModifierIconState,
+        alt: ModifierIconState,
+        symPageOpen: Boolean,
+        navModeActive: Boolean,
+        dictationListening: Boolean = false,
+    ): StatusBarIcon = when {
+        dictationListening -> StatusBarIcon.Dictation
         navModeActive -> StatusBarIcon.Nav
         shift != ModifierIconState.OFF || ctrl != ModifierIconState.OFF || alt != ModifierIconState.OFF -> StatusBarIcon.Modifiers(shift, ctrl, alt)
         symPageOpen -> StatusBarIcon.Sym

@@ -27,6 +27,12 @@ class StatusBarModifierIconTest {
     }
 
     @Test
+    fun `a listening dictation session wins the slot over nav mode and every modifier`() {
+        assertEquals(StatusBarIcon.Dictation, StatusBarModifierIcon.choose(active, locked, off, symPageOpen = true, navModeActive = true, dictationListening = true))
+        assertEquals(StatusBarIcon.Dictation, StatusBarModifierIcon.choose(off, off, off, symPageOpen = false, navModeActive = false, dictationListening = true))
+    }
+
+    @Test
     fun `one active modifier selects the modifier combination, not the Sym fallback`() {
         val result = StatusBarModifierIcon.choose(active, off, off, symPageOpen = true, navModeActive = false)
         assertEquals(StatusBarIcon.Modifiers(active, off, off), result)
