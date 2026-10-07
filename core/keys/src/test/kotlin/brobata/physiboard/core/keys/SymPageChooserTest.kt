@@ -178,7 +178,7 @@ class SymPageChooserTest {
     // The user's own pages, layers-sym-alt.md SS4.6 -------------------------------------------
 
     @Test
-    fun `case 54 - the user's own pages are pages 7 to 9, key layers, off by default`() {
+    fun `case 63 - the user's own pages are pages 7 to 9, key layers, off by default`() {
         assertEquals(listOf(7, 8, 9), SymPageId.CUSTOM.map { it.pageNumber })
         assertTrue(SymPageId.CUSTOM.all { it.isKeyLayer && it.isCustom })
         assertEquals(listOf(0, 1, 2), SymPagesConfig().cycle)
@@ -186,7 +186,7 @@ class SymPageChooserTest {
     }
 
     @Test
-    fun `case 55 - a page of the user's own is listed only when set up, under its own name`() {
+    fun `case 64 - a page of the user's own is listed only when set up, under its own name`() {
         val config = SymPagesConfig(custom1Enabled = true)
         val rows = SymPageChooser.entries(config, mapOf(SymPageId.CUSTOM_1 to "Polish", SymPageId.CUSTOM_3 to "  "))
         val custom = rows.filter { it.target.page.isCustom }
@@ -197,14 +197,14 @@ class SymPageChooserTest {
     }
 
     @Test
-    fun `case 56 - the letter of a page that is not listed closes the chooser and types`() {
+    fun `case 65 - the letter of a page that is not listed closes the chooser and types`() {
         val listed = setOf(SymChooserTarget.EMOJI, SymChooserTarget.CUSTOM_1)
         assertEquals(SymPageChooser.KeyOutcome.Open(SymChooserTarget.CUSTOM_1), SymPageChooser.onKeyDown(KeyId.Letter('M'), isRepeat = false, listed = listed))
         assertEquals(SymPageChooser.KeyOutcome.CloseAndPassOn, SymPageChooser.onKeyDown(KeyId.Letter('N'), isRepeat = false, listed = listed))
     }
 
     @Test
-    fun `case 57 - a Sym chord draws from the first switched-on key layer, the user's own pages included`() {
+    fun `case 66 - a Sym chord draws from the first switched-on key layer, the user's own pages included`() {
         val myPage = SymPageMap(mapOf(KeyId.Letter('Q') to SymPageEntry("ą")))
         val layout = LayoutDescription(
             baseLayout = LayoutMap(),
@@ -221,7 +221,7 @@ class SymPageChooserTest {
     }
 
     @Test
-    fun `case 58 - a key on an open page of the user's own types its text`() {
+    fun `case 67 - a key on an open page of the user's own types its text`() {
         val layout = LayoutDescription(
             baseLayout = LayoutMap(),
             deviceLayer = DeviceLayerMap(),

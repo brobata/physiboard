@@ -5,11 +5,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** spec: layers-sym-alt.md SS8 (3.0): the built-in table, the language order, the user's lists, the accent chooser; SS14 cases 64-75. */
+/** spec: layers-sym-alt.md SS8 (3.0): the built-in table, the language order, the user's lists, the accent chooser; SS14 cases 68-80. */
 class VariationsTest {
 
     @Test
-    fun `case 64 - Polish puts its own letters first`() {
+    fun `case 68 - Polish puts its own letters first`() {
         val pl = Variations.defaults("pl_PL")
         assertEquals("ą", pl.getValue('a').first())
         assertEquals("ć", pl.getValue('c').first())
@@ -24,7 +24,7 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 65 - each language's own letters lead, and nothing is lost by reordering`() {
+    fun `case 69 - each language's own letters lead, and nothing is lost by reordering`() {
         val neutral = Variations.defaults(null)
         val expectedFirst = mapOf(
             "fr_FR" to mapOf('e' to "é", 'c' to "ç", 'o' to "ô"),
@@ -49,14 +49,14 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 66 - a language with no letters of its own, or none at all, gets the neutral order`() {
+    fun `case 70 - a language with no letters of its own, or none at all, gets the neutral order`() {
         assertEquals(Variations.defaults(null), Variations.defaults("en_US"))
         assertEquals(Variations.defaults(""), Variations.defaults("xx"))
         assertEquals(listOf("à", "á", "â", "ä", "ã", "å", "ā", "ą", "ă", "æ"), Variations.defaults(null).getValue('a'))
     }
 
     @Test
-    fun `case 67 - no list is longer than the ten pick keys, and capitals match their small letters`() {
+    fun `case 71 - no list is longer than the ten pick keys, and capitals match their small letters`() {
         for (locale in listOf(null) + Variations.languagesWithOwnOrder) {
             val table = Variations.defaults(locale)
             assertTrue(table.values.all { it.size <= Variations.MAX_PER_CHARACTER }, "$locale")
@@ -70,7 +70,7 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 68 - language tags read leniently`() {
+    fun `case 72 - language tags read leniently`() {
         assertEquals("pl", Variations.languageOf("pl_PL"))
         assertEquals("pt", Variations.languageOf("pt-BR"))
         assertEquals("no", Variations.languageOf("nb"))
@@ -79,7 +79,7 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 69 - the user's list replaces the built-in one for that character only, as saved`() {
+    fun `case 73 - the user's list replaces the built-in one for that character only, as saved`() {
         val table = Variations.effective("pl_PL", mapOf('a' to listOf("à", "ą", "中"), 'q' to listOf("¿")))
         assertEquals(listOf("à", "ą", "中"), table.listFor('a'))
         assertEquals(listOf("¿"), table.listFor('q'))
@@ -88,14 +88,14 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 70 - an empty saved list means no variations for that character`() {
+    fun `case 74 - an empty saved list means no variations for that character`() {
         val table = Variations.effective(null, mapOf('a' to emptyList()))
         assertEquals(emptyList(), table.listFor('a'))
         assertTrue(table.listFor('e').isNotEmpty())
     }
 
     @Test
-    fun `case 71 - a saved list is cleaned - blanks, duplicates, overlong entries and extras dropped`() {
+    fun `case 75 - a saved list is cleaned - blanks, duplicates, overlong entries and extras dropped`() {
         val long = "x".repeat(40)
         val cleaned = Variations.clean(listOf("a", " ", "", "a", long) + (1..20).map { "$it" })
         assertEquals("a", cleaned[0])
@@ -111,13 +111,13 @@ class VariationsTest {
     private val open = VariationChooser.State(heldKey = a, choices = listOf("ą", "à", "á"), committed = "ą")
 
     @Test
-    fun `case 72 - the chooser opens only when there is more than one variation`() {
+    fun `case 76 - the chooser opens only when there is more than one variation`() {
         assertFalse(VariationChooser.opens(listOf("ü")))
         assertTrue(VariationChooser.opens(listOf("ü", "ú")))
     }
 
     @Test
-    fun `case 73 - choices are labelled 1 to 9 then 0, and a key picks by the digit printed on it`() {
+    fun `case 77 - choices are labelled 1 to 9 then 0, and a key picks by the digit printed on it`() {
         assertEquals(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0), (0..9).map(VariationChooser::digitForIndex))
         assertEquals((0..9).toList(), listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0).map(VariationChooser::indexForDigit))
         assertEquals(1, VariationChooser.digitFor("1", null))
@@ -126,7 +126,7 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 74 - with the held key still down a pick key picks, after it is up only Alt or a held Alt picks`() {
+    fun `case 78 - with the held key still down a pick key picks, after it is up only Alt or a held Alt picks`() {
         assertEquals(VariationChooser.KeyOutcome.Pick(0), VariationChooser.onKeyDown(open, w, 0, digit = 1, altHeld = false))
         val released = VariationChooser.onKeyUp(open, a)
         assertFalse(released.heldKeyDown)
@@ -139,7 +139,7 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 75 - repeats, Back and other keys`() {
+    fun `case 79 - repeats, Back and other keys`() {
         assertEquals(VariationChooser.KeyOutcome.Swallow, VariationChooser.onKeyDown(open, a, 3, digit = null, altHeld = false))
         assertEquals(VariationChooser.KeyOutcome.PassOnKeepOpen, VariationChooser.onKeyDown(open, KeyId.Modifier(ModifierKey.SHIFT), 2, digit = null, altHeld = false))
         assertEquals(VariationChooser.KeyOutcome.Dismiss, VariationChooser.onKeyDown(open, KeyId.Control(ControlKey.BACK), 0, digit = null, altHeld = false))
@@ -148,7 +148,7 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 76 - a pick replaces only while the text before the caret still ends with the last choice`() {
+    fun `case 80 - a pick replaces only while the text before the caret still ends with the last choice`() {
         assertTrue(VariationChooser.canReplace("zażółć ą", "ą", terminalMode = false))
         assertFalse(VariationChooser.canReplace("zażółć a", "ą", terminalMode = false))
         assertTrue(VariationChooser.canReplace(null, "ą", terminalMode = false), "an unreadable field is trusted")
