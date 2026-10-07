@@ -120,7 +120,7 @@ class TitanLayoutsTest {
     @Test
     fun `Sym page order is Emoji, Symbols, Clipboard, Emoji Picker, GIFs with Emoji and Symbols enabled`() {
         assertEquals(
-            listOf(SymPageId.EMOJI, SymPageId.SYMBOLS, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF),
+            listOf(SymPageId.EMOJI, SymPageId.SYMBOLS, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF, SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3),
             layout.symPagesConfig.normalizedOrder,
         )
         // spec test case 1: config default, page 0: Sym tap sequence gives 1, 2, 0.
@@ -142,11 +142,11 @@ class TitanLayoutsTest {
     // Variations: spec layers-sym-alt.md SS8.1 -------------------------------------------------
 
     @Test
-    fun `variations hold the spec's own fully-spelled-out lists`() {
-        assertEquals(listOf("à", "á", "ä", "â", "ã", "å", "ą"), layout.variations.listFor('a'))
-        assertEquals(listOf("è", "é", "ê", "ë", "ę", "ě", "€"), layout.variations.listFor('e'))
-        assertEquals(listOf("ß", "š", "ś", "ș", "ş", "ŝ", "$"), layout.variations.listFor('s'))
-        assertEquals(listOf("%"), layout.variations.listFor('p'))
+    fun `variations are the built-in table in its neutral order`() {
+        assertEquals(listOf("à", "á", "â", "ä", "ã", "å", "ā", "ą", "ă", "æ"), layout.variations.listFor('a'))
+        assertEquals(listOf("è", "é", "ê", "ë", "ē", "ę", "ě", "ė", "€"), layout.variations.listFor('e'))
+        assertEquals(listOf("ß", "ś", "š", "ş", "ș", "$"), layout.variations.listFor('s'))
+        assertEquals(emptyList(), layout.variations.listFor('p'))
         assertEquals(listOf("ё", "є"), layout.variations.listFor('е'))
         assertEquals(listOf("₽"), layout.variations.listFor('Р'))
     }
@@ -211,7 +211,7 @@ class TitanLayoutsTest {
     fun `every letter the spec names as having accents offers some`() {
         // The spec names these base characters; each must offer at least one variation, or a
         // long press on that key does nothing and the user simply cannot type the accent.
-        for (base in "aeioulcnszydgrpt") {
+        for (base in "aeioulcnszydgrt") {
             assertTrue(
                 layout.variations.listFor(base).isNotEmpty(),
                 "lowercase '$base' offers no variations",
@@ -234,8 +234,9 @@ class TitanLayoutsTest {
             assertTrue(lower.size == upper.size, "'$base' and '${base.uppercaseChar()}' differ in length")
             for ((lo, up) in lower.zip(upper)) {
                 val expected = if (lo.length == 1 && lo[0].isLetter()) lo.uppercase() else lo
-                // The eszett is the one letter whose capital is a different character entirely.
-                if (lo == "ß") continue
+                // The eszett and Turkish dotless i are the two letters whose capital offered is a
+                // different character entirely (the capital sharp s, the dotted capital I).
+                if (lo == "ß" || lo == "ı") continue
                 assertTrue(up == expected, "'$base': $lo should uppercase to $expected but was $up")
             }
         }

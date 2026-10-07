@@ -3,6 +3,7 @@ package brobata.physiboard.core.keys
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** spec: layers-sym-alt.md SS5.10 (the double tap and the chooser), SS14 cases 42-53. */
 class SymPageChooserTest {
@@ -167,10 +168,71 @@ class SymPageChooserTest {
     @Test
     fun `the GIF page is page 6, a panel, last in the default order and off by default`() {
         assertEquals(6, SymPageId.GIF.pageNumber)
-        assertEquals(SymPageId.GIF, SymPageId.DEFAULT_ORDER.last())
+        assertEquals(SymPageId.GIF, SymPageId.DEFAULT_ORDER.last { !it.isCustom }, "last of the shipped pages, before the user's own")
         assertEquals(listOf(0, 1, 2), SymPagesConfig().cycle)
         assertEquals(listOf(0, 1, 2, 6), SymPagesConfig(gifEnabled = true).cycle)
         assertEquals(SymPageId.GIF, SymPageId.forPageNumber(6))
         assertNull(SymPageId.forPageNumber(5), "the Device page stays dropped")
+    }
+
+    // The user's own pages, layers-sym-alt.md SS4.6 -------------------------------------------
+
+    @Test
+    fun `case 54 - the user's own pages are pages 7 to 9, key layers, off by default`() {
+        assertEquals(listOf(7, 8, 9), SymPageId.CUSTOM.map { it.pageNumber })
+        assertTrue(SymPageId.CUSTOM.all { it.isKeyLayer && it.isCustom })
+        assertEquals(listOf(0, 1, 2), SymPagesConfig().cycle)
+        assertEquals(listOf(0, 1, 2, 8), SymPagesConfig(custom2Enabled = true).cycle)
+    }
+
+    @Test
+    fun `case 55 - a page of the user's own is listed only when set up, under its own name`() {
+        val config = SymPagesConfig(custom1Enabled = true)
+        val rows = SymPageChooser.entries(config, mapOf(SymPageId.CUSTOM_1 to "Polish", SymPageId.CUSTOM_3 to "  "))
+        val custom = rows.filter { it.target.page.isCustom }
+        assertEquals(listOf(SymChooserTarget.CUSTOM_1, SymChooserTarget.CUSTOM_3), custom.map { it.target })
+        assertEquals(listOf("Polish", "My page 3"), custom.map { it.label })
+        assertEquals(listOf(true, false), custom.map { it.inCycle })
+        assertEquals(listOf('M', 'N', 'B'), listOf(SymChooserTarget.CUSTOM_1, SymChooserTarget.CUSTOM_2, SymChooserTarget.CUSTOM_3).map { it.letter })
+    }
+
+    @Test
+    fun `case 56 - the letter of a page that is not listed closes the chooser and types`() {
+        val listed = setOf(SymChooserTarget.EMOJI, SymChooserTarget.CUSTOM_1)
+        assertEquals(SymPageChooser.KeyOutcome.Open(SymChooserTarget.CUSTOM_1), SymPageChooser.onKeyDown(KeyId.Letter('M'), isRepeat = false, listed = listed))
+        assertEquals(SymPageChooser.KeyOutcome.CloseAndPassOn, SymPageChooser.onKeyDown(KeyId.Letter('N'), isRepeat = false, listed = listed))
+    }
+
+    @Test
+    fun `case 57 - a Sym chord draws from the first switched-on key layer, the user's own pages included`() {
+        val myPage = SymPageMap(mapOf(KeyId.Letter('Q') to SymPageEntry("ą")))
+        val layout = LayoutDescription(
+            baseLayout = LayoutMap(),
+            deviceLayer = DeviceLayerMap(),
+            emojiPage = SymPageMap(mapOf(KeyId.Letter('Q') to SymPageEntry("😀"))),
+            symbolsPage = SymPageMap(mapOf(KeyId.Letter('Q') to SymPageEntry("~"))),
+            ctrlMappings = CtrlMappingTable(),
+            symPagesConfig = SymPagesConfig(emojiEnabled = false, symbolsEnabled = true, custom1Enabled = true, order = listOf(SymPageId.CUSTOM_1, SymPageId.SYMBOLS)),
+            customPages = mapOf(SymPageId.CUSTOM_1 to myPage),
+        )
+        val symDown = ModifierMachine.symDown(ModifierState(), down(sym, 0), settings, hasEditableField = true).state
+        val chord = LayerResolver.resolveKeyDown(symDown, TypingSessionState(), down(KeyId.Letter('Q'), 10), layout, settings, LayerResolver.LayerResolverSettings(), LayerResolver.Context())
+        assertEquals(Action.Commit("ą"), chord.action)
+    }
+
+    @Test
+    fun `case 58 - a key on an open page of the user's own types its text`() {
+        val layout = LayoutDescription(
+            baseLayout = LayoutMap(),
+            deviceLayer = DeviceLayerMap(),
+            emojiPage = SymPageMap(),
+            symbolsPage = SymPageMap(),
+            ctrlMappings = CtrlMappingTable(),
+            customPages = mapOf(SymPageId.CUSTOM_2 to SymPageMap(mapOf(KeyId.Letter('A') to SymPageEntry("你好")))),
+        )
+        val open = ModifierState().let { it.copy(sym = it.sym.copy(currentPageNumber = 8)) }
+        val r = LayerResolver.resolveKeyDown(open, TypingSessionState(), down(KeyId.Letter('A'), 0), layout, settings, LayerResolver.LayerResolverSettings(), LayerResolver.Context())
+        assertEquals(Action.Commit("你好"), r.action)
+        assertEquals(0, r.state.sym.currentPageNumber, "sym_auto_close closes it like any key layer")
     }
 }

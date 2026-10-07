@@ -17,6 +17,8 @@ data class LayoutDescription(
     val symPagesConfig: SymPagesConfig = SymPagesConfig(),
     val variations: VariationTable = VariationTable(emptyMap()),
     val longPress: LongPressSettings = LongPressSettings(),
+    /** spec: layers-sym-alt.md SS4.6: the user's own key layers ("My page 1" to 3); a page with no entry here has no characters. */
+    val customPages: Map<SymPageId, SymPageMap> = emptyMap(),
 )
 
 /** One key's entry in a base layout file. spec: layers-sym-alt.md SS9.1. */
@@ -64,17 +66,24 @@ data class SymPageMap(val entries: Map<KeyId, SymPageEntry> = emptyMap()) {
 /**
  * spec: layers-sym-alt.md SS1 (the page id/page number contract). The Device page (page 5) is
  * dropped for 3.0 (SS15 Keep/Drop: "duplicates Alt, off by default, marked under construction"),
- * so its number stays reserved and unused. The GIF page (6) is 3.0's own (SS4.5).
+ * so its number stays reserved and unused. The GIF page (6) and the user's own pages (7 to 9) are
+ * 3.0's own (SS4.5, SS4.6).
  */
 enum class SymPageId(val pageNumber: Int) {
-    EMOJI(1), SYMBOLS(2), CLIPBOARD(3), EMOJI_PICKER(4), GIF(6);
+    EMOJI(1), SYMBOLS(2), CLIPBOARD(3), EMOJI_PICKER(4), GIF(6), CUSTOM_1(7), CUSTOM_2(8), CUSTOM_3(9);
 
-    /** The two pages that remap the 26 letter keys, as opposed to the content panels. */
-    val isKeyLayer: Boolean get() = this == EMOJI || this == SYMBOLS
+    /** The pages that remap the 26 letter keys (Emoji, Symbols and the user's own), as opposed to the content panels. */
+    val isKeyLayer: Boolean get() = this == EMOJI || this == SYMBOLS || isCustom
+
+    /** One of the user's own key layers, "My page 1" to 3 (SS4.6). */
+    val isCustom: Boolean get() = this == CUSTOM_1 || this == CUSTOM_2 || this == CUSTOM_3
 
     companion object {
-        /** spec: layers-sym-alt.md SS4.1 default `symPageOrder`, minus the dropped Device page, plus the GIF page last. */
-        val DEFAULT_ORDER: List<SymPageId> = listOf(EMOJI, SYMBOLS, CLIPBOARD, EMOJI_PICKER, GIF)
+        /** spec: layers-sym-alt.md SS4.1 default `symPageOrder`, minus the dropped Device page, plus the GIF page and the user's own pages last. */
+        val DEFAULT_ORDER: List<SymPageId> = listOf(EMOJI, SYMBOLS, CLIPBOARD, EMOJI_PICKER, GIF, CUSTOM_1, CUSTOM_2, CUSTOM_3)
+
+        /** The user's own pages in their fixed numbering. */
+        val CUSTOM: List<SymPageId> = listOf(CUSTOM_1, CUSTOM_2, CUSTOM_3)
 
         fun forPageNumber(pageNumber: Int): SymPageId? = entries.firstOrNull { it.pageNumber == pageNumber }
     }
@@ -95,6 +104,10 @@ data class SymPagesConfig(
     val emojiPickerEnabled: Boolean = false,
     /** spec: layers-sym-alt.md SS4.1: off unless the user turns it on; the only page that sends anything off the phone. */
     val gifEnabled: Boolean = false,
+    /** spec: layers-sym-alt.md SS4.6: the user's own pages, off until the user turns them on. */
+    val custom1Enabled: Boolean = false,
+    val custom2Enabled: Boolean = false,
+    val custom3Enabled: Boolean = false,
     val order: List<SymPageId> = SymPageId.DEFAULT_ORDER,
 ) {
     /** spec: layers-sym-alt.md SS4.1 ("duplicates collapse to the first occurrence, every known id missing... is appended"). */
@@ -109,6 +122,9 @@ data class SymPagesConfig(
         SymPageId.CLIPBOARD -> clipboardEnabled
         SymPageId.EMOJI_PICKER -> emojiPickerEnabled
         SymPageId.GIF -> gifEnabled
+        SymPageId.CUSTOM_1 -> custom1Enabled
+        SymPageId.CUSTOM_2 -> custom2Enabled
+        SymPageId.CUSTOM_3 -> custom3Enabled
     }
 
     /** spec: layers-sym-alt.md SS4.2 ("the ordered list of enabled pages with 'no page' (0) prepended"). */

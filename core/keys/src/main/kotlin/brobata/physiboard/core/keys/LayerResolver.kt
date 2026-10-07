@@ -36,6 +36,11 @@ object LayerResolver {
          * Ctrl in any form reaches the app as a real Ctrl combo, never as an editor command.
          */
         val terminalMode: Boolean = false,
+        /**
+         * The field takes accents (text-input.md SS3, the "Variations" column: off in an email
+         * field). False keeps a long press in Accent mode from arming at all there.
+         */
+        val variationsAllowed: Boolean = true,
     )
 
     /** spec: keys-and-modifiers.md SS7.7 (the three forward-delete-alternative switches) and SS7.1 (swipe-to-delete). */
@@ -146,7 +151,7 @@ object LayerResolver {
             ctrlActiveAnyForm -> resolveCtrlActive(working, typing, stroke, layout, modifierSettings, context)
             context.isNumericField -> resolveAltActive(working, typing, stroke, layout)
             working.isAltActive(stroke.meta.alt) -> resolveAltActive(working, typing, stroke, layout)
-            else -> resolvePlainKey(working, typing, stroke, layout)
+            else -> resolvePlainKey(working, typing, stroke, layout, context.variationsAllowed)
         }
     }
 
@@ -177,11 +182,12 @@ object LayerResolver {
      * names no modifier change, so [state] comes back exactly as given (review A2: a fresh
      * state here wiped caps lock, latches, the open Sym page and the held flags on every long
      * press). The key stays tracked as [TypingSessionState.longPressFiredKey] until its key-up.
+     * [textBeforeCaret] is [LongPress.replacement]'s caret check (Accent mode only).
      */
-    fun resolveLongPressTick(state: ModifierState, typing: TypingSessionState, nowMs: Long, layout: LayoutDescription): Resolution? {
+    fun resolveLongPressTick(state: ModifierState, typing: TypingSessionState, nowMs: Long, layout: LayoutDescription, textBeforeCaret: String? = null): Resolution? {
         val pending = typing.pendingLongPress ?: return null
         if (!LongPress.hasFired(pending, nowMs)) return null
-        val action = LongPress.replacement(pending, layout)
+        val action = LongPress.replacement(pending, layout, textBeforeCaret)
         return Resolution(state, typing.copy(pendingLongPress = null, longPressFiredKey = pending.key), action)
     }
 
@@ -333,13 +339,13 @@ object LayerResolver {
     private fun preferredSymTextPage(currentPageNumber: Int, pages: SymPagesConfig): SymPageId? {
         val openPage = SymPageId.entries.firstOrNull { it.pageNumber == currentPageNumber && it.isKeyLayer }
         if (openPage != null) return openPage
-        return pages.normalizedOrder.firstOrNull { it == SymPageId.EMOJI && pages.emojiEnabled || it == SymPageId.SYMBOLS && pages.symbolsEnabled }
+        return pages.normalizedOrder.firstOrNull { it.isKeyLayer && pages.isEnabled(it) }
     }
 
     private fun pageMap(page: SymPageId, layout: LayoutDescription): SymPageMap = when (page) {
         SymPageId.EMOJI -> layout.emojiPage
         SymPageId.SYMBOLS -> layout.symbolsPage
-        else -> SymPageMap()
+        else -> layout.customPages[page] ?: SymPageMap()
     }
 
     private fun trySymPageKey(
@@ -526,7 +532,7 @@ object LayerResolver {
     // Neither Alt nor Ctrl. spec: keys-and-modifiers.md SS7.4; SS9 (multi-tap).
     // -----------------------------------------------------------------
 
-    private fun resolvePlainKey(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke, layout: LayoutDescription): Resolution {
+    private fun resolvePlainKey(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke, layout: LayoutDescription, variationsAllowed: Boolean): Resolution {
         val uppercase = state.shiftForcesUppercase(stroke.meta.shift)
 
         val isRealMultiTap = MultiTap.isMultiTapKey(stroke.key, layout.baseLayout) &&
@@ -538,24 +544,24 @@ object LayerResolver {
             val active = typing.multiTapCycle
             if (active != null && active.key == stroke.key && MultiTap.isWithinWindow(active, stroke.timeMs)) {
                 val (newCycle, action) = MultiTap.advance(active, stroke.timeMs, layout.baseLayout)
-                val newTyping = typing.copy(multiTapCycle = newCycle, pendingLongPress = armLongPress(stroke, uppercase, newCycle.committedText, layout))
+                val newTyping = typing.copy(multiTapCycle = newCycle, pendingLongPress = armLongPress(stroke, uppercase, newCycle.committedText, layout, variationsAllowed))
                 return Resolution(state, newTyping, action)
             }
             val (newCycle, text) = MultiTap.begin(stroke.key, uppercase, stroke.timeMs, layout.baseLayout)
-            val newTyping = typing.copy(multiTapCycle = newCycle, pendingLongPress = armLongPress(stroke, uppercase, text, layout))
+            val newTyping = typing.copy(multiTapCycle = newCycle, pendingLongPress = armLongPress(stroke, uppercase, text, layout, variationsAllowed))
             return Resolution(consumeShiftOneShot(state), newTyping, Action.Commit(text))
         }
 
         val text = CharacterResolution.layoutOrDefaultCharacter(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
             ?: return Resolution(state, typing.copy(multiTapCycle = null), Action.PassThrough)
 
-        val newTyping = typing.copy(multiTapCycle = null, pendingLongPress = armLongPress(stroke, uppercase, text, layout))
+        val newTyping = typing.copy(multiTapCycle = null, pendingLongPress = armLongPress(stroke, uppercase, text, layout, variationsAllowed))
         return Resolution(consumeShiftOneShot(state), newTyping, Action.Commit(text))
     }
 
     /** spec: keys-and-modifiers.md SS8.2 ("eligibility, computed on key-down"): a repeat of a still-held key never arms a new long press. */
-    private fun armLongPress(stroke: KeyStroke, shiftEffective: Boolean, committedText: String, layout: LayoutDescription): LongPress.Pending? =
-        if (stroke.isInitialPress && LongPress.isEligible(stroke.key, shiftEffective, layout)) {
+    private fun armLongPress(stroke: KeyStroke, shiftEffective: Boolean, committedText: String, layout: LayoutDescription, variationsAllowed: Boolean): LongPress.Pending? =
+        if (stroke.isInitialPress && LongPress.isEligible(stroke.key, shiftEffective, layout, variationsAllowed)) {
             LongPress.arm(stroke.key, shiftEffective, committedText, stroke.timeMs, layout)
         } else {
             null

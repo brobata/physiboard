@@ -58,7 +58,7 @@ class SymPagesConfigTest {
             order = listOf(SymPageId.SYMBOLS, SymPageId.EMOJI),
         )
         assertEquals(
-            listOf(SymPageId.SYMBOLS, SymPageId.EMOJI, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF),
+            listOf(SymPageId.SYMBOLS, SymPageId.EMOJI, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF, SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3),
             config.normalizedOrder,
         )
         assertEquals(listOf(2, 1, 0), tapSequence(config, 3))

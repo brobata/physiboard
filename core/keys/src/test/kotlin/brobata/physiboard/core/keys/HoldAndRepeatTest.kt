@@ -166,6 +166,32 @@ class HoldAndRepeatTest {
     }
 
     @Test
+    fun `case 24b - the variations long press leaves a letter the app already changed alone`() {
+        val l = variationsLayout()
+        val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('U'), 0), l, settings, resolverSettings, field)
+        assertEquals(Action.Ignored, LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l, textBeforeCaret = "hello")?.action)
+        assertEquals(Action.ReplaceRecent(1, "ü"), LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l, textBeforeCaret = "hu")?.action)
+        assertEquals(Action.ReplaceRecent(1, "ü"), LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l, textBeforeCaret = null)?.action, "an unreadable field is trusted")
+    }
+
+    @Test
+    fun `case 24c - a field that takes no accents never arms a variations long press`() {
+        val l = variationsLayout()
+        val email = field.copy(variationsAllowed = false)
+        val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('U'), 0), l, settings, resolverSettings, email)
+        assertEquals(Action.Commit("u"), down0.action)
+        assertEquals(null, down0.typing.pendingLongPress)
+    }
+
+    @Test
+    fun `case 24d - the variation list for the chooser follows the case of the press`() {
+        val l = variationsLayout().copy(variations = VariationTable(mapOf('u' to listOf("ü", "ú"), 'U' to listOf("Ü", "Ú"))))
+        val pending = LongPress.Pending(KeyId.Letter('U'), 0, 50, LongPressMode.VARIATIONS, shiftEffective = true, committedText = "U")
+        assertEquals(listOf("Ü", "Ú"), LongPress.variationsFor(pending, l))
+        assertEquals(emptyList(), LongPress.variationsFor(pending.copy(mode = LongPressMode.ALT), l))
+    }
+
+    @Test
     fun `case 31 - sym mode with emoji before symbols replaces with the emoji entry`() {
         val l = LayoutDescription(
             baseLayout = LayoutMap(),

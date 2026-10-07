@@ -78,13 +78,17 @@ object LongPress {
         val committedText: String,
     )
 
-    /** spec: keys-and-modifiers.md SS8.2 (the eligibility table, one row per [LongPressMode]). */
-    fun isEligible(key: KeyId, shiftEffective: Boolean, layout: LayoutDescription): Boolean = when (layout.longPress.mode) {
+    /**
+     * spec: keys-and-modifiers.md SS8.2 (the eligibility table, one row per [LongPressMode]).
+     * [variationsAllowed] is the field's own "Variations" switch (text-input.md SS3: off in an
+     * email field, where an accent has no place), which only the Accent mode reads.
+     */
+    fun isEligible(key: KeyId, shiftEffective: Boolean, layout: LayoutDescription, variationsAllowed: Boolean = true): Boolean = when (layout.longPress.mode) {
         LongPressMode.ALT -> layout.deviceLayer[key] != null
         LongPressMode.SHIFT -> CharacterResolution.defaultCharacterText(key, uppercase = false)?.singleOrNull()?.isLetter() == true
         LongPressMode.VARIATIONS -> {
             val produced = CharacterResolution.layoutOrDefaultCharacter(key, shiftEffective, tapIndex = 0, layout.baseLayout)
-            produced?.singleOrNull()?.let { layout.variations.listFor(it).isNotEmpty() } == true
+            variationsAllowed && produced?.singleOrNull()?.let { layout.variations.listFor(it).isNotEmpty() } == true
         }
         LongPressMode.SYM -> symEntryFor(key, shiftEffective, layout, usesEmojiPage(layout.symPagesConfig)) != null
         LongPressMode.SYM_SYMBOLS -> layout.symbolsPage[key] != null
@@ -98,20 +102,36 @@ object LongPress {
     /** spec: keys-and-modifiers.md SS8.3 ("a timer of `long_press_threshold` ms"), timestamp-driven. */
     fun hasFired(pending: Pending, nowMs: Long): Boolean = nowMs - pending.armedAtMs >= pending.thresholdMs
 
-    /** spec: keys-and-modifiers.md SS8.3, layers-sym-alt.md SS7.4 (the replacement per mode). */
-    fun replacement(pending: Pending, layout: LayoutDescription): Action {
+    /**
+     * spec: keys-and-modifiers.md SS8.3, layers-sym-alt.md SS7.4 (the replacement per mode).
+     * [textBeforeCaret] is the field's text before the caret when the timer fires, or null when it
+     * could not be read (or must not be trusted, as in a terminal): Accent mode replaces the
+     * letter only while that text still ends with it ("only if the text at the caret still
+     * matches what was committed"), so a letter the app already changed is left alone.
+     */
+    fun replacement(pending: Pending, layout: LayoutDescription, textBeforeCaret: String? = null): Action {
+        if (pending.mode == LongPressMode.VARIATIONS && textBeforeCaret != null && !textBeforeCaret.endsWith(pending.committedText)) return Action.Ignored
         val text = when (pending.mode) {
             LongPressMode.ALT -> layout.deviceLayer[pending.key]
             LongPressMode.SHIFT ->
                 CharacterResolution.baseCharacter(pending.key, uppercase = true, tapIndex = 0, layout.baseLayout)
                     ?: pending.committedText.uppercase()
-            LongPressMode.VARIATIONS ->
-                correctedVariationCase(pending.committedText, pending.shiftEffective)?.let { layout.variations.listFor(it).firstOrNull() }
+            LongPressMode.VARIATIONS -> variationsFor(pending, layout).firstOrNull()
             LongPressMode.SYM -> symEntryFor(pending.key, pending.shiftEffective, layout, usesEmojiPage(layout.symPagesConfig))
             LongPressMode.SYM_SYMBOLS -> symEntryFor(pending.key, pending.shiftEffective, layout, useEmoji = false)
             LongPressMode.SYM_EMOJI -> symEntryFor(pending.key, pending.shiftEffective, layout, useEmoji = true)
         }
         return if (text != null) Action.ReplaceRecent(deleteCount = 1, text = text) else Action.Ignored
+    }
+
+    /**
+     * spec: layers-sym-alt.md SS7.4, SS8.4: the whole variation list for an Accent-mode press,
+     * looked up in the case the key was pressed in; the long press types the first, the chooser
+     * offers them all. Empty for any other mode.
+     */
+    fun variationsFor(pending: Pending, layout: LayoutDescription): List<String> {
+        if (pending.mode != LongPressMode.VARIATIONS) return emptyList()
+        return correctedVariationCase(pending.committedText, pending.shiftEffective)?.let { layout.variations.listFor(it) }.orEmpty()
     }
 
     /** spec: layers-sym-alt.md SS7.2 ("Emoji page entry if `emoji` precedes `symbols` in the configured order... order only, enabled state ignored"). */

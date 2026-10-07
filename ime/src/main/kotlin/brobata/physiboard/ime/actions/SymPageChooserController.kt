@@ -24,6 +24,7 @@ internal class SymPageChooserController(service: InputMethodService, private val
 
     private val panel = BottomOverlay(service, TAG)
     private var onPick: ((SymChooserTarget) -> Unit)? = null
+    private var listed: Set<SymChooserTarget> = emptySet()
     private val consumedUps = HashSet<KeyId>()
     private val idleClose = Runnable { close() }
 
@@ -32,6 +33,7 @@ internal class SymPageChooserController(service: InputMethodService, private val
     fun show(entries: List<SymChooserEntry>, theme: StripTheme, aboveBottomPx: Int, pick: (SymChooserTarget) -> Unit) {
         close()
         onPick = pick
+        listed = entries.map { it.target }.toSet()
         val context = panel.overlayContext
         val column = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -62,7 +64,7 @@ internal class SymPageChooserController(service: InputMethodService, private val
         val grid = GridLayout(context).apply { columnCount = COLUMNS }
         entries.forEachIndexed { index, entry ->
             val cell = TextView(context).apply {
-                text = "${entry.target.letter}  ${entry.target.label}"
+                text = "${entry.target.letter}  ${entry.label}"
                 gravity = Gravity.CENTER_VERTICAL
                 maxLines = 1
                 setTextColor(theme.textAndIcons)
@@ -100,7 +102,7 @@ internal class SymPageChooserController(service: InputMethodService, private val
     fun onKey(key: KeyId, down: Boolean, repeatCount: Int): Boolean {
         if (!down) return consumedUps.remove(key)
         if (!isOpen) return repeatCount > 0 && key in consumedUps
-        return when (val outcome = SymPageChooser.onKeyDown(key, isRepeat = repeatCount > 0 && key in consumedUps)) {
+        return when (val outcome = SymPageChooser.onKeyDown(key, isRepeat = repeatCount > 0 && key in consumedUps, listed = listed)) {
             is SymPageChooser.KeyOutcome.Open -> {
                 consumedUps.add(key)
                 choose(outcome.target)

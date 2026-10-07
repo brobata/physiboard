@@ -13,10 +13,18 @@ enum class SymChooserTarget(val letter: Char, val label: String, val page: SymPa
     KAOMOJI('K', "Kaomoji", SymPageId.EMOJI_PICKER),
     UNICODE_SYMBOLS('U', "Unicode symbols", SymPageId.EMOJI_PICKER),
     GIF('G', "GIFs", SymPageId.GIF),
+
+    /** The user's own pages (SS4.6): M for "My page", then the two keys beside it. */
+    CUSTOM_1('M', "My page 1", SymPageId.CUSTOM_1),
+    CUSTOM_2('N', "My page 2", SymPageId.CUSTOM_2),
+    CUSTOM_3('B', "My page 3", SymPageId.CUSTOM_3),
 }
 
-/** One chooser row: the target, and whether its page is in the Sym cycle (shown, not obeyed). */
-data class SymChooserEntry(val target: SymChooserTarget, val inCycle: Boolean)
+/**
+ * One chooser row: the target, whether its page is in the Sym cycle (shown, not obeyed), and the
+ * name shown for it (the user's own name for one of their pages, else the target's label).
+ */
+data class SymChooserEntry(val target: SymChooserTarget, val inCycle: Boolean, val label: String = target.label)
 
 /**
  * The Sym page chooser's rules. spec: layers-sym-alt.md SS5.10. The chooser lists every page,
@@ -43,8 +51,12 @@ object SymPageChooser {
     /**
      * The rows in display order: the pages in the user's cycle order (the picker's two extra
      * modes right after the picker itself), each marked with whether it is in the cycle.
+     *
+     * [customPageNames] names the user's own pages that are set up (switched on, or holding at
+     * least one key); one missing from it has no row, so three empty "My page" rows never crowd
+     * the chooser. A blank name shows the page's default name.
      */
-    fun entries(config: SymPagesConfig): List<SymChooserEntry> {
+    fun entries(config: SymPagesConfig, customPageNames: Map<SymPageId, String> = emptyMap()): List<SymChooserEntry> {
         val rows = ArrayList<SymChooserEntry>()
         for (page in config.normalizedOrder) {
             val inCycle = config.isEnabled(page)
@@ -58,6 +70,11 @@ object SymPageChooser {
                     rows.add(SymChooserEntry(SymChooserTarget.UNICODE_SYMBOLS, inCycle))
                 }
                 SymPageId.GIF -> rows.add(SymChooserEntry(SymChooserTarget.GIF, inCycle))
+                SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3 -> {
+                    val name = customPageNames[page] ?: continue
+                    val target = SymChooserTarget.entries.first { it.page == page }
+                    rows.add(SymChooserEntry(target, inCycle, name.trim().ifEmpty { target.label }))
+                }
             }
         }
         return rows
@@ -70,13 +87,15 @@ object SymPageChooser {
      * spec SS5.10's key table for one key down while the chooser is open. [isRepeat] means an
      * auto-repeat of a key the chooser itself consumed (a held pick key or Shift); any other
      * repeat, such as the Titan's Fn whose first event is already a repeat, counts as a fresh key.
+     * [listed] is the targets the chooser shows: a letter whose row is not shown (one of the
+     * user's own pages that is not set up) closes the chooser and types, like any other letter.
      */
-    fun onKeyDown(key: KeyId, isRepeat: Boolean): KeyOutcome = when {
+    fun onKeyDown(key: KeyId, isRepeat: Boolean, listed: Set<SymChooserTarget> = SymChooserTarget.entries.toSet()): KeyOutcome = when {
         isRepeat -> KeyOutcome.Swallow
         key == KeyId.Control(ControlKey.BACK) -> KeyOutcome.Dismiss
         key == KeyId.Modifier(ModifierKey.SYM) -> KeyOutcome.Dismiss
         key == KeyId.Modifier(ModifierKey.SHIFT) -> KeyOutcome.Swallow
-        key is KeyId.Letter -> targetFor(key.qwertyLetter)?.let { KeyOutcome.Open(it) } ?: KeyOutcome.CloseAndPassOn
+        key is KeyId.Letter -> targetFor(key.qwertyLetter)?.takeIf { it in listed }?.let { KeyOutcome.Open(it) } ?: KeyOutcome.CloseAndPassOn
         else -> KeyOutcome.CloseAndPassOn
     }
 }
