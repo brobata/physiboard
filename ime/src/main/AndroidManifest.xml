@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- dictation.md SS4.1, SS4.2: the speech engines. Without this, package visibility hides
+         every recognition service the keyboard did not declare an interest in: on the Titan the
+         on-device one (Android System Intelligence) was filtered out of the picker and the
+         "is recognition available" probe (AppsFilter logged the block on every trigger, D18). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <!-- Key feedback. The keyboard vibrates on its own account, not through the
          notification channel, because notification vibration being off must not
          silence typing feedback. -->

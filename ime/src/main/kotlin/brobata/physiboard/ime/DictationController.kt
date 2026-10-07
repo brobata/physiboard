@@ -1,9 +1,16 @@
 package brobata.physiboard.ime
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -12,31 +19,28 @@ import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.content.BroadcastReceiver
-import android.content.ComponentName
-import android.content.Context
-import android.content.IntentFilter
 import android.speech.RecognitionListener
 import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import brobata.physiboard.core.speech.DirectCommit
-import brobata.physiboard.core.speech.DirectCommitState
 import brobata.physiboard.core.speech.CuePattern
 import brobata.physiboard.core.speech.DictationCues
 import brobata.physiboard.core.speech.DictationEffect
 import brobata.physiboard.core.speech.DictationEngine
 import brobata.physiboard.core.speech.DictationEvent
-import brobata.physiboard.core.speech.DictationMode
+import brobata.physiboard.core.speech.DictationPhase
 import brobata.physiboard.core.speech.DictationSession
 import brobata.physiboard.core.speech.DictationSettings
 import brobata.physiboard.core.speech.DictationStartFailureReason
 import brobata.physiboard.core.speech.DictationTextSettings
+import brobata.physiboard.core.speech.DirectCommit
+import brobata.physiboard.core.speech.DirectCommitState
 import brobata.physiboard.core.speech.LanguageTagResolver
-import brobata.physiboard.core.speech.RecognizerRequestOptions
+import brobata.physiboard.core.speech.RecognizerRequest
 import brobata.physiboard.core.speech.RecognizerResolution
 import brobata.physiboard.core.speech.RecognizerTarget
 import java.util.Locale
@@ -44,13 +48,13 @@ import java.util.Locale
 /**
  * The Android side of dictation: drives a real [SpeechRecognizer], translates its callbacks into
  * [DictationEvent]s, applies the [brobata.physiboard.core.speech.DictationTextOp]s
- * [DictationEngine] returns through the existing editor path ([applyDictationTextOps]), and handles
- * the microphone permission (spec: dictation.md SS10). It decides nothing about the session itself;
- * every rule that answers "what should happen" lives in [DictationEngine].
+ * [DictationEngine] returns through the existing editor path ([applyDictationTextOps]), holds
+ * audio focus for the session (spec: dictation.md SS6.7) and handles the microphone permission
+ * (SS10). It decides nothing about the session itself; every rule that answers "what should
+ * happen" lives in [DictationEngine].
  *
- * [trigger] is the one entry point a future key binding (out of scope for this task, see the
- * module's own task instructions) or any other caller would invoke; this class does not bind it to
- * a key itself.
+ * [trigger] is the entry point the Fn burst reaches (keys-and-modifiers.md SS3.3); [onKeyDown] is
+ * what every other key reaches first while a session runs (SS3).
  */
 internal class DictationController(
     private val service: InputMethodService,
@@ -60,10 +64,16 @@ internal class DictationController(
     private var recognizer: SpeechRecognizer? = null
     /** The `dictation_engine` value [recognizer] was built for; drives the rebuild rule of spec SS2.6 step 4. */
     private var recognizerEngineId: String? = null
+
+    /**
+     * spec SS6.3: "the refusal latch is set (segmented mode is not asked for again until the
+     * engine setting changes)". Kept here, per engine id, because the recognizer object itself is
+     * rebuilt for every session (see [releaseRecognizer]) and must not take the latch with it.
+     */
     private var segmentedRefusalLatch: Boolean = false
+    private var latchEngineId: String = ""
     private var startPendingOwnerPackage: String? = null
 
-    /** SPEC GAP / missing module: no `:settings` module yet, same as [KeyboardSession]'s own several such gaps; shipped defaults until one exists. */
     var settings: DictationSettings = DictationSettings(androidApiLevel = Build.VERSION.SDK_INT)
     var textSettings: DictationTextSettings = DictationTextSettings()
 
@@ -91,7 +101,8 @@ internal class DictationController(
         runCatching { ContextCompat.registerReceiver(service, permissionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED) }
     }
 
-    val isActive: Boolean get() = session?.active == true
+    /** A session exists: starting, listening or stopping. The strip's microphone, the status icon and the key hook all read this. */
+    val isActive: Boolean get() = session != null
 
     /**
      * The recognizer's audio level reports, for the strip's microphone button colour. spec:
@@ -101,32 +112,37 @@ internal class DictationController(
     var onAudioLevel: ((Float) -> Unit)? = null
 
     /**
-     * Fires when [isActive] flips, so the strip can re-render the microphone. Without it the
+     * Fires when [isActive] flips, so the strip and the status icon can re-render. Without it the
      * button turned red on the trigger and stayed red after the session ended, because nothing
      * asked the strip to look again (Titan, 2026-09-25).
      */
     var onActiveChanged: ((Boolean) -> Unit)? = null
 
     // -----------------------------------------------------------------------------------------
-    // The trigger. spec: dictation.md SS2, SS10.
+    // The trigger and the keys. spec: dictation.md SS2, SS3, SS10.
     // -----------------------------------------------------------------------------------------
 
     fun trigger(ownerPackage: String?) {
-        if (hasMicPermission()) {
+        if (session != null || hasMicPermission()) {
             dispatch(DictationEvent.Trigger(ownerPackage, currentTextBeforeCursor()))
             return
         }
         // spec SS2.6 step 1 / SS10: remember the pending start, open the permission activity, and
-        // resume once the answer comes back over [permissionReceiver]. A trigger that arrives with
-        // a session already active needs no permission (it is asking to stop, and the mic is
-        // already open), but a session can only be active once a request has actually started,
-        // which itself required the permission, so this branch is reached only when nothing is
-        // running yet.
+        // resume once the answer comes back over [permissionReceiver].
         startPendingOwnerPackage = ownerPackage
         val intent = Intent(service, DictationPermissionActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         }
         runCatching { service.startActivity(intent) }
+    }
+
+    /**
+     * spec SS3: a key other than a modifier went down while a session runs. [DictationEngine]
+     * decides (by `dictation_stop_on_typing`) whether that stops the session; the key itself is
+     * never consumed here and goes on to do its usual work after this returns.
+     */
+    fun onKeyDown() {
+        if (session != null) dispatch(DictationEvent.KeyDown)
     }
 
     private fun hasMicPermission(): Boolean =
@@ -157,9 +173,8 @@ internal class DictationController(
     /**
      * spec: the c440844 fix, [brobata.physiboard.core.speech.PendingUtterance]'s own KDoc. Called
      * when the ordinary typing pipeline actually changed the field's text while a dictation
-     * session is running (never for a bare modifier press, a key-up or a Fn repeat, which edit
-     * nothing): that is the user changing the field by some means other than the dictation
-     * session itself, so whatever the engine remembers of this utterance can no longer be trusted.
+     * session is still running (only possible with `dictation_stop_on_typing` off): whatever the
+     * engine remembers of this utterance can no longer be trusted.
      */
     fun onUserEditedComposingText() {
         if (session != null) dispatch(DictationEvent.UserEditedComposingText)
@@ -169,7 +184,7 @@ internal class DictationController(
         if (session != null) dispatch(DictationEvent.EditorRejectedInsert)
     }
 
-    /** spec SS3: "Keyboard service destroyed: timers cancelled, recognizer destroyed, partial cleared; no session-end bookkeeping." */
+    /** spec SS3: "Keyboard service destroyed: timers cancelled, recognizer destroyed, focus given back, partial cleared; no session-end bookkeeping." */
     fun onServiceDestroyed() {
         if (isActive) runCatching { onActiveChanged?.invoke(false) }
         handler.removeCallbacks(clockRunnable)
@@ -177,6 +192,7 @@ internal class DictationController(
         runCatching { recognizer?.destroy() }
         recognizer = null
         session = null
+        abandonAudioFocus()
     }
 
     // -----------------------------------------------------------------------------------------
@@ -185,6 +201,12 @@ internal class DictationController(
 
     private fun dispatch(event: DictationEvent) {
         val wasActive = isActive
+        val engineId = settings.engineId
+        if (engineId != latchEngineId) {
+            // spec SS6.3: the latch belongs to one engine; a different engine starts unjudged.
+            latchEngineId = engineId
+            segmentedRefusalLatch = false
+        }
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
         session = outcome.session
         if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
@@ -199,14 +221,7 @@ internal class DictationController(
             // written into whatever the next one says.
             directCommit = DirectCommitState()
         }
-        // spec SS6.3: the fourth finding's other half. Since SS5's segmented-session request extra
-        // is unverified device-side, the one thing this code can guarantee is that the mode actually
-        // driving the session's timers is visible in the log, both when it is decided and if it ever
-        // flips underneath a session that thought it was segmented.
-        outcome.newSegmentedRefusalLatch?.let {
-            segmentedRefusalLatch = it
-            if (it) DiagnosticLog.i(TAG) { "segmented mode refused by the engine; falling back to restart-loop" }
-        }
+        outcome.newSegmentedRefusalLatch?.let { segmentedRefusalLatch = it }
         // spec SS3: "The field rejected an insert (exception while writing)": the one write this
         // whole feature makes that can throw (a hostile or misbehaving editor), so it is the one
         // write wrapped; a failure here re-enters this same function once with EditorRejectedInsert,
@@ -226,22 +241,22 @@ internal class DictationController(
 
     private fun applyEffect(effect: DictationEffect) {
         when (effect) {
-            is DictationEffect.StartListening -> startListening(effect.mode)
+            is DictationEffect.StartListening -> startListening(effect.request)
             DictationEffect.StopListening -> runCatching { recognizer?.stopListening() }
             DictationEffect.CancelListening -> runCatching { recognizer?.cancel() }
+            DictationEffect.AcquireAudioFocus -> requestAudioFocus()
+            DictationEffect.ReleaseAudioFocus -> abandonAudioFocus()
             DictationEffect.PlayStartCue -> playCue(isStart = true)
             DictationEffect.PlayStopCue -> playCue(isStart = false)
-            // spec SS6.6, SS3: the message every session-ending error computes, shown the same way
-            // the rest of :ime already surfaces user-facing feedback (LauncherKeysController,
-            // CommandExecutor, TrackpadOverlayController).
+            // spec SS6.6: the message every session-ending error computes, shown the same way
+            // the rest of :ime already surfaces user-facing feedback.
             is DictationEffect.ShowMessage -> toast(effect.message.text)
-            // spec SS2.6 steps 4 and 7: a start failure's message is log-only, never shown.
-            is DictationEffect.LogMessage -> DiagnosticLog.i(TAG) { "start failed: ${effect.message.text}" }
+            is DictationEffect.LogMessage -> DiagnosticLog.i(TAG) { effect.message.text }
         }
     }
 
     private fun toast(text: String) {
-        runCatching { Toast.makeText(service, text, Toast.LENGTH_SHORT).show() }
+        runCatching { Toast.makeText(service, text, Toast.LENGTH_LONG).show() }
     }
 
     private fun rescheduleClock() {
@@ -256,43 +271,73 @@ internal class DictationController(
         runCatching { currentInputConnection()?.getTextBeforeCursor(TEXT_BEFORE_SESSION_WINDOW, 0)?.toString() }.getOrNull()
 
     // -----------------------------------------------------------------------------------------
-    // The recognizer. spec SS4.2 (resolution is out of scope: no engine picker/settings), SS5.
+    // Audio focus. spec SS6.7.
     // -----------------------------------------------------------------------------------------
 
-    private fun startListening(mode: DictationMode) {
-        // spec SS6.3, SS5: the mode actually in force, logged at the one point every request of
-        // every session passes through, so a phone session's log can say whether a given cutoff
-        // happened in segmented or restart-loop mode without needing a debugger attached.
-        DiagnosticLog.i(TAG) { "start listening mode=$mode pauseMs=${settings.pauseMs}" }
+    private val audioManager: AudioManager? by lazy {
+        runCatching { service.getSystemService(AudioManager::class.java) }.getOrNull()
+    }
+
+    private var focusRequest: AudioFocusRequest? = null
+
+    /**
+     * spec SS6.7: another app taking the audio for good (a call, a video) stops the session. A
+     * transient loss is the recognizer's own request for the same microphone session and is
+     * ignored; focus comes back to this request when the recognizer lets go, which is exactly
+     * what keeps the music paused across the engine's internal restarts.
+     */
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        if (change == AudioManager.AUDIOFOCUS_LOSS) dispatch(DictationEvent.AudioFocusLost)
+    }
+
+    /**
+     * spec SS6.7: exclusive transient focus for the whole session (the platform's documented use
+     * for speech recognition), taken before the microphone opens so a player that honours focus
+     * has paused by the first word, and given back once at the end so it resumes once. Google's
+     * recognizer takes and drops its own focus per request; on the Titan that paused and resumed
+     * Audible every five seconds (D14's MediaFocusControl lines).
+     */
+    private fun requestAudioFocus() {
+        val manager = audioManager ?: return
+        if (focusRequest != null) return
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            .setOnAudioFocusChangeListener(focusListener, handler)
+            .build()
+        focusRequest = request
+        val result = runCatching { manager.requestAudioFocus(request) }.getOrDefault(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+        DiagnosticLog.i(TAG) { "audio focus request result=$result" }
+    }
+
+    private fun abandonAudioFocus() {
+        val request = focusRequest ?: return
+        focusRequest = null
+        runCatching { audioManager?.abandonAudioFocusRequest(request) }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The recognizer. spec SS4.2, SS5.
+    // -----------------------------------------------------------------------------------------
+
+    private fun startListening(request: RecognizerRequest) {
+        DiagnosticLog.i(TAG) { "start listening segmented=${request.segmented} offline=${request.preferOffline} silenceMs=${request.completeSilenceMs}" }
         val speechRecognizer = ensureRecognizer()
         if (speechRecognizer == null) {
-            // spec SS2.6 step 4: "If the platform reports that speech recognition is unavailable
-            // ... 'Speech recognition not available.'" (also reached when recognizer creation itself
-            // fails, per SS4.2's "any creation failure" row bottoming out here).
+            // spec SS2.6 step 4: no recognizer could be created.
             dispatch(DictationEvent.StartFailed(DictationStartFailureReason.RECOGNITION_UNAVAILABLE))
             return
         }
-        // spec SS2.6 step 7: "A security failure or any other failure at this point ... reports
-        // 'Microphone permission denied.' or 'Speech recognition error.'" A SecurityException here
-        // is the permission race the trigger's own check cannot fully close: granted at trigger
-        // time, revoked before this call actually reaches the recognizer.
-        runCatching { speechRecognizer.startListening(buildRecognizerIntent(mode)) }
+        // spec SS2.6 step 7. A SecurityException here is the permission race the trigger's own
+        // check cannot fully close: granted at trigger time, revoked before this call actually
+        // reaches the recognizer.
+        runCatching { speechRecognizer.startListening(buildRecognizerIntent(request)) }
             .onFailure { error ->
-                val reason = if (error is SecurityException) {
-                    DictationStartFailureReason.SECURITY_FAILURE
-                } else {
-                    DictationStartFailureReason.OTHER_FAILURE
-                }
+                Log.e(TAG, "startListening failed", error)
+                val reason = if (error is SecurityException) DictationStartFailureReason.SECURITY_FAILURE else DictationStartFailureReason.OTHER_FAILURE
                 dispatch(DictationEvent.StartFailed(reason))
             }
     }
 
-    /**
-     * spec SS2.6 step 4, SS4.2: makes sure a recognizer exists for `dictation_engine`'s stored id.
-     * "If a recognizer exists for a different id, it is destroyed and the 'engine refuses
-     * segmented sessions' latch is cleared." "Any creation failure" falls to the system default;
-     * if that fails too, there is no recognizer and the caller reports the start failure.
-     */
     /** Destroys the recognizer so the next session binds a fresh connection to the speech service. */
     private fun releaseRecognizer() {
         recognizer?.let { runCatching { it.destroy() } }
@@ -301,14 +346,21 @@ internal class DictationController(
         DiagnosticLog.i(TAG) { "recognizer released at the end of the session" }
     }
 
+    /**
+     * spec SS2.6 step 4, SS4.2: makes sure a recognizer exists for `dictation_engine`'s stored id.
+     * "Any creation failure" falls to the system default; if that fails too, there is no
+     * recognizer and the caller reports the start failure.
+     */
     private fun ensureRecognizer(): SpeechRecognizer? {
         val engineId = settings.engineId
         recognizer?.let { if (recognizerEngineId == engineId) return it }
         recognizer?.let { runCatching { it.destroy() } }
         recognizer = null
         recognizerEngineId = null
-        segmentedRefusalLatch = false
         if (!SpeechRecognizer.isRecognitionAvailable(service)) return null
+        // D18: on the Titan 2 the platform's on-device recognizer slot is empty, so this is false
+        // there and `ondevice` falls to the system default; offline recognition comes from the
+        // system default's own on-device engine instead (SS4.3).
         val onDeviceAvailable = runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(service) }.getOrDefault(false)
         val target = RecognizerResolution.resolve(engineId, onDeviceAvailable, ::isRecognitionServiceInstalled)
         val created = createRecognizer(target) ?: if (target != RecognizerTarget.SystemDefault) createRecognizer(RecognizerTarget.SystemDefault) else null
@@ -340,34 +392,35 @@ internal class DictationController(
         }.getOrDefault(false)
     }
 
-    /** spec SS5, SS5.1. */
-    private fun buildRecognizerIntent(mode: DictationMode): Intent {
-        val pauseMs = settings.pauseMs
-        // spec SS4.2: masking follows `dictation_mask_offensive`; formatting is asked for only on
-        // Android 13 or later with `dictation_auto_punctuation` on. `:core:speech` decides both.
-        val options = RecognizerRequestOptions.from(settings)
+    /** spec SS5, SS5.1: the request, field by field, from what `:core:speech` decided. */
+    private fun buildRecognizerIntent(request: RecognizerRequest): Intent {
         val languageTag = LanguageTagResolver.resolve(subtypeLanguageTag, Locale.getDefault().toLanguageTag())
         return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, service.packageName)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            putExtra(RecognizerIntent.EXTRA_MASK_OFFENSIVE_WORDS, options.maskOffensive)
-            if (pauseMs > 0L) {
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, pauseMs)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, pauseMs)
-            }
+            putExtra(RecognizerIntent.EXTRA_MASK_OFFENSIVE_WORDS, request.maskOffensive)
+            // SS4.3: the on-device recognizer. On the Titan Google's service also refuses to
+            // format (punctuate) unless this is set (D15's "EXTRA_ENABLE_FORMATTING can't be
+            // used when EXTRA_PREFER_OFFLINE is false").
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, request.preferOffline)
+            // SS5: a long, not an int. Google's parser read the 2.x long without the Bundle
+            // type warning it printed for the segmented-session extra (D15), so this is the
+            // type it expects.
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, request.completeSilenceMs)
+            // SS5: Google's own dictation-mode flag, the one Chrome's Web Speech glue sets for a
+            // continuous session (D17). Undocumented, so nothing here depends on it; the
+            // segmented-session extra below is the documented request for the same thing.
+            putExtra(GOOGLE_DICTATION_MODE_EXTRA, true)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (options.enableFormatting) putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
-                // SPEC GAP: the exact segmented-session extra key/shape needs device evidence (D-series
-                // facts in dictation.md are all Titan measurements this task's clean-room rule forbids
-                // rederiving from the old source); EXTRA_SEGMENTED_SESSION keyed to the pause is the
-                // platform's documented shape and is what SS5's "segmented-session option keyed to the
-                // complete-silence length" describes.
-                if (mode == DictationMode.SEGMENTED) {
-                    putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, pauseMs)
-                }
+                if (request.enableFormatting) putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
+                // SS5: the value of EXTRA_SEGMENTED_SESSION is the NAME of the extra that ends the
+                // session, as a String. 2.x and the first 3.0 build put the pause itself (a Long)
+                // here, which Google's service rejected on every request ("expected String but
+                // value was a java.lang.Long ... ignoring it", D15): segmented mode was never in
+                // force and every session was a one-shot.
+                if (request.segmented) putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS)
             }
         }
     }
@@ -377,11 +430,17 @@ internal class DictationController(
         override fun onReadyForSpeech(params: Bundle?) = dispatch(DictationEvent.ReadyForSpeech)
         override fun onBeginningOfSpeech() = dispatch(DictationEvent.BeginningOfSpeech)
         override fun onRmsChanged(rmsdB: Float) {
+            // spec SS8.1: the first level report is the proof the microphone is open; only the
+            // first one is worth a dispatch, the rest only colour the strip's button.
+            if (session?.cuePlayed == false) dispatch(DictationEvent.FirstAudio)
             onAudioLevel?.invoke(rmsdB)
         }
         override fun onBufferReceived(buffer: ByteArray?) = Unit
         override fun onEndOfSpeech() = dispatch(DictationEvent.EndOfSpeech)
-        override fun onError(error: Int) = dispatch(DictationEvent.Error(error))
+        override fun onError(error: Int) {
+            DiagnosticLog.i(TAG) { "recognizer error $error phase=${session?.phase}" }
+            dispatch(DictationEvent.Error(error))
+        }
         override fun onResults(results: Bundle?) = dispatch(DictationEvent.FinalResult(firstResult(results)))
         override fun onPartialResults(partialResults: Bundle?) {
             firstResult(partialResults)?.let { dispatch(DictationEvent.PartialResult(it)) }
@@ -390,9 +449,13 @@ internal class DictationController(
         override fun onSegmentResults(segmentResults: Bundle) {
             firstResult(segmentResults)?.let { dispatch(DictationEvent.SegmentResult(it)) }
         }
-        override fun onEndOfSegmentedSession() = dispatch(DictationEvent.SegmentedSessionEnded)
+        override fun onEndOfSegmentedSession() {
+            DiagnosticLog.i(TAG) { "segmented session ended phase=${session?.phase}" }
+            dispatch(DictationEvent.SegmentedSessionEnded)
+        }
     }
 
+    /** With formatting on, the engine lists the formatted hypothesis first and the raw one second (RecognizerIntent.EXTRA_ENABLE_FORMATTING); the first is always the one wanted. */
     private fun firstResult(bundle: Bundle?): String? =
         bundle?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
 
@@ -424,5 +487,7 @@ internal class DictationController(
     private companion object {
         const val TEXT_BEFORE_SESSION_WINDOW = 240
         const val TAG = "PhysiBoardDictation"
+        /** Google's recognizer's own continuous-dictation flag; see [buildRecognizerIntent]. */
+        const val GOOGLE_DICTATION_MODE_EXTRA = "android.speech.extra.DICTATION_MODE"
     }
 }

@@ -398,10 +398,13 @@ class ImeSettingsTest {
 
     @Test
     fun `dictation rows land in the session and text bundles without touching the field's own answer`() {
-        val s = Settings(dictation = DictationPrefs(endSilenceMs = 3500, continuousSession = false), typing = TypingPrefs(capitalizeAtTextStart = false))
+        val s = Settings(dictation = DictationPrefs(stopAfterSilenceMs = 15000, preferOffline = false, pauseMedia = false, stopOnTyping = false), typing = TypingPrefs(capitalizeAtTextStart = false))
         val d = ImeSettings.dictationSettings(s, androidApiLevel = 34)
-        assertEquals(3500L, d.pauseMs)
-        assertFalse(d.segmentedSessionEnabled)
+        assertEquals(15000L, d.stopAfterSilenceMs)
+        assertFalse(d.preferOffline)
+        assertFalse(d.pauseMedia)
+        assertFalse(d.stopOnTyping)
+        assertFalse(d.privateMode, "layered on by the session, not the store mapping")
         assertEquals(34, d.androidApiLevel)
         val t = ImeSettings.dictationTextSettings(DictationTextSettings(capitalizationAllowed = false), s)
         assertFalse(t.capitalizeFirstLetter)

@@ -430,13 +430,16 @@ internal object ImeSettings {
     )
 
     /**
-     * spec: dictation.md SS6.3, SS13: the pause and the segmented-session switch; SS4.2: masking,
-     * automatic punctuation, and the stored `dictation_engine` id the recognizer resolution reads;
-     * SS8.1: the cues and their strength. [androidApiLevel] is the caller's `Build.VERSION.SDK_INT`.
+     * spec: dictation.md SS13: the silence limit, the three session switches; SS4.2, SS4.3:
+     * masking, automatic punctuation, prefer-offline and the stored `dictation_engine` id the
+     * recognizer resolution reads; SS8.1: the cues and their strength. [androidApiLevel] is the
+     * caller's `Build.VERSION.SDK_INT`. Private mode is layered on by the caller, which owns it.
      */
     fun dictationSettings(s: Settings, androidApiLevel: Int): DictationSettings = DictationSettings(
-        pauseMs = s.dictation.endSilenceMs.toLong(),
-        segmentedSessionEnabled = s.dictation.continuousSession,
+        stopAfterSilenceMs = s.dictation.stopAfterSilenceMs.toLong(),
+        preferOffline = s.dictation.preferOffline,
+        pauseMedia = s.dictation.pauseMedia,
+        stopOnTyping = s.dictation.stopOnTyping,
         androidApiLevel = androidApiLevel,
         maskOffensive = s.dictation.maskOffensive,
         autoPunctuation = s.dictation.autoPunctuation,

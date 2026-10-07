@@ -229,6 +229,8 @@ internal class KeyboardSession(
     private fun pushPrivacy() {
         pipeline.learningAllowed = privacy.learningAllowed
         DiagnosticLog.privateNow = !privacy.learningAllowed
+        // dictation.md SS4.3, app-shell.md SS31.2: private mode keeps speech on the phone.
+        dictationController.settings = dictationController.settings.copy(privateMode = privacy.privateMode)
         refreshCaretBadge()
         // The clipboard page's header says whether copies are being kept; keep it true while it is open.
         clipboardPanel.setNotSaving(!privacy.learningAllowed)
@@ -877,7 +879,7 @@ internal class KeyboardSession(
         enterOverrides = ImeSettings.enterOverrides(settings)
         enterPreset = settings.perApp.enterPreset
         enterBehaviorEnabled = settings.perApp.enterBehaviorEnabled
-        dictationController.settings = ImeSettings.dictationSettings(settings, Build.VERSION.SDK_INT)
+        dictationController.settings = ImeSettings.dictationSettings(settings, Build.VERSION.SDK_INT).copy(privateMode = privacy.privateMode)
         dictationController.textSettings = ImeSettings.dictationTextSettings(dictationController.textSettings, settings)
         // spec: dictation.md SS5.1 step 1: the recognizer's language follows the active input style's locale.
         dictationController.subtypeLanguageTag = currentStyle.locale
@@ -1514,6 +1516,13 @@ internal class KeyboardSession(
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
+        // dictation.md SS3: a key other than a modifier going down while dictation runs stops it
+        // first (the controller applies `dictation_stop_on_typing`); the key then does its
+        // usual work below. Fn is a modifier here, so the burst that stops a session by design
+        // still reaches the trigger, not this.
+        if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key !is KeyId.Modifier && dictationController.isActive) {
+            dictationController.onKeyDown()
+        }
         // The Fn key never reaches an editor, so it must not pay an editor's price. This phone
         // sends no key-down for Fn at all, only a burst of repeats about 50 ms apart, and the
         // trigger wants five of them inside a 200 ms window. Sending each one down the ordinary
@@ -2413,6 +2422,7 @@ internal class KeyboardSession(
         return delivered
     }
 
+    /** Only reachable with `dictation_stop_on_typing` off: with it on, the key down already ended the session before its edit. */
     private fun noteFieldEditedDuringDictation() {
         if (dictationController.isActive) dictationController.onUserEditedComposingText()
     }
@@ -2857,11 +2867,22 @@ internal class KeyboardSession(
         )
         val ctrl = StatusBarModifierIcon.latchableState(glyph.ctrlLatchedNotNavMode, glyph.ctrlOneShotArmed, glyph.ctrlPhysicallyHeld)
         val alt = StatusBarModifierIcon.latchableState(glyph.altLatched, glyph.altOneShotArmed, glyph.altPhysicallyHeld)
-        val icon = StatusBarModifierIcon.choose(shift, ctrl, alt, symPageOpen = glyph.symPageOpen, navModeActive = pipeline.navModeActive)
+        val icon = StatusBarModifierIcon.choose(
+            shift, ctrl, alt,
+            symPageOpen = glyph.symPageOpen,
+            navModeActive = pipeline.navModeActive,
+            // dictation.md SS9: the one sign of a listening session that needs no keyboard
+            // window and no overlay permission.
+            dictationListening = dictationController.isActive,
+        )
         if (icon == lastShownStatusIcon) return
         lastShownStatusIcon = icon
         runCatching {
-            if (icon == StatusBarIcon.None) service.hideStatusIcon() else service.showStatusIcon(R.drawable.ic_status_modifier)
+            when (icon) {
+                StatusBarIcon.None -> service.hideStatusIcon()
+                StatusBarIcon.Dictation -> service.showStatusIcon(R.drawable.ic_status_dictation)
+                else -> service.showStatusIcon(R.drawable.ic_status_modifier)
+            }
         }.onFailure { error -> Log.e(TAG, "status icon refresh crashed", error) }
     }
 
