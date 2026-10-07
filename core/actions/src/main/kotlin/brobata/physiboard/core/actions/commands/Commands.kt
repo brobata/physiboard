@@ -145,6 +145,9 @@ object InternalActions {
 
     /** 3.0's own: turns private mode on or off (app-shell.md SS31). */
     const val TOGGLE_PRIVATE_MODE = "toggle_private_mode"
+
+    /** 3.0's own: opens the Sym page chooser (layers-sym-alt.md SS5.10). */
+    const val OPEN_SYM_PAGE_CHOOSER = "open_sym_page_chooser"
     const val OPEN_HOME = "device_home"
     const val MEDIA_PLAY_PAUSE = "media_play_pause"
     const val MEDIA_PREVIOUS = "media_previous"
@@ -167,6 +170,9 @@ object CommandIds {
 
     /** 3.0's own id, so it carries the new name rather than the 2.x prefix. app-shell.md SS31. */
     const val TOGGLE_PRIVATE_MODE = "physiboard.toggle_private_mode"
+
+    /** layers-sym-alt.md SS5.10: the same id `:core:keys` emits for a Sym double tap. */
+    const val SYM_PAGE_CHOOSER = brobata.physiboard.core.keys.KeyCommands.OPEN_SYM_PAGE_CHOOSER
     const val APP_PREFIX = "app:"
     const val DEVICE_HOME = "device.home"
     const val MEDIA_PLAY_PAUSE = "device.media.play_pause"
@@ -220,6 +226,9 @@ object BuiltInCommands {
             LaunchSpec.InternalAction(InternalActions.START_VOICE_ASSISTANT), Command.ALL_SURFACES, listOf("assistant", "voice")),
         Command(CommandIds.TOGGLE_PRIVATE_MODE, CommandSource.PHYSIBOARD, "Private mode", "Turn private mode on or off",
             LaunchSpec.InternalAction(InternalActions.TOGGLE_PRIVATE_MODE), Command.ALL_SURFACES, listOf("private", "incognito", "offline", "privacy")),
+        Command(CommandIds.SYM_PAGE_CHOOSER, CommandSource.PHYSIBOARD, "Sym page chooser", "Pick a Sym page by its letter",
+            LaunchSpec.InternalAction(InternalActions.OPEN_SYM_PAGE_CHOOSER), setOf(CommandSurface.ASSIGNED_KEY, CommandSurface.NAV_MODE),
+            listOf("sym", "page", "emoji", "symbols", "gif", "kaomoji", "clipboard", "chooser")),
     )
 
     /** One app with a launcher activity: id `app:<package>`, label the app name, subtitle the package, all three surfaces, tokens name and package. */
@@ -388,6 +397,7 @@ object CommandIcons {
             id == CommandIds.QUICK_LAUNCHER -> CommandIcon.MAGNIFIER
             id == CommandIds.MAIN -> CommandIcon.GEAR
             id == CommandIds.TOGGLE_PRIVATE_MODE -> CommandIcon.PRIVATE
+            id == CommandIds.SYM_PAGE_CHOOSER -> CommandIcon.KEYBOARD
             id == CommandIds.MEDIA_PLAY_PAUSE -> CommandIcon.PLAY
             id == CommandIds.MEDIA_PREVIOUS -> CommandIcon.SKIP_PREVIOUS
             id == CommandIds.MEDIA_NEXT -> CommandIcon.SKIP_NEXT
