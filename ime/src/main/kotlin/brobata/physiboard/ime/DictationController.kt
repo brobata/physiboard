@@ -106,6 +106,15 @@ internal class DictationController(
     /** A session exists: starting, listening or stopping. The strip's microphone, the status icon and the key hook all read this. */
     val isActive: Boolean get() = session != null
 
+    /** spec SS3: the session has finished words into this field, so the field going empty under it is the app's doing. A composing partial does not count: a field that holds no composing region has had nothing written yet. */
+    val hasWrittenThisSession: Boolean
+        get() = session?.utterance?.finishedThisSession?.isNotEmpty() == true
+
+    /** spec SS3: the app emptied the field itself (a send); the session ends and nothing later lands. */
+    fun onFieldClearedByApp() {
+        if (session != null) dispatch(DictationEvent.FieldClearedByApp)
+    }
+
     /**
      * The recognizer's audio level reports, for the strip's microphone button colour. spec:
      * status-bar.md SS6.1, "on every audio level report, a red between (128, 0, 0) and
@@ -243,6 +252,7 @@ internal class DictationController(
             translated.ops
         }
         val wroteCleanly = runCatching { currentInputConnection()?.applyDictationTextOps(textOps) }.isSuccess
+        DictationTrace.dispatched(event, textOps, outcome.effects, session)
         outcome.effects.forEach(::applyEffect)
         // A recognizer kept between sessions goes stale: Android unbinds the remote speech
         // service while nothing is listening, and the next request reaches a dead connection
@@ -513,8 +523,10 @@ internal class DictationController(
         override fun onBeginningOfSpeech() = dispatch(DictationEvent.BeginningOfSpeech)
         override fun onRmsChanged(rmsdB: Float) {
             // spec SS8.1: the first level report is the proof the microphone is open; only the
-            // first one is worth a dispatch, the rest only colour the strip's button.
+            // first one is worth a dispatch, the rest only colour the strip's button, except
+            // while a continuation probe is waiting for exactly this sign of life (SS6.3).
             if (session?.cuePlayed == false) dispatch(DictationEvent.FirstAudio)
+            else if (session?.continuationProbeDeadlineMs != null) dispatch(DictationEvent.EngineActivity)
             onAudioLevel?.invoke(rmsdB)
         }
         override fun onBufferReceived(buffer: ByteArray?) = Unit

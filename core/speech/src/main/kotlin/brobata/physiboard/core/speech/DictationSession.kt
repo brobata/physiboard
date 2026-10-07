@@ -42,6 +42,10 @@ data class DictationSession(
     /** spec SS6.6: fast failures and busy answers in a row; reset by any speech or by a normal quiet ending. */
     val consecutiveFailures: Int,
     val utterance: UtteranceState,
+    /** spec SS6.3: the engine has proved it keeps listening past an ordinary final (a continuous session); no probe is needed again. */
+    val engineContinues: Boolean = false,
+    /** spec SS6.3: armed by an ordinary final on a segmented request; a sign of life clears it, its expiry means the engine went idle. */
+    val continuationProbeDeadlineMs: Long? = null,
     val stopWatchdogDeadlineMs: Long? = null,
     val busyRetryDeadlineMs: Long? = null,
     val relistenDeadlineMs: Long? = null,
@@ -59,7 +63,7 @@ data class DictationSession(
     val nextDeadlineMs: Long?
         get() = listOfNotNull(
             stopWatchdogDeadlineMs, busyRetryDeadlineMs, relistenDeadlineMs, cueFallbackDeadlineMs,
-            editorGoneDeadlineMs, silenceDeadlineMs, sessionCapDeadlineMs,
+            continuationProbeDeadlineMs, editorGoneDeadlineMs, silenceDeadlineMs, sessionCapDeadlineMs,
         ).minOrNull()
 
     companion object {

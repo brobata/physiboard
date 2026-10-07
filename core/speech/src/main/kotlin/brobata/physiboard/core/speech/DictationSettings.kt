@@ -9,8 +9,8 @@ package brobata.physiboard.core.speech
  * this module never needs an `android.*` import to make the API-33 decisions in SS5.
  */
 data class DictationSettings(
-    /** `dictation_stop_after_silence_ms`: 0 means never (the session runs until stopped, within the safety limits of SS6.4). */
-    val stopAfterSilenceMs: Long = 0L,
+    /** `dictation_stop_after_silence_ms`: 15 s by the maintainer's decision; 0 means never (the session runs until stopped, within the safety limits of SS6.4). */
+    val stopAfterSilenceMs: Long = 15_000L,
     val androidApiLevel: Int = 0,
     /** `dictation_mask_offensive`, the per-request profanity masking (spec SS5). */
     val maskOffensive: Boolean = false,
@@ -81,4 +81,14 @@ data class DictationTextSettings(
     val capitalizeFirstLetter: Boolean = true,
     val capitalizeAfterSentenceEnd: Boolean = true,
     val capitalizationAllowed: Boolean = true,
-)
+    /** spec SS7.5: undo the engine's capital on a mid-sentence first word; off for languages that capitalise nouns (German, Luxembourgish), where it cannot be told from formatting. */
+    val undoEngineSegmentCapitals: Boolean = true,
+) {
+    companion object {
+        /** spec SS7.5: the languages whose nouns carry a capital of their own. */
+        fun undoEngineCapitalsFor(languageTag: String?): Boolean {
+            val language = languageTag?.trim()?.replace('_', '-')?.substringBefore('-')?.lowercase() ?: return true
+            return language != "de" && language != "lb"
+        }
+    }
+}

@@ -52,6 +52,15 @@ cannot be ended by guessing when the user has finished either (that guess is the
 - a trigger while the session is still `STARTING` or already `STOPPING` ends it at once (the
   user is saying "off, now").
 
+While a session runs, the stop needs only a **press** of Fn, not the hold a start needs: the
+first Fn-origin event of a new press (about 400 ms into it, D1; a quicker tap delivers nothing
+to any app and cannot be seen) is the trigger, and the burst command the same press produces
+within 1500 ms is that same press and starts nothing. A press is new after a gap of 200 ms
+since the previous Fn event (the burst's own reset time), so the hold that has just started a
+session on its fifth repeat does not stop it on its sixth, and a stop followed by a fresh hold
+starts again. The session can also be stopped from the
+"Dictation" command (2.2) and the strip's microphone button.
+
 There is no toggle-off window problem: a session exists from the trigger, so a second Fn burst
 always acts on it.
 
@@ -112,6 +121,7 @@ a fresh one (D20).
 | The silence limit (6.4) | graceful stop | committed |
 | The 10-minute session cap (6.4) | graceful stop | committed |
 | Another app takes audio focus for good (6.7) | immediate end | committed |
+| The app empties the field itself: a send button. Seen as the caret at 0 with nothing before or after it, or the same app's field restarting empty, in a field this session has finished words into and that has since reported a caret past 0; never in a field that cannot hold a composing region (a terminal empties its box after every character) | immediate end, recognizer cancelled; nothing the engine says afterwards lands (the sent words went with the message) | cleared (nothing is there) |
 | Real error (6.6) | session ends; message | committed |
 | Five fast failures or busy answers in a row (6.6) | session ends; "Speech recognition error." | committed |
 | Offline language pack missing and nothing else allowed (4.3) | session ends; message | committed |
@@ -334,13 +344,24 @@ A segmented request (section 5) makes the engine deliver one `onSegmentResults` 
 and hold its microphone open between them. Each segment is committed (7.3) and the session
 simply goes on; nothing is re-issued and nothing is lost between utterances.
 
+Google's continuous session (`applicationDomain: AMBIENT_CONTINUOUS`, D24) does not use
+`onSegmentResults` at all: it delivers each utterance's final as an ordinary `onResults` and
+keeps listening. So an ordinary final on a segmented request proves nothing by itself, and a
+new request sent into that live session is silently ignored by the service (D24). The keyboard
+therefore commits the final and arms a **continuation probe** of 1500 ms, on every such final:
+any sign of life (beginning of speech, a partial, a segment, an audio level report) clears it
+and marks the engine as continuous. The probe expiring on an engine that never proved itself
+means a one-shot that went idle; expiring on one that did, the keyboard simply asks it to
+listen again as it is (a request into a session that is in fact live is ignored, D24, and one
+that really ended is revived), without the latch.
+
 An engine may not support the mode. Two signs, both handled in the same session with no message:
 
 - **Refusal**: an error within 1200 ms of the session start, with nothing heard yet, whose code
   is 5 (client) or any code not in the list {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13} (so 5, 14,
   15 and unknown codes). The request is re-issued as a plain one.
-- **Ignored**: an ordinary final (`onResults`) arrives for a segmented request. The text is
-  committed, the next request is plain and is issued at once (6.2).
+- **Idle after a final**: the continuation probe expires on an engine that never showed a
+  sign of life after a final. The next request is plain and is issued then.
 
 Either sets the **refusal latch**: later sessions ask for plain requests from the start, until
 the engine setting changes (the latch is kept per engine id, not per recognizer object, since
@@ -350,7 +371,9 @@ the engine; falling back to one request per utterance").
 In 2.x and the first 3.0 build an ordinary final in "segmented" mode armed a pause + 5000 ms
 watchdog and issued **no** new request: the first sentence landed, the microphone stayed shut
 for seven seconds while the user kept talking, and then the stop cue played (D15). That is the
-"cuts me off in the middle of a conversation" of the maintainer's report.
+"cuts me off in the middle of a conversation" of the maintainer's report. The build after that
+answered the final with an immediate plain re-listen and the latch, which Google ignored but
+which sent every later session back to one-shots (D24); hence the probe.
 
 ### 6.4 The silence limit and the session cap
 
@@ -358,7 +381,7 @@ Two timers, both the keyboard's own, both ending the session **gracefully** (6.5
 last words still land:
 
 - **Silence limit**: the session stops once nothing has been heard for the silence limit
-  (`dictation_stop_after_silence_ms`, or 60 s when that is 0). "Heard" is the engine's beginning
+  (`dictation_stop_after_silence_ms`, 15 s by default; or 60 s when it is 0). "Heard" is the engine's beginning
   of speech, a non-empty partial, a segment or a final with text; the limit is measured from the
   last of those, or from the session start. So a 20 s think between two sentences never ends a
   session with the setting at 0, and ends it only with the setting at 20 s or below.
@@ -368,9 +391,11 @@ The engine's own complete-silence length is the keyboard's limit plus 1000 ms (s
 the keyboard's timer fires first; should the engine end first anyway, 6.2 re-listens and the
 keyboard's timer still ends the session on time.
 
-With the default (0), the session therefore runs until Fn, a key, a minute of silence, ten
-minutes, or the field going away. That is the toggle-microphone model the maintainer asked for,
-with a safety net for a microphone left open.
+With the default (15 s, the maintainer's decision once the continuous session stopped ending
+at pauses), the session runs until Fn, a key, fifteen seconds of silence (a count to ten
+survives), ten minutes, or the field going away; "Never" makes it a minute of silence. That is
+the toggle-microphone model the maintainer asked for, with a safety net for a microphone left
+open.
 
 ### 6.5 Explicit stop
 
@@ -483,6 +508,15 @@ Why not a foreground service of type microphone: Android 14 and later refuse to 
 the background, and the keyboard with its window hidden is exactly that; an input method's own
 visible binding is the mechanism Android provides for voice typing, and it needs no notification.
 
+### 6.9 The trace
+
+Every recognizer callback and every clock event that did something is one line in logcat,
+tag `PhysiBoardDictationTrace`, info level, in every build (through `Log.println`, which the
+release log stripping leaves alone): the event (a result as its text length and a short hash,
+never the words), the text operations applied (compose/finish/commit with lengths), the effects
+and the phase. Two callbacks carrying the same text have the same hash; that is what the
+2026-10-07 investigations needed and the engine's own log could not say.
+
 ## 7. Text insertion
 
 All writes go through the current input connection on the main thread, in one batch edit. If
@@ -498,8 +532,9 @@ against the utterance's frozen context (7.5): if capitalisation is allowed for t
 is title-cased. No after-sentence capitalisation is applied to partials; with automatic
 punctuation on, Google's engine capitalises the hypothesis itself.
 
-Empty partials are ignored. A non-empty partial marks the session as having heard speech and
-refreshes the silence limit.
+Results are trimmed of surrounding whitespace before anything else, so an engine result that
+begins or ends with a space never doubles the spacing of 7.6. Empty partials are ignored. A
+non-empty partial marks the session as having heard speech and refreshes the silence limit.
 
 ### 7.2 Echo of committed words
 
@@ -517,6 +552,21 @@ A final or segment with text finishes the utterance with that text. A final **wi
 finishes it from the last partial. Every ending of section 3 marked "committed" finishes the
 utterance from the last partial as well. A final without text and with no partial remembered
 inserts nothing.
+
+A final that is **not the composing partial's own** finishes the partial first, as its own
+utterance, and then itself: Google's continuous session dropped one utterance's delivery and
+the next final arrived with that utterance's partial still on screen (D24); replacing the
+composing region with it threw the partial's words away. "Not its own" means a partial of three
+words or more none of whose words appears in the final (one shared word is allowed for a
+partial of five words or more: "can't be accessed from my house" and "to go grab my daughter"
+share "my"), the final being plain words (digits or symbols in it are a reformatting, "twenty
+five dollars" to "$25"); a shorter partial, or one that shares more with the final (the engine
+correcting a homophone keeps the rest), is replaced as before.
+
+A late final that is the exact echo of the words already in the field writes nothing (7.2). A
+re-worded repeat is not treated as an echo: ordinary speech repeats recent words ("add two cups
+of sugar" after "add two cups of flour"), and a send, the case such a late final came from, now
+ends the session on its own (section 3).
 
 "Finishing the utterance" with text T:
 
@@ -546,7 +596,14 @@ Otherwise:
 
 1. **First letter**: if the frozen context says "capitalise here" (empty, ends in a newline, or
    ends in `.`, `!` or `?` followed by whitespace) and `auto_capitalize_first_letter` is on, the
-   first character is title-cased when lowercase.
+   first character is title-cased when lowercase. **Otherwise**, mid-sentence, the engine's own
+   capital is undone: Google's formatting capitalises the first word of every result because
+   to it each utterance is a sentence ("we use Can't be accessed From my house", the
+   2026-10-07 screenshot), so a first word that is one upper-case letter followed by lower-case
+   letters or an apostrophe is lower-cased, except the pronoun "I" and its contractions. Only
+   the first word is touched; a proper noun opening a segment loses its capital too, since
+   nothing can tell it from the engine's. Partials get the same treatment (7.1). Off for German
+   and Luxembourgish (the keyboard language), whose nouns carry a capital of their own.
 2. **After sentence end**: if `auto_capitalize_after_period` is on, every `.`, `!` or `?`
    followed by whitespace and an ASCII lowercase letter has that letter upper-cased.
 
@@ -708,9 +765,8 @@ defaults no longer set `side_key_assistant` (section 17).
 Section **Triggers**: switch "Long-press Fn for speech input".
 
 Section **Transcription**: navigation row "Speech engine" with the current engine's label;
-switch "Automatic punctuation"; switch "Block offensive words"; slider "Stop after silence" from
-0 to 60 s in 5 s steps, labelled "Never: Fn or any key stops it" at 0 and "N s of silence"
-otherwise; switch "Typing stops dictation" ("Any key except a modifier ends the session, keeps
+switch "Automatic punctuation"; switch "Block offensive words"; chips "Stop after silence" with
+5 s, 10 s, 15 s, 30 s and Never (a stored value between two choices shows the nearer); switch "Typing stops dictation" ("Any key except a modifier ends the session, keeps
 the words on screen, then does its usual job. Hold Fn again stops it either way."); switch "Keep
 speech on the phone" ("Use the engine's on-device recognizer: faster, works with no signal, and
 it is the one that punctuates. Falls back online only when the language pack is missing. Private
@@ -745,7 +801,7 @@ buttons screen places or removes the `microphone` slot (status-bar document).
 | `dictation_engine` | string | empty | which recognizer: empty = system default, `ondevice`, or `package/class` | Voice > Transcription | Speech engine |
 | `dictation_auto_punctuation` | boolean | true | asks the engine to punctuate and capitalise (Android 13+) | Voice > Transcription | Automatic punctuation |
 | `dictation_mask_offensive` | boolean | false | per-request profanity masking | Voice > Transcription | Block offensive words |
-| `dictation_stop_after_silence_ms` | int | 0; stored clamped to 0..60000 | the silence limit; 0 = the session runs until stopped (60 s safety) | Voice > Transcription | Stop after silence |
+| `dictation_stop_after_silence_ms` | int | 15000; stored clamped to 0..60000 | the silence limit; 0 = the session runs until stopped (60 s safety) | Voice > Transcription | Stop after silence |
 | `dictation_stop_on_typing` | boolean | true | any key other than a modifier ends the session before doing its work | Voice > Transcription | Typing stops dictation |
 | `dictation_prefer_offline` | boolean | true | `EXTRA_PREFER_OFFLINE` on the request; one online fallback when the pack is missing | Voice > Transcription | Keep speech on the phone |
 | `dictation_pause_media` | boolean | true | exclusive transient audio focus for the session | Voice > Transcription | Pause music while dictating |
@@ -795,6 +851,7 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | D20 | A recognizer kept between sessions goes stale: Android unbinds the remote service while nothing is listening, and the next request reached a dead connection ("Connection to speech recognition service lost, but no #startListening has been invoked yet"). | the maintainer's Titan, 2026-09-26 |
 | D21 | Google's segmented session reports the whole session's transcript so far in every partial and segment. | the maintainer's Titan, 2026-09-25 |
 | D23 | 2026-10-07 17:09, Chrome tab: at every request `W/Bundle: Key android.speech.extras.SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS expected Integer but value was a java.lang.Long. The default value 0 was returned` (stack: `Intent.getIntExtra` from `GoogleTTSRecognitionService.onStartListening`) then `E/RecognitionServiceInten: EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS is not set with positive value; ignoring EXTRA_SEGMENTED_SESSION`; `applicationDomain: AMBIENT_ONESHOT` on every request; no `App op 27` line; the offline engine ran (`Offline recognizer`, en-US pack v3072); each request ended at the first ~1 s pause (`SODA session stopped due to: MIC_END_OF_DATA` after 4.3 and 5.4 s) and the next began ~40 ms later. The third request (29.515) ran 10 020 ms of audio with `onStartOfSpeech` at 31.833 and ended with `Final recognition has been created. Size: 0` and NO_SPEECH_DETECTED, with no partial ever reported; a Chrome field re-attach (`SHOW_SOFT_INPUT` + `ATTACH_NEW_INPUT`, 35.47) and the keyboard's own show request fell inside it, and nothing on the keyboard's side cancelled, stopped or restarted the request (its focus held from 19.524 to 42.046). The engine's `SodaDetectionHandler#connect: enableConcurrency: true`. | scratchpad `third.log` lines 28235 to 30755 |
+| D24 | 2026-10-07 17:21, PersaLink, the first build sending the lengths as ints: `applicationDomain: AMBIENT_CONTINUOUS`; one request from 17.940 ran across every pause with `onStartOfSpeech`/`onEndOfSpeech` pairs and `#handlePartialResult` throughout; finals created with text at 30.643 (131 bytes), 37.185 (60) and 48.987 (128), of which only the first and third reached `#handleFinalResult`/`#onResults` (31.027, 49.024; a third delivery at 52.043); `onSegmentResults` never. The keyboard's `StartListening` after the 31.027 result produced no `onStartListening` at all (ignored by the service) but had set the latch. Messages, 17:24 (screenshot): mid-sentence capitals at every result start, the last sentence re-inserted into the compose box after a send, the microphone indicator still on. | scratchpad `fourth.log` lines 36070 to 40857; the screenshot |
 | D22 | 2026-10-07 16:30, PersaLink (Chrome WebAPK, strip collapsed to a 0 by 0 window, `InputDispatcher ... info.frame: (2, 1200, 2, 1200)`): at each PhysiBoard request (16:30:27.548, 37.330, 48.977, 58.759) audioserver logged `App op 27 missing, silencing record AttributionSourceState{... packageName: com.google.android.tts ... next: ...}` within ~15 ms, the engine heard nothing, and `appops get brobata.physiboard.dev3 RECORD_AUDIO` showed `Uid mode: foreground` with a fresh `rejectTime`. `dumpsys input_method` read `mVisibleBound=false`, `dumpsys activity processes` `curProcState=16 curCapability=--------` with one IME connection (`!FG IMPB SLTA !VIS`, flags 0x40880005); later, with Chrome having shown the keyboard, `mVisibleBound=true`, `curProcState=5` and a second connection `FGS LACT UI CAPS` (flags 0x2c001001). The 16:28:43 session in Messages (Messages had sent `SHOW_SOFT_INPUT fromUser true`) was not silenced and reached `#onResults withSpeech: true`; the 16:31:11 session was Chrome's own Web Speech, not the keyboard's. | scratchpad `dictation-evidence-2.log`; the read-only `dumpsys`/`appops` queries of the same day; AOSP `InputMethodBindingController.IME_VISIBLE_BIND_FLAGS`, `InputMethodManagerService.showCurrentInputLocked`/`hideCurrentInputLocked`, `AppOpsUidStateTrackerImpl.evalModeInternal` |
 
 ## 15. Edge cases, quirks, known bugs
@@ -829,6 +886,10 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | The app had asked for the keyboard during this field | the hold is a no-op for the system; nothing is hidden at the end | 6.8 |
 | Session ends because the user moved to another field or app | nothing is hidden; the system decides the keyboard for the new field | 6.8 |
 | A launcher key bound to "Dictation" pressed while listening | the key hook ends the session; the command is that same press and starts nothing | 2.2, 6.8 |
+| Fn pressed (not held) while listening | the first repeat stops the session; the hold's burst starts nothing | 2 |
+| Fn tapped for under ~400 ms while listening | nothing happens: the phone delivers nothing for such a tap (D1) | 2 |
+| Send button tapped mid-dictation (Messages) | the emptied field ends the session; a late final writes nothing | 3 |
+| A proper noun opens a mid-sentence segment | it is lower-cased like any first word | 7.5 |
 | The grant takes longer than 400 ms | the request goes out anyway and an error is logged; the engine's first five seconds may be silent | 6.8 |
 | `ondevice` chosen on the Titan 2 | the row is not offered; a stored value falls to the system default | D18 |
 | Language tag falls back to `en-US` | only when neither the subtype nor the device locale yields a language | 5.1 |
@@ -876,6 +937,13 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | fast | quiet errors within 700 ms | 500 ms backoff each; the fifth ends with "Speech recognition error." |
 | busy | busy at 100 ms | retry at 400 ms |
 | editor | field closed, same-app field at +200 ms | continues; closed with no replacement ends at +500 ms with cancel; another app's field ends at once |
+| D24 | three finals inside one continuous session with signs of life between | each lands once; no `StartListening`; no latch; probe cleared by speech or an audio level |
+| idle | a final then silence for 1500 ms | plain re-listen; latch |
+| B | "However, the catering software we use" / "Can't be accessed" / "From my house." / "I'd love..." / "Literally, ..." | capitals undone mid-sentence, kept after the full stop, "I'd" kept; results with spaces around them never double a space |
+| lost | partial "Can't be accessed from my house", final "To go grab my daughter." | both land, in order |
+| A | field emptied by the app; a late final | session ends with cancel, focus and hold released; nothing lands; a re-worded late final for words in the field writes nothing while the session runs |
+| C | Enter with a partial on screen | the partial is committed, the session ends with cancel, focus and hold released; a late final writes nothing |
+| 15 s | a 12 s pause; then 15 s of silence | the pause survives; the silence stops the session |
 
 Plus the text tests kept from before (capitalisation, spacing, the frozen context, the session
 echo, direct commit, deleted words never typed back) and the cue table.
@@ -899,6 +967,11 @@ echo, direct commit, deleted words never typed back) and the cue table.
 | Status bar icon while listening | new | the strip may be hidden; the icon needs no permission |
 | The keyboard held visible for the system during a session | new | the only way an input method gets the microphone capability (D22) |
 | "Dictation" catalog command | new | a second trigger for any bindable key; the same action as the Fn burst |
+| Fn press (first repeat) stops a running session | new | the maintainer: "it's not just a quick press, I don't super love that" |
+| Continuation probe instead of a restart on a final | new | Google's continuous session delivers finals as ordinary results (D24) |
+| Undo the engine's segment-start capital mid-sentence | new | the Messages screenshot |
+| The app emptying the field ends the session | new | the sentence re-inserted after a send |
+| Stop after silence, default 15 s | changed | the maintainer's decision, safe once the engine stopped endpointing at pauses |
 | Fresh recognizer per session | keep | D20 |
 | Session echo stripping | keep | D21 |
 | Partials as composing text with the cursor after | keep | D3 |

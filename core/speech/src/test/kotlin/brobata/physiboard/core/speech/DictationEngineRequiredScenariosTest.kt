@@ -38,17 +38,19 @@ class DictationEngineRequiredScenariosTest {
 
     @Test
     fun `a long pause mid-sentence never cuts me off`() {
-        val h = started()
-        h.send(DictationEvent.PartialResult("the thing is"), now = 1_000L)
-        h.send(DictationEvent.SegmentResult("the thing is"), now = 2_500L)
-        h.drainEffects()
-        // Twenty seconds of thinking: every timer fired, nothing stopped.
-        val outcomes = h.runClockTo(22_500L)
-        assertTrue(outcomes.all { it.effects.isEmpty() }, "no timer acts during a pause under the silence limit")
-        assertNotNull(h.session)
-        h.send(DictationEvent.PartialResult("that we should go"), now = 23_000L)
-        h.send(DictationEvent.SegmentResult("that we should go."), now = 24_000L)
-        assertEquals("The thing is that we should go. ", h.field.text)
+        // A count to ten at the 15 s default; twenty seconds of thinking with the limit off.
+        for ((settings, pauseMs) in listOf(DictationSettings(androidApiLevel = 36) to 12_000L, DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 0L) to 20_000L)) {
+            val h = started(settings)
+            h.send(DictationEvent.PartialResult("the thing is"), now = 1_000L)
+            h.send(DictationEvent.SegmentResult("the thing is"), now = 2_500L)
+            h.drainEffects()
+            val outcomes = h.runClockTo(2_500L + pauseMs)
+            assertTrue(outcomes.all { it.effects.isEmpty() }, "no timer acts during a pause under the silence limit")
+            assertNotNull(h.session)
+            h.send(DictationEvent.PartialResult("that we should go"), now = 3_000L + pauseMs)
+            h.send(DictationEvent.SegmentResult("that we should go."), now = 4_000L + pauseMs)
+            assertEquals("The thing is that we should go. ", h.field.text)
+        }
     }
 
     @Test

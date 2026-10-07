@@ -70,13 +70,17 @@ class DictationEngineLifecycleTest {
     }
 
     @Test
-    fun `T6 a final while LISTENING commits and re-listens at once, dropping the segmented ask`() {
-        val h = started()
-        val final = h.send(DictationEvent.FinalResult("hello"), now = 1_000L)
-        assertEquals("Hello ", h.field.text)
+    fun `T6 a final while LISTENING commits - a plain request re-listens at once, a segmented one probes`() {
+        val plain = started(DictationSettings(androidApiLevel = 32))
+        val final = plain.send(DictationEvent.FinalResult("hello"), now = 1_000L)
+        assertEquals("Hello ", plain.field.text)
         assertEquals(DictationEffect.StartListening(final.session!!.request), final.effects.last())
-        assertEquals(false, final.session.request.segmented)
-        assertEquals(true, final.newSegmentedRefusalLatch)
+
+        val segmented = started()
+        val probed = segmented.send(DictationEvent.FinalResult("hello"), now = 1_000L)
+        assertTrue(probed.effects.isEmpty())
+        assertEquals(2_500L, probed.session?.continuationProbeDeadlineMs)
+        assertNull(probed.newSegmentedRefusalLatch)
     }
 
     @Test

@@ -60,7 +60,7 @@ class LegacyImportTest {
     fun `a wrong-typed value is read where it can be and defaulted where it cannot`() {
         val r = import("status_bar_height_dp" to "48", "shift_tap_latches" to "true", "dictation_stop_after_silence_ms" to "soon", "auto_capitalize_first_letter" to "maybe", "notification_ring_minutes" to 7.0)
         assertEquals(48, r.settings.statusBar.heightDp)
-        assertEquals(0, r.settings.dictation.stopAfterSilenceMs)
+        assertEquals(15000, r.settings.dictation.stopAfterSilenceMs)
         assertTrue(r.settings.typing.capitalizeAtTextStart)
         assertEquals(7, r.settings.device.ringMinutes)
         assertTrue("shift_tap_latches" in r.ignored)

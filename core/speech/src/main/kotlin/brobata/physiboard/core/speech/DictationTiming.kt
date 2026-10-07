@@ -57,6 +57,14 @@ object DictationTiming {
      */
     const val ENGINE_SILENCE_MARGIN_MS = 1_000L
 
+    /**
+     * spec SS6.3: after an ordinary final on a segmented request, how long the keyboard waits for
+     * a sign of life (speech, a partial, an audio level) before concluding the engine ran a
+     * one-shot and went idle. Google's continuous session delivers its finals as ordinary
+     * results and keeps going (D24), so a final alone proves nothing.
+     */
+    const val CONTINUATION_PROBE_MS = 1_500L
+
     /** spec SS3: "the app closes its text field and no new field replaces it within 500 ms." */
     const val EDITOR_GONE_GRACE_MS = 500L
 

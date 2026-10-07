@@ -55,14 +55,17 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.PartialResult("first sentence"), now = 2_000L)
         val final = h.send(DictationEvent.FinalResult("first sentence."), now = 3_000L)
         assertEquals("First sentence. ", h.field.text)
-        val restart = final.effects.filterIsInstance<DictationEffect.StartListening>().single()
+        assertTrue(final.effects.isEmpty(), "a final alone is not proof of a one-shot (D24); the probe decides")
+        // The engine stays silent: it ran a one-shot and is idle.
+        val idle = h.runClockTo(4_500L).single()
+        val restart = idle.effects.filterIsInstance<DictationEffect.StartListening>().single()
         assertEquals(false, restart.request.segmented, "the same session goes on with one request per utterance")
         assertEquals(true, h.segmentedRefusalLatch, "later sessions ask for one request per utterance from the start")
         assertNotNull(h.session)
 
-        h.send(DictationEvent.ReadyForSpeech, now = 3_100L)
-        h.send(DictationEvent.PartialResult("second"), now = 4_000L)
-        h.send(DictationEvent.FinalResult("second sentence."), now = 5_000L)
+        h.send(DictationEvent.ReadyForSpeech, now = 4_600L)
+        h.send(DictationEvent.PartialResult("second"), now = 5_000L)
+        h.send(DictationEvent.FinalResult("second sentence."), now = 6_000L)
         assertEquals("First sentence. Second sentence. ", h.field.text)
     }
 
@@ -347,8 +350,11 @@ class LoggedRecognizerScenariosTest {
 
     @Test
     fun `an engine answering every request with an empty final or an instant end is backed off the same way`() {
-        for (ending in listOf<DictationEvent>(DictationEvent.FinalResult(null), DictationEvent.SegmentedSessionEnded)) {
-            val h = harness().start()
+        for ((ending, settings) in listOf<Pair<DictationEvent, DictationSettings>>(
+            DictationEvent.FinalResult(null) to DictationSettings(androidApiLevel = 32), // a plain request: a final ends it
+            DictationEvent.SegmentedSessionEnded to DictationSettings(androidApiLevel = 36),
+        )) {
+            val h = harness(settings).start()
             h.drainEffects()
             var now = 100L
             repeat(4) {

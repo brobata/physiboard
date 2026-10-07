@@ -453,8 +453,13 @@ internal object ImeSettings {
     )
 
     /** spec: dictation.md SS7.1: dictation capitalises by the same two auto-cap rows as typing; `capitalizationAllowed` stays the field's own answer. */
-    fun dictationTextSettings(current: DictationTextSettings, s: Settings): DictationTextSettings =
-        current.copy(capitalizeFirstLetter = s.typing.capitalizeAtTextStart, capitalizeAfterSentenceEnd = s.typing.capitalizeAfterSentenceEnd)
+    fun dictationTextSettings(current: DictationTextSettings, s: Settings, languageTag: String? = null): DictationTextSettings =
+        current.copy(
+            capitalizeFirstLetter = s.typing.capitalizeAtTextStart,
+            capitalizeAfterSentenceEnd = s.typing.capitalizeAfterSentenceEnd,
+            // dictation.md SS7.5: German nouns carry their own capital; the engine's cannot be told from it.
+            undoEngineSegmentCapitals = DictationTextSettings.undoEngineCapitalsFor(languageTag),
+        )
 
     /** The one bundled language's locale, what `:ime` scores theme overrides and extra-language lookups against until a subtype module exists. */
     const val DEFAULT_SUBTYPE_LOCALE: String = "en"

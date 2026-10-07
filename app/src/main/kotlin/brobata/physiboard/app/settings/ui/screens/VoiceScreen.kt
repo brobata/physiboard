@@ -14,8 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.PhysiBoardApplication
-import brobata.physiboard.app.settings.ui.IntClosedRange
-import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
@@ -82,15 +80,14 @@ fun VoiceScreen(onBack: () -> Unit) {
                 SwitchRow("Block offensive words", checked = dictation.maskOffensive, onCheckedChange = { set { p -> p.copy(maskOffensive = it) } })
             }
             item {
-                // dictation.md SS12.1, SS6.4: 0 is "runs until you stop it" (the safety limits of
-                // SS6.4 still apply); anything else is how much silence ends the session by itself.
-                IntRangeRow(
+                // dictation.md SS12.1, SS6.4: how much silence ends the session by itself; 0 is
+                // "runs until you stop it" (the safety limits of SS6.4 still apply).
+                SingleChoiceChipsRow(
                     label = "Stop after silence",
-                    value = dictation.stopAfterSilenceMs,
-                    range = IntClosedRange(0, 60000),
-                    step = 5000,
-                    valueLabel = { if (it == 0) "Never: Fn or any key stops it" else "${it / 1000} s of silence" },
-                    onValueChange = { value -> set { p -> p.copy(stopAfterSilenceMs = value) } },
+                    options = STOP_AFTER_SILENCE_CHOICES,
+                    optionLabel = ::stopAfterSilenceLabel,
+                    selected = nearestStopAfterSilenceChoice(dictation.stopAfterSilenceMs),
+                    onSelect = { value -> set { p -> p.copy(stopAfterSilenceMs = value) } },
                 )
             }
             item {
@@ -173,6 +170,15 @@ fun VoiceScreen(onBack: () -> Unit) {
         )
     }
 }
+
+/** dictation.md SS12.1: the five choices; 0 is never. */
+private val STOP_AFTER_SILENCE_CHOICES: List<Int> = listOf(5000, 10000, 15000, 30000, 0)
+
+private fun stopAfterSilenceLabel(ms: Int): String = if (ms == 0) "Never" else "${ms / 1000} s"
+
+/** Only 0 is Never; any other stored value (an import, a hand edit) shows as the nearest timed choice. */
+private fun nearestStopAfterSilenceChoice(ms: Int): Int =
+    if (ms == 0) 0 else STOP_AFTER_SILENCE_CHOICES.filter { it > 0 }.minByOrNull { kotlin.math.abs(it - ms) } ?: 15000
 
 private fun assistantActionLabel(action: AssistantAction): String = when (action) {
     AssistantAction.AUTO -> "Auto"

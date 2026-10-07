@@ -42,7 +42,9 @@ object DictationEngine {
             is DictationEvent.Trigger -> throw IllegalStateException("Trigger is handled before a session is required")
             DictationEvent.ReadyForSpeech -> handleReady(session, now)
             DictationEvent.FirstAudio -> handleFirstAudio(session)
-            DictationEvent.BeginningOfSpeech -> DictationOutcome(session.copy(lastSpeechMs = now, consecutiveFailures = 0))
+            DictationEvent.BeginningOfSpeech -> DictationOutcome(alive(session).copy(lastSpeechMs = now, consecutiveFailures = 0))
+            DictationEvent.EngineActivity -> DictationOutcome(alive(session))
+            DictationEvent.FieldClearedByApp -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
             DictationEvent.EndOfSpeech -> DictationOutcome(session)
             is DictationEvent.PartialResult -> handlePartialResult(session, event.text, now, textSettings)
             is DictationEvent.FinalResult -> handleFinalResult(session, event.text, now, textSettings)
@@ -112,6 +114,7 @@ object DictationEngine {
             busyRetryDeadlineMs = null,
             relistenDeadlineMs = null,
             cueFallbackDeadlineMs = null,
+            continuationProbeDeadlineMs = null,
             stopWatchdogDeadlineMs = now + DictationTiming.STOP_WATCHDOG_MS,
         )
         return DictationOutcome(next, listOf(DictationEffect.StopListening))
@@ -160,10 +163,10 @@ object DictationEngine {
      * put the deleted words straight back. The utterance stays invalidated until its boundary.
      */
     private fun handlePartialResult(session: DictationSession, rawText: String, now: Long, textSettings: DictationTextSettings): DictationOutcome {
-        val text = SessionEcho.strip(rawText, session.utterance.finishedThisSession)
-        if (text.isBlank()) return DictationOutcome(session) // "Empty partials are ignored."
+        val text = SessionEcho.strip(rawText.trim(), session.utterance.finishedThisSession).trim()
+        if (text.isBlank()) return DictationOutcome(alive(session)) // "Empty partials are ignored."
         val invalidated = session.utterance.pending is PendingUtterance.Invalidated
-        val next = session.copy(
+        val next = alive(session).copy(
             heardSpeech = true,
             lastSpeechMs = now,
             consecutiveFailures = 0,
@@ -190,19 +193,31 @@ object DictationEngine {
         if (session.phase == DictationPhase.STOPPING) {
             return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
         }
-        val ignoredSegmented = session.request.segmented
-        val request = if (ignoredSegmented) session.request.copy(segmented = false) else session.request
         val next = session.copy(
             heardSpeech = heard,
             lastSpeechMs = if (finished.plainText != null) now else session.lastSpeechMs,
-            request = request,
         )
-        val relistened = relistenAfterEngineEnding(next, finished, now, textSettings)
-        return relistened.copy(
-            effects = if (ignoredSegmented) listOf(DictationEffect.LogMessage(DictationMessage.SEGMENTED_REFUSED)) + relistened.effects else relistened.effects,
-            newSegmentedRefusalLatch = if (ignoredSegmented) true else null,
-        )
+        if (session.request.segmented) {
+            // spec SS6.3, D24: Google's continuous session delivers each utterance's final as an
+            // ordinary result and keeps listening; a one-shot engine delivers one and goes idle.
+            // A final alone cannot tell the two apart, and a new request into a live session is
+            // ignored by the service (D24) while wrongly latching every later session to
+            // one-shots. So the final is committed and a probe waits for a sign of life; its
+            // expiry listens again, and only an engine that never proved itself continuous is
+            // latched to one-shots by it.
+            val committed = next.copy(
+                consecutiveFailures = 0,
+                utterance = afterFinish(session.utterance, finished),
+                continuationProbeDeadlineMs = now + DictationTiming.CONTINUATION_PROBE_MS,
+            )
+            return DictationOutcome(committed, textOps = finished.ops)
+        }
+        return relistenAfterEngineEnding(next, finished, now, textSettings)
     }
+
+    /** spec SS6.3: a sign of life from the engine answers the continuation probe: it is a continuous session. */
+    private fun alive(session: DictationSession): DictationSession =
+        if (session.continuationProbeDeadlineMs == null) session else session.copy(continuationProbeDeadlineMs = null, engineContinues = true)
 
     /**
      * spec SS6.2: the engine ended its request (a quiet error, a plain final, the end of a
@@ -221,6 +236,7 @@ object DictationEngine {
         val next = session.copy(
             requestStartMs = now,
             consecutiveFailures = failures,
+            continuationProbeDeadlineMs = null,
             utterance = afterFinish(session.utterance, finished),
         )
         return if (fast) {
@@ -233,7 +249,8 @@ object DictationEngine {
     /** spec SS6.2: one utterance inside a segmented session; committed like a final, and the session simply goes on. */
     private fun handleSegmentResult(session: DictationSession, text: String, now: Long, textSettings: DictationTextSettings): DictationOutcome {
         val finished = finishFromResult(text, session.utterance, textSettings)
-        val next = session.copy(
+        val next = alive(session).copy(
+            engineContinues = true,
             heardSpeech = session.heardSpeech || finished.plainText != null,
             lastSpeechMs = if (finished.plainText != null) now else session.lastSpeechMs,
             consecutiveFailures = 0,
@@ -271,10 +288,18 @@ object DictationEngine {
     private fun finishFromResult(rawText: String?, utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
         if (utterance.pending is PendingUtterance.Invalidated) return UtteranceFinisher.NOTHING
         // The echo of what this session already finished is not part of this utterance (SessionEcho).
-        val text = rawText?.let { SessionEcho.strip(it, utterance.finishedThisSession) }
+        val text = rawText?.trim()?.let { SessionEcho.strip(it, utterance.finishedThisSession) }?.trim()
+        val live = (utterance.pending as? PendingUtterance.Live)?.text
         // A whitespace-only final carries no words of its own (SS7.3's "final without text").
-        val resolvedText = if (!text.isNullOrBlank()) text else (utterance.pending as? PendingUtterance.Live)?.text
-        return resolvedText?.let { UtteranceFinisher.finish(it, utterance.context, textSettings) } ?: UtteranceFinisher.NOTHING
+        if (text.isNullOrBlank()) return live?.let { UtteranceFinisher.finish(it, utterance.context, textSettings) } ?: UtteranceFinisher.NOTHING
+        // spec SS7.3, D24: a final that is not the composing partial's own finishes that partial
+        // first, as its own utterance, instead of replacing its words.
+        if (live != null && UtteranceOverlap.isDifferentUtterance(live, text)) {
+            val first = UtteranceFinisher.finish(live, utterance.context, textSettings)
+            val second = UtteranceFinisher.finish(text, extendContext(utterance.context, first.plainText), textSettings)
+            return UtteranceFinisher.Finished(first.ops + second.ops, (first.plainText ?: "") + (second.plainText ?: ""))
+        }
+        return UtteranceFinisher.finish(text, utterance.context, textSettings)
     }
 
     /** The state after an utterance finished: context extended, nothing pending, and the finished words remembered for [SessionEcho]. */
@@ -397,6 +422,24 @@ object DictationEngine {
         session.relistenDeadlineMs?.let { deadline ->
             if (now >= deadline) {
                 return DictationOutcome(session.copy(relistenDeadlineMs = null, requestStartMs = now), listOf(DictationEffect.StartListening(session.request)))
+            }
+        }
+        session.continuationProbeDeadlineMs?.let { deadline ->
+            if (now >= deadline) {
+                // spec SS6.3: no sign of life since the final. An engine that already proved
+                // itself continuous is asked to listen again as it is (a request into a session
+                // that is in fact still live is ignored by the service, D24, and costs nothing);
+                // one that never did ran a one-shot and is idle: the same session goes on with
+                // one request per utterance, and later sessions ask for that from the start.
+                if (session.engineContinues) {
+                    return DictationOutcome(session.copy(continuationProbeDeadlineMs = null, requestStartMs = now), listOf(DictationEffect.StartListening(session.request)))
+                }
+                val request = session.request.copy(segmented = false)
+                return DictationOutcome(
+                    session.copy(continuationProbeDeadlineMs = null, request = request, requestStartMs = now),
+                    listOf(DictationEffect.LogMessage(DictationMessage.SEGMENTED_REFUSED), DictationEffect.StartListening(request)),
+                    newSegmentedRefusalLatch = true,
+                )
             }
         }
         session.cueFallbackDeadlineMs?.let { deadline ->

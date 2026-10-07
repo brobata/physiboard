@@ -666,7 +666,10 @@ internal class KeyboardSession(
         // spec: status-bar.md SS6.1: the microphone button follows the recognizer's level reports.
         // Dictation starts asynchronously, so the first report is also the first moment the strip
         // can learn the session is active; the refresh is equality-guarded and cheap.
-        dictationController.onActiveChanged = { _ -> runCatching { refreshCandidatesStrip() }.onFailure { error -> Log.e(TAG, "dictation state refresh crashed", error) } }
+        dictationController.onActiveChanged = { active ->
+            if (!active) dictationFieldSeenNonEmpty = false
+            runCatching { refreshCandidatesStrip() }.onFailure { error -> Log.e(TAG, "dictation state refresh crashed", error) }
+        }
         dictationController.onHoldImeVisible = ::holdImeVisibleForDictation
         dictationController.onReleaseImeVisible = ::releaseImeVisibleForDictation
         dictationController.onAudioLevel = { level ->
@@ -904,7 +907,7 @@ internal class KeyboardSession(
         enterPreset = settings.perApp.enterPreset
         enterBehaviorEnabled = settings.perApp.enterBehaviorEnabled
         dictationController.settings = ImeSettings.dictationSettings(settings, Build.VERSION.SDK_INT).copy(privateMode = privacy.privateMode)
-        dictationController.textSettings = ImeSettings.dictationTextSettings(dictationController.textSettings, settings)
+        dictationController.textSettings = ImeSettings.dictationTextSettings(dictationController.textSettings, settings, currentStyle.locale)
         // spec: dictation.md SS5.1 step 1: the recognizer's language follows the active input style's locale.
         dictationController.subtypeLanguageTag = currentStyle.locale
         clipboard.retentionMinutes = settings.expansion.clipboardRetentionMinutes
@@ -1103,6 +1106,14 @@ internal class KeyboardSession(
         if (field.isReallyEditable) handler.post { dipForListedAppOnFieldStart() }
         fieldChangeInProgress = true
         try {
+            // dictation.md SS3: the same app's field coming back empty after the session wrote
+            // into it is the app having cleared it (a send); the session ends with it.
+            if (restarting && dictationController.isActive && dictationController.composingAllowed && dictationController.hasWrittenThisSession &&
+                dictationFieldSeenNonEmpty && openingText != null && openingText.isEmpty()
+            ) {
+                dictationFieldSeenNonEmpty = false
+                dictationController.onFieldClearedByApp()
+            }
             dictationController.onEditorFieldOpened(reportedPackage)
         } finally {
             fieldChangeInProgress = false
@@ -1538,6 +1549,7 @@ internal class KeyboardSession(
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         lastReportedSelStart = newSelStart
         lastReportedSelectionCollapsed = newSelStart == newSelEnd
+        noteFieldClearedByAppIfSo(newSelStart, newSelEnd)
         ownEdit?.let { expectation ->
             val verdict = expectation.classify(newSelStart, SystemClock.uptimeMillis())
             DiagnosticLog.i(TAG) { "selection: $oldSelStart->$newSelStart verdict=$verdict" }
@@ -1777,12 +1789,35 @@ internal class KeyboardSession(
      * key's release and letting its repeats into the ordinary path leaves Ctrl stuck down.
      */
     private fun processFnStroke(stroke: KeyStroke): Boolean {
+        // dictation.md SS2: while a session runs, the FIRST Fn event of a NEW press stops it (the
+        // graceful stop), about 400 ms into the press on this phone (D1): a press, not the 600 ms
+        // burst a start needs. A press is new after a gap of the burst's own reset time; the
+        // repeats of one hold come 50 ms apart, so the hold that just STARTED a session on its
+        // fifth repeat does not stop it on its sixth. The remaining repeats still count through
+        // the burst below, and its command, arriving within the window, is this same press.
+        val newPress = lastFnEventAtMs?.let { stroke.timeMs - it >= FN_NEW_PRESS_GAP_MS } ?: true
+        lastFnEventAtMs = stroke.timeMs
+        if (newPress) {
+            fnStopAtMs = null
+            if (stroke.edge == KeyEdge.DOWN && dictationController.isActive) {
+                fnStopAtMs = stroke.timeMs
+                runCatching { onDictationTrigger() }.onFailure { error -> Log.e(TAG, "dictation stop crashed", error) }
+            }
+        }
         // The burst's own command reaches [handleCommand] through the pipeline's callback, so
         // the trigger fires from here without this path knowing anything about dictation.
         pipeline.onKeyStroke(stroke, EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs))
         refreshCandidatesStrip()
         return true
     }
+
+    /** When an Fn press stopped the session; the same hold's burst command and its trailing repeats must not start another. Cleared by the next press. */
+    private var fnStopAtMs: Long? = null
+
+    /** The last Fn-origin event, so a press can be told from the repeats of the hold before it. */
+    private var lastFnEventAtMs: Long? = null
+
+    private fun withinFnStopWindow(nowMs: Long): Boolean = fnStopAtMs?.let { nowMs - it < DICTATION_KEY_STOP_WINDOW_MS } == true
 
     private fun processKeyStroke(stroke: KeyStroke, event: KeyEvent? = null): Boolean {
         val ic = service.currentInputConnection ?: return false
@@ -2535,6 +2570,33 @@ internal class KeyboardSession(
         return delivered
     }
 
+    /**
+     * dictation.md SS3: a send button emptied the field under a running session (Messages,
+     * 2026-10-07: the last sentence came back into the emptied box). The caret at 0 with nothing
+     * before it, in a field this session had written into, is that; the session ends there and
+     * nothing the engine says later lands. The read happens only in that narrow case.
+     */
+    private fun noteFieldClearedByAppIfSo(selStart: Int, selEnd: Int) {
+        if (!dictationController.isActive || !dictationController.composingAllowed || !dictationController.hasWrittenThisSession) return
+        // A terminal empties its box after every character it is sent (DirectCommit); a field
+        // that cannot hold a composing region is never read this way.
+        if (selStart > 0 || selEnd > 0) {
+            dictationFieldSeenNonEmpty = true
+            return
+        }
+        if (!dictationFieldSeenNonEmpty) return
+        val ic = service.currentInputConnection ?: return
+        val before = runCatching { ic.getTextBeforeCursor(1, 0)?.toString() }.getOrNull() ?: return
+        val after = runCatching { ic.getTextAfterCursor(1, 0)?.toString() }.getOrNull() ?: return
+        if (before.isEmpty() && after.isEmpty()) {
+            dictationFieldSeenNonEmpty = false
+            dictationController.onFieldClearedByApp()
+        }
+    }
+
+    /** The field has reported a caret past 0 since the session wrote into it; only then can an empty field be the app's clearing. */
+    private var dictationFieldSeenNonEmpty = false
+
     /** Reachable with `dictation_stop_on_typing` off (with it on, the key down already ended the session before its edit) and from the swipe deletes, which are not keys. */
     private fun noteFieldEditedDuringDictation() {
         if (dictationController.isActive) dictationController.onUserEditedComposingText()
@@ -2571,7 +2633,10 @@ internal class KeyboardSession(
      */
     private fun handleCommand(commandId: String) {
         when (commandId) {
-            KeyCommands.TOGGLE_DICTATION -> runCatching { onDictationTrigger() }.onFailure { error -> Log.e(TAG, "dictation trigger crashed", error) }
+            KeyCommands.TOGGLE_DICTATION -> runCatching {
+                // dictation.md SS2: the burst of a hold whose first repeat already stopped the session.
+                if (!withinFnStopWindow(SystemClock.uptimeMillis())) onDictationTrigger()
+            }.onFailure { error -> Log.e(TAG, "dictation trigger crashed", error) }
             // spec: keys-and-modifiers.md SS4.4: the Sym hold "launches the assistant already listening"; "if no assistant is available... a toast".
             KeyCommands.LAUNCH_ASSISTANT -> runCatching {
                 if (!startVoiceAssistant()) android.widget.Toast.makeText(service, brobata.physiboard.core.actions.commands.CommandFailure.NO_VOICE_ASSISTANT, android.widget.Toast.LENGTH_SHORT).show()
@@ -3113,6 +3178,8 @@ internal class KeyboardSession(
         const val OWN_SHOW_REQUEST_WINDOW_MS = 1_000L
         /** A Dictation command this soon after a key ended the session is that key's own press. */
         const val DICTATION_KEY_STOP_WINDOW_MS = 1_500L
+        /** An Fn event this long after the previous one is a new press, not the hold's next repeat (the burst's own reset time, keys document 3.3). */
+        const val FN_NEW_PRESS_GAP_MS = 200L
         const val TEXT_BEFORE_CURSOR_READ = 240
 
         /** `keyboard_layout`'s own default (`Settings.kt`'s `LanguagePrefs`); layers-sym-alt.md SS9.2's first bundled layout. Kept for reference; [shippedLayouts] now builds from `TitanLayouts.bundled()` directly. */

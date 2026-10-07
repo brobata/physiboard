@@ -65,3 +65,5 @@ around.
 | `app-shell.md` | 31.2 | Private mode keeps dictation on the phone. | this change |
 | `dictation.md` | 2.2, 2.4, 3, 6.8, 14, 15, 16, 17 | The keyboard is held visible for the input-method service during a session, which is what grants an input method the microphone (D22: the recording was silenced with the strip collapsed); the "Dictation" catalog command. | this change |
 | `expansion-clipboard-pickers-launcher.md` | 8.2 | The "Dictation" command row. | this change |
+| `dictation.md` | 2, 3, 5, 6.3, 6.4, 6.9, 7.1, 7.3, 7.5, 12.1, 13, 14, 15, 16, 17 | The lengths go to Google as ints (D23), which gives its continuous session (D24): finals are ordinary results, so a continuation probe replaces the restart; the engine's segment-start capital is undone mid-sentence; a final that is not the partial's own commits the partial first; a re-worded late final is an echo; the app emptying the field ends the session; an Fn press stops a running session; the always-on trace; the silence limit defaults to 15 s with five choices. | this change |
+| `settings-catalog.md` | 2.8, 12 | `dictation_stop_after_silence_ms` default 15000, five choices. | this change |

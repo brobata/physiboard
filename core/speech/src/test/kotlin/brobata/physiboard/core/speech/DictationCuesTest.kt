@@ -37,7 +37,7 @@ class DictationCuesTest {
     fun `the request plan follows the settings - segmented and formatting need Android 13, private mode forces offline`() {
         val on33 = DictationSettings(androidApiLevel = 33, maskOffensive = true)
         val planned = RecognizerRequestPlanner.plan(on33, segmentedRefusalLatch = false)
-        assertEquals(RecognizerRequest(segmented = true, preferOffline = true, enableFormatting = true, maskOffensive = true, completeSilenceMs = 61_000L, minimumLengthMs = 61_000L), planned)
+        assertEquals(RecognizerRequest(segmented = true, preferOffline = true, enableFormatting = true, maskOffensive = true, completeSilenceMs = 16_000L, minimumLengthMs = 16_000L), planned)
         assertFalse(RecognizerRequestPlanner.plan(on33.copy(maskOffensive = false), false).maskOffensive)
         assertFalse(RecognizerRequestPlanner.plan(on33.copy(autoPunctuation = false), false).enableFormatting)
         assertFalse(RecognizerRequestPlanner.plan(on33.copy(androidApiLevel = 32), false).enableFormatting)
@@ -46,6 +46,7 @@ class DictationCuesTest {
         assertFalse(RecognizerRequestPlanner.plan(on33.copy(preferOffline = false), false).preferOffline)
         assertEquals(true, RecognizerRequestPlanner.plan(on33.copy(preferOffline = false, privateMode = true), false).preferOffline)
         assertEquals(6_000L, RecognizerRequestPlanner.plan(on33.copy(stopAfterSilenceMs = 5_000L), false).completeSilenceMs)
+        assertEquals(61_000L, RecognizerRequestPlanner.plan(on33.copy(stopAfterSilenceMs = 0L), false).completeSilenceMs)
         assertEquals(6_000L, RecognizerRequestPlanner.plan(on33.copy(stopAfterSilenceMs = 5_000L), false).minimumLengthMs)
     }
 

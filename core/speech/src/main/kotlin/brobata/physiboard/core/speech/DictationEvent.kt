@@ -49,6 +49,12 @@ sealed class DictationEvent {
      */
     object KeyDown : DictationEvent()
 
+    /** spec SS6.3: the engine gave a sign of life (an audio level report) while a continuation probe was armed. */
+    object EngineActivity : DictationEvent()
+
+    /** spec SS3: the app emptied the field itself (a send); what was dictated went with it, and nothing the engine says later may land in the emptied field. */
+    object FieldClearedByApp : DictationEvent()
+
     /** spec SS4.3: private mode was turned on; a session whose request is online stops, since its audio must not keep leaving the phone. */
     object PrivateModeTurnedOn : DictationEvent()
 
