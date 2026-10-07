@@ -82,17 +82,40 @@ fun VoiceScreen(onBack: () -> Unit) {
                 SwitchRow("Block offensive words", checked = dictation.maskOffensive, onCheckedChange = { set { p -> p.copy(maskOffensive = it) } })
             }
             item {
+                // dictation.md SS12.1, SS6.4: 0 is "runs until you stop it" (the safety limits of
+                // SS6.4 still apply); anything else is how much silence ends the session by itself.
                 IntRangeRow(
-                    label = "End-of-speech pause",
-                    value = dictation.endSilenceMs,
-                    range = IntClosedRange(0, 10000),
-                    step = 500,
-                    valueLabel = { if (it == 0) "System default" else "${it / 1000.0} s" },
-                    onValueChange = { value -> set { p -> p.copy(endSilenceMs = value) } },
+                    label = "Stop after silence",
+                    value = dictation.stopAfterSilenceMs,
+                    range = IntClosedRange(0, 60000),
+                    step = 5000,
+                    valueLabel = { if (it == 0) "Never: Fn or any key stops it" else "${it / 1000} s of silence" },
+                    onValueChange = { value -> set { p -> p.copy(stopAfterSilenceMs = value) } },
                 )
             }
             item {
-                SwitchRow("Let the engine time the pause", checked = dictation.continuousSession, onCheckedChange = { set { p -> p.copy(continuousSession = it) } })
+                SwitchRow(
+                    "Typing stops dictation",
+                    description = "Any key except a modifier ends the session, keeps the words on screen, then does its usual job. Hold Fn again stops it either way.",
+                    checked = dictation.stopOnTyping,
+                    onCheckedChange = { set { p -> p.copy(stopOnTyping = it) } },
+                )
+            }
+            item {
+                SwitchRow(
+                    "Keep speech on the phone",
+                    description = "Use the engine's on-device recognizer: faster, works with no signal, and it is the one that punctuates. Falls back online only when the language pack is missing. Private mode always keeps speech on the phone.",
+                    checked = dictation.preferOffline,
+                    onCheckedChange = { set { p -> p.copy(preferOffline = it) } },
+                )
+            }
+            item {
+                SwitchRow(
+                    "Pause music while dictating",
+                    description = "Takes the audio for the whole session, so a player pauses once when you start and resumes once when you stop.",
+                    checked = dictation.pauseMedia,
+                    onCheckedChange = { set { p -> p.copy(pauseMedia = it) } },
+                )
             }
             item { SectionHeader("Voice assistant") }
             item {
