@@ -63,7 +63,7 @@ data class AltState(
  * chord has already claimed this press.
  *
  * spec: keys-and-modifiers.md SS4.1 ("toggle pending", "no chord used"); layers-sym-alt.md SS5.2,
- * SS5.3.
+ * SS5.3, SS5.10 (the double tap that opens the page chooser).
  */
 data class SymSessionState(
     val togglePending: Boolean = false,
@@ -71,6 +71,12 @@ data class SymSessionState(
     val currentPageNumber: Int = 0,
     val assistantArmedAtMs: Long? = null,
     val assistantFired: Boolean = false,
+    /** spec layers-sym-alt.md SS5.10: when the last plain Sym tap (one that cycled) came up; null once anything else happened. */
+    val lastTapUpAtMs: Long? = null,
+    /** The page that was open before that tap cycled, which the double tap puts back. */
+    val pageBeforeLastTap: Int = 0,
+    /** This press is the second tap of a double tap; its release opens the chooser instead of cycling. */
+    val secondTapPending: Boolean = false,
 )
 
 /**
@@ -166,6 +172,10 @@ data class ModifierSettings(
     val symLongPressAssistantEnabled: Boolean = false,
     val symIsTrackpadTrigger: Boolean = false,
     val symAssistantHoldMs: Long = 600,
+    /** `sym_double_tap_chooser` (layers-sym-alt.md SS5.10): a Sym double tap opens the page chooser. */
+    val symDoubleTapChooser: Boolean = true,
+    /** spec layers-sym-alt.md SS5.10: from the first tap's release to the second tap's press. */
+    val symDoubleTapWindowMs: Long = 300,
     val symEditShortcutsEnabled: Boolean = true,
     val symAutoCloseEnabled: Boolean = true,
     /**
