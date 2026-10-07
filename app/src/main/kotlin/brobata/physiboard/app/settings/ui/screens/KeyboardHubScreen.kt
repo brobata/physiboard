@@ -25,6 +25,6 @@ private fun LazyListScope.keyboardHubRows(onNavigate: (String) -> Unit) {
     item { NavigateRow("Theme", "Colours, LEDs, and the buttons on the Sym pages") { onNavigate(Routes.STATUS_BAR_THEME) } }
     item { NavigateRow("Customize SYM Keyboard", "Arrange, enable and edit the Sym key's Emoji and Symbols pages") { onNavigate(Routes.CUSTOMIZE_SYM_KEYBOARD) } }
     item { NavigateRow("Sound & Haptics", "Typing sounds and vibration") { onNavigate(Routes.SOUND_HAPTICS) } }
-    item { NavigateRow("Exact typing", "For terminals, SSH and code: what you type is what goes in") { onNavigate(Routes.appPicker(PerAppListKind.EXACT_TYPING)) } }
+    item { NavigateRow("Terminal mode", "For terminals, SSH and code. Nothing corrected or capitalised; Ctrl, Esc and Alt symbols go straight to the app.") { onNavigate(Routes.appPicker(PerAppListKind.EXACT_TYPING)) } }
     item { NavigateRow("Enter key behaviour", "Configure app-specific Enter and newline handling") { onNavigate(Routes.ENTER_KEY_BEHAVIOUR) } }
 }

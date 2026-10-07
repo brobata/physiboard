@@ -1,8 +1,9 @@
 # Per-app behavior
 
 Behavior that changes depending on which app owns the text field: how the keyboard finds out
-which app that is, what Enter does in messengers, which apps get "exact typing" (no smart
-features), the shared list and picker screens, how the lists are stored, what happens when a
+which app that is, what Enter does in messengers, which apps get "Terminal mode" (no smart
+features, keys delivered as pressed; called "exact typing" before 2026-10-06), the shared list
+and picker screens, how the lists are stored, what happens when a
 listed app is removed, and the on-screen-keyboard mode machinery that reacts to devices coming
 and going. The status bar "dip" list is another per-app list; it is specified in
 `status-bar.md` and only referenced here.
@@ -36,7 +37,7 @@ bug report describes the app the user was in and not the settings screen they op
 The package name is used, in this order of importance, for:
 
 1. Enter behavior (section 3), matched by exact string.
-2. Exact typing (section 4), matched by exact string and then by WebAPK host expansion.
+2. Terminal mode (section 4), matched by exact string and then by WebAPK host expansion.
 3. The status bar's per-app visibility and dip lists (`status-bar.md`), exact string.
 4. Dictation: a session started in one app ends if another app takes the field
    (`dictation.md`).
@@ -63,9 +64,9 @@ Rules:
   no WebAPKs is returned unchanged. Example: {`com.termux`, `org.chromium.webapk.x`} expands to
   {`com.termux`, `org.chromium.webapk.x`, `com.android.chrome`}; {`com.termux`} stays as it is.
 
-Only the exact-typing list is expanded (section 4.3). The Enter behavior overrides, the status
+Only the Terminal mode list is expanded (section 4.3). The Enter behavior overrides, the status
 bar lists, and the dip list are matched by exact package name; a WebAPK entry in those lists
-will never match because the field never reports the shell's name. The exact-typing list screen
+will never match because the field never reports the shell's name. The Terminal mode list screen
 tells the user about the expansion on web-app rows; no other screen does.
 
 ## 3. Enter key behavior
@@ -381,7 +382,11 @@ Whether Messenger's compose box acts on that request has not been verified on th
 status card says so ("Not confirmed"). The delivery that is known to work in apps that ignore
 the action is `plain_enter`, which the user can choose per row.
 
-## 4. Exact typing (raw mode)
+## 4. Terminal mode (raw mode)
+
+The user-facing name is "Terminal mode"; until 2026-10-06 the same feature was called "Exact
+typing". The stored key (`app_raw_mode_packages`) and every code identifier (`exactTyping*`,
+`RAW_MODE_APP`) keep their old names, so backups and existing lists carry over.
 
 ### 4.1 What it turns off and what it keeps
 
@@ -426,11 +431,13 @@ matched (D3).
 
 ### 4.4 The screen
 
-Settings > Keyboard hub row "Exact typing" ("For terminals, SSH and code: what you type is what
-goes in, nothing corrected or capitalised"), also reachable from settings search. It uses the
-shared toggle-list screen (section 6.1) with title "Exact typing" and the long description
-starting "In the apps you pick here, PhysiBoard sends every keystroke as-is...". Toggling a row
-writes immediately.
+Settings > Keyboard hub row "Terminal mode" ("For terminals, SSH and code. Nothing corrected or
+capitalised; Ctrl, Esc and Alt symbols go straight to the app."), also reachable from settings
+search (keywords include "exact typing", "raw", "terminal", "ssh", "code"). It uses the shared
+toggle-list screen (section 6.1) with title "Terminal mode" and the long description starting
+"In the apps you pick here, PhysiBoard sends every keystroke as-is...", which also says that
+Ctrl stays Ctrl, Esc, Tab and the arrows go straight through, and Alt and Sym symbols arrive as
+real key presses. Toggling a row writes immediately.
 
 ### 4.5 Storage
 
@@ -481,15 +488,15 @@ mechanism:
 | Text box under the bar (dip) | `app_keyboard_nudge_packages` | `com.microsoft.teams`, seeded the first time the list is read | `status-bar.md` |
 | Notification ring colour per app | `notification_ring_app_colors` | none | `device-backlight-ring.md` |
 | Launcher shortcuts that open an app | `launcher_shortcuts` | none | `expansion-clipboard-pickers-launcher.md` |
-| Exact typing | `app_raw_mode_packages` | none | this document |
+| Terminal mode | `app_raw_mode_packages` | none | this document |
 | Enter overrides | `app_enter_behavior_overrides` | four rows | this document |
 
-The dip list and exact typing share the toggle-list screen; status bar apps and ring colours use
+The dip list and Terminal mode share the toggle-list screen; status bar apps and ring colours use
 the picker dialog.
 
 ## 6. Shared list screen and app picker
 
-### 6.1 Toggle-list screen (exact typing, text box under the bar)
+### 6.1 Toggle-list screen (Terminal mode, text box under the bar)
 
 - Top bar with back arrow and the title; a description paragraph (16 dp side padding, 12 dp
   vertical) at the top of the list.
@@ -538,7 +545,7 @@ It also runs once at registration.
 
 What is not done:
 
-- Exact-typing entries are never removed on uninstall. An uninstalled package simply stops
+- Terminal mode entries are never removed on uninstall. An uninstalled package simply stops
   appearing in the list screen (it is no longer launchable) and stops matching. Reinstalling it
   restores the behavior with no user action. A WebAPK that is uninstalled keeps mapping its host
   to Chrome (the fallback), so the host browser stays in raw mode until the user removes the
@@ -625,7 +632,7 @@ answer (none does on a Titan, since the built-in keyboard never disappears) woul
 | `app_enter_behavior_enabled` | boolean | true | Master switch for every per-app Enter rule; off means Enter follows section 3.5 step e only, and send method / extra shortcut read as `auto` / `none` | Enter key behaviour | App-specific Enter behaviour |
 | `app_enter_behavior_preset` | string | `enter_send_shift_newline` | Blanket behavior for the 9 preset packages (Discord excluded from send-on-Enter); choosing one rewrites favourite rows | Enter key behaviour | Messaging preset |
 | `app_enter_behavior_overrides` | string (JSON array) | four rows, section 3.12 | Per-app wanted behavior, send method, extra shortcut | Enter key behaviour | App overrides |
-| `app_raw_mode_packages` | string set | empty | Apps (plus WebAPK hosts) where suggestions, autocorrect, auto-cap, double-space period and expansion are off | Exact typing | Exact typing |
+| `app_raw_mode_packages` | string set | empty | Apps (plus WebAPK hosts) where suggestions, autocorrect, auto-cap, double-space period and expansion are off; Ctrl, symbols and terminal keys delivered as keys (section 4.6) | Terminal mode | Terminal mode |
 | `app_keyboard_nudge_packages` | string set | {`com.microsoft.teams`} seeded on first read | Apps whose keyboard request dips the bar | Text box under the bar | Text box under the bar (see `status-bar.md`) |
 | `software_keyboard_mode` | string | `auto` | Whether the on-screen keyboard is shown | Tutorial keyboard-mode step | Keyboard Mode |
 | `software_keyboard_mode_runtime_override` | string | absent | Temporary mode until the next device transition or configured-mode write | none (set by the toggle actions) | Toggle Keyboard Mode |
@@ -659,7 +666,7 @@ Internal state, not settings: `app_list_cache_prefs` / `package_change_sequence`
 | E4 | Override row set to "App default" for a preset package | The preset still applies | An `app_default` row falls through to the preset |
 | E5 | Discord under preset "Enter newline, Ctrl+Enter sends" with no row (row deleted by hand) | Enter inserts a newline; Ctrl+Enter sends a plain Enter | Discord is excluded only from the send-on-Enter preset, not from this one; `auto` for Discord is Plain Enter whether or not a row exists, so Discord never receives an editor action under `auto` |
 | E6 | Sym+Enter bound as a QuickLauncher trigger and an app with extra shortcut `sym_enter` | The launcher wins; the send never fires; no warning shown | The launcher check runs earlier; the conflict dialog strings are unused |
-| E7 | WebAPK in the exact-typing list is uninstalled | The entry disappears from the screen but stays stored; its host falls back to `com.android.chrome`, which stays in raw mode | Host lookup of a missing package returns the default host; no pruning on uninstall |
+| E7 | WebAPK in the Terminal mode list is uninstalled | The entry disappears from the screen but stays stored; its host falls back to `com.android.chrome`, which stays in raw mode | Host lookup of a missing package returns the default host; no pruning on uninstall |
 | E8 | URL, email or filter field inside a raw-mode app, "Shift in all text fields" on | Auto-cap is on in that field | Field-type reason takes precedence over raw mode |
 | E9 | Preset value `enter_newline_only` written by a backup | Reads as `app_default` | Not in the normalizer's accepted set |
 | E10 | Behavior `enter_newline` in a row | Honoured by the resolver, displayed with its label, but cannot be chosen in the dropdown | Only three options are offered |
@@ -747,7 +754,7 @@ on unless stated.
 | Item | Verdict | Reason |
 |---|---|---|
 | Package name from the editor, remembered per field | keep | Everything per-app depends on it |
-| WebAPK host expansion | keep | PersaLink is a WebAPK; without it exact typing cannot target it (D2, D3) |
+| WebAPK host expansion | keep | PersaLink is a WebAPK; without it Terminal mode cannot target it (D2, D3) |
 | Expand hosts for the Enter overrides too | undecided | Not done in 2.x; a WebAPK messenger would need it, but it would also hit every Chrome tab |
 | Per-app Enter: behaviors, send methods, override-beats-preset, Ctrl/Shift rules | keep | The maintainer's daily messengers depend on it; the precedence bug cost a release |
 | Messaging preset and the shipped tested/favourite lists | keep, shrink | Keep the preset as "apply to installed favourites"; the tested/favourite/send-action triad can collapse to one list with a per-app "verified" flag |
@@ -756,7 +763,7 @@ on unless stated.
 | Editor action for unconfigured apps (search on Enter, Next) | keep | Generic Android behavior every app relies on |
 | Discord special case (`auto` gives Plain Enter) | keep | Verified on Discord; costs one comparison |
 | Facebook Messenger as a favourite | undecided | Unverified on the device; keep it as an "add app" candidate rather than a favourite until tested |
-| Exact typing list and its effects, including expansion off | keep | Terminals and SSH on a hardware keyboard are the point of the device |
+| Terminal mode list and its effects, including expansion off | keep | Terminals and SSH on a hardware keyboard are the point of the device |
 | Field-type precedence over raw mode (E8) | undecided | Arguably raw mode should win inside a raw app; decide when rewriting auto-cap |
 | Toggle-list screen (enabled first, no search) | keep, add search | Several hundred apps with no search is slow; the picker already has one |
 | App picker dialog | keep | Shared by status bar apps and ring colours |

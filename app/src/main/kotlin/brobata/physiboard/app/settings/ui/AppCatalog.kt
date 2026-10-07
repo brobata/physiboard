@@ -11,7 +11,7 @@ data class InstalledApp(val packageName: String, val label: String)
 
 /**
  * Backs every per-app list the settings app shows (rebuild-from-scratch.md: "a searchable app
- * picker over installed packages with a switch per app, used by exact typing, the status-bar app
+ * picker over installed packages with a switch per app, used by Terminal mode, the status-bar app
  * list, the dip list and the Enter overrides"). Only `:app` may touch `PackageManager`; the typed
  * schema in `:core:settings` never sees an Android type.
  *

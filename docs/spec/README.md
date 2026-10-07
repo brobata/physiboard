@@ -33,7 +33,7 @@ a spec is filled from device evidence and added here, never from reading old sou
 | `autocorrect-suggestions.md` | Suggestion engine, autocorrect decision, confidence, user words, substitutions, eval harness |
 | `dictionaries-languages.md` | Dictionary formats, hosting, download and install, language switching |
 | `status-bar.md` | The candidates strip as status bar, buttons, visibility, insets, the per-app dip |
-| `per-app-behavior.md` | Enter behavior, exact typing, WebAPK hosts, per-app lists |
+| `per-app-behavior.md` | Enter behavior, Terminal mode (exact typing), WebAPK hosts, per-app lists |
 | `dictation.md` | Speech sessions, engines, silence handling, haptics, permissions |
 | `trackpad-caret-nav.md` | Screen trackpad, caret badge, nav mode |
 | `device-backlight-ring.md` | Keyboard backlight, smart backlight, notification ring, Titan hardware facts |

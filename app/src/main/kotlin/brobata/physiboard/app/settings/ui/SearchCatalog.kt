@@ -46,7 +46,7 @@ object SearchCatalog {
         SearchEntry("Capitalize at text start", "Smart Features", Routes.SMART_FEATURES, "capital uppercase sentence autocap"),
         SearchEntry("Double Space inserts period", "Smart Features", Routes.SMART_FEATURES, "period full stop double space"),
         SearchEntry("Text expansion", "Text expansion", Routes.TEXT_EXPANSION, "snippet abbreviation expand shortcut"),
-        SearchEntry("Exact typing", "Exact typing", Routes.appPicker(PerAppListKind.EXACT_TYPING), "terminal termux disable smart per app raw exceptions"),
+        SearchEntry("Terminal mode", "Terminal mode", Routes.appPicker(PerAppListKind.EXACT_TYPING), "exact typing terminal ssh code termux disable smart per app raw exceptions ctrl escape"),
         // app-shell.md: the shell's own rows, now that Settings, About, Diagnostics and the update
         // checker exist (this module's report). Re-added per SS8's own rule: point at the real
         // screen, not a placeholder.

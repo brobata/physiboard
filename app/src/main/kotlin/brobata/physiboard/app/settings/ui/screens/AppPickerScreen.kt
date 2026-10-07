@@ -34,7 +34,7 @@ fun AppPickerScreen(kind: String, onBack: () -> Unit) {
     val context = LocalContext.current
 
     val (title, selected) = when (kind) {
-        PerAppListKind.EXACT_TYPING -> "Exact typing" to settings.perApp.exactTypingPackages
+        PerAppListKind.EXACT_TYPING -> "Terminal mode" to settings.perApp.exactTypingPackages
         PerAppListKind.TEXT_BOX_UNDER_BAR -> "Text box under the bar" to settings.perApp.nudgePackages
         PerAppListKind.STATUS_BAR_APPS -> "Choose apps" to settings.statusBar.apps
         PerAppListKind.ENTER_OVERRIDES -> "App overrides" to settings.perApp.enterOverrides.map { it.packageName }.toSet()
@@ -43,12 +43,15 @@ fun AppPickerScreen(kind: String, onBack: () -> Unit) {
 
     val apps = remember(kind) { AppCatalog.installedApps(context, alsoInclude = selected) }
 
-    // spec: per-app-behavior.md SS4.4 (the screen's own description) and SS4.3 ("The exact-typing
+    // spec: per-app-behavior.md SS4.4 (the screen's own description) and SS4.3 ("The Terminal mode
     // list screen tells the user about the expansion on web-app rows; no other screen does").
     val description = if (kind == PerAppListKind.EXACT_TYPING) {
         "In the apps you pick here, PhysiBoard sends every keystroke as-is, without correction or " +
             "capitalisation. Word suggestions, autocorrect, auto-capitalisation, double-space " +
-            "periods and text expansion are all turned off in these apps."
+            "periods and text expansion are all turned off in these apps. Ctrl stays Ctrl (Ctrl+C, " +
+            "Ctrl+A, Ctrl+Z reach the app instead of copying or undoing), Esc, Tab and the arrows " +
+            "go straight through, and Alt and Sym symbols arrive as real key presses, so terminals " +
+            "and SSH clients get exactly the keys you pressed."
     } else {
         null
     }

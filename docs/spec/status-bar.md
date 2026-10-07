@@ -689,7 +689,7 @@ settings text tells the user to leave other apps off unless they see the same fa
 
 The list is edited on "Text box under the bar" under Keyboard (search keywords: teams,
 hidden, covered, text box, compose field, under bar, inset, blink), the same per-app switch
-list used by Exact typing.
+list used by Terminal mode.
 
 ## 13. Window hidden and window shown
 

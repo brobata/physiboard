@@ -227,7 +227,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `app_raw_mode_packages` | string set of package names | empty | `org.chromium.webapk.a5d49fddf77614419_v2` (D3) | Apps typed into raw | Keyboard > Exact typing |
+| `app_raw_mode_packages` | string set of package names | empty | `org.chromium.webapk.a5d49fddf77614419_v2` (D3) | Apps typed into raw | Keyboard > Terminal mode |
 | `app_keyboard_nudge_packages` | string set | seeded on first read with `com.microsoft.teams` | | Apps that get the strip dip | Keyboard > Text box under the bar |
 | `app_enter_behavior_enabled` | boolean | true | | Per-app Enter handling at all | Keyboard > Enter key behaviour > "App-specific Enter behaviour" |
 | `app_enter_behavior_preset` | string `app_default`, `enter_send_shift_newline`, `enter_newline_ctrl_send`, `custom`; anything else, including the UI's `enter_newline_only`, reads as `app_default` | `enter_send_shift_newline` | same | Preset for the known messaging apps | Enter key behaviour > "Messaging preset" |
@@ -780,7 +780,7 @@ description is the screen title.
 | Capitalize at text start | Smart Features | Smart Features | capital uppercase sentence autocap |
 | Double Space inserts period | Smart Features | Smart Features | period full stop double space |
 | Text expansion | Smart Features | Smart Features (not Extras, where the page actually lives) | snippet abbreviation expand shortcut |
-| Exact typing | Exact typing | Exact typing | terminal termux disable smart per app raw exceptions |
+| Terminal mode | Terminal mode | Terminal mode | exact typing terminal ssh code termux disable smart per app raw exceptions ctrl escape |
 | Text box under the bar | Text box under the bar | Text box under the bar | teams hidden covered text box compose field under bar inset blink |
 
 Target resolution differs by where the search was started:
@@ -822,7 +822,7 @@ links and the back stack they build:
 | `smart_features_destination` | Settings, Smart Features |
 | `auto_correct_destination` | Settings, Auto-correction |
 | `voice_destination` | Settings, Voice |
-| `raw_mode_destination` | Settings, Exact typing |
+| `raw_mode_destination` | Settings, Terminal mode |
 | `fn_layer_destination` | Settings, Fn Layer |
 
 Navigation is a push/pop stack inside one activity; push slides the new screen in from the right
@@ -918,8 +918,9 @@ control; ">" means the row navigates.
       colour", "Locked colour"; "Reset"
     - "Show LEDs" switch
   - "Sound & Haptics" > "Typing sounds and vibration" (section 9.4)
-  - "Exact typing" > "For terminals, SSH and code: what you type is what goes in, nothing
-    corrected or capitalised": description, WebAPK note, app list with search
+  - "Terminal mode" (formerly "Exact typing") > "For terminals, SSH and code. Nothing corrected
+    or capitalised; Ctrl, Esc and Alt symbols go straight to the app.": description, WebAPK note,
+    app list with search
   - "Text box under the bar" > "For apps like Teams that leave the text box hidden under the bar
     until the keyboard moves": description, app list
   - "Enter key behaviour" > "Configure app-specific Enter and newline handling"
