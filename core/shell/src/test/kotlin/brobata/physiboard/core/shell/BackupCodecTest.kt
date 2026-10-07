@@ -207,4 +207,18 @@ class BackupCodecTest {
         assertEquals(0, outcome.skippedCount)
         assertEquals(brobata.physiboard.core.actions.emoji.SkinTone.DARK, outcome.settings.symPages.defaultSkinTone)
     }
+
+    @Test
+    fun `the GIF page switch and sym_double_tap_chooser go out in a backup and come back through a restore`() {
+        val changed = Settings().let {
+            it.copy(symPages = it.symPages.copy(doubleTapChooser = false, pages = it.symPages.pages.copy(gifEnabled = true)))
+        }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", changed))!!
+        assertEquals("false", entries["sym_double_tap_chooser"])
+        val backup = BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries)
+        val outcome = BackupRestore.restore(Settings(), backup)
+        assertEquals(0, outcome.skippedCount)
+        assertFalse(outcome.settings.symPages.doubleTapChooser)
+        assertTrue(outcome.settings.symPages.pages.gifEnabled)
+    }
 }

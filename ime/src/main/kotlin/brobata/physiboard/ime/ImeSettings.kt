@@ -82,6 +82,8 @@ internal object ImeSettings {
                 symIsTrackpadTrigger = s.trackpad.enabled && s.trackpad.triggerKey == TriggerKey.SYM,
                 symEditShortcutsEnabled = s.keys.symEditShortcuts,
                 symAutoCloseEnabled = s.symPages.autoClose,
+                // layers-sym-alt.md SS5.10: two quick Sym taps open the page chooser.
+                symDoubleTapChooser = s.symPages.doubleTapChooser,
                 // spec: keys-and-modifiers.md SS7.5, the three layout-switch chords; each still needs another subtype to exist (KeyboardPipeline.anotherSubtypeAvailable).
                 altShiftLayoutSwitch = s.languages.altShiftLayoutSwitch,
                 altEnterLayoutSwitch = s.languages.altEnterLayoutSwitch,
@@ -224,6 +226,7 @@ internal object ImeSettings {
         symbolsEnabled = stored.symbolsEnabled,
         clipboardEnabled = stored.clipboardEnabled,
         emojiPickerEnabled = stored.emojiPickerEnabled,
+        gifEnabled = stored.gifEnabled,
         order = stored.order.mapNotNull(::symPageId),
     )
 
@@ -232,6 +235,7 @@ internal object ImeSettings {
         brobata.physiboard.core.settings.SymPage.SYMBOLS -> SymPageId.SYMBOLS
         brobata.physiboard.core.settings.SymPage.CLIPBOARD -> SymPageId.CLIPBOARD
         brobata.physiboard.core.settings.SymPage.EMOJI_PICKER -> SymPageId.EMOJI_PICKER
+        brobata.physiboard.core.settings.SymPage.GIF -> SymPageId.GIF
     }
 
     /**

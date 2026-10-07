@@ -56,8 +56,8 @@ import brobata.physiboard.device.titan.TitanLayouts
  * [initialKeyCode], [openPickerImmediately], [returnAfterPicker]).
  *
  * The Device page (5) does not exist in 3.0 ([SymPage]'s own KDoc: dropped), so this screen's
- * "Arrange SYM pages order" has four rows, not five, and no Device pencil or "under construction"
- * badge.
+ * "Arrange SYM pages order" has no Device row, pencil or "under construction" badge; it has the
+ * GIF page (SS4.5) instead, off by default and labelled as the one page that goes online.
  */
 @Composable
 fun CustomizeSymKeyboardScreen(
@@ -124,6 +124,15 @@ fun CustomizeSymKeyboardScreen(
                         onMoveDown = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index + 1)))) } },
                         onToggleEnabled = { checked -> controller.update { it.copy(symPages = it.symPages.copy(pages = withEnabled(it.symPages.pages, entry, checked))) } },
                         onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS) ({ editingPage = entry }) else null,
+                    )
+                }
+                item {
+                    // spec SS5.10: the chooser that opens any page, enabled or not.
+                    SwitchRow(
+                        label = "Double-tap Sym for the page chooser",
+                        description = "Two quick Sym taps show every page with a letter; press the letter to open it, even a page that is switched off above. Off: two quick taps step two pages.",
+                        checked = symPages.doubleTapChooser,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(doubleTapChooser = checked)) } },
                     )
                 }
                 item {
@@ -269,6 +278,7 @@ private fun enabledFor(pages: SymPagesConfig, page: SymPage): Boolean = when (pa
     SymPage.SYMBOLS -> pages.symbolsEnabled
     SymPage.CLIPBOARD -> pages.clipboardEnabled
     SymPage.EMOJI_PICKER -> pages.emojiPickerEnabled
+    SymPage.GIF -> pages.gifEnabled
 }
 
 private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean): SymPagesConfig = when (page) {
@@ -276,6 +286,7 @@ private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean):
     SymPage.SYMBOLS -> pages.copy(symbolsEnabled = checked)
     SymPage.CLIPBOARD -> pages.copy(clipboardEnabled = checked)
     SymPage.EMOJI_PICKER -> pages.copy(emojiPickerEnabled = checked)
+    SymPage.GIF -> pages.copy(gifEnabled = checked)
 }
 
 private fun displayName(page: SymPage): String = when (page) {
@@ -283,10 +294,18 @@ private fun displayName(page: SymPage): String = when (page) {
     SymPage.SYMBOLS -> "Symbols"
     SymPage.CLIPBOARD -> "Clipboard"
     SymPage.EMOJI_PICKER -> "Emoji Picker"
+    SymPage.GIF -> "GIFs"
 }
 
-/** spec SS5.9: "a kind label ('Key layer' or 'Panel')": pages 1 and 2 remap the letter keys, 3 and 4 are content panels. */
-private fun kindLabel(page: SymPage): String = if (page == SymPage.EMOJI || page == SymPage.SYMBOLS) "Key layer" else "Panel"
+/**
+ * spec SS5.9: "a kind label ('Key layer' or 'Panel')": pages 1 and 2 remap the letter keys, the
+ * rest are content panels. The GIF page says it goes online (SS4.5), since it is the only one.
+ */
+private fun kindLabel(page: SymPage): String = when (page) {
+    SymPage.EMOJI, SymPage.SYMBOLS -> "Key layer"
+    SymPage.GIF -> "Panel · searches KLIPY online"
+    else -> "Panel"
+}
 
 @Composable
 private fun SymPageOrderRow(

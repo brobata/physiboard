@@ -362,6 +362,14 @@ internal class KeyboardPipeline(
         modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = next))
     }
 
+    /**
+     * layers-sym-alt.md SS4.3, SS5.10: the Sym page chooser opens [page] directly, whether or not it
+     * is enabled in the cycle. Any half-finished double tap is forgotten.
+     */
+    fun openSymPage(page: Int) {
+        modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = page, lastTapUpAtMs = null, secondTapPending = false))
+    }
+
     /** spec SS3.5, SS4.3: the panels' own close buttons "ask the Sym session to close the page". */
     fun closeSymPage() {
         if (modifierState.sym.currentPageNumber != 0) modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = 0))
@@ -1211,6 +1219,7 @@ internal class KeyboardPipeline(
     private fun dispatchModifier(stroke: KeyStroke, editor: EditorSnapshot): Action {
         val key = (stroke.key as KeyId.Modifier).key
         val down = stroke.edge == KeyEdge.DOWN
+        if (down) modifierState = ModifierMachine.forgetSymTapOnModifierDown(modifierState, key)
         val result = when (key) {
             // spec SS7.5: the Alt+Shift chord needs an editable field and another subtype.
             ModifierKey.SHIFT -> if (down) shiftDownWithAutoCapDisarm(stroke, editor) else ModifierMachine.shiftUp(modifierState, stroke, settings.modifier)

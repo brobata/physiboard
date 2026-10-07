@@ -89,6 +89,15 @@ class CommandCatalogTest {
     }
 
     @Test
+    fun `the Sym page chooser can sit on a launcher key or the Fn layer, under the id a Sym double tap emits`() {
+        val command = catalog().find(CommandIds.SYM_PAGE_CHOOSER)!!
+        assertEquals("physiboard.sym_page_chooser", command.id)
+        assertEquals(LaunchSpec.InternalAction(InternalActions.OPEN_SYM_PAGE_CHOOSER), command.launch)
+        assertEquals(setOf(CommandSurface.ASSIGNED_KEY, CommandSurface.NAV_MODE), command.surfaces)
+        assertEquals(CommandIcon.KEYBOARD, command.icon)
+    }
+
+    @Test
     fun `private mode is a PhysiBoard command on every surface, so a key, a Sym shortcut, the quick launcher and nav mode can all bind it`() {
         val command = catalog().find(CommandIds.TOGGLE_PRIVATE_MODE)!!
         assertEquals(CommandSource.PHYSIBOARD, command.source)

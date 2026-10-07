@@ -19,9 +19,11 @@ hosts the Sym pages; `dictionaries-languages.md` owns language (subtype) switchi
 - **Device layer** (also called the Alt layer, "Device SYM Layer" in the UI): the secondary
   character printed on each keycap, reached with the physical Alt key. Comes from a per-device
   asset file (section 3).
-- **Sym pages**: up to five pages the Sym key cycles through. Three are *key layers* that
-  remap the 26 letter keys (Device, Emoji, Symbols); two are *panels* (Clipboard, Emoji Picker)
-  that are content, not key maps.
+- **Sym pages**: the pages the Sym key cycles through. Three are *key layers* that remap the 26
+  letter keys (Device, Emoji, Symbols; 3.0 drops Device); the rest are *panels* (Clipboard,
+  Emoji Picker, and 3.0's GIF page) that are content, not key maps.
+- **Page chooser** (3.0): a small transient panel, opened by a double tap of Sym, that lists
+  every page with a letter and opens the one whose letter is pressed (section 5.10).
 - **Variations**: accented or related characters for a base character (a to à á ä ...), reached
   by long press when the long-press action is set to Variations.
 - **Long-press action**: what holding a letter key past the long-press threshold does. One of:
@@ -37,8 +39,9 @@ extras:
 | `symbols` | 2 | key layer | 26 typographic symbols, one per letter key |
 | `clipboard` | 3 | panel | clipboard history |
 | `emoji_picker` | 4 | panel | searchable emoji picker |
+| `gif` | 6 | panel | GIF search (3.0; section 4.5) |
 
-Page number 0 means no page is open.
+Page number 0 means no page is open. Page number 5 stays reserved for the dropped Device page.
 
 ## 2. The layers in one picture
 
@@ -156,7 +159,8 @@ Preference `sym_pages_config` holds one JSON object:
 | `symbolsEnabled` | boolean | true | Symbols page is in the cycle |
 | `clipboardEnabled` | boolean | false | Clipboard panel is in the cycle |
 | `emojiPickerEnabled` | boolean | false | Emoji picker panel is in the cycle |
-| `symPageOrder` | array of page ids | `["device","emoji","symbols","clipboard","emoji_picker"]` | cycle order |
+| `gifEnabled` | boolean | false | GIF page is in the cycle (3.0). Off unless the user turns it on: it is the only page that sends anything off the phone |
+| `symPageOrder` | array of page ids | `["device","emoji","symbols","clipboard","emoji_picker","gif"]` | cycle order |
 | `emojiFirst` | boolean | true | legacy; written for old builds as "emoji comes before symbols in the order" |
 
 Reading is tolerant: unknown ids in `symPageOrder` are dropped, duplicates collapse to the
@@ -164,6 +168,11 @@ first occurrence, whitespace is trimmed, and every known id missing from the ord
 in default order. If `symPageOrder` is absent the order is rebuilt from the legacy flag: emoji,
 symbols, clipboard (reversed to clipboard, symbols, emoji when `emojiFirst` is false), then
 emoji_picker, then device appended by normalisation. A malformed value yields the defaults.
+
+3.0: a config written before the GIF page existed has no `gif` in `symPageOrder` and no
+`gifEnabled`; it reads with `gif` appended last and `gifEnabled` false, every other field as
+stored. 3.0 never writes `deviceEnabled` or `emojiFirst`, and drops `device` from the order when
+reading.
 
 The factory baseline shipped in `common/default_settings.json` (applied once to every install)
 sets `{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":false,
@@ -181,12 +190,13 @@ Consistency rule applied on every read of the current page: if the current page 
 page (1) and it is not in the enabled cycle, it is replaced by the first enabled page, or by
 "no page" when nothing is enabled. Pages 2, 3, 4 and 5 are allowed to stay open even when
 disabled in the cycle, because they can be opened directly (section 4.3). Only the Emoji page
-gets evicted this way.
+gets evicted this way. 3.0 no longer applies this rule: a page opened from the chooser stays
+open whether or not it is in the cycle, the Emoji page included.
 
 ### 4.3 Direct opens
 
-Four status bar buttons open a specific page regardless of whether it is enabled in the cycle,
-and each one toggles: pressing it while its page is open closes the page.
+2.x: four status bar buttons opened a specific page regardless of whether it was enabled in the
+cycle, and each one toggled: pressing it while its page was open closed the page.
 
 | Button | Page |
 |---|---|
@@ -196,6 +206,12 @@ and each one toggles: pressing it while its page is open closes the page.
 | symbols | 2 |
 
 The Minimal Phone emoji key (keycode 666) also toggles page 4; irrelevant on a Titan.
+
+3.0: the status bar is gone for good, and its buttons with it. The one direct way to a page is
+the page chooser (section 5.10): it opens any page, enabled in the cycle or not, and does not
+toggle (choosing the page that is already open leaves it open). The chooser is also a command,
+`physiboard.sym_page_chooser`, so it can sit on an assigned launcher key or on the Fn layer
+(expansion-clipboard-pickers-launcher.md 8.2).
 
 ### 4.4 Custom Emoji and Symbols pages
 
@@ -216,6 +232,110 @@ and then deletes the preference for that page.
 
 The IME reloads the page maps when either preference changes.
 
+### 4.5 The GIF page (3.0)
+
+Page 6, a panel. Off in the cycle by default (`gifEnabled` false); the user turns it on and
+places it under Customize SYM Keyboard (5.9), or opens it from the chooser with G (5.10). It is
+the only Sym page that sends anything off the phone, and only while it is open.
+
+When it opens while `gifEnabled` is on, it asks for trending 300 ms later (the Sym double-tap
+window), so a page a double tap only flashes past asks for nothing. When it is off and the
+chooser opened it, it asks for nothing at all until the user types a search, presses Enter or
+taps a quick search; it shows the local sections and "Type to search KLIPY, or press Enter for
+what's trending." meanwhile.
+
+**Provider.** KLIPY (https://klipy.com, documentation at docs.klipy.com), the Tenor-compatible
+service started after Google shut the Tenor API on 2026-06-30. Two endpoints are used, both
+`GET` on `https://api.klipy.com/api/v1/{app_key}/gifs/...`:
+
+| Use | Path | Parameters sent |
+|---|---|---|
+| query empty | `trending` | `page`, `per_page` 24, `locale` (the phone's country, two lowercase letters, left out when unknown), `content_filter` `medium`, `format_filter` `gif,webp` |
+| query typed | `search` | the same plus `q`, the trimmed query |
+
+No `customer_id` or any other identifier is sent. KLIPY's share trigger (`POST
+.../gifs/share/{slug}`) is optional in its documentation and only feeds its personalisation, so
+it is never sent. A list body over 1,000,000 bytes is refused.
+
+A response is `{"result":true,"data":{"data":[items],"current_page","per_page","has_next"}}`.
+Each item's `file` holds renditions `hd`, `md`, `sm`, `xs`, each with `gif` and `webp` objects
+of `url`, `width`, `height`. The preview is the first present of xs.webp, xs.gif, sm.webp,
+sm.gif, md.webp, md.gif; the GIF sent is the first present of md.gif, sm.gif, hd.gif, xs.gif.
+Only `https://` URLs count. An item with neither is skipped; every other item keeps the place
+KLIPY gave it (KLIPY's integration rules forbid reordering or filtering results, and require
+URLs to be used exactly as returned). `result` false or another shape reads as a failure.
+
+**The API key** is a build input, never committed: Gradle property `klipy.apiKey`
+(`-Pklipy.apiKey=...` or `~/.gradle/gradle.properties`), else the line `klipy.apiKey=...` in
+the untracked `local.properties`. With no key the page draws as usual and says "GIF search isn't
+set up in this build: it has no KLIPY API key." in place of results; nothing is requested.
+
+**Layout**, 260 dp tall, above the keyboard window like the picker:
+
+1. A search field (hint "Search KLIPY") and a close button (36 by 32 dp).
+2. A row of quick searches, in order: LOL, Love, Sad, Wow, Yes, No, Bye. Tapping one replaces
+   the query with it and searches at once.
+3. The grid: cells 88 dp tall, as many columns of at least 104 dp as fit (2 to 5), each preview
+   cropped to fill. With an empty query: "★ Favourites" (when any), "Recently sent" (when any),
+   then "Trending" from KLIPY. With a query: KLIPY's results alone. The next page of the same
+   list is fetched when the grid is scrolled to within two rows of its end and `has_next` was
+   true; a later page that fails ends that for the list (no retry on every scroll), and a body
+without `current_page` counts as the page asked for. A message (no key, private mode, "Couldn't reach KLIPY. Check the connection and try
+   again.", "No GIFs found") shows along the bottom of the grid; the local sections stay above
+   it.
+4. "Powered by KLIPY" in small type at the bottom end (KLIPY asks for its branding).
+
+**Search from the keys.** The page opens with capture on: hardware keys type into the search
+field under exactly the picker's capture rules (expansion-clipboard-pickers-launcher.md 4.5:
+Back, Sym, pure modifiers and Alt or Meta combinations are not captured; Ctrl+A/C/X/V edit the
+field). Enter searches at once; otherwise the query is searched 400 ms after the last change.
+Tapping the field turns capture off and on; the app's caret moving turns it off. A response for
+a query no longer on screen is dropped.
+
+**Previews** are fetched through the network gate (app-shell.md 31.2, purpose "GIF download")
+four at a time, at most 2,000,000 bytes each, decoded off the main thread by the platform
+(animated WebP or GIF), scaled to the cell width, and animate. They are kept in memory only, up
+to 8 MB for the life of the keyboard; there is no disk cache, because KLIPY's integration rules
+forbid keeping copies of its media.
+
+**Sending.** Tapping a cell sends it (with `sym_auto_close` and `sym_auto_close_on_touch` on,
+the page closes first, as for every page tap, 5.5):
+
+- When the field declares, in `EditorInfo.contentMimeTypes`, a type matching `image/gif`
+  (`image/gif`, `image/*` or `*/*`, ignoring case), the GIF is fetched through the gate (at
+  most 8,000,000 bytes), written under a unique name to the cache path `gif-share/` (on every
+  send and when the keyboard service ends, files older than 10 minutes and all but the four
+  newest are deleted), and committed with `InputConnection.commitContent`, MIME type
+  `image/gif`, a read grant on a content URI from the authority `<package>.gifshare`, and the
+  GIF's address as the link. If the field changed meanwhile (the keyboard left the field or
+  attached to another one, even another chat in the same app, or the package or field id
+  differ), it is not sent: toast "The text field changed, so the GIF was not sent." A failed download
+  toasts "Couldn't download the GIF."
+- Otherwise, or when the app refuses the content, the GIF's address (the URL above) is typed
+  as plain text. That needs no request at all. A cancelled list or preview request (the query
+  changed, the page closed) is cut off at once rather than left to time out.
+
+A GIF that went in moves to the front of "Recently sent" (24 at most, no duplicates).
+
+**Favourites.** A long press on a cell stars it ("Added to favourites") or unstars it
+("Removed from favourites"), and that cell's ★ in the top corner appears or goes at once (the
+grid is not redrawn, so no request is made; the Favourites section follows on the next open or
+search); and favourites (48 at most,
+newest first) lead the empty-query grid. Both lists live only on the phone, in the
+`gif_prefs` file (`gif_favourites`, `gif_recents`, each a JSON array of the GIF's slug, title,
+preview and send URLs and sizes; never the image), and are not part of a backup. Reading is
+tolerant: a malformed value is an empty list, an entry without its slug or `https://` URLs is
+skipped, duplicates collapse to the first.
+
+**Privacy** (app-shell.md 31). Every request (lists, previews, the GIF sent) goes through the
+network gate. In private mode nothing is requested and the page shows the gate's sentence
+("Private mode is on, so PhysiBoard makes no network requests."); until the keyboard has read
+the setting it shows the gate's other sentence ("PhysiBoard could not read its settings, so it
+makes no network requests."); a link can still be typed into a field that takes no images, since that sends
+nothing. While learning is off (private mode, or a field asking for no personalised learning),
+a sent GIF is not added to recents and a star is refused (toast "Private: favourites are not
+changed"); removing a star still works.
+
 ## 5. The Sym key session
 
 ### 5.1 Key identity
@@ -229,11 +349,13 @@ With an editable field focused:
 
 1. Sym key down (first event, not a repeat): the keyboard notes "a toggle is pending" and
    "no chord used yet", and arms the assistant hold timer if that feature is on (section 5.6).
+   3.0: it also notes whether this press is the second tap of a double tap (section 5.10).
    The key down is consumed; nothing visible happens yet.
 2. Any non-modifier key pressed while Sym is down marks the press as a chord (section 5.3).
 3. Sym key up: if a toggle is pending and no chord was used, the page cycles one step
-   (section 4.2) and the strip redraws. The pending and chord flags are cleared. The key up is
-   consumed.
+   (section 4.2) and the strip redraws; 3.0: unless this was the second tap of a double tap,
+   which opens the page chooser instead (section 5.10). The pending and chord flags are
+   cleared. The key up is consumed.
 
 Without an editable field, Sym down and up do not touch the pages at all: the down goes to the
 launcher-shortcut logic (power shortcuts toggle, out of scope) or to the system, and the up
@@ -408,6 +530,74 @@ Pressing a pencil on Emoji or Symbols replaces the screen content with the edita
 that page (title "Edit Emoji Layer" or "Edit Symbols Layer"), rendered with the same geometry
 and Titan alignment as the live grid on a black background, followed by a red "Reset to
 Default" button. Back returns to the list.
+
+### 5.10 The page chooser (3.0)
+
+With the status bar gone, cycling was the only way to a page; the chooser opens any page in two
+taps and a letter.
+
+**Trigger: a double tap of Sym.** Before 3.0 a Sym double tap had no meaning of its own: it was
+two cycle steps. Nothing else claims it: chords need a key while Sym is held, the assistant
+needs a 600 ms hold, and the edit shortcuts and launcher keys are chords. The one conflict is
+with fast cycling, where two quick taps used to reach the second page; that page is now Sym Sym
+and its letter, and `sym_double_tap_chooser` off brings the old behaviour back. So the double
+tap is kept rather than moved to another trigger.
+
+The rule, in an editable field with `sym_double_tap_chooser` on (default on):
+
+- A plain Sym tap (one that cycled a page) remembers when it came up and which page was open
+  before it.
+- The next Sym down, if it comes no more than 300 ms after that release and no other key went
+  down in between (Shift, Ctrl and Alt included), is the second tap. Its release, if no chord was used, puts back the page that
+  was open before the first tap and opens the chooser over it. The first tap's page shows for
+  the moment between the taps.
+- A chord on the second press (an edit shortcut, a launcher key, a Sym symbol) works as always
+  and opens neither the chooser nor a page. A hold that fires the assistant (5.6) wins too.
+- The tap that opened the chooser ends the streak. With the chooser open a further Sym tap
+  closes it (table below); after that, the next tap is a plain first tap.
+- Without an editable field Sym taps never open the chooser.
+- The window is 300 ms, shorter than Shift and Alt's 500 ms double tap, so two deliberate taps
+  a little apart still step two pages.
+- With Sym as the screen trackpad trigger in `double_tap` mode the trackpad takes the second
+  tap first (it runs ahead of everything, trackpad-caret-nav.md 2.2), so the chooser is only
+  reachable through its command there; in `single_tap` mode Sym never reaches the pages at all;
+  in `hold` mode a quick tap is replayed and double taps work.
+
+The same chooser opens from the command `physiboard.sym_page_chooser` (expansion-clipboard-
+pickers-launcher.md 8.2), offered for assigned launcher keys and nav mode / the Fn layer; it
+needs an editable field (otherwise "No input context").
+
+**The panel** sits at the bottom above the keyboard window like the other panels: a title
+"Open a Sym page: press its letter", a close button, and two columns of rows, one per page, each
+showing its letter and name. Rows follow the cycle order; the picker's own modes follow the
+picker. A page that is off in the cycle is drawn at 60% opacity but opens all the same.
+
+| Key | Opens |
+|---|---|
+| E | Emoji page (1) |
+| S | Symbols page (2) |
+| C | Clipboard (3) |
+| P | Emoji picker (4) in Emoji mode |
+| K | Emoji picker (4) in Kaomoji mode |
+| U | Emoji picker (4) in Symbols (Unicode) mode |
+| G | GIF page (6) |
+
+The letter is the one printed on the physical key (the QWERTY position), whatever the layout.
+There is no Device row: the Device page is dropped in 3.0.
+
+While the chooser is open:
+
+| Key | Result |
+|---|---|
+| a letter in the table | the chooser closes and that page opens; key and release consumed |
+| Shift | ignored, the chooser stays (so Shift+letter picks too); consumed |
+| Back, Sym | the chooser closes; consumed |
+| an auto-repeat of a key the chooser consumed | consumed (any other key's repeat counts as that key, so Fn closes it) |
+| any other key (another letter, Space, Enter, Alt, digits) | the chooser closes and the key does what it always does |
+
+Tapping a row opens its page; the close button closes it. The chooser draws nothing that
+stays: it closes after a pick, after a dismissal, after 10 seconds without a key (a Shift press
+starts the 10 seconds over), when the field finishes, and when the keyboard window hides.
 
 ## 6. The Alt layer
 
@@ -798,6 +988,7 @@ is empty.
 | `sym_auto_close` | boolean | true | page closes after a character, Alt or Enter | Customize SYM Keyboard | Auto-Close SYM Layout |
 | `sym_auto_close_on_touch` | boolean | true | page closes after an on-screen key tap (needs the one above) | Customize SYM Keyboard | Also close after on-screen SYM keys |
 | `sym_edit_shortcuts` | boolean | true | Sym+C/V/X/A copy, paste, cut, select all | Customize SYM Keyboard | Sym+C/V/X/A: copy, paste, cut, select all |
+| `sym_double_tap_chooser` | boolean | true | 3.0: a Sym double tap opens the page chooser (5.10); off, two quick taps step two pages | Customize SYM Keyboard | Double-tap Sym for the page chooser |
 | `emoji_picker_expanded_height` | boolean | true (baseline false) | page 4 height is 1.5 times compact | Customize SYM Keyboard | Larger emoji picker |
 | `restore_sym_page` | int | 0 | page to reopen at next input start; internal | none | none |
 | `pending_restore_sym_page` | int | 0 | page noted when leaving for customisation; internal | none | none |
@@ -973,6 +1164,51 @@ Variations:
     with `qwertz.a = ["â"]`: `a` starts with `â`, and `qwertz.o` from the shipped file still
     applies.
 
+Page chooser (3.0, section 5.10), default config (cycle 0, 1, 2), times in ms:
+
+42. Sym down 0, up 60: page 1, no chooser.
+43. Sym tap 0/60, then Sym down 300, up 350: chooser opens; page back to 0.
+44. Page 2 open; Sym tap 0/50 (page 0); Sym down 120, up 170: chooser opens over page 2.
+45. Sym tap 0/60, then Sym tap 361/400: page 2, no chooser (the gap is over 300).
+46. State machine alone: taps at 0/40, 100/140 (chooser), 200/240: the third tap is a plain
+    first tap and cycles to page 1. In the running keyboard the chooser is open by then, so
+    that Sym tap closes it instead (5.10 key table).
+47. Sym tap 0/40, A down at 80, Sym tap 120/160: page 2, no chooser. The same with Shift, Ctrl
+    or Alt pressed at 80.
+48. Sym tap 0/40; Sym down 100; a chord; Sym up 200: no chooser, page stays 1.
+49. `sym_double_tap_chooser` off: taps 0/40 and 100/140 give page 2.
+50. Assistant hold on: tap 0/40; Sym down 100, the assistant fires at 700; Sym up 800: no
+    chooser.
+51. Baseline config (picker, symbols, clipboard, emoji; GIF off): rows in order P, K, U, S, C,
+    E, G; the first four in the cycle, the last three dimmed.
+52. Chooser open: E, S, C, P, K, U, G each open their target; Shift is ignored; Back and Sym
+    close it; an auto-repeat of E is consumed.
+53. Chooser open: X, Space, Alt or Fn (whose first event on the Titan is already a repeat)
+    close it and pass through.
+
+GIF page (3.0, section 4.5):
+
+54. Key `KEY123`, query " thumbs up & more ", country US: the search URL is
+    `https://api.klipy.com/api/v1/KEY123/gifs/search?page=1&per_page=24&q=thumbs%20up%20%26%20more&locale=us&content_filter=medium&format_filter=gif%2Cwebp`;
+    no `customer_id` ever; a country that is not two letters is left out.
+55. A response with an item carrying xs.webp, xs.gif, sm.gif, md.gif, md.webp and hd.gif, an
+    item with only sm.gif, and an item with only a jpg: two items, in order; the first previews
+    xs.webp (URL kept with its query string) and sends md.gif; the second previews and sends
+    sm.gif; numbers sent as strings still read.
+56. `{"result":false,...}`, an HTML body, or `data` not an object: no result.
+57. No key: the page says it is not set up; nothing is requested, in or out of private mode.
+58. Private mode: nothing is requested; the gate's sentence is shown.
+59. Empty query: trending; "Wow": search with `q=Wow`.
+60. The gate refuses at request time: its reason is shown; a failure or unreadable body:
+    "Couldn't reach KLIPY..."; an empty first page: "No GIFs found".
+61. Content types `image/gif`, `IMAGE/*`, `*/*` take the GIF; none, or `image/png, video/*,
+    text/plain`, get the link.
+62. Recents: sending b over [a, b] gives [b, a]; sending c gives [c, a, b]; with learning off
+    the list is unchanged; 24 at most. Favourites: a star adds first, a second star removes
+    (even with learning off), a new star with learning off is refused. A stored list
+    round-trips; a malformed value is empty; an entry without slug or with an `http://` URL is
+    skipped; a duplicate slug keeps the first.
+
 ## 15. Keep / Drop for 3.0
 
 | Item | Verdict | Reasoning |
@@ -983,6 +1219,8 @@ Variations:
 | Clipboard and emoji picker as Sym pages | keep | overlays are in the 3.0 scope; cycling into them is how the Titan reaches them |
 | Page order and enable switches, `sym_pages_config` shape | keep | user content that survives migration; keep the JSON contract |
 | Legacy `emojiFirst` field | drop | 3.0 writes and reads `symPageOrder` only |
+| GIF page (6), KLIPY, off by default (4.5) | new in 3.0 | maintainer's request; the only page that goes online, so it stays off until switched on and passes the network gate |
+| Page chooser on a Sym double tap (5.10) | new in 3.0 | the status bar's direct-open buttons are gone for good; the chooser is the transient replacement |
 | Custom Emoji/Symbols maps, `sym_mappings_*` shape | keep | user content in backups |
 | Object-form `{lowercase, uppercase}` Sym entries | undecided | shipped files never use it; custom maps erase it; keep only if a Shift layer for symbols is wanted |
 | Sym+C/V/X/A edit shortcuts | keep | Titan has no Ctrl key (D5) |

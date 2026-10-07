@@ -343,9 +343,22 @@ object ModifierMachine {
                 chordUsed = false,
                 assistantArmedAtMs = if (armAssistant) stroke.timeMs else null,
                 assistantFired = false,
+                secondTapPending = isSecondTap(state.sym, stroke.timeMs, settings),
             ),
         )
         return Result(newState, Action.Ignored)
+    }
+
+    /**
+     * spec layers-sym-alt.md SS5.10: a Sym press is the second tap of a double tap when the last
+     * plain tap (one that cycled a page) came up no more than [ModifierSettings.symDoubleTapWindowMs]
+     * before it, and no other key went down in between ([onOtherKeyDown] forgets the tap).
+     */
+    private fun isSecondTap(sym: SymSessionState, nowMs: Long, settings: ModifierSettings): Boolean {
+        if (!settings.symDoubleTapChooser) return false
+        val lastUp = sym.lastTapUpAtMs ?: return false
+        val gap = nowMs - lastUp
+        return gap in 0..settings.symDoubleTapWindowMs
     }
 
     fun symUp(
@@ -365,16 +378,33 @@ object ModifierMachine {
             return Result(cleared, Action.Ignored)
         }
         if (state.sym.togglePending && !state.sym.chordUsed) {
+            if (state.sym.secondTapPending) {
+                // spec layers-sym-alt.md SS5.10: the first tap's step is taken back, so the
+                // chooser opens over whatever was open before the double tap.
+                val restored = SymSessionState(currentPageNumber = state.sym.pageBeforeLastTap)
+                return Result(state.copy(sym = restored), Action.RunCommand(KeyCommands.OPEN_SYM_PAGE_CHOOSER))
+            }
             val nextPage = pages.nextPage(state.sym.currentPageNumber)
-            return Result(state.copy(sym = SymSessionState(currentPageNumber = nextPage)), Action.StateOnly)
+            val tapped = SymSessionState(currentPageNumber = nextPage, lastTapUpAtMs = stroke.timeMs, pageBeforeLastTap = state.sym.currentPageNumber)
+            return Result(state.copy(sym = tapped), Action.StateOnly)
         }
-        val cleared = state.copy(sym = state.sym.copy(togglePending = false, chordUsed = false, assistantArmedAtMs = null))
+        val cleared = state.copy(sym = state.sym.copy(togglePending = false, chordUsed = false, assistantArmedAtMs = null, lastTapUpAtMs = null, secondTapPending = false))
         return Result(cleared, Action.Ignored)
     }
 
+    /**
+     * layers-sym-alt.md SS5.10: "no other key went down in between" covers Shift, Ctrl and Alt
+     * too, which never pass through [onOtherKeyDown]. The caller runs this on every down of one of
+     * them, ahead of its own transition.
+     */
+    fun forgetSymTapOnModifierDown(state: ModifierState, key: ModifierKey): ModifierState =
+        if (key in TAP_BREAKING_MODIFIERS && state.sym.lastTapUpAtMs != null) state.copy(sym = state.sym.copy(lastTapUpAtMs = null)) else state
+
+    private val TAP_BREAKING_MODIFIERS = setOf(ModifierKey.SHIFT, ModifierKey.CTRL, ModifierKey.ALT)
+
     /** Marks the current Sym press as a chord, so its release will not cycle a page. spec: layers-sym-alt.md SS5.2, SS5.3. */
     fun symChordUsed(state: ModifierState): ModifierState =
-        state.copy(sym = state.sym.copy(chordUsed = true, assistantArmedAtMs = null))
+        state.copy(sym = state.sym.copy(chordUsed = true, assistantArmedAtMs = null, lastTapUpAtMs = null, secondTapPending = false))
 
     /**
      * Whether the 600 ms assistant-hold timer has fired. A caller with no timer calls this on
@@ -463,10 +493,13 @@ object ModifierMachine {
     fun onOtherKeyDown(state: ModifierState, stroke: KeyStroke): ModifierState {
         if (stroke.repeatCount > 0) return state
         val fnBurst = if (state.fnBurst.count > 0) state.fnBurst.copy(blocked = true) else state.fnBurst
+        // layers-sym-alt.md SS5.10: a key between two Sym taps makes them two taps, not a double tap.
+        val sym = if (state.sym.lastTapUpAtMs != null) state.sym.copy(lastTapUpAtMs = null) else state.sym
         return state.copy(
             holdBookkeeping = state.holdBookkeeping.copy(otherKeyDuringHold = true),
             fnBurst = fnBurst,
             lastKeyWasModifier = null,
+            sym = sym,
         )
     }
 

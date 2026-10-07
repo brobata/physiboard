@@ -8,9 +8,12 @@ import brobata.physiboard.app.settings.ui.AppPackageChangeMonitor
 import brobata.physiboard.app.shell.AppDebugCaptureStore
 import brobata.physiboard.app.shell.AppLocaleApplier
 import brobata.physiboard.app.shell.GatedHttp
+import brobata.physiboard.app.shell.GatedHttpFetcher
 import brobata.physiboard.app.shell.UpdateCheckScheduler
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.shell.AutocorrectionRecord
+import brobata.physiboard.core.shell.GatedFetcher
+import brobata.physiboard.core.shell.GatedFetcherOwner
 import brobata.physiboard.core.shell.GithubChecks
 import brobata.physiboard.core.shell.ImeContextSnapshot
 import brobata.physiboard.core.shell.KeyboardEventRecord
@@ -48,7 +51,7 @@ import kotlinx.coroutines.runBlocking
  * application context, which is what the components `:device:privileged` declares and the
  * settings screens both have (broker-privileged-toolbox.md SS5.2, SS6: one verdict, one lock).
  */
-class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServicesOwner, DebugCaptureSinkOwner {
+class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServicesOwner, DebugCaptureSinkOwner, GatedFetcherOwner {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val importSettled = CompletableDeferred<Unit>()
@@ -84,6 +87,9 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
      * entry; `PairingWatcherService.arm(context)` for the notification route), `.broker`
      * (the shared verdict), `.setup`, `.backlight`, `.ring`, `.reset`.
      */
+    /** app-shell.md SS31.2: the keyboard's gated GET (the GIF page), built on [GatedHttp]. */
+    override val gatedFetcher: GatedFetcher get() = GatedHttpFetcher
+
     override val privileged: PrivilegedServices by lazy { PrivilegedServices(this, StoreBridge()) }
 
     override fun onCreate() {

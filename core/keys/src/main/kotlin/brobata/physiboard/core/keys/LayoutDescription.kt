@@ -64,17 +64,19 @@ data class SymPageMap(val entries: Map<KeyId, SymPageEntry> = emptyMap()) {
 /**
  * spec: layers-sym-alt.md SS1 (the page id/page number contract). The Device page (page 5) is
  * dropped for 3.0 (SS15 Keep/Drop: "duplicates Alt, off by default, marked under construction"),
- * so only the two key layers and two panels remain.
+ * so its number stays reserved and unused. The GIF page (6) is 3.0's own (SS4.5).
  */
 enum class SymPageId(val pageNumber: Int) {
-    EMOJI(1), SYMBOLS(2), CLIPBOARD(3), EMOJI_PICKER(4);
+    EMOJI(1), SYMBOLS(2), CLIPBOARD(3), EMOJI_PICKER(4), GIF(6);
 
-    /** The two pages that remap the 26 letter keys, as opposed to the two content panels. */
+    /** The two pages that remap the 26 letter keys, as opposed to the content panels. */
     val isKeyLayer: Boolean get() = this == EMOJI || this == SYMBOLS
 
     companion object {
-        /** spec: layers-sym-alt.md SS4.1 default `symPageOrder`, minus the dropped Device page. */
-        val DEFAULT_ORDER: List<SymPageId> = listOf(EMOJI, SYMBOLS, CLIPBOARD, EMOJI_PICKER)
+        /** spec: layers-sym-alt.md SS4.1 default `symPageOrder`, minus the dropped Device page, plus the GIF page last. */
+        val DEFAULT_ORDER: List<SymPageId> = listOf(EMOJI, SYMBOLS, CLIPBOARD, EMOJI_PICKER, GIF)
+
+        fun forPageNumber(pageNumber: Int): SymPageId? = entries.firstOrNull { it.pageNumber == pageNumber }
     }
 }
 
@@ -91,6 +93,8 @@ data class SymPagesConfig(
     val symbolsEnabled: Boolean = true,
     val clipboardEnabled: Boolean = false,
     val emojiPickerEnabled: Boolean = false,
+    /** spec: layers-sym-alt.md SS4.1: off unless the user turns it on; the only page that sends anything off the phone. */
+    val gifEnabled: Boolean = false,
     val order: List<SymPageId> = SymPageId.DEFAULT_ORDER,
 ) {
     /** spec: layers-sym-alt.md SS4.1 ("duplicates collapse to the first occurrence, every known id missing... is appended"). */
@@ -99,11 +103,12 @@ data class SymPagesConfig(
         deduped + SymPageId.DEFAULT_ORDER.filter { it !in deduped }
     }
 
-    private fun isEnabled(id: SymPageId): Boolean = when (id) {
+    fun isEnabled(id: SymPageId): Boolean = when (id) {
         SymPageId.EMOJI -> emojiEnabled
         SymPageId.SYMBOLS -> symbolsEnabled
         SymPageId.CLIPBOARD -> clipboardEnabled
         SymPageId.EMOJI_PICKER -> emojiPickerEnabled
+        SymPageId.GIF -> gifEnabled
     }
 
     /** spec: layers-sym-alt.md SS4.2 ("the ordered list of enabled pages with 'no page' (0) prepended"). */
@@ -122,7 +127,7 @@ data class SymPagesConfig(
     /**
      * spec: layers-sym-alt.md SS4.2 ("if the current page is the Emoji page and it is not in the
      * enabled cycle, it is replaced by the first enabled page, or 'no page'"). Pages 2, 3, 4 and 5
-     * are exempt, because they can be opened directly.
+     * are exempt, because they can be opened directly (the page chooser, SS4.3).
      */
     fun consistentPage(currentPageNumber: Int): Int {
         if (currentPageNumber != SymPageId.EMOJI.pageNumber) return currentPageNumber
@@ -130,7 +135,7 @@ data class SymPagesConfig(
         return cycle.getOrElse(1) { 0 }
     }
 
-    /** spec: layers-sym-alt.md SS4.3 (direct-open buttons ignore the enabled switch). */
+    /** spec: layers-sym-alt.md SS4.3 (a direct open ignores the enabled switch). */
     fun directOpen(page: SymPageId, currentPageNumber: Int): Int =
         if (currentPageNumber == page.pageNumber) 0 else page.pageNumber
 

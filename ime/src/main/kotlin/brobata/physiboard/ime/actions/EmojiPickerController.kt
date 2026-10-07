@@ -525,9 +525,24 @@ internal class EmojiPickerController(
         }
     }
 
+    /**
+     * layers-sym-alt.md SS5.10: the Sym page chooser opens the picker straight in [target] mode
+     * (P Emoji, K Kaomoji, U Unicode symbols). Before [show] it only sets the mode the page opens
+     * in; on an open page it switches like the mode button.
+     */
+    fun presetMode(target: PickerMode) {
+        if (mode == target) return
+        if (!panel.isShown) {
+            mode = target
+            selectedTab = null
+            return
+        }
+        switchMode(target)
+    }
+
     /** spec SS4.3: the mode button cycles Emoji, Kaomoji, Symbols; a query being typed is re-run in the new mode. */
-    private fun switchMode() {
-        mode = mode.next()
+    private fun switchMode(target: PickerMode = mode.next()) {
+        mode = target
         selectedTab = null
         pendingRecentsRedraw = false
         deferRedrawUntilTabChange = false

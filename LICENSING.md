@@ -57,6 +57,14 @@ come from the phone's own Unicode tables at run time.
 
 The kaomoji collection (`core/actions/.../kaomoji/KaomojiData.kt`) is PhysiBoard's own work.
 
+### Online services
+
+The GIF Sym page (off unless the user turns it on) searches **[KLIPY](https://klipy.com)** at
+run time. No KLIPY code or media ships with PhysiBoard: the client is PhysiBoard's own, written
+from KLIPY's public API documentation, and GIFs are shown and sent straight from KLIPY's servers
+under KLIPY's terms, with the "Powered by KLIPY" attribution they ask for. A build needs its own
+KLIPY API key (`klipy.apiKey`), which is never committed.
+
 The bundled dictionaries carry their own terms; see [`docs/dictionaries.md`](docs/dictionaries.md).
 The English word-pair table is built from sentences of [Tatoeba](https://tatoeba.org), used under
 CC BY 2.0 FR.

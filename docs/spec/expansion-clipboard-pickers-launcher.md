@@ -536,6 +536,9 @@ panel's). Tab labels shrink to fit their cell, from 14 sp down to 8 sp, on one l
 The mode is kept for the life of the keyboard service, so page 4 reopens in the mode it was
 left in; a fresh service starts in Emoji. Switching mode with a query in the search field runs
 that query in the new mode; with none it draws the new mode's sections, scrolled to the top.
+The Sym page chooser (layers-sym-alt.md section 5.10) opens the page straight in a mode: P in
+Emoji, K in Kaomoji, U in Symbols. On a page already open in another mode that is a mode switch
+as above.
 
 While loading, a centered progress indicator is shown; a failure to load anything shows "Unable
 to load emoji". Loading happens the first time the page opens, on every open when it was on
@@ -1188,6 +1191,7 @@ assignments contain it):
 | `pastiera.voice_assistant` | Voice assistant / Open it already listening | `start_voice_assistant` | all three | dictation.md section 11; "No voice assistant is set up on this device." on failure |
 | `pastiera.toggle_software_keyboard_mode` | Toggle Keyboard Mode / Switch Virtual / Hardware | `toggle_software_keyboard_mode` | all three | Toggles the temporary software keyboard mode and, when the toggle toasts are enabled, shows the resulting mode |
 | `physiboard.toggle_private_mode` (3.0) | Private mode / Turn private mode on or off | `toggle_private_mode` | all three | Flips `private_mode` at once and stores it, with a toast (app-shell.md section 31.3); search tokens "private", "incognito", "offline", "privacy"; icon: dark glasses |
+| `physiboard.sym_page_chooser` (3.0) | Sym page chooser / Pick a Sym page by its letter | `open_sym_page_chooser` | assigned key, nav mode | Opens the Sym page chooser (layers-sym-alt.md section 5.10), the same one a Sym double tap opens; needs an editable field, else "No input context"; search tokens "sym", "page", "emoji", "symbols", "gif", "kaomoji", "clipboard", "chooser"; icon: keyboard |
 
 **App actions** (`app_actions`, "App actions"): each is an intent into a third-party app and is
 listed only when that app can resolve it. Ids and targets: `niagara.search` (`niagara://search`)

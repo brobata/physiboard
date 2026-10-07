@@ -51,10 +51,10 @@ class SettingsCodecTest {
             bounceKeysEnterEnabled = false, bounceKeysBackspaceEnabled = false, overlappingKeysEnabled = true,
         ),
         symPages = SymPagePrefs(
-            pages = SymPagesConfig(emojiEnabled = true, symbolsEnabled = false, clipboardEnabled = true, emojiPickerEnabled = false,
-                order = listOf(SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER)),
+            pages = SymPagesConfig(emojiEnabled = true, symbolsEnabled = false, clipboardEnabled = true, emojiPickerEnabled = false, gifEnabled = true,
+                order = listOf(SymPage.EMOJI, SymPage.GIF, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER)),
             customEmojiPage = mapOf("KEYCODE_Q" to "😀"), customSymbolsPage = mapOf("KEYCODE_W" to "€"),
-            autoClose = false, autoCloseOnTouch = false, emojiPickerExpandedHeight = true,
+            autoClose = false, autoCloseOnTouch = false, emojiPickerExpandedHeight = true, doubleTapChooser = false,
             defaultSkinTone = brobata.physiboard.core.actions.emoji.SkinTone.MEDIUM_DARK,
             restoreSymPage = 2, pendingRestoreSymPage = 1,
         ),
@@ -264,9 +264,31 @@ class SettingsCodecTest {
     @Test
     fun `sym pages without an order derive it from emojiFirst and skip the device page, spec SS12 test 20`() {
         val s = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"emojiFirst": false, "deviceEnabled": true}"""))
-        assertEquals(listOf(SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.EMOJI_PICKER), s.symPages.pages.order)
+        assertEquals(listOf(SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.EMOJI_PICKER, SymPage.GIF), s.symPages.pages.order)
         val withDevice = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"symPageOrder": ["device", "symbols"]}"""))
-        assertEquals(listOf(SymPage.SYMBOLS, SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER), withDevice.symPages.pages.order)
+        assertEquals(listOf(SymPage.SYMBOLS, SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.GIF), withDevice.symPages.pages.order)
+    }
+
+    @Test
+    fun `a config written before the GIF page reads with gif last and switched off, layers-sym-alt SS4-1`() {
+        val old = """{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":true,"emojiPickerEnabled":true,"symPageOrder":["clipboard","emoji_picker","symbols","emoji"]}"""
+        val pages = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to old)).symPages.pages
+        assertEquals(listOf(SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.EMOJI, SymPage.GIF), pages.order)
+        assertEquals(false, pages.gifEnabled)
+        assertEquals(true, pages.clipboardEnabled)
+        val placed = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"gifEnabled":true,"symPageOrder":["gif"," symbols ","gif"]}""")).symPages.pages
+        assertEquals(true, placed.gifEnabled)
+        assertEquals(SymPage.GIF, placed.order.first(), "a stored place for gif is kept and a duplicate collapses")
+        assertEquals(1, placed.order.count { it == SymPage.GIF })
+    }
+
+    @Test
+    fun `sym_double_tap_chooser defaults on and round-trips`() {
+        assertEquals(true, SettingsCodec.fromMap(emptyMap()).symPages.doubleTapChooser)
+        val off = Settings().let { it.copy(symPages = it.symPages.copy(doubleTapChooser = false)) }
+        val map = SettingsCodec.toMap(off)
+        assertEquals("false", map[SettingsKeys.SYM_DOUBLE_TAP_CHOOSER])
+        assertEquals(false, SettingsCodec.fromMap(map).symPages.doubleTapChooser)
     }
 
     @Test

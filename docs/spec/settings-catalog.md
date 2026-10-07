@@ -21,7 +21,7 @@ The store is a private SharedPreferences file named `physiboard_prefs`. Before 2
 lived in a file named `pastiera_prefs`; that file is the migration source described in section 5
 and is deleted by the baseline reset in section 4.
 
-Four smaller stores exist beside it. None of them is a user setting and none is edited from a
+Smaller stores exist beside it. None of them is a user setting and none is edited from a
 screen:
 
 | File | Rows | Purpose | In backups |
@@ -30,6 +30,7 @@ screen:
 | `physiboard_toolbox` | `pending_revert` (JSON object `{id, apply, revert}`), `removal_journal` (JSON array of `{pkg, prev, action, at}`) | The toolbox's undo records for a system change in flight and for removed packages | Yes |
 | `app_list_cache_prefs` | `package_change_sequence` (int), `package_change_boot_count` (int) | Invalidation counters for the cached app list (see per-app-behavior.md) | Yes |
 | `recent_emojis_prefs` | `recent_emojis` | Recently used emoji | No: explicitly excluded |
+| `gif_prefs` (3.0) | `gif_favourites`, `gif_recents` (JSON arrays of the GIF's slug, title, preview and send URLs and sizes) | The GIF page's ★ favourites and recently sent (layers-sym-alt.md 4.5) | No: like the emoji recents, it is history, not a setting |
 
 Reads and writes are synchronous from the point of view of the caller; most writes are
 asynchronous to disk. The exceptions, where the app waits for the disk, are called out where they
@@ -181,10 +182,11 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 |---|---|---|---|---|---|
 | `sym_mappings_custom` | string, JSON `{"mappings": {"KEYCODE_Q": "text", ...}}` for the 26 letter keys | none | | Custom Sym page 1 (emoji) | SYM customization activity |
 | `sym_mappings_page2_custom` | string, same shape | none | | Custom Sym page 2 (symbols) | SYM customization activity |
-| `sym_pages_config` | string, JSON object with `deviceEnabled`, `emojiEnabled`, `symbolsEnabled`, `clipboardEnabled`, `emojiPickerEnabled` (booleans), `emojiFirst` (legacy boolean, written for older builds), `symPageOrder` (array of page ids `device`, `emoji`, `symbols`, `clipboard`, `emoji_picker`) | device off, emoji on, symbols on, clipboard off, picker off, order device, emoji, symbols, clipboard, emoji_picker | emoji off, symbols on, clipboard off, picker on, `emojiFirst` false, order emoji_picker, symbols, clipboard, emoji (device is absent from the order and is appended last when read) | Which Sym pages exist and in what order | SYM customization > "Arrange SYM pages order" |
+| `sym_pages_config` | string, JSON object with `deviceEnabled`, `emojiEnabled`, `symbolsEnabled`, `clipboardEnabled`, `emojiPickerEnabled`, `gifEnabled` (3.0) (booleans), `emojiFirst` (legacy boolean, written for older builds), `symPageOrder` (array of page ids `device`, `emoji`, `symbols`, `clipboard`, `emoji_picker`, `gif` (3.0)) | device off, emoji on, symbols on, clipboard off, picker off, order device, emoji, symbols, clipboard, emoji_picker | emoji off, symbols on, clipboard off, picker on, `emojiFirst` false, order emoji_picker, symbols, clipboard, emoji (device is absent from the order and is appended last when read; 3.0: `gif` is appended last and `gifEnabled` reads false when absent, so the GIF page starts off) | Which Sym pages exist and in what order | SYM customization > "Arrange SYM pages order" |
 | `alt_character_layer_binding` | string `first`, `emoji`, `symbols`, or `device:<something>`; anything else reads as `device:auto` | `device:auto` | | Which Sym page the Alt layer shows | SYM customization > "Alt character layer" |
 | `sym_auto_close` | boolean | true | | Sym page closes after a key | SYM customization > "Auto-Close SYM Layout" |
 | `sym_auto_close_on_touch` | boolean | true | | Also after an on-screen Sym key | "Also close after on-screen SYM keys" |
+| `sym_double_tap_chooser` (3.0) | boolean | true | | Two quick Sym taps (300 ms from the first release to the second press) open the Sym page chooser instead of stepping two pages (layers-sym-alt.md 5.10). Backed up. | SYM customization > "Double-tap Sym for the page chooser" |
 | `emoji_picker_expanded_height` | boolean | true | false | Taller emoji picker | SYM customization > "Larger emoji picker" |
 | `emoji_default_skin_tone` | string `none`, `light`, `medium_light`, `medium`, `medium_dark`, `dark`; anything else reads as `none` | `none` | | The tone emoji that take one are inserted and shown in: Sym pages, chords, the picker and its recents (expansion-clipboard-pickers-launcher.md 4.7). Backed up. | SYM customization > "Default skin tone" |
 | `restore_sym_page` | int 0, 1 (emoji) or 2 (symbols) | 0 | | Page to reopen after returning from SYM customization | Transient |

@@ -178,6 +178,16 @@ class ImeSettingsTest {
     }
 
     @Test
+    fun `the GIF page's switch and place reach the cycle, and sym_double_tap_chooser reaches the modifier bundle`() {
+        val stored = StoredSymPagesConfig(gifEnabled = true, order = listOf(SymPage.GIF, SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI))
+        val config = ImeSettings.layout(TitanLayouts.titan2EliteQwerty(), Settings(symPages = SymPagePrefs(pages = stored))).symPagesConfig
+        assertTrue(config.gifEnabled)
+        assertEquals(listOf(0, 6, 4, 2), config.cycle)
+        assertTrue(ImeSettings.keyboardSettings(Settings()).modifier.symDoubleTapChooser)
+        assertFalse(ImeSettings.keyboardSettings(Settings(symPages = SymPagePrefs(doubleTapChooser = false))).modifier.symDoubleTapChooser)
+    }
+
+    @Test
     fun `rule sets follow auto_correct_enabled_languages with the user's substitutions overlaid, __name stripped`() {
         val bundled = mapOf("en" to RuleSet("en", null, mapOf("dont" to "don't")))
         val s = Settings(

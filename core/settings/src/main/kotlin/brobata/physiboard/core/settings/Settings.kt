@@ -212,7 +212,10 @@ data class KeyPrefs(
 
 /** The Sym pages 3.0 keeps. spec: layers-sym-alt.md Keep/Drop: the device page (5) is dropped. */
 enum class SymPage(val id: String) {
-    EMOJI("emoji"), SYMBOLS("symbols"), CLIPBOARD("clipboard"), EMOJI_PICKER("emoji_picker");
+    EMOJI("emoji"), SYMBOLS("symbols"), CLIPBOARD("clipboard"), EMOJI_PICKER("emoji_picker"),
+
+    /** 3.0's own (layers-sym-alt.md SS4.5): GIF search, the one page that goes online. */
+    GIF("gif");
 
     companion object {
         fun fromId(id: String?): SymPage? = entries.firstOrNull { it.id == id }
@@ -230,7 +233,9 @@ data class SymPagesConfig(
     val symbolsEnabled: Boolean = true,
     val clipboardEnabled: Boolean = false,
     val emojiPickerEnabled: Boolean = true,
-    val order: List<SymPage> = listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI),
+    /** `gifEnabled`: off by default, since it is the only page that sends anything off the phone. */
+    val gifEnabled: Boolean = false,
+    val order: List<SymPage> = listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF),
 )
 
 /**
@@ -246,6 +251,11 @@ data class SymPagePrefs(
     val autoClose: Boolean = true,
     val autoCloseOnTouch: Boolean = true,
     val emojiPickerExpandedHeight: Boolean = false,
+    /**
+     * `sym_double_tap_chooser`. spec: layers-sym-alt.md SS5.10: two quick Sym taps open the page
+     * chooser instead of stepping two pages.
+     */
+    val doubleTapChooser: Boolean = true,
     /**
      * `emoji_default_skin_tone`. spec: expansion-clipboard-pickers-launcher.md SS4.7: the tone every
      * emoji that takes one is inserted and shown in (Emoji page keys, Sym chords, the picker and its

@@ -118,9 +118,9 @@ class TitanLayoutsTest {
     // Sym page order: spec layers-sym-alt.md SS1, SS4.1 default order, Device page dropped (SS15) --
 
     @Test
-    fun `Sym page order is Emoji, Symbols, Clipboard, Emoji Picker with Emoji and Symbols enabled`() {
+    fun `Sym page order is Emoji, Symbols, Clipboard, Emoji Picker, GIFs with Emoji and Symbols enabled`() {
         assertEquals(
-            listOf(SymPageId.EMOJI, SymPageId.SYMBOLS, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER),
+            listOf(SymPageId.EMOJI, SymPageId.SYMBOLS, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF),
             layout.symPagesConfig.normalizedOrder,
         )
         // spec test case 1: config default, page 0: Sym tap sequence gives 1, 2, 0.
