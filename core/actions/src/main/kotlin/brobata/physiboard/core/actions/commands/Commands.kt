@@ -103,7 +103,7 @@ enum class CommandIcon {
     VOLUME_UP, VOLUME_DOWN, VOLUME_MUTE, SUN, KEYBOARD, ACCESSIBILITY, GLOBE, BLUETOOTH, WIFI, VOLUME,
     CONTACTLESS, BATTERY_SAVER, BELL, ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, TAB, FIRST_PAGE, LAST_PAGE,
     VERTICAL_ALIGN_TOP, VERTICAL_ALIGN_BOTTOM, CLOSE, BACKSPACE, COPY, PASTE, CUT, UNDO, SELECT_ALL, COMMAND_KEY,
-    NAVIGATION,
+    NAVIGATION, PRIVATE,
 }
 
 /**
@@ -142,6 +142,9 @@ object InternalActions {
     const val OPEN_MAIN_ACTIVITY = "open_main_activity"
     const val START_VOICE_ASSISTANT = "start_voice_assistant"
     const val TOGGLE_SOFTWARE_KEYBOARD_MODE = "toggle_software_keyboard_mode"
+
+    /** 3.0's own: turns private mode on or off (app-shell.md SS31). */
+    const val TOGGLE_PRIVATE_MODE = "toggle_private_mode"
     const val OPEN_HOME = "device_home"
     const val MEDIA_PLAY_PAUSE = "media_play_pause"
     const val MEDIA_PREVIOUS = "media_previous"
@@ -161,6 +164,9 @@ object CommandIds {
     const val MAIN = "pastiera.main"
     const val VOICE_ASSISTANT = "pastiera.voice_assistant"
     const val TOGGLE_SOFTWARE_KEYBOARD = "pastiera.toggle_software_keyboard_mode"
+
+    /** 3.0's own id, so it carries the new name rather than the 2.x prefix. app-shell.md SS31. */
+    const val TOGGLE_PRIVATE_MODE = "physiboard.toggle_private_mode"
     const val APP_PREFIX = "app:"
     const val DEVICE_HOME = "device.home"
     const val MEDIA_PLAY_PAUSE = "device.media.play_pause"
@@ -212,6 +218,8 @@ object BuiltInCommands {
             LaunchSpec.InternalAction(InternalActions.OPEN_MAIN_ACTIVITY), setOf(CommandSurface.ASSIGNED_KEY, CommandSurface.NAV_MODE), listOf("settings")),
         Command(CommandIds.VOICE_ASSISTANT, CommandSource.PHYSIBOARD, "Voice assistant", "Open it already listening",
             LaunchSpec.InternalAction(InternalActions.START_VOICE_ASSISTANT), Command.ALL_SURFACES, listOf("assistant", "voice")),
+        Command(CommandIds.TOGGLE_PRIVATE_MODE, CommandSource.PHYSIBOARD, "Private mode", "Turn private mode on or off",
+            LaunchSpec.InternalAction(InternalActions.TOGGLE_PRIVATE_MODE), Command.ALL_SURFACES, listOf("private", "incognito", "offline", "privacy")),
     )
 
     /** One app with a launcher activity: id `app:<package>`, label the app name, subtitle the package, all three surfaces, tokens name and package. */
@@ -379,6 +387,7 @@ object CommandIcons {
             }
             id == CommandIds.QUICK_LAUNCHER -> CommandIcon.MAGNIFIER
             id == CommandIds.MAIN -> CommandIcon.GEAR
+            id == CommandIds.TOGGLE_PRIVATE_MODE -> CommandIcon.PRIVATE
             id == CommandIds.MEDIA_PLAY_PAUSE -> CommandIcon.PLAY
             id == CommandIds.MEDIA_PREVIOUS -> CommandIcon.SKIP_PREVIOUS
             id == CommandIds.MEDIA_NEXT -> CommandIcon.SKIP_NEXT

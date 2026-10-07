@@ -20,8 +20,16 @@ internal object DiagnosticLog {
     @Volatile
     var enabled: Boolean = false
 
+    /**
+     * app-shell.md SS31: the trail carries typed text (keystrokes, the text before a selection
+     * change), so it is silent while learning is off: private mode, or a field that asks for no
+     * personalized learning.
+     */
+    @Volatile
+    var privateNow: Boolean = false
+
     /** Logs [message] at info, built lazily so nothing is constructed while the trail is off. */
     inline fun i(tag: String, message: () -> String) {
-        if (BuildConfig.DEBUG && enabled) Log.i(tag, message())
+        if (BuildConfig.DEBUG && enabled && !privateNow) Log.i(tag, message())
     }
 }

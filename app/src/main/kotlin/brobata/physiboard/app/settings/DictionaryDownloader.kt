@@ -9,8 +9,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.EOFException
 import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import brobata.physiboard.app.shell.GatedHttp
+import brobata.physiboard.app.shell.NetworkBlockedException
+import brobata.physiboard.core.shell.NetworkPurpose
 
 /**
  * The network half of the installed-dictionaries screen (rebuild-from-scratch.md: "Downloading is
@@ -20,7 +21,7 @@ import java.net.URL
  *
  * SPEC GAP: SS5.2/SS5.3 describe "the HTTP client's defaults" (10 s connect/read/write, one
  * transparent retry on a connection failure) as if a shared client already exists elsewhere in the
- * app; no such client is visible to this module, so [java.net.HttpURLConnection] is used directly
+ * app; no such client is visible to this module, so a plain `HttpURLConnection` from [GatedHttp] is used
  * with those same timeouts and no retry logic added here (a single request per call, matching "the
  * app itself never retries").
  *
@@ -52,13 +53,16 @@ class DictionaryDownloader {
     sealed class ManifestResult {
         data class Success(val manifest: DictionaryManifest) : ManifestResult()
         data class Error(val message: String) : ManifestResult()
+
+        /** app-shell.md SS31.2: refused by the network gate (private mode); nothing was sent. */
+        data class Blocked(val message: String) : ManifestResult()
     }
 
     /** SS5.2's outcome table, plus SS17's added overall deadline and size cap. */
     suspend fun fetchManifest(url: String = MANIFEST_URL): ManifestResult = withContext(Dispatchers.IO) {
         try {
             withTimeout(MANIFEST_DEADLINE_MS) {
-                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                val connection = GatedHttp.open(NetworkPurpose.DICTIONARY_MANIFEST, url).apply {
                     requestMethod = "GET"
                     setRequestProperty("Accept", "application/json")
                     connectTimeout = TIMEOUT_MS
@@ -75,6 +79,8 @@ class DictionaryDownloader {
             }
         } catch (e: TimeoutCancellationException) {
             ManifestResult.Error("Network error")
+        } catch (e: NetworkBlockedException) {
+            ManifestResult.Blocked(e.message ?: "Offline")
         } catch (e: Exception) {
             ManifestResult.Error(e.message ?: "Network error")
         }
@@ -85,6 +91,9 @@ class DictionaryDownloader {
         object VerificationFailed : DownloadResult()
         object InvalidFormat : DownloadResult()
         data class NetworkError(val message: String) : DownloadResult()
+
+        /** app-shell.md SS31.2: refused by the network gate (private mode); nothing was sent. */
+        data class Blocked(val message: String) : DownloadResult()
     }
 
     /**
@@ -94,7 +103,7 @@ class DictionaryDownloader {
      */
     suspend fun download(item: DictionaryManifestItem, fileStore: DictionaryFileStore): DownloadResult = withContext(Dispatchers.IO) {
         try {
-            val connection = (URL(item.url).openConnection() as HttpURLConnection).apply {
+            val connection = GatedHttp.open(NetworkPurpose.DICTIONARY_DOWNLOAD, item.url).apply {
                 requestMethod = "GET"
                 connectTimeout = TIMEOUT_MS
                 readTimeout = TIMEOUT_MS
@@ -107,6 +116,8 @@ class DictionaryDownloader {
             if (!actualSha.equals(item.sha256, ignoreCase = true)) return@withContext DownloadResult.VerificationFailed
             if (!fileStore.decodesAsDictionary(bytes)) return@withContext DownloadResult.InvalidFormat
             DownloadResult.Success(bytes)
+        } catch (e: NetworkBlockedException) {
+            DownloadResult.Blocked(e.message ?: "Offline")
         } catch (e: Exception) {
             DownloadResult.NetworkError(e.message ?: "Download failed")
         }

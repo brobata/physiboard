@@ -12,6 +12,8 @@ import brobata.physiboard.core.actions.emoji.EmojiSearchLocales
 import brobata.physiboard.core.actions.emoji.EmojiTabIcon
 import brobata.physiboard.core.actions.emoji.EmojiTermFile
 import brobata.physiboard.core.actions.emoji.EmojiTermNormalizer
+import brobata.physiboard.core.actions.picker.SymbolSearchIndex
+import brobata.physiboard.core.actions.picker.UnicodeSymbols
 import java.util.concurrent.Executors
 
 /** What one load produced: the available categories in display order and the search index for the locale chain. */
@@ -44,6 +46,8 @@ internal class EmojiAssets(private val assets: AssetManager, private val mainHan
     }
 
     fun loadAsync(localeTags: List<String>, onLoaded: (EmojiData?) -> Unit) {
+        // A shut-down executor (service destroyed) refuses work; nothing is left to call back.
+        if (executor.isShutdown) return
         executor.execute {
             val data = runCatching { load(localeTags) }.onFailure { Log.e(TAG, "emoji load failed", it) }.getOrNull()
             mainHandler.post { onLoaded(data) }
@@ -90,6 +94,50 @@ internal class EmojiAssets(private val assets: AssetManager, private val mainHan
         }
         return EmojiSearchIndex.build(cats, files)
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Kaomoji and Unicode symbols. spec SS4.8, SS4.9.
+    // -----------------------------------------------------------------------------------------
+
+    @Volatile private var symbols: UnicodeSymbols.Catalog? = null
+    @Volatile private var symbolIndex: SymbolSearchIndex? = null
+
+    /**
+     * spec SS4.8: the symbol catalogue, built on the loader thread the first time Symbols mode
+     * opens (a name lookup and a glyph probe per candidate, some thousands of each) and kept for
+     * the life of the process. Null to [onLoaded] when it could not be built.
+     */
+    fun loadSymbolsAsync(onLoaded: (UnicodeSymbols.Catalog?) -> Unit) {
+        symbols?.let { onLoaded(it); return }
+        runCatching {
+            executor.execute {
+                val catalog = runCatching { symbolCatalog() }.onFailure { Log.e(TAG, "symbol catalogue failed", it) }.getOrNull()
+                mainHandler.post { onLoaded(catalog) }
+            }
+        }.onFailure { Log.e(TAG, "symbol catalogue not scheduled", it) }
+    }
+
+    private fun symbolCatalog(): UnicodeSymbols.Catalog = symbols ?: run {
+        val paint = Paint()
+        UnicodeSymbols.build(glyphs = { paint.hasGlyph(it) }).also { symbols = it }
+    }
+
+    /**
+     * One search, on the loader thread, so neither the key path nor the main thread scores a
+     * few thousand names (spec SS4.5, SS4.8). [onResult] runs on the main thread; the caller
+     * drops answers to a query it has since replaced.
+     */
+    fun <T> searchAsync(search: () -> T, onResult: (T?) -> Unit) {
+        runCatching {
+            executor.execute {
+                val result = runCatching(search).onFailure { Log.e(TAG, "search failed", it) }.getOrNull()
+                mainHandler.post { onResult(result) }
+            }
+        }.onFailure { Log.e(TAG, "search not scheduled", it) }
+    }
+
+    /** spec SS4.8: the symbol search index, built on first use, on the loader thread (only call from [searchAsync]). */
+    fun symbolIndex(): SymbolSearchIndex = symbolIndex ?: SymbolSearchIndex(symbolCatalog()).also { symbolIndex = it }
 
     private fun read(path: String): String? = runCatching { assets.open(path).bufferedReader().use { it.readText() } }.getOrNull()
 

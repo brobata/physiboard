@@ -466,6 +466,11 @@ away the moment the key comes up.
 The "Sym" item follows the Sym page, not a modifier flag, so it shows while any Sym page
 (emoji, symbols, clipboard, picker) is open.
 
+3.0 adds one item after Sym that is not a modifier: "PRIVATE", locked colour, full, shown for as
+long as `private_mode` is on (app-shell.md section 31.4). It keeps the badge up beside the caret
+while private mode lasts, so a refresh that changes neither the items nor the position updates
+nothing.
+
 ### 4.3 How it is drawn
 
 | Quantity | Value |

@@ -1,5 +1,6 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
@@ -99,6 +100,7 @@ object SettingsKeys {
     const val SYM_AUTO_CLOSE = "sym_auto_close"
     const val SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch"
     const val EMOJI_PICKER_EXPANDED = "emoji_picker_expanded_height"
+    const val EMOJI_DEFAULT_SKIN_TONE = "emoji_default_skin_tone"
 
     // SS2.6 status bar
     const val STATUS_BAR_VISIBILITY = "status_bar_visibility"
@@ -199,6 +201,10 @@ object SettingsKeys {
     const val TYPING_SOUND_MODE = "typing_sound_mode"
     const val TYPING_SOUND_OUTPUT_MODE = "typing_sound_output_mode"
 
+    // SS2.17 privacy (3.0's own rows)
+    const val PRIVATE_MODE = "private_mode"
+    const val CLEAN_LINKS = "clean_links"
+
     // SS2.15 shell
     const val TUTORIAL_COMPLETED = "tutorial_completed"
     const val LAST_SEEN_WHATS_NEW = "last_seen_whats_new_version"
@@ -248,6 +254,7 @@ object SettingsCodec {
         writeExpansion(settings.expansion)
         writeLauncher(settings.launcher)
         writeFeedback(settings.feedback)
+        writePrivacy(settings.privacy)
         writeShell(settings.shell)
         writeCaptures(settings.captures)
     }
@@ -269,6 +276,7 @@ object SettingsCodec {
             expansion = readExpansion(r),
             launcher = readLauncher(r),
             feedback = readFeedback(r),
+            privacy = readPrivacy(r),
             shell = readShell(r),
             captures = readCaptures(r),
         )
@@ -455,6 +463,7 @@ object SettingsCodec {
         put(SettingsKeys.SYM_AUTO_CLOSE, s.autoClose.toString())
         put(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, s.autoCloseOnTouch.toString())
         put(SettingsKeys.EMOJI_PICKER_EXPANDED, s.emojiPickerExpandedHeight.toString())
+        put(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE, s.defaultSkinTone.storedValue)
         put(SettingsKeys.RESTORE_SYM_PAGE, s.restoreSymPage.toString())
         put(SettingsKeys.PENDING_RESTORE_SYM_PAGE, s.pendingRestoreSymPage.toString())
     }
@@ -468,6 +477,7 @@ object SettingsCodec {
             autoClose = r.bool(SettingsKeys.SYM_AUTO_CLOSE, d.autoClose),
             autoCloseOnTouch = r.bool(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, d.autoCloseOnTouch),
             emojiPickerExpandedHeight = r.bool(SettingsKeys.EMOJI_PICKER_EXPANDED, d.emojiPickerExpandedHeight),
+            defaultSkinTone = SkinTone.fromStored(r.string(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE)),
             restoreSymPage = r.int(SettingsKeys.RESTORE_SYM_PAGE, d.restoreSymPage),
             pendingRestoreSymPage = r.int(SettingsKeys.PENDING_RESTORE_SYM_PAGE, d.pendingRestoreSymPage),
         )
@@ -710,6 +720,23 @@ object SettingsCodec {
             acceptWithEnter = r.bool(SettingsKeys.SNIPPETS_ACCEPT_ENTER, d.acceptWithEnter),
             clipboardHistoryEnabled = r.bool(SettingsKeys.CLIPBOARD_HISTORY, d.clipboardHistoryEnabled),
             clipboardRetentionMinutes = r.long(SettingsKeys.CLIPBOARD_RETENTION, d.clipboardRetentionMinutes, 0L..Long.MAX_VALUE),
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Privacy (SS2.17)
+    // ---------------------------------------------------------------------------------------------
+
+    private fun MutableMap<String, String>.writePrivacy(p: PrivacyPrefs) {
+        put(SettingsKeys.PRIVATE_MODE, p.privateMode.toString())
+        put(SettingsKeys.CLEAN_LINKS, p.cleanLinks.toString())
+    }
+
+    private fun readPrivacy(r: FlatReader): PrivacyPrefs {
+        val d = PrivacyPrefs()
+        return PrivacyPrefs(
+            privateMode = r.bool(SettingsKeys.PRIVATE_MODE, d.privateMode),
+            cleanLinks = r.bool(SettingsKeys.CLEAN_LINKS, d.cleanLinks),
         )
     }
 

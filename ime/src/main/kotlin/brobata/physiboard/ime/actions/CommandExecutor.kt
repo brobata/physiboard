@@ -32,6 +32,8 @@ internal class CommandExecutor(
     private val openQuickLauncher: () -> Boolean,
     private val startVoiceAssistant: () -> Boolean,
     private val runNavAction: (mappingType: String, value: String) -> Boolean,
+    /** app-shell.md SS31.3: flips `private_mode`; the keyboard shows its own toast. */
+    private val togglePrivateMode: () -> Boolean,
 ) {
 
     fun run(resolved: ShortcutRun, silent: Boolean = false): Boolean = when (resolved) {
@@ -90,6 +92,7 @@ internal class CommandExecutor(
         InternalActions.OPEN_MAIN_ACTIVITY -> openOwnApp() || fail(CommandFailure.COULD_NOT_OPEN_PHYSIBOARD, silent)
         InternalActions.START_VOICE_ASSISTANT -> startVoiceAssistant() || fail(CommandFailure.NO_VOICE_ASSISTANT, silent)
         InternalActions.TOGGLE_SOFTWARE_KEYBOARD_MODE -> fail(CommandFailure.COMMAND_NOT_AVAILABLE, silent)
+        InternalActions.TOGGLE_PRIVATE_MODE -> togglePrivateMode() || fail(CommandFailure.COMMAND_FAILED, silent)
         InternalActions.OPEN_HOME -> startIntent(LaunchSpec.IntentUri(Intent.ACTION_MAIN, categories = listOf(Intent.CATEGORY_HOME)), silent)
         InternalActions.MEDIA_PLAY_PAUSE -> mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, silent)
         InternalActions.MEDIA_PREVIOUS -> mediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS, silent)

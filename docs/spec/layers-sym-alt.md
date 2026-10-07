@@ -294,6 +294,11 @@ With Ctrl active the page is bypassed entirely and Ctrl shortcuts run.
 The emoji picker page (4) captures ordinary typing into its search field; that behaviour is in
 the pickers document.
 
+3.0: a page key (or a Sym chord) that commits an emoji taking a skin tone arms a hold; its
+auto-repeats are consumed, and still holding it past the long-press threshold opens the
+skin-tone chooser (expansion-clipboard-pickers-launcher.md 4.7). The page characters themselves
+come out in the default skin tone, `emoji_default_skin_tone`.
+
 ### 5.5 Sticky versus one-shot
 
 There is no separate sticky mode. `sym_auto_close` (default on) makes a key layer one-shot:
@@ -350,7 +355,8 @@ background in the theme's background colour:
   the close-first rule). Keys with no character are not tappable.
 - Long-pressing a key opens the customisation screen directly on that letter's picker, and
   when the picker closes the screen finishes and the keyboard returns with the same page open
-  (section 5.8).
+  (section 5.8). 3.0: a key whose emoji takes a skin tone opens the skin-tone chooser instead
+  (expansion-clipboard-pickers-launcher.md 4.7); the pencil still opens the editor.
 - A close button (36 dp by 32 dp, bottom right, close icon on a translucent red 95/255 alpha
   background unless themed) is visible on pages 1, 2 and 5; the clipboard and emoji picker
   panels carry their own chrome.

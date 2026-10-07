@@ -50,5 +50,6 @@ object CommandGlyphs {
         CommandIcon.SELECT_ALL -> "☰"
         CommandIcon.COMMAND_KEY -> "⌘"
         CommandIcon.NAVIGATION -> "✥"
+        CommandIcon.PRIVATE -> "🕶"
     }
 }

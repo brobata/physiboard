@@ -28,6 +28,9 @@ import androidx.core.content.ContextCompat
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.actions.clipboard.Clip
+import brobata.physiboard.core.actions.clipboard.ClipCapture
+import brobata.physiboard.core.actions.commands.CommandIds
+import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.feedback.SoundGroup
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
@@ -71,6 +74,7 @@ import brobata.physiboard.core.pointer.navmode.NavModeTransition
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
+import brobata.physiboard.core.settings.PrivacyState
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.settings.TypingSoundOutputMode
 import brobata.physiboard.core.shell.AutocorrectionRecord
@@ -100,6 +104,7 @@ import brobata.physiboard.core.strip.StripButton
 import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripGeometry
 import brobata.physiboard.core.strip.StripInsets
+import brobata.physiboard.core.strip.StripTheme
 import brobata.physiboard.core.strip.SuggestionRow
 import brobata.physiboard.core.strip.SuggestionRowRules
 import brobata.physiboard.core.strip.SurfaceTransitionOutcome
@@ -112,6 +117,7 @@ import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AppProfileResolver
 import brobata.physiboard.core.text.BoundaryDebugInfo
 import brobata.physiboard.core.text.CurrentWordTracker
+import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.EnterOverride
 import brobata.physiboard.core.text.EnterOverrideResolver
@@ -130,6 +136,7 @@ import brobata.physiboard.ime.actions.EmojiPickerController
 import brobata.physiboard.ime.actions.ExpansionPopupController
 import brobata.physiboard.ime.actions.LauncherKeysController
 import brobata.physiboard.ime.actions.QuickLauncherController
+import brobata.physiboard.ime.actions.SkinToneHoldController
 import brobata.physiboard.ime.actions.SymGridPanelController
 import brobata.physiboard.ime.actions.TypingSoundPlayer
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
@@ -165,7 +172,7 @@ internal class KeyboardSession(
     private var enterBehaviorEnabled: Boolean = true,
     // app-shell.md SS10.2, SS10.7: the Diagnostics screen's capture store, owned by `:app`; a null
     // sink (a JVM test, or a host without the wiring) leaves this session silent, same as [settingsSource].
-    private val debugCaptureSink: DebugCaptureSink? = null,
+    rawDebugCaptureSink: DebugCaptureSink? = null,
 ) {
 
     /** Collects [settingsSource] on the main looper for the session's lifetime; cancelled in [onServiceDestroyed]. */
@@ -195,6 +202,46 @@ internal class KeyboardSession(
     private var lastSettings: Settings = Settings()
 
     private val pipeline = KeyboardPipeline(layout = shippedLayouts.first().layout, onCommand = ::handleCommand)
+
+    // -----------------------------------------------------------------------------------------
+    // Private mode. spec: app-shell.md SS31. [privacy] is the one fact every learning path reads.
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * The user's switch and the current field's own "no personalized learning" flag; every change
+     * is pushed to the learning paths at once ([pushPrivacy]). Until the store's first emission
+     * says what `private_mode` is, nothing is learned (a host with no store has nothing to wait for).
+     */
+    private var privacy = PrivacyState(privateModeKnown = settingsSource == null)
+        set(value) {
+            if (field == value) return
+            field = value
+            pushPrivacy()
+        }
+
+    private fun pushPrivacy() {
+        pipeline.learningAllowed = privacy.learningAllowed
+        DiagnosticLog.privateNow = !privacy.learningAllowed
+        refreshCaretBadge()
+        // The clipboard page's header says whether copies are being kept; keep it true while it is open.
+        clipboardPanel.setNotSaving(!privacy.learningAllowed)
+    }
+
+    /**
+     * A toggle from the keyboard ([togglePrivateMode]) applies at once, before the store's write
+     * comes back as an emission; until an emission carries this value, an older one in flight
+     * does not switch it back (which would let a word typed in between be learned).
+     */
+    private var pendingPrivateMode: Boolean? = null
+
+    /** A toggle whose write never came back (a failed store write) stops overriding the store after this long. */
+    private val clearPendingPrivateMode = Runnable { pendingPrivateMode = null }
+
+    /** Set by the store's first emission; until then `private_mode` is unknown and nothing is learned. */
+    private var storedSettingsReceived = false
+
+    /** app-shell.md SS31.4: drops every debug record while learning is off; see [PrivacyFilteringDebugCaptureSink]. */
+    private val debugCaptureSink: DebugCaptureSink? = rawDebugCaptureSink?.let { sink -> PrivacyFilteringDebugCaptureSink(sink) { privacy.learningAllowed } }
 
     private val handler = Handler(Looper.getMainLooper())
     private val longPressRunnable = Runnable { onLongPressTick() }
@@ -279,15 +326,38 @@ internal class KeyboardSession(
     private val expansionRefreshRunnable = Runnable { refreshExpansionFromEditor() }
 
     /** spec SS3.1: `clipboard_history_enabled` is read once; the store's first emission is that read (ClipboardHistoryController.applyEnabledOnce). */
-    private val clipboard = ClipboardHistoryController(service, handler) { onClipboardChanged() }
+    private val clipboard = ClipboardHistoryController(
+        service,
+        handler,
+        onChanged = { onClipboardChanged() },
+        learningAllowed = { privacy.learningAllowed },
+        cleanLinks = { lastSettings.privacy.cleanLinks },
+    )
     private val clipboardPanel = ClipboardPanelController(service)
     private val emojiAssets = EmojiAssets(service.assets, handler, Build.VERSION.SDK_INT)
-    private val emojiPicker = EmojiPickerController(service, handler, emojiAssets)
+    private val emojiPicker = EmojiPickerController(service, handler, emojiAssets, learningAllowed = { privacy.learningAllowed })
     /** spec layers-sym-alt.md SS5.7: the on-screen grid for the Emoji (page 1) and Symbols (page 2) key layers. */
     private val symGridPanel = SymGridPanelController(service)
     private var emojiPickerExpanded = false
     private var symAutoClose = true
     private var symAutoCloseOnTouch = true
+    /** spec expansion-clipboard-pickers-launcher.md SS4.7: `emoji_default_skin_tone`. */
+    private var defaultSkinTone = SkinTone.NONE
+    /** spec SS4.7: the skin-tone chooser a held emoji key (or a long-pressed Emoji page key) opens. */
+    private val skinTones = SkinToneHoldController(service, handler).also { controller ->
+        controller.host = object : SkinToneHoldController.Host {
+            override val theme: StripTheme get() = pipeline.settings.statusBar.theme
+            override val aboveBottomPx: Int get() = stripHeightPx()
+            override fun deviceLayerText(key: KeyId): String? = pipeline.layout.deviceLayer[key]
+            override fun digitKeyLabels(): List<String?> = ('0'..'5').map { digit ->
+                pipeline.layout.deviceLayer.entries.entries
+                    .filter { (key, text) -> key is KeyId.Letter && text == digit.toString() }
+                    .map { (key, _) -> (key as KeyId.Letter).qwertyLetter.toString() }
+                    .minOrNull()
+            }
+            override fun replaceCommitted(committed: String, form: String) = replaceRecentEmoji(committed, form)
+        }
+    }
 
     private val commandCatalog = AndroidCommandCatalog(service)
     private val quickLauncher = QuickLauncherController(service, handler, commandCatalog) { key, uppercase -> layoutText(key, uppercase) }
@@ -303,6 +373,7 @@ internal class KeyboardSession(
         openQuickLauncher = { quickLauncher.open() },
         startVoiceAssistant = ::startVoiceAssistant,
         runNavAction = ::runNavAction,
+        togglePrivateMode = ::togglePrivateMode,
     )
     private val launcherKeys = LauncherKeysController(service, handler, commandCatalog, commandExecutor, quickLauncher) { nowMs ->
         pipeline.onPowerShortcutTimeout(nowMs)
@@ -391,7 +462,7 @@ internal class KeyboardSession(
         lastShownStatusIcon = StatusBarIcon.None
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
-        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); quickLauncher.onServiceDestroyed() }
+        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
@@ -522,6 +593,8 @@ internal class KeyboardSession(
     private var assistantRequest: AssistantRequest? = null
 
     init {
+        // app-shell.md SS31: the learning paths start in [privacy]'s initial state, not learning until the store is read.
+        pushPrivacy()
         persistCtrlMappingMigrationIfNeeded(lastSettings.keys.navModeDefaultMappingsVersion)
         quickLauncher.executor = commandExecutor
         quickLauncher.quickLauncherKey = pipeline.settings.launcherShortcuts.quickLauncherKeycode?.let(AssignableKeys::keyOf)
@@ -569,6 +642,9 @@ internal class KeyboardSession(
         settingsSource?.let { source ->
             settingsScope.launch {
                 source.settings.collect { settings ->
+                    // app-shell.md SS31: only a real emission tells the keyboard what `private_mode` is;
+                    // a re-application of [lastSettings] before it (a layout switch) is still the defaults.
+                    storedSettingsReceived = true
                     runCatching { applySettings(settings) }.onFailure { error -> Log.e(TAG, "applying settings crashed", error) }
                 }
             }
@@ -742,6 +818,11 @@ internal class KeyboardSession(
      */
     private fun applySettings(settings: Settings, announceSwitch: Boolean = false) {
         lastSettings = settings
+        // app-shell.md SS31: `private_mode`, unless a toggle made here is still on its way to the store.
+        val storedPrivate = settings.privacy.privateMode
+        if (pendingPrivateMode == storedPrivate) pendingPrivateMode = null
+        if (pendingPrivateMode == null) handler.removeCallbacks(clearPendingPrivateMode)
+        privacy = privacy.copy(privateMode = pendingPrivateMode ?: storedPrivate, privateModeKnown = storedSettingsReceived || settingsSource == null)
         // The per-key diagnostic trail is off until asked for; it sits on the path every
         // keystroke takes. See [DiagnosticLog].
         DiagnosticLog.enabled = settings.statusBar.overlayDebugLoggingEnabled
@@ -824,6 +905,7 @@ internal class KeyboardSession(
         clipboard.retentionMinutes = settings.expansion.clipboardRetentionMinutes
         clipboard.applyEnabledOnce(settings.expansion.clipboardHistoryEnabled)
         emojiPickerExpanded = settings.symPages.emojiPickerExpandedHeight
+        defaultSkinTone = settings.symPages.defaultSkinTone
         symAutoClose = settings.symPages.autoClose
         symAutoCloseOnTouch = settings.symPages.autoCloseOnTouch
         quickLauncher.settings = ImeSettings.quickLauncherSettings(settings)
@@ -976,6 +1058,10 @@ internal class KeyboardSession(
         )
         val field = classifyField(info, profile)
         currentFieldKind = field.kind
+        // app-shell.md SS31.1: a field that sets "no personalized learning" (an incognito tab, a
+        // banking app) gets private mode's learning half without the user doing anything. Set
+        // before anything below can learn or record from this field.
+        privacy = privacy.copy(fieldAsksNoLearning = info != null && (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0)
         // spec: text-input.md SS3: set only after classification, which needs the app's own value.
         applyNoSuggestionsFlag(info, field)
         DiagnosticLog.i(TAG) { "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}" }
@@ -1043,6 +1129,8 @@ internal class KeyboardSession(
 
     fun onFinishInput() {
         handler.removeCallbacks(longPressRunnable)
+        // app-shell.md SS31.1: the flag belonged to the field that just closed.
+        privacy = privacy.copy(fieldAsksNoLearning = false)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         handler.removeCallbacksAndMessages(selectionSyncToken)
         currentFieldKind = FieldKind.NOT_EDITABLE
@@ -1056,6 +1144,8 @@ internal class KeyboardSession(
         handler.removeCallbacks(expansionRefreshRunnable)
         expansionPopup.hide()
         emojiPicker.onAppSelectionChanged()
+        // spec SS4.7: the skin-tone chooser belongs to the field it would type into.
+        skinTones.reset()
         // spec SS5.3: "Action mode also ends when... the field finishes"; SS6.4: "the overlay is
         // also closed whenever the connection to the app changes".
         statusBar?.exitActionMode()
@@ -1089,6 +1179,9 @@ internal class KeyboardSession(
             // it could be seen floating over whatever app the user switched to once the keyboard's
             // own window was gone (expansion-clipboard-pickers-launcher.md SS7.1's dismissal list).
             if (quickLauncher.isOpen) quickLauncher.dismiss()
+            // spec SS4.7: the skin-tone chooser is a bottom overlay too, and a hold must not open
+            // it after the window is gone.
+            skinTones.reset()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
     }
 
@@ -1408,8 +1501,14 @@ internal class KeyboardSession(
             if (event.action == KeyEvent.ACTION_UP) closeQuickActions()
             return@runCatching true
         }
+        // spec expansion-clipboard-pickers-launcher.md SS4.7: the skin-tone chooser's keys, and
+        // the auto-repeat of a key held on an emoji that takes tones, ahead of everything else.
+        val normalized = normalizeStroke(event)
+        normalized?.let { stroke ->
+            if (skinTones.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, eventTimeMs = event.eventTime)) return@runCatching true
+        }
         // spec expansion-clipboard-pickers-launcher.md SS4.5: while page 4's search captures, hardware keys type into it.
-        if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalizeStroke(event)?.key)) return@runCatching true
+        if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalized?.key)) return@runCatching true
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
@@ -1597,6 +1696,13 @@ internal class KeyboardSession(
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val tPipeline = System.nanoTime()
         val consumed = applyResult(ic, result, readout, keyTypes = event?.typedCharacter())
+        // spec expansion-clipboard-pickers-launcher.md SS4.7: a letter that just typed an emoji
+        // which takes tones (an Emoji page key, a Sym chord) arms the hold that opens the chooser.
+        if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key is KeyId.Letter) {
+            result.ops.filterIsInstance<EditorOp.CommitText>().singleOrNull()?.let { commit ->
+                skinTones.onCommitted(stroke.key, commit.text, stroke.timeMs, pipeline.layout.longPress.clampedThresholdMs)
+            }
+        }
         val tApply = System.nanoTime()
         if (result.appMayEditField && stroke.edge == KeyEdge.DOWN && !AppliedEditAccounting.movesCursor(result.ops)) {
             AppliedEditAccounting.expectedCursorAfterPassThrough(stroke.key, readout.cursorAbsolute, hasSelection = !lastReportedSelectionCollapsed)?.let { expected ->
@@ -1685,7 +1791,8 @@ internal class KeyboardSession(
     private val clipboardPanelListener = object : ClipboardPanelController.Listener {
         override fun onClipTapped(clip: Clip) {
             // spec SS3.5: committed "as finished text (no composing, no auto-space, no autocorrect)"; the panel stays open.
-            commitFinishedText(clip.text)
+            // SS3.7: with `clean_links` on, its links go in without their tracking, even if it was stored before.
+            commitFinishedText(ClipCapture.text(clip.text, lastSettings.privacy.cleanLinks))
         }
 
         override fun onTogglePinned(clip: Clip) {
@@ -1699,18 +1806,39 @@ internal class KeyboardSession(
     }
 
     private val emojiPickerListener = object : EmojiPickerController.Listener {
-        override fun onEmojiChosen(emoji: String) {
-            // spec SS4.4: with `sym_auto_close` and `sym_auto_close_on_touch` both on, the page closes first and the commit is posted after.
-            if (symAutoClose && symAutoCloseOnTouch) {
-                closeSymPanel()
-                handler.post { commitFinishedText(emoji) }
-            } else {
-                commitFinishedText(emoji)
-            }
-        }
+        override fun onChosen(text: String) = commitFromTouch(text)
 
         override fun onClose() = closeSymPanel()
         override fun layoutText(key: KeyId, uppercase: Boolean): String? = this@KeyboardSession.layoutText(key, uppercase)
+    }
+
+    /** spec SS4.4: with `sym_auto_close` and `sym_auto_close_on_touch` both on, the page closes first and the commit is posted after. */
+    private fun commitFromTouch(text: String) {
+        if (symAutoClose && symAutoCloseOnTouch) {
+            closeSymPanel()
+            handler.post { commitFinishedText(text) }
+        } else {
+            commitFinishedText(text)
+        }
+    }
+
+    /**
+     * spec SS4.7: the chooser's pick replaces the emoji the held key typed, when it is still just
+     * before the caret; otherwise (the app moved the caret or rewrote the text) the pick is
+     * inserted where the caret is, so the user's choice is never lost.
+     */
+    private fun replaceRecentEmoji(committed: String, form: String) {
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            ic.beginBatchEdit()
+            ic.finishComposingText()
+            val before = ic.getTextBeforeCursor(committed.length, 0)?.toString()
+            if (before == committed) ic.deleteSurroundingText(committed.length, 0)
+            ic.commitText(form, 1)
+            ic.endBatchEdit()
+            noteFieldEditedDuringDictation()
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "skin tone replace crashed", error) }
     }
 
     private fun commitFinishedText(text: String) {
@@ -1742,12 +1870,24 @@ internal class KeyboardSession(
                 val key = KeyId.Letter(letter)
                 processKeyStroke(KeyStroke(key = key, edge = KeyEdge.DOWN, repeatCount = 0, timeMs = now))
                 processKeyStroke(KeyStroke(key = key, edge = KeyEdge.UP, repeatCount = 0, timeMs = now))
+                // spec expansion-clipboard-pickers-launcher.md SS4.7: a tap is not a hold. The
+                // down above armed the skin-tone hold like a real key would; this up never passes
+                // through onKeyEvent, so it disarms it here.
+                skinTones.onKey(key, down = false, repeatCount = 0, eventTimeMs = now)
             }.onFailure { error -> Log.e(TAG, "sym grid key tap crashed", error) }
         }
 
         // spec SS5.7, SS5.8: opens "Customize SYM Keyboard" already on this page's editor; a long
         // press also opens that letter's picker immediately and returns here when it closes.
-        override fun onKeyLongPressed(letter: Char) = openSymCustomization(letter)
+        override fun onKeyLongPressed(letter: Char) {
+            // spec expansion-clipboard-pickers-launcher.md SS4.7: a key whose emoji takes tones
+            // opens the skin-tone chooser; any other key opens its picker in the customisation
+            // screen (the pencil still does, for every key).
+            val page = SymGridPage.forPageNumber(pipeline.currentSymPage)
+            val emoji = page?.let { symGridCharacters(it)[letter] }
+            if (emoji != null && skinTones.openForTouch(emoji) { form -> commitFromTouch(form) }) return
+            openSymCustomization(letter)
+        }
         override fun onPencil() = openSymCustomization(letter = null)
 
         // spec SS5.7: "opens the system input-method picker."
@@ -1774,12 +1914,12 @@ internal class KeyboardSession(
             val theme = pipeline.settings.statusBar.theme
             if (page == brobata.physiboard.core.strip.SYM_PAGE_CLIPBOARD) {
                 clipboard.cleanup(forced = true)
-                clipboardPanel.show(clipboard.history, theme, stripHeightPx(), clipboardPanelListener)
+                clipboardPanel.show(clipboard.history, theme, stripHeightPx(), clipboardPanelListener, notSaving = !privacy.learningAllowed)
             } else {
                 clipboardPanel.hide()
             }
             if (page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
-                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), emojiPickerListener)
+                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), defaultSkinTone, emojiPickerListener)
             } else {
                 emojiPicker.hide()
             }
@@ -2234,6 +2374,9 @@ internal class KeyboardSession(
             // spec keys-and-modifiers.md SS7.5: the three layout-switch chords, once `:core:keys`
             // has already decided one fires (LayerResolver.Context.canSwitchLayout).
             KeyCommands.SWITCH_LAYOUT -> runCatching { switchToNextInputStyle() }.onFailure { error -> Log.e(TAG, "layout switch crashed", error) }
+            // app-shell.md SS31.3: private mode bound on the Fn layer or in nav mode (a `command`
+            // mapping). Other catalogue ids are not run from here yet; this one is, by name.
+            CommandIds.TOGGLE_PRIVATE_MODE -> runCatching { togglePrivateMode() }.onFailure { error -> Log.e(TAG, "private mode toggle crashed", error) }
         }
     }
 
@@ -2387,7 +2530,10 @@ internal class KeyboardSession(
             val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = true, fallbackCursorAbsolute = lastReportedSelStart)
             val result = pipeline.onAcceptSuggestion(slot.text, readout.snapshot)
             applyResult(ic, result, readout)
-            if (slot.kind == SlotKind.ADD_WORD) persistAddedWord(slot.text)
+            if (slot.kind == SlotKind.ADD_WORD) {
+                // app-shell.md SS31: the word is typed either way; it is saved only while learning is allowed.
+                if (privacy.learningAllowed) persistAddedWord(slot.text) else showPrivacyToast(PrivacyToasts.WORD_NOT_SAVED)
+            }
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "slot tap crashed", error) }
     }
@@ -2679,6 +2825,41 @@ internal class KeyboardSession(
     }
 
     /**
+     * app-shell.md SS31.3: the "Private mode" command, bound to a key, a Sym shortcut, the quick
+     * launcher or a nav-mode key. Applies at once, stores the choice so it survives a restart,
+     * and says which way it went.
+     */
+    private fun togglePrivateMode(): Boolean {
+        // Before the store has been read the current state is a guess; flipping a guess could
+        // turn private mode on for someone asking to turn it off.
+        if (!privacy.privateModeKnown) {
+            showPrivacyToast(PrivacyToasts.NOT_READY)
+            return true
+        }
+        val on = !privacy.privateMode
+        pendingPrivateMode = on
+        handler.removeCallbacks(clearPendingPrivateMode)
+        handler.postDelayed(clearPendingPrivateMode, PENDING_PRIVATE_MODE_TIMEOUT_MS)
+        privacy = privacy.copy(privateMode = on)
+        settingsSource?.write { stored -> stored.copy(privacy = stored.privacy.copy(privateMode = on)) }
+        showPrivacyToast(if (on) PrivacyToasts.ON else PrivacyToasts.OFF)
+        return true
+    }
+
+    private fun showPrivacyToast(text: String) {
+        runCatching { android.widget.Toast.makeText(service, text, android.widget.Toast.LENGTH_SHORT).show() }
+            .onFailure { error -> Log.e(TAG, "private mode toast crashed", error) }
+    }
+
+    /** app-shell.md SS31.4: the words the keyboard uses for private mode. */
+    private object PrivacyToasts {
+        const val ON = "Private mode on: PhysiBoard learns nothing and makes no network requests"
+        const val OFF = "Private mode off"
+        const val WORD_NOT_SAVED = "Private: the word was typed but not saved"
+        const val NOT_READY = "PhysiBoard is still loading its settings; try again in a moment"
+    }
+
+    /**
      * spec: trackpad-caret-nav.md SS4.6. Self-guarded rather than trusting its callers: some of
      * [refreshCandidatesStrip]'s own call sites (the dictionary loader's background callback,
      * [onStartInput]) predate this task and are not wrapped in a `runCatching` of their own.
@@ -2686,7 +2867,8 @@ internal class KeyboardSession(
     private fun refreshCaretBadge() {
         runCatching {
             val metrics = service.resources.displayMetrics
-            caretBadge.update(pipeline.modifierGlyphInput(), lastCaretGeometry, metrics.widthPixels.toFloat(), metrics.density)
+            // app-shell.md SS31.4: the badge also carries private mode's marker.
+            caretBadge.update(pipeline.modifierGlyphInput().copy(privateMode = privacy.showsIndicator), lastCaretGeometry, metrics.widthPixels.toFloat(), metrics.density)
         }.onFailure { error -> Log.e(TAG, "caret badge refresh crashed", error) }
     }
 
@@ -2698,6 +2880,9 @@ internal class KeyboardSession(
         const val DIP_RESHOW_RETRY_MS = 32L
 
         const val TAG = "PhysiBoardKeyboard"
+
+        /** app-shell.md SS31.3: how long a keyboard toggle outranks the store if its write never lands. */
+        const val PENDING_PRIVATE_MODE_TIMEOUT_MS = 5_000L
         const val HAPTIC_DURATION_MS = 10L
 
         /** spec: status-bar.md SS6.1, "undo and redo give the 25 ms haptic instead". */

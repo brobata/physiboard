@@ -280,6 +280,22 @@ internal class KeyboardPipeline(
     var onBigramUnlearned: (locale: String, prefix: String, nextWord: String) -> Unit = { _, _, _ -> }
 
     /**
+     * app-shell.md SS31: whether a completed word may be learned as a next word. False in private
+     * mode and in a field that asks for no personalized learning; then nothing is learned, in
+     * memory or on disk, and no learn is taken back, while the pairs already known still drive
+     * next-word suggestions and the context still follows what is typed. [KeyboardSession] sets it
+     * from [brobata.physiboard.core.settings.PrivacyState.learningAllowed].
+     */
+    var learningAllowed: Boolean = true
+        set(value) {
+            // A pair learned before private mode started is not this word's to take back later,
+            // and a word typed during it is not the first half of a pair learned after it.
+            if (!value) lastLearnedPair = null
+            if (value && !field) nextWordPrefixKey = NgramStore.SENTENCE_START
+            field = value
+        }
+
+    /**
      * spec: SS4, "deleting a user word forgets it as a next word under every prefix" (SS5:
      * "forgets it as a next word everywhere"): the strip's delete button on a personal word.
      */
@@ -1279,6 +1295,16 @@ internal class KeyboardPipeline(
     private fun learnNextWord(debug: BoundaryDebugInfo) {
         if (debug.before.isBlank()) return
         val completedWord = debug.after.ifBlank { debug.before }
+        if (!learningAllowed) {
+            // app-shell.md SS31: learn nothing, but keep the context moving, so the next word's
+            // suggestions still come from what is already known about the word just typed.
+            nextWordPrefixKey = when {
+                !BoundaryDebugInfo.isSoftBoundary(debug.boundaryChar) -> NgramStore.SENTENCE_START
+                else -> NgramPrefix.of(completedWord)
+            }
+            lastLearnedPair = null
+            return
+        }
         val locale = resources.dictionaries.firstOrNull()?.language?.value ?: ImeSettings.DEFAULT_SUBTYPE_LOCALE
         val now = System.currentTimeMillis()
         val fixedPrevious = debug.previousWordAfter

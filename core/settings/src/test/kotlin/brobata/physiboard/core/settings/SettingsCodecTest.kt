@@ -55,6 +55,7 @@ class SettingsCodecTest {
                 order = listOf(SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER)),
             customEmojiPage = mapOf("KEYCODE_Q" to "😀"), customSymbolsPage = mapOf("KEYCODE_W" to "€"),
             autoClose = false, autoCloseOnTouch = false, emojiPickerExpandedHeight = true,
+            defaultSkinTone = brobata.physiboard.core.actions.emoji.SkinTone.MEDIUM_DARK,
             restoreSymPage = 2, pendingRestoreSymPage = 1,
         ),
         statusBar = StatusBarPrefs(
@@ -103,6 +104,7 @@ class SettingsCodecTest {
             tapHapticUseSystem = false, tapHapticDurationMs = 40,
             typingSoundMode = TypingSoundMode.TYPEWRITER, typingSoundOutputMode = TypingSoundOutputMode.NOTIFICATION,
         ),
+        privacy = PrivacyPrefs(privateMode = true, cleanLinks = false),
         shell = ShellState(tutorialCompleted = true, lastSeenWhatsNewVersion = "3.0.0", dismissedReleases = listOf("v3.0.1", "v3.0.2"), untestedDeviceNoticeSeen = true),
         captures = DeviceCaptures(
             fnCtrlPrevCaptured = true, fnCtrlPrevEnable = 1, fnCtrlPrevFunction = 7, sideKeyOriginalCaptured = true,

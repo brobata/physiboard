@@ -38,8 +38,11 @@ import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
+import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
+import brobata.physiboard.core.actions.emoji.SkinTone
+import brobata.physiboard.core.actions.emoji.SkinTones
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.settings.SymPage
 import brobata.physiboard.core.settings.SymPagesConfig
@@ -158,6 +161,18 @@ fun CustomizeSymKeyboardScreen(
                         description = "Use about 1.5x height for the emoji search page; other SYM pages keep their normal height.",
                         checked = symPages.emojiPickerExpandedHeight,
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(emojiPickerExpandedHeight = checked)) } },
+                    )
+                }
+                item { SectionHeader("Emoji skin tone") }
+                item {
+                    // spec: expansion-clipboard-pickers-launcher.md SS4.7.
+                    SingleChoiceDropdownRow(
+                        label = "Default skin tone",
+                        description = "Emoji that come in skin tones are typed in this one, from the Emoji page, Sym chords, the emoji picker and its recents. Hold an emoji to pick another tone.",
+                        options = SkinTone.entries,
+                        optionLabel = ::skinToneLabel,
+                        selected = symPages.defaultSkinTone,
+                        onSelect = { tone -> controller.update { it.copy(symPages = it.symPages.copy(defaultSkinTone = tone)) } },
                     )
                 }
             }
@@ -354,3 +369,7 @@ private fun SymEditGrid(characters: Map<Char, String>, onKeyTapped: (Char) -> Un
         }
     }
 }
+
+/** The tone's name with the waving hand in it, so the row shows what it sets. */
+private fun skinToneLabel(tone: SkinTone): String =
+    if (tone == SkinTone.NONE) "No tone (👋)" else "${tone.label} (${SkinTones.apply("👋", tone)})"

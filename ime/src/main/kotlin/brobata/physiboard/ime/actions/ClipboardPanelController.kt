@@ -40,18 +40,24 @@ internal class ClipboardPanelController(service: InputMethodService) {
     private var grid: GridLayout? = null
     private var scroll: ScrollView? = null
     private var clearAll: TextView? = null
+    private var title: TextView? = null
     private var empty: TextView? = null
     private var renderedCount = -1
     private var theme: StripTheme = StripTheme.SLATE_DARK
 
     val isShown: Boolean get() = panel.isShown
 
-    fun show(history: ClipboardHistory, theme: StripTheme, aboveBottomPx: Int, listener: Listener) {
+    /**
+     * [notSaving] is app-shell.md SS31.4's Sym-page indicator: while learning is off (private mode,
+     * or a field that asks for none) the header says new copies are not being kept.
+     */
+    fun show(history: ClipboardHistory, theme: StripTheme, aboveBottomPx: Int, listener: Listener, notSaving: Boolean = false) {
         this.theme = theme
         if (!panel.isShown) {
             val root = build(listener)
             if (!panel.show(root, heightPx = panel.dp(G.HEIGHT_DP), bottomMarginPx = aboveBottomPx)) return
         }
+        setNotSaving(notSaving)
         renderedCount = -1
         refresh(history, listener, scrollToTop = false)
     }
@@ -95,11 +101,17 @@ internal class ClipboardPanelController(service: InputMethodService) {
         scroll?.post { scroll?.scrollTo(0, if (scrollToTop) 0 else scrollY) }
     }
 
+    /** app-shell.md SS31.4: the header's private wording, changed in place while the page is open. */
+    fun setNotSaving(notSaving: Boolean) {
+        title?.text = if (notSaving) G.TITLE_NOT_SAVING else G.TITLE
+    }
+
     fun hide() {
         panel.hide()
         grid = null
         scroll = null
         clearAll = null
+        title = null
         empty = null
         renderedCount = -1
     }
@@ -111,14 +123,14 @@ internal class ClipboardPanelController(service: InputMethodService) {
         val header = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(panel.dp(G.HEADER_SIDE_PADDING_DP), panel.dp(G.HEADER_TOP_PADDING_DP), panel.dp(G.HEADER_SIDE_PADDING_DP), panel.dp(G.HEADER_BOTTOM_PADDING_DP))
-            addView(
-                TextView(context).apply {
-                    text = G.TITLE
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, G.HEADER_TEXT_SP.toFloat())
-                    setTextColor(withAlpha(theme.textAndIcons, 180))
-                },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
-            )
+            title = TextView(context).apply {
+                text = G.TITLE
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, G.HEADER_TEXT_SP.toFloat())
+                setTextColor(withAlpha(theme.textAndIcons, 180))
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+            }
+            addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             clearAll = TextView(context).apply {
                 text = G.CLEAR_ALL
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, G.HEADER_TEXT_SP.toFloat())

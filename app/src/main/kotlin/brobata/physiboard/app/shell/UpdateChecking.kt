@@ -15,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.core.shell.NetworkDecision
+import brobata.physiboard.core.shell.NetworkPurpose
 import brobata.physiboard.core.shell.ResolvedRelease
 import brobata.physiboard.core.shell.UpdateCheckResult
 
@@ -48,7 +50,8 @@ fun rememberUpdateCheckState(): UpdateCheckState = remember { UpdateCheckState()
  * Runs one check (app-shell.md SS13.1-SS13.9). [ignoreDismissedReleases] is true for the silent
  * triggers and false for the manual "Updates" row. [onNoNetwork] and [onUpToDate] are only ever
  * invoked by the manual row (SS9: "no version returned" vs. "up to date" are a distinction only
- * the Updates row draws); silent triggers pass no-ops.
+ * the Updates row draws); silent triggers pass no-ops. [onBlocked] likewise only matters to the
+ * manual row: private mode refused the check (SS31.2).
  */
 suspend fun runUpdateCheck(
     state: UpdateCheckState,
@@ -57,7 +60,15 @@ suspend fun runUpdateCheck(
     ignoreDismissedReleases: Boolean,
     onNoNetwork: () -> Unit = {},
     onUpToDate: () -> Unit = {},
+    onBlocked: (reason: String) -> Unit = {},
 ) {
+    // app-shell.md SS31.2: in private mode nothing is sent. The manual row says why; the silent
+    // triggers pass a no-op and simply find nothing, the same as no network.
+    val decision = GatedHttp.decide(NetworkPurpose.UPDATE_CHECK)
+    if (decision is NetworkDecision.Blocked) {
+        onBlocked(decision.reason)
+        return
+    }
     state.checking = true
     try {
         when (val result = GithubUpdateClient.check(installedVersionName, dismissedReleases, ignoreDismissedReleases)) {

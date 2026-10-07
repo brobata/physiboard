@@ -220,7 +220,13 @@ with no declared type is also accepted), coerced to text, and stored unless the 
 The stored timestamp is the wall-clock time of capture, not the clip's own timestamp.
 
 There is no sensitive-content rule: a clip flagged sensitive by its source (a password manager's
-copy) is stored like any other and shown in full on the panel. This is a known gap.
+copy) is stored like any other and shown in full on the panel. This is a known gap. (3.0 refuses
+a clip flagged sensitive; see section 13.)
+
+3.0 additions: nothing is captured while learning is off, that is in private mode or while the
+field being typed in asks for no personalized learning (app-shell.md section 31.1); a copy made
+then is simply not kept, and the history already stored stays usable. A clip that is kept is
+stored with its links cleaned when `clean_links` is on (section 3.7).
 
 Duplicates: a clip whose text equals an existing entry's text (exact, case-sensitive) is not
 added again; the existing entry's timestamp is refreshed so it moves to the top of its group.
@@ -293,7 +299,7 @@ Interactions:
 
 | Action | Behaviour |
 |---|---|
-| Tap a card | The clip's text is committed into the app at the caret as finished text (no composing, no auto-space, no autocorrect). The panel stays open; `sym_auto_close` does not apply to it. |
+| Tap a card | The clip's text is committed into the app at the caret as finished text (no composing, no auto-space, no autocorrect). The panel stays open; `sym_auto_close` does not apply to it. 3.0: with `clean_links` on, its links are cleaned first (section 3.7), so a clip stored before the setting was on is still pasted clean. |
 | Long-press a card | A context menu with "Pin" (or "Unpin" when pinned) and "Delete". |
 | Pin / Unpin | Toggles the flag and refreshes the timestamp, so the entry jumps to the top of its new group; the list then scrolls to the top. Pinned entries also survive "Clear All" and retention. |
 | Delete | Removes the entry even if pinned (it is unpinned first, then removed). |
@@ -305,6 +311,10 @@ that does not change the count is refreshed by the menu action itself, and a cop
 is open appears at the next strip refresh that sees the new count. On refresh the scroll position
 is preserved unless a pin requested a scroll to top. The visible cards use immutable snapshots so
 a change of pinned state or timestamp is detected and redrawn.
+
+3.0: while learning is off (app-shell.md section 31.4) the header title reads "Clipboard History ·
+private, new copies not saved" instead of "Clipboard History", one line, ellipsised; it is
+re-read every time the page is shown or private mode is toggled with the page open.
 
 An older floating "clipboard history popup" with title, entries, pin and delete buttons (the
 comment calls it the Shift+Ctrl+V popup) is still compiled in but nothing opens it; it has no
@@ -320,7 +330,108 @@ trigger.
 Related but owned elsewhere: the strip slot preference that places the clipboard button
 (status-bar.md 6.3) and `sym_pages_config` `clipboardEnabled` (layers-sym-alt.md 4.1).
 
+3.0 adds `clean_links` (section 3.7) and `private_mode` (app-shell.md section 31); both are rows
+of settings-catalog.md section 2.17.
+
+### 3.7 Clean links (3.0)
+
+`clean_links`, boolean, default true, on Settings > Privacy > "Clean links". When on, links in
+clipboard text lose their tracking at the two places the keyboard handles that text itself:
+
+1. **Capture**: a clip accepted by section 3.1 is stored with its links cleaned. Two copies that
+   differ only in tracking therefore become one entry (the section 3.1 duplicate rule sees the
+   cleaned text).
+2. **Paste from the clipboard page**: a tapped card is cleaned again before it is committed.
+
+**Ctrl+V is not cleaned.** The keyboard does not paste with Ctrl+V: it asks the app to run its
+own paste (keys-and-modifiers.md section 7.3, the editor's context-menu action), so the app
+reads the system clipboard and the keyboard never sees the text. The system clipboard itself is
+never rewritten. The emoji picker's search field paste (section 4.5) is search text and is not
+cleaned either.
+
+What counts as a link: a run of text starting `http://` or `https://` (any letter case) up to
+the next whitespace, `<`, `>` or `"`. Trailing `.` `,` `;` `:` `!` `?` `'` `"` `…` are not part
+of it, nor is a closing `)`, `]` or `}` that the link did not open (so `(see https://x/a)` keeps
+its bracket outside, and `https://en.wikipedia.org/wiki/Foo_(bar)` keeps its own). Anything that
+is not such a link, and every character around one, is left exactly as it was. Text longer than
+65,536 characters is not scanned at all.
+
+For each link, in order:
+
+1. **Unwrap.** If the link is one of the redirect wrappers below and one of the wrapper's
+   parameters (tried in the order listed) percent-decodes, as UTF-8 with `+` read as a space, to
+   an `http`/`https` address with a host and no whitespace, the link is replaced by that address,
+   and the step repeats on the result up to 5 times (an Outlook Safe Link around a Google
+   redirect). The wrapper's own fragment goes with it; the target keeps its own. A target written
+   into the wrapper without encoding (it contains a literal `://`) is used only when it contains no
+   `?` and the wrapper has no `#`: otherwise the wrapper's `&` and `#` have already cut away parts
+   that may have been the target's, and the wrapper is left untouched rather than shortened. A
+   wrapper with no usable target (missing, a bad `%` escape, bytes that are not UTF-8, a non-web scheme such as
+   `javascript:`, a space) is left untouched.
+
+   | Wrapper (host, path) | Parameter(s) |
+   |---|---|
+   | `google.<country domain>` or `www.google.<…>` (`com`, `de`, `co.uk`, `com.au`, …), `/url` | `q`, then `url` |
+   | `l.facebook.com`, `lm.facebook.com`, `m.facebook.com`, `www.facebook.com`, `/l.php` | `u` |
+   | `l.messenger.com`, `/l.php` | `u` |
+   | `l.instagram.com`, `/` | `u` |
+   | `l.threads.net`, `l.threads.com`, `/` | `u` |
+   | `www.youtube.com`, `youtube.com`, `m.youtube.com`, `/redirect` | `q` |
+   | `out.reddit.com`, any path | `url` |
+   | `slack-redir.net`, `/link` | `url` |
+   | `steamcommunity.com`, `/linkfilter/` | `u`, then `url` |
+   | any `*.safelinks.protection.outlook.com`, `/` | `url` |
+   | `vk.com`, `m.vk.com`, `/away.php` | `to` |
+   | `duckduckgo.com`, `/l/` | `uddg` |
+   | `www.linkedin.com`, `linkedin.com`, `/redir/redirect` | `url` |
+   | `t.umblr.com`, `/redirect` | `z` |
+
+   A path written with or without its trailing `/` matches. Link shorteners (`t.co`, `bit.ly`)
+   are not wrappers: finding their target needs the network.
+
+2. **Strip.** The query (between the first `?` after the host and the `#`, if any) is split on
+   `&`. A parameter goes when its name, percent-decoded and lower-cased, is on one of these lists:
+
+   - **Everywhere**: any name starting `utm_`; `gclid`, `gclsrc`, `dclid`, `gbraid`, `wbraid`,
+     `gad_source`, `_gl`, `srsltid` (Google Ads and Analytics); `fbclid`, `igshid`, `igsh`,
+     `mibextid`, `fb_action_ids`, `fb_action_types`, `fb_ref`, `fb_source` (Meta); `msclkid`
+     (Microsoft); `mc_cid`, `mc_eid` (Mailchimp); `yclid`, `_openstat` (Yandex); `twclid`,
+     `ttclid`, `li_fat_id`, `epik` (X, TikTok, LinkedIn, Pinterest ads); `_hsenc`, `_hsmi`,
+     `__hstc`, `__hssc`, `__hsfp`, `hsctatracking` (HubSpot); `mkt_tok` (Marketo); `oly_anon_id`,
+     `oly_enc_id` (Omeda); `vero_id`, `vero_conv` (Vero); `wickedid` (Wicked Reports);
+     `rb_clickid` (Rakuten); `s_kwcid`, `ef_id` (Adobe).
+   - **Only on one site** (the domain itself or any subdomain), because the same name means
+     something real elsewhere (`t` is a start time on YouTube):
+
+     | Site | Parameters |
+     |---|---|
+     | `youtube.com`, `youtu.be` | `si`, `feature`, `pp` |
+     | `spotify.com`, `spotify.link` | `si` |
+     | `twitter.com`, `x.com` | `s`, `t`, `ref_src`, `ref_url` (elsewhere `ref_url` is often a working return address) |
+     | `instagram.com` | `igsh`, `igshid` |
+     | `threads.net`, `threads.com` | `xmt` |
+     | `tiktok.com` | `is_from_webapp`, `sender_device`, `sender_web_id`, `_r`, `_t`, `share_app_id`, `share_link_id`, `u_code` |
+     | `reddit.com` | `share_id`, `rdt` |
+     | `linkedin.com` | `trk`, `trackingid`, `lipi`, `trkemail`, `midtoken`, `midsig` |
+     | `facebook.com` | `__tn__`, `sfnsn` |
+     | `amazon.<country domain>` and its subdomains | `ref_`, `content-id`, any name starting `pd_rd_` or `pf_rd_` |
+     | Google, path starting `/search` | `ved`, `ei`, `sca_esv`, `sca_upv`, `sxsrf`, `gs_lcrp`, `gs_lp`, `sclient`, `sourceid`, `iflsig`, `oq`, `aqs`, `rlz`, `uact`, `bih`, `biw`, `dpr` |
+
+   A query containing `;` (an old parameter separator) is not touched at all, nor is a wrapper
+   whose query contains one. Every other parameter stays, in its order, with its exact original spelling and encoding
+   (nothing is decoded and written back). When something was removed, empty pieces (`&&`) are
+   dropped too; when nothing was, the link is returned exactly as it was, byte for byte. The `?`
+   goes only when no parameter is left. The fragment is never changed, even when it contains
+   something that looks like a parameter. Scheme, user info, host case and port are kept as
+   written.
+
+Cleaning is idempotent: a cleaned link cleans to itself.
+
 ## 4. The emoji picker (Sym page 4)
+
+Page 4 shows one of three modes: Emoji (sections 4.1 to 4.7), Kaomoji (4.9) and Symbols (4.8).
+New in 3.0: the kaomoji and Unicode symbol modes, the hardware-key skin-tone chooser and the
+default skin tone. Everything else in this section is the 2.x picker.
 
 ### 4.1 Emoji data
 
@@ -416,8 +527,15 @@ width, 4 dp padding, the theme's text color; the selected tab is the accent at a
 dp divider border (white at alpha 100 without a theme), 6 dp corners.
 
 Tab row, left to right: a search toggle button (magnifier, 32 dp square), a keyboard-switcher
-button that is visible only in software keyboard mode, the category tabs (one per category
-present, recents first), and a close button (36 by 32 dp, same style as the clipboard panel's).
+button that is visible only in software keyboard mode (dropped in 3.0), the mode button (3.0:
+56 dp wide, the button colour, labelled with the mode on screen: "Emoji", "Kaomoji" or
+"Symbols"; a tap moves to the next mode in that order and wraps), the category tabs (one per
+category present, recents first), and a close button (36 by 32 dp, same style as the clipboard
+panel's). Tab labels shrink to fit their cell, from 14 sp down to 8 sp, on one line.
+
+The mode is kept for the life of the keyboard service, so page 4 reopens in the mode it was
+left in; a fresh service starts in Emoji. Switching mode with a query in the search field runs
+that query in the new mode; with none it draws the new mode's sections, scrolled to the top.
 
 While loading, a centered progress indicator is shown; a failure to load anything shows "Unable
 to load emoji". Loading happens the first time the page opens, on every open when it was on
@@ -428,21 +546,26 @@ row. Tapping the Recents tab also asks for a recents refresh.
 
 ### 4.4 Choosing an emoji
 
-Tap: the emoji is committed into the app as finished text. If both `sym_auto_close` and
+Tap: the emoji is committed into the app as finished text, in the default skin tone when it
+takes one (section 4.7; the grid shows each emoji the way a tap inserts it). If both `sym_auto_close` and
 `sym_auto_close_on_touch` are on (both default on) the page is asked to close first and the
 commit is posted right after, so the strip's redraw and the insert do not fight; otherwise the
 commit is immediate and the page stays open.
 
 Long press on an emoji that has variants: a light popup (the theme's key popup color, fallback
 white at alpha 0xEE, 12 dp elevation) above the cell, centered on it and clamped to the screen,
-listing the base then each variant at 24 sp with 12 dp by 8 dp padding; tapping one commits it
-the same way and dismisses the popup. Outside touches dismiss it. This is the skin-tone chooser:
-the tone comes from the asset line, the chosen tone is inserted as is, and no tone preference is
-remembered per emoji. An emoji without variants ignores the long press.
+listing the untoned form, then the cell's own form, then each variant (duplicates once) at 24
+sp with 12 dp by 8 dp padding, scrolling sideways when it is wider than the screen (a pair such
+as 🧑‍🤝‍🧑 lists all 25 tone combinations); tapping one commits it the same way and dismisses
+the popup. Outside touches dismiss it. This is the touch skin-tone chooser: the chosen form is
+inserted and remembered in recents as chosen, whatever the default tone, and no tone preference
+is remembered per emoji. An emoji without variants ignores the long press.
 
-Recents: every chosen emoji (base or variant, as inserted) goes to the front of a list of at
-most 40 kept in the separate preferences file `recent_emojis_prefs` under the key
-`recent_emojis` as a JSON array of strings, most recent first; choosing one that is already
+Recents: every chosen emoji goes to the front of a list of at most 40 kept in the separate
+preferences file `recent_emojis_prefs` under the key `recent_emojis` as a JSON array of strings,
+most recent first. A tap on a cell records the cell's untoned base, so a recent follows a later
+change of the default tone; a pick from the popup records the form picked. A recent with no
+tone is shown and inserted in the default tone like any other cell; choosing one that is already
 first changes nothing; choosing one further down moves it to the front and drops nothing; a new
 one pushes the 41st off the end. The Recents section is rebuilt from that list with each entry's
 variants looked up from the categories. The redraw is deferred: it is applied only when the grid
@@ -483,11 +606,16 @@ following the capture start; or the input session ends. While capture is on, the
 position is monitored (the single caret-monitoring switch is shared with the caret badge and is
 reconciled so neither feature turns it off under the other).
 
-Each edit of the field schedules a search 120 ms later. A non-empty trimmed query switches the
-grid to a flat result list in score order, dims the tab row to alpha 0.55 and disables tab taps;
-no results shows "No emoji found"; an empty query restores the sections. Results support the
-same tap and long press as the sections. A search that cannot run because the index failed to
-build shows "Unable to load emoji".
+Each edit of the field schedules a search 120 ms later. The search searches the mode on screen
+(the field's hint says which: "Search emoji...", "Search kaomoji...", "Search symbols...") and
+the scoring runs on the picker's loader thread, never on the main thread or the key path (3.0);
+an answer that arrives after the query changed, the mode changed or the page closed is dropped.
+A non-empty trimmed query switches the grid to a flat result list in score order, dims the
+category tabs to alpha 0.55 and disables their taps (the search, mode and close buttons stay
+live); no results shows "No emoji found", "No kaomoji found" or "No symbols found"; an empty
+query restores the sections. Results support the same tap and long press as the sections. A
+search that cannot run because the index failed to build shows "Unable to load emoji" (or
+"Unable to load symbols").
 
 ### 4.6 Settings
 
@@ -496,8 +624,164 @@ build shows "Unable to load emoji".
 | `emoji_picker_expanded_height` | boolean | true | Picker height 265 dp instead of 177 dp | Customize SYM Keyboard | Larger emoji picker ("Use about 1.5x height for the emoji search page; other SYM pages keep their normal height.") |
 | `recent_emojis` (file `recent_emojis_prefs`) | string, JSON array | absent | The recents list, most recent first, at most 40 | none | (Recents tab) |
 
+| `emoji_default_skin_tone` | string `none`, `light`, `medium_light`, `medium`, `medium_dark`, `dark`; anything else reads as `none` | `none` | The tone every emoji that takes one is inserted and shown in (section 4.7) | Customize SYM Keyboard | Default skin tone ("Emoji that come in skin tones are typed in this one, from the Emoji page, Sym chords, the emoji picker and its recents. Hold an emoji to pick another tone.") |
+| `recent_kaomoji` (file `recent_emojis_prefs`) | string, JSON array | absent | Kaomoji recents, most recent first, at most 40 | none | (Kaomoji Recents tab) |
+| `recent_symbols` (file `recent_emojis_prefs`) | string, JSON array | absent | Symbol recents, most recent first, at most 40 | none | (Symbols Recents tab) |
+
 `sym_auto_close`, `sym_auto_close_on_touch` and `sym_pages_config` `emojiPickerEnabled` are in
-layers-sym-alt.md. The recents file is not part of backups.
+layers-sym-alt.md. The recents file is not part of backups; `emoji_default_skin_tone` is.
+
+### 4.7 Skin tones (3.0)
+
+**Which emoji take a tone.** Exactly the emoji Unicode Emoji 17.0 `emoji-test.txt` lists with
+every person in the same tone: 330 of them. That covers a single person or body part (👋, 👍),
+a person with a role, gender or direction (👩‍💻, 🕵️‍♀️, 🚶‍➡️), and the pairs Unicode tones as a
+whole (🧑‍🤝‍🧑, 💏, 💑 and their gendered forms, 🤝). Families (👨‍👩‍👧), hearts, flags and every
+other emoji take no tone and are never changed. The list is a table generated by
+`scripts/build_skin_tone_table.py` from `emoji-test.txt` (Unicode License v3, see LICENSING.md);
+the script refuses to write a table in which any listed tone is not itself a fully-qualified
+Unicode sequence.
+
+**Toning.** An emoji is looked up with its tone modifiers (U+1F3FB to U+1F3FF) and its variation
+selectors (U+FE0F) removed, so ☝, ☝️ and ☝🏽 are the same emoji. Its form in a tone is
+Unicode's own sequence with every person in that tone (☝️ medium is ☝🏽: the modifier replaces
+the selector; 🧑‍🤝‍🧑 medium is 🧑🏽‍🤝‍🧑🏽: the handshake in the middle stays untoned); "no
+tone" is the untoned fully-qualified form. Mixed tones (🧑🏻‍🤝‍🧑🏿) are never produced by a
+default or by the key chooser; the touch popup still offers every combination the emoji assets
+list.
+
+**The default tone** (`emoji_default_skin_tone`, default `none`, which changes nothing) applies
+to an emoji that takes a tone and carries none, everywhere an emoji is inserted:
+
+| Where | How |
+|---|---|
+| The Emoji and Symbols key layers (pages 1 and 2), Sym chords, a Sym long press | The page maps are toned once when the settings change, so the grid shows, and the keys type, the toned form. A custom page entry the user gave a tone keeps it. |
+| The picker's grid, search results and recents | Each cell shows and inserts the toned form, when the device's font has it (otherwise the untoned one). |
+| The touch popup and the key chooser | Not applied: they insert what the user picks. |
+
+**Choosing a tone with the keys.** When a fresh press (repeat count 0) of a letter key commits
+one emoji that takes a tone (an Emoji page key, or a Sym chord drawing from it), a hold is armed
+for that key with the long-press threshold (`long_press_threshold`, clamped to 50..1000 ms). The
+key's auto-repeats while the hold is armed are consumed, so holding a page key never types its
+letter after the emoji. If the key is still down when the threshold passes (the timer, or a
+repeat that arrives after it), the chooser opens: a transient bar above the strip with the six
+forms (no tone, then light to dark), each labelled with its digit and the letter key printed
+with that digit on the device layer: `0 · Q`, `1 · W`, `2 · E`, `3 · R`, `4 · S`, `5 · D` on both
+Titan legends. Releasing the key before the threshold, or pressing another key, disarms it.
+
+While the chooser is open:
+
+| Key | Effect |
+|---|---|
+| A key whose device-layer character is a digit 0 to 5 (Q W E R S D), or a digit key 0 to 5 | The emoji just typed is replaced by that form and the chooser closes. The key and its release are consumed. The replacement deletes the emoji only when the text just before the caret is still exactly that emoji; otherwise the chosen form is inserted at the caret. |
+| The held key's own auto-repeat | Consumed; the chooser stays open. |
+| Alt or Shift | Consumed with its release; the chooser stays open (so Alt+W picks the same as W, and no Alt one-shot is left armed after the pick). |
+| Back | Closes the chooser without a change; consumed. |
+| Any other key (letters without a digit, Space, Enter, Backspace, Sym, Ctrl) | Closes the chooser, then does exactly what it would have done. |
+
+Tapping a form in the bar picks it the same way; its close button closes it. The chooser also
+closes, and a pending hold is dropped, when the field finishes, when the keyboard window hides
+and when the keyboard service is destroyed. A tap on an Emoji page grid key types like a press
+and release, so it never arms a hold. A key consumed by the chooser (the pick, Back, Alt or
+Shift) has its auto-repeats consumed too until it is released. It never opens on
+its own for anything but a held key or a touch, and it intercepts Space, Enter, Shift and
+Backspace only while it is open (Shift swallowed; the other three close it and act normally).
+
+**Choosing a tone by touch on the Emoji page.** A long press on a grid key whose emoji takes a
+tone opens the same bar; a pick is committed like a grid tap (closing the page first when both
+auto-close switches are on). A long press on any other key opens its picker in the
+customisation screen as before (layers-sym-alt.md 5.7); the pencil still opens the editor for
+every key.
+
+### 4.8 Unicode symbols (3.0)
+
+Symbols mode lists Unicode symbols in nine groups, plus a search-only tenth. A code point listed
+in two groups belongs to the first of: Currency, Music, Maths, Arrows, Box drawing, Shapes,
+Dingbats, Signs and technical, Punctuation.
+
+| Tab | Group | Code points |
+|---|---|---|
+| `#` | Punctuation | ASCII punctuation (21-2F, 3A-40, 5B-60, 7B-7E), Latin-1 A1-BF, General Punctuation 2010-205E, Supplemental Punctuation 2E00-2E5D |
+| `→` | Arrows | 2190-21FF, 27F0-27FF, 2900-297F, 2B00-2BFF, 1F800-1F8FF |
+| `∑` | Maths | AC, B1, D7, F7, Greek capitals 391-3A9 and small letters 3B1-3C9, super- and subscripts 2070-209F, number forms 2150-218F, 2200-22FF, 27C0-27EF, 2980-29FF, 2A00-2AFF |
+| `€` | Currency | 24, A2-A5, 58F, 60B, 9F2-9F3, AF1, BF9, E3F, 17DB, 20A0-20C0, FDFC, 1E2FF |
+| `⌘` | Signs & technical | Letterlike 2100-214F, Miscellaneous Technical 2300-23FF, control pictures 2400-2426, OCR 2440-244A, enclosed alphanumerics 2460-24FF |
+| `─` | Box drawing & blocks | 2500-259F, 1FB00-1FBFF |
+| `■` | Shapes | 25A0-25FF, 1F780-1F7FF |
+| `★` | Dingbats & symbols | 2600-26FF, 2700-27BF |
+| `♪` | Music | 2669-266F, 1D100-1D1FF |
+| (none) | Other | Every other code point from 0 to 2FFFF whose general category is a symbol (Sm, Sc, Sk, So) or punctuation (Pc, Pd, Ps, Pe, Pi, Pf, Po), except 1F000-1FAFF (emoji pictographs, which the Emoji mode has), Sutton SignWriting 1D800-1DAAF, private use, tags and variation selectors. Searchable, never a tab. |
+
+A code point is listed only when the platform has a name for it (`Character.getName`, which
+Android answers from ICU, so the set follows the phone's Unicode version), it is not a control
+or whitespace character, and the font draws it (`Paint.hasGlyph`). No name table ships with the
+app. On a JVM with Unicode 15.0 tables the groups hold 227, 659, 843, 48, 546, 372, 199, 441, 240
+and 2778 symbols (6353 in all); the phone's numbers differ with its ICU version and font.
+
+The catalogue (one name lookup and one glyph probe per candidate) is built on the picker's
+loader thread the first time Symbols mode is shown ("Loading symbols..." with a progress
+indicator meanwhile; "Unable to load symbols" if it fails) and kept for the life of the process.
+The search index over it is built on the same thread on the first symbol search.
+
+Layout: the same 48 dp cells and column count as the emoji grid, glyphs at 24 sp in the theme's
+text colour. Symbols mode draws one group at a time (Maths alone is over 800 cells): a tab
+swaps the group on screen instead of scrolling. A Recents tab (clock) comes first when
+`recent_symbols` is not empty and is then the first group shown. Tap inserts the symbol as plain
+text (the same close-first rule as an emoji); long press shows a toast with its Unicode name in
+lowercase and its code point (`rightwards arrow · U+2192`).
+
+Search scoring, shared with kaomoji (both sides normalised as in 4.2, so `N-ARY SUMMATION` is
+`n ary summation`):
+
+| Condition | Score |
+|---|---|
+| The raw query is the symbol itself | 2000 |
+| The query is its code point, `U+2192`, `u+2192` or `u2192` (4 to 6 hex digits) | 1900 |
+| The name equals the query | 1000 |
+| The name starts with the query | 800 |
+| Every query word equals a word of the name or starts one, in any order | 600, plus 20 per query word equal to a whole word |
+| The name contains the query (2+ characters) | 300 |
+
+The name's word count (at most 50) is subtracted from the name rows, so the shorter name wins
+a tie ("right arrow": → `RIGHTWARDS ARROW` 618 before ⇒ `RIGHTWARDS DOUBLE ARROW` 617). Results
+are sorted by score, then group order, then code point, and cut to 200.
+
+### 4.9 Kaomoji (3.0)
+
+Kaomoji mode lists 302 kaomoji written for PhysiBoard (not taken from any other keyboard),
+compiled into the app (nothing is read from storage), in twelve groups, each with a short
+kaomoji as its tab label:
+
+| Tab | Group | Count |
+|---|---|---|
+| `^‿^` | Joy | 30 |
+| `♡` | Love | 28 |
+| `^^;` | Embarrassed | 22 |
+| `T_T` | Sad | 25 |
+| `ಠ_ಠ` | Angry | 25 |
+| `O_O` | Surprise | 22 |
+| `・・?` | Confused | 16 |
+| `ツ` | Shrug | 13 |
+| `o/` | Greeting | 25 |
+| `zZ` | Sleepy | 19 |
+| `=^.^=` | Animals | 32 |
+| `┻━┻` | Actions | 45 |
+
+Each kaomoji is in exactly one group and has a name and one or more tags (the classic shrug
+¯\_(ツ)_/¯ is "shrug" with tags whatever, dunno, idk, meh; the table flip (╯°□°)╯︵ ┻━┻ is
+"table flip"; ( ͡° ͜ʖ ͡°) is "lenny face").
+
+Layout: three columns of 40 dp cells, the kaomoji on one line in the theme's text colour,
+shrinking from 16 sp to 9 sp to fit; a Recents section (clock tab) first when `recent_kaomoji` is
+not empty, then the twelve groups, all drawn at once; tabs jump to their group and follow the
+scroll exactly as the emoji tabs do, with the same deferred recents redraw. Tap inserts the
+kaomoji exactly as written, as plain text; long press shows a toast with its name.
+
+Search scores each kaomoji by the table in 4.8 against its name (+50), each of its tags, and
+its group's label (-100, so "sleepy" lists the whole Sleepy group after the kaomoji named or
+tagged so); the best wins. A query that is exactly a kaomoji's text scores 2000. Ties keep group
+order, then list order. Cut to 200. So "lenny face", "shrug" and "table flip" each give the
+classic first, "flip table" gives the table flip first, and "idk" finds the shrug by its tag.
 
 ## 5. The pickers inside settings
 
@@ -903,6 +1187,7 @@ assignments contain it):
 | `pastiera.main` | PhysiBoard / Open app settings | `open_main_activity` | assigned key, nav mode | Opens the app's main activity |
 | `pastiera.voice_assistant` | Voice assistant / Open it already listening | `start_voice_assistant` | all three | dictation.md section 11; "No voice assistant is set up on this device." on failure |
 | `pastiera.toggle_software_keyboard_mode` | Toggle Keyboard Mode / Switch Virtual / Hardware | `toggle_software_keyboard_mode` | all three | Toggles the temporary software keyboard mode and, when the toggle toasts are enabled, shows the resulting mode |
+| `physiboard.toggle_private_mode` (3.0) | Private mode / Turn private mode on or off | `toggle_private_mode` | all three | Flips `private_mode` at once and stores it, with a toast (app-shell.md section 31.3); search tokens "private", "incognito", "offline", "privacy"; icon: dark glasses |
 
 **App actions** (`app_actions`, "App actions"): each is an intent into a third-party app and is
 listed only when that app can resolve it. Ids and targets: `niagara.search` (`niagara://search`)
@@ -964,7 +1249,7 @@ unavailable", "No input context", "Nav action failed", "Unknown action", and the
 Where a command has an app drawable it is shown; otherwise a Material icon by rule, first match
 wins: apps: grid of apps; app actions: agenda -> event, tasker -> task check, homeassistant.assist
 and .voice -> microphone, other homeassistant -> home, other -> magnifier; `pastiera.quick_launcher`
--> magnifier; `pastiera.main` -> gear; media play/pause -> play, previous -> skip previous, next ->
+-> magnifier; `pastiera.main` -> gear; `physiboard.toggle_private_mode` -> dark glasses (3.0); media play/pause -> play, previous -> skip previous, next ->
 skip next; volume up/down/mute -> the volume glyphs; brightness -> sun; ids containing
 default_apps or `settings.android.apps` -> apps; input_method -> keyboard; accessibility ->
 accessibility figure; language or locale -> globe; bluetooth -> bluetooth; wifi or internet ->
@@ -1186,6 +1471,39 @@ Each case is an input sequence and the expected outcome, written so a JVM test c
 | T54 | typing sound gating | key with repeat 1, or Back, or no editable field | no sound |
 | T55 | tap haptic duration | stored 200 | read as 80; stored 1 read as 5 |
 | T56 | typing sound mode | stored `bogus` | read as `off` |
+| T57 | clean links (3.0) | `https://www.example.com/article?utm_source=newsletter&id=42&utm_medium=email&lang=en%2DGB&utm_campaign=fall#comments` | `https://www.example.com/article?id=42&lang=en%2DGB#comments` |
+| T58 | clean links | `https://example.com/page?utm_source=x&fbclid=IwAR0abc` | `https://example.com/page` (the `?` goes) |
+| T59 | clean links | a link with no tracking | the same string |
+| T60 | clean links | `https://youtu.be/dQw4w9WgXcQ?si=Ab3dEfGhIjKlMnOp&t=42` | `https://youtu.be/dQw4w9WgXcQ?t=42` |
+| T61 | clean links | `https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC?si=1a2b3c4d5e6f` | no `?si=` |
+| T62 | clean links | `https://example.com/search?si=1&t=20&s=abc` | unchanged (site-only names) |
+| T63 | clean links | `https://x.com/nasa/status/1234567890?s=20&t=AbCdEfGh` | `https://x.com/nasa/status/1234567890` |
+| T64 | clean links | Instagram `igsh`, Facebook `mibextid`, TikTok `is_from_webapp`/`_r`/`_t`, Reddit `share_id`, Amazon `pd_rd_*`/`pf_rd_*`/`ref_` | each removed, the product id and `th=1` kept |
+| T65 | clean links | `?UTM_Source=x&a=1&FBCLID=y`, `?utm%5Fsource=x&a=1` | `?a=1` both times |
+| T66 | clean links | Google `/search?q=…&client=firefox&sca_esv=…&ei=…&ved=…&oq=…&gs_lp=…` | `q` and `client` kept |
+| T67 | clean links | `?a&&b=` | unchanged; `?a&&utm_source=x&b=` gives `?a&b=` |
+| T68 | clean links | Google `/url?…&q=&…&url=https%3A%2F%2Ftxbayservice.com%2Fservices%3Fpage%3D2%26utm_source%3Dgoogle&usg=…` | `https://txbayservice.com/services?page=2` |
+| T69 | clean links | `l.facebook.com/l.php?u=…`, `l.messenger.com/l.php?u=…`, `l.instagram.com/?u=…` | the decoded target, cleaned |
+| T70 | clean links | YouTube `/redirect?q=`, `out.reddit.com?url=`, `slack-redir.net/link?url=`, Outlook Safe Links `?url=`, DuckDuckGo `/l/?uddg=`, LinkedIn `/redir/redirect?url=` | the decoded target |
+| T71 | clean links | an Outlook Safe Link around a Google redirect around `https://example.com/deep?utm_source=x` | `https://example.com/deep` |
+| T72 | clean links | a wrapper whose target is missing, a search term, `javascript:`, a bad escape, contains a space, or is `ftp:` | unchanged |
+| T73 | clean links | Google redirect to `…doc%23section-2` with its own `#wrapperfrag` | `https://example.com/doc#section-2` |
+| T74 | clean links | `mailto:`, `ftp:`, `example.com/page?utm_source=x` (no scheme), `https://` | unchanged |
+| T75 | clean links in text | `Menu: https://example.com/menu?utm_source=ig&day=fri.` and `(see https://en.wikipedia.org/wiki/Brisket_(food)?fbclid=1)` | the full stop and the outer bracket stay outside; `…Brisket_(food)` keeps its own |
+| T76 | clean links in text | text with no link to change; text over 65,536 characters | the same string |
+| T77 | clipboard text | `clean_links` on / off | cleaned / the same string |
+| T78 | clean links | `steamcommunity.com/linkfilter/?url=https://shop.example.com/item?id=1&color=red`, `…?url=https://docs.example.com/page#install`, `google.com/url?q=https://a.com/x?y=1&sa=D` | unchanged (never shortened); `google.com/url?q=https://example.com/a&sa=D` still gives `https://example.com/a` |
+| T79 | clean links | `https://a.com/login?ref_url=https%3A%2F%2Fb.com` | unchanged |
+| T80 | clean links | `https://example.com/?utm_source=x;id=1` | unchanged |
+| T81 | skin tones | `👋` toned medium; `☝️` toned medium; `🧑‍🤝‍🧑` toned dark; `👩‍💻` toned medium-dark | `👋🏽`; `☝🏽`; `🧑🏿‍🤝‍🧑🏿`; `👩🏾‍💻` |
+| T82 | skin tones | `❤️`, `😀`, `🇫🇷`, `👨‍👩‍👧` toned dark | each unchanged; none is toneable |
+| T83 | default tone dark | `👍`; `👍🏻` | `👍🏿`; `👍🏻` (a chosen tone is kept) |
+| T84 | default tone medium, shipped Emoji page | page 1 key Y; key U | `👍🏽`; `❤️` |
+| T85 | key chooser open on `👋` (Titan 2 Elite) | R down | `👋🏽` replaces `👋`; R and its up consumed |
+| T86 | key chooser open | Alt down, Alt up, W down | Alt swallowed; `👋🏻` picked |
+| T87 | key chooser open | Back; or Space | closed, no change, Back consumed; or closed and a space typed |
+| T88 | symbol search | `right arrow`; `arrow right`; `sum`; `U+2192`; `§` | → then ⇒; the same; ∑; →; § |
+| T89 | kaomoji search | `table flip`; `lenny face`; `shrug`; `idk` | (╯°□°)╯︵ ┻━┻ first; ( ͡° ͜ʖ ͡°) first; ¯\_(ツ)_/¯ first; includes ¯\_(ツ)_/¯ |
 
 ## 13. Keep / Drop for 3.0
 
@@ -1198,12 +1516,16 @@ Each case is an input sequence and the expected outcome, written so a JVM test c
 | Clipboard history capture, SQLite persistence, pinning, retention | keep | Used daily on the Titan; the maintainer's baseline puts the clipboard button on the strip |
 | Retention and enable settings rows | keep (build them) | The preferences exist and are backed up but have no UI; 3.0 should expose them or fix the retention default |
 | Sensitive-clip exclusion | keep (add it) | Password managers flag clips sensitive; 2.x stores them; 3.0 should honour the flag |
+| Clean links on capture and on paste from the clipboard page (3.0, section 3.7) | add, default on | Copied share links carry tracking; the list is fixed and tested, nothing outside a recognised link changes, and it touches no Space/Enter/Shift/Backspace path |
+| No clipboard capture while learning is off (3.0, app-shell.md section 31) | add | Private mode and fields that ask for no personalized learning must not leave copies behind |
 | The unused floating clipboard popup | drop | Nothing opens it |
 | Clipboard panel as a Sym page with a close button | keep | The only way to see history without a mouse |
 | Emoji picker with categories, tabs, recents, skin-tone popup | keep | The Titan has no emoji key; this is the emoji input |
 | Emoji search with CLDR data in nine languages | keep | The search-field capture is the Titan's way of typing an emoji name from hardware keys; keep the data pinned to a Unicode and CLDR version |
 | Locale chain with English fallback | keep | Cheap and covers every dictionary language |
 | `emoji_picker_expanded_height` | keep | Screen is short; the taller picker is the default |
+| Kaomoji and Unicode symbol modes on page 4 (3.0) | keep | Typed by name from the hardware keys through the same search capture; nothing ships but the kaomoji list |
+| Default skin tone and the key-held tone chooser (3.0) | keep | Without them a tone needed a touch long press; the default reaches every insertion path from one setting |
 | Keyboard-switcher button in the picker | drop | Software keyboard only |
 | Emoji picker height following the software keyboard | drop | No on-screen keyboard in 3.0 |
 | Settings emoji dialog and Unicode dialog | keep | Needed to customise the Sym Emoji and Symbols pages; simplify the Unicode lists (dedupe currencies, fix separators) |

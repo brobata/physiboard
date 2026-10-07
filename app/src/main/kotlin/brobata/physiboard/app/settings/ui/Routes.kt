@@ -56,6 +56,9 @@ object Routes {
     const val CUSTOMIZE_ENTRIES = "customize_entries"
     const val CLIPBOARD_HISTORY = "clipboard_history"
 
+    // app-shell.md SS31, expansion-clipboard-pickers-launcher.md SS3.7: private mode and clean links.
+    const val PRIVACY = "privacy"
+
     // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.3-9.4; trackpad-caret-nav.md
     // SS5.8: the list editors this module's feature work adds.
     const val PERSONAL_DICTIONARY = "personal_dictionary"

@@ -63,6 +63,9 @@ object SearchCatalog {
         SearchEntry("QuickLauncher entries", "PhysiBoard-QuickLauncher", Routes.QUICK_LAUNCHER_ENTRIES, "quick launcher sources apps device control navigation"),
         SearchEntry("Customize entries", "PhysiBoard-QuickLauncher", Routes.CUSTOMIZE_ENTRIES, "favorites favourites hidden alias search color colour quick launcher"),
         SearchEntry("Clipboard history", "Clipboard history", Routes.CLIPBOARD_HISTORY, "clipboard copy paste history retention pin clips"),
+        // app-shell.md SS31, expansion-clipboard-pickers-launcher.md SS3.7.
+        SearchEntry("Private mode", "Privacy", Routes.PRIVACY, "private privacy incognito offline learn learning history network"),
+        SearchEntry("Clean links", "Privacy", Routes.PRIVACY, "clean links tracking utm fbclid gclid url redirect copy paste clipboard privacy"),
         // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
         SearchEntry("Smart keyboard backlight", "Smart keyboard backlight", Routes.SMART_BACKLIGHT, "backlight keyboard light always on pairing broker adb"),
         SearchEntry("Remove bloat", "Remove bloat", Routes.REMOVE_BLOAT, "bloat vendor factory uninstall disable bloatware titan"),
@@ -86,6 +89,7 @@ object SearchCatalog {
         SearchEntry("Arrange SYM pages order", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym pages order emoji symbols clipboard picker cycle"),
         SearchEntry("Auto-Close SYM Layout", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym auto close layout one-shot"),
         SearchEntry("Larger emoji picker", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji picker height expanded larger sym"),
+        SearchEntry("Default skin tone", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji skin tone colour color fitzpatrick hand people default"),
     )
 
     /** spec: SS8, "the trimmed query is a case-insensitive substring of the title, of the screen title, or of the keywords." Results keep catalogue order. */
