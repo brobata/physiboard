@@ -99,6 +99,7 @@ object SettingsKeys {
     const val PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page"
     const val SYM_AUTO_CLOSE = "sym_auto_close"
     const val SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch"
+    const val SYM_DOUBLE_TAP_CHOOSER = "sym_double_tap_chooser"
     const val EMOJI_PICKER_EXPANDED = "emoji_picker_expanded_height"
     const val EMOJI_DEFAULT_SKIN_TONE = "emoji_default_skin_tone"
 
@@ -462,6 +463,7 @@ object SettingsCodec {
         put(SettingsKeys.SYM_MAPPINGS_PAGE2_CUSTOM, JsonRows.encode(StoredValues.symMappings(s.customSymbolsPage)))
         put(SettingsKeys.SYM_AUTO_CLOSE, s.autoClose.toString())
         put(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, s.autoCloseOnTouch.toString())
+        put(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, s.doubleTapChooser.toString())
         put(SettingsKeys.EMOJI_PICKER_EXPANDED, s.emojiPickerExpandedHeight.toString())
         put(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE, s.defaultSkinTone.storedValue)
         put(SettingsKeys.RESTORE_SYM_PAGE, s.restoreSymPage.toString())
@@ -476,6 +478,7 @@ object SettingsCodec {
             customSymbolsPage = StoredValues.symMappings(JsonRows.parseObject(r.string(SettingsKeys.SYM_MAPPINGS_PAGE2_CUSTOM))) ?: d.customSymbolsPage,
             autoClose = r.bool(SettingsKeys.SYM_AUTO_CLOSE, d.autoClose),
             autoCloseOnTouch = r.bool(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, d.autoCloseOnTouch),
+            doubleTapChooser = r.bool(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, d.doubleTapChooser),
             emojiPickerExpandedHeight = r.bool(SettingsKeys.EMOJI_PICKER_EXPANDED, d.emojiPickerExpandedHeight),
             defaultSkinTone = SkinTone.fromStored(r.string(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE)),
             restoreSymPage = r.int(SettingsKeys.RESTORE_SYM_PAGE, d.restoreSymPage),
@@ -986,6 +989,7 @@ internal object StoredValues {
             "symbolsEnabled" to JsonPrimitive(c.symbolsEnabled),
             "clipboardEnabled" to JsonPrimitive(c.clipboardEnabled),
             "emojiPickerEnabled" to JsonPrimitive(c.emojiPickerEnabled),
+            "gifEnabled" to JsonPrimitive(c.gifEnabled),
             "symPageOrder" to JsonRows.stringListOf(c.order.map { it.id }),
         ),
     )
@@ -993,12 +997,13 @@ internal object StoredValues {
     /**
      * spec settings-catalog.md SS2.5 and SS6.3: a missing `symPageOrder` derives from the legacy
      * `emojiFirst` (emoji, symbols, clipboard, reversed when false, then emoji_picker); unknown
-     * page ids (including the dropped `device`) are skipped and missing pages appended last.
+     * page ids (including the dropped `device`) are skipped and missing pages appended last, so
+     * a config written before the GIF page existed reads with `gif` last and `gifEnabled` false.
      */
     fun symPagesConfig(obj: JsonObject?): SymPagesConfig? {
         obj ?: return null
         val d = SymPagesConfig()
-        val storedOrder = JsonRows.stringList(obj["symPageOrder"])?.mapNotNull { SymPage.fromId(it) }
+        val storedOrder = JsonRows.stringList(obj["symPageOrder"])?.mapNotNull { SymPage.fromId(it.trim()) }
         val order = storedOrder ?: run {
             // "reversed when `emojiFirst` is false" moves emoji behind the other two (SS12 test 20:
             // symbols, clipboard, emoji), it does not mirror the list.
@@ -1011,6 +1016,7 @@ internal object StoredValues {
             symbolsEnabled = obj.boolean("symbolsEnabled") ?: d.symbolsEnabled,
             clipboardEnabled = obj.boolean("clipboardEnabled") ?: d.clipboardEnabled,
             emojiPickerEnabled = obj.boolean("emojiPickerEnabled") ?: d.emojiPickerEnabled,
+            gifEnabled = obj.boolean("gifEnabled") ?: d.gifEnabled,
             order = complete,
         )
     }
