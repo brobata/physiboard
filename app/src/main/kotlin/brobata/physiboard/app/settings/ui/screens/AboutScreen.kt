@@ -103,6 +103,12 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (Str
             )
 
             NavigateRow(
+                label = "GIFs",
+                description = "The GIF Sym page searches KLIPY (klipy.com) when you turn it on; GIFs come straight from KLIPY under its terms",
+                onClick = { openInBrowser(context, "https://klipy.com") },
+            )
+
+            NavigateRow(
                 label = "Sentence data",
                 description = "Autocorrect's word-pair counts come from Tatoeba (tatoeba.org), CC BY 2.0 FR",
                 onClick = { openInBrowser(context, "https://tatoeba.org") },
