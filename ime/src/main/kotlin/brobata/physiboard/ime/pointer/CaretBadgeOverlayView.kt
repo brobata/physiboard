@@ -24,6 +24,7 @@ internal class CaretBadgeOverlayView(context: Context) : View(context) {
 
     var items: List<BadgeItem> = emptyList()
         set(value) {
+            if (field == value) return
             field = value
             requestLayout()
             invalidate()

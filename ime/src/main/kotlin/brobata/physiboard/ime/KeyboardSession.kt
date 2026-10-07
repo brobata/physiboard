@@ -1584,7 +1584,10 @@ internal class KeyboardSession(
         // ops still gets them applied; the rules that need surrounding context see an
         // unavailable read and stand down, which is what they already do for an editor that
         // will not answer.
-        val readout = if (stroke.edge == KeyEdge.UP) {
+        // Alt, Ctrl, Sym and Fn presses change modifier state only and read nothing from the
+        // field either; only Shift's down does (auto-cap's suppression context, text-input.md SS9.3).
+        val readsNothing = stroke.edge == KeyEdge.UP || (stroke.key is KeyId.Modifier && stroke.key != KeyId.Modifier(ModifierKey.SHIFT))
+        val readout = if (readsNothing) {
             EditorReadout(EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs), documentStartOffset = 0, cursorAbsolute = lastReportedSelStart)
         } else {
             ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)

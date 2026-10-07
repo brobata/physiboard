@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.inputmethodservice.InputMethodService
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import brobata.physiboard.core.pointer.OverlayAvailability
 import brobata.physiboard.core.pointer.caret.BadgeSize
@@ -42,6 +43,10 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
     private var badgeView: CaretBadgeOverlayView? = null
     private var rejected = false
 
+    /** Where the attached window was last put, so an unchanged position costs no window update. */
+    private var placedX = Int.MIN_VALUE
+    private var placedY = Int.MIN_VALUE
+
     /** spec SS4.8's three rows; the colours reach a live badge at once, the switch on the next [update]. */
     var settings: CaretBadgeSettings = CaretBadgeSettings()
         set(value) {
@@ -53,6 +58,12 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
     /**
      * Recomputes and shows, moves or hides the badge. spec SS4.6: "recomputes its items on every
      * strip refresh... If it became empty the badge hides... a caret is unusable when...".
+     *
+     * This runs on every keystroke, so it stays off the window manager whenever it can: the window
+     * is added once and then only shown and hidden, its position is written only when it moved,
+     * and the overlay permission is re-checked when the badge comes back into view (SS4.6, "on
+     * every show"). Adding and removing the window for every Shift or Alt press cost the phone
+     * 26 to 37 ms per modifier key (2026-10-06).
      */
     fun update(modifierInput: ModifierGlyphInput, caret: CaretGeometry?, screenWidthPx: Float, pxPerDp: Float) {
         if (rejected) return
@@ -61,31 +72,40 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
             hide()
             return
         }
-        if (OverlayPermission.availability(service) != OverlayAvailability.AVAILABLE) {
-            hide()
-            return
-        }
         val items = CaretBadge.items(modifierInput)
         if (items.isEmpty() || caret == null) {
+            badgeView?.visibility = View.GONE
+            return
+        }
+        val existing = badgeView
+        val showing = existing != null && existing.visibility == View.VISIBLE
+        if (!showing && OverlayPermission.availability(service) != OverlayAvailability.AVAILABLE) {
             hide()
             return
         }
-        val view = badgeView ?: createView() ?: return
+        val view = existing ?: createView() ?: return
         view.items = items
-        view.measure(android.view.View.MeasureSpec.UNSPECIFIED, android.view.View.MeasureSpec.UNSPECIFIED)
+        view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val size = BadgeSize(view.measuredWidth.toFloat(), view.measuredHeight.toFloat(), view.baselineOffsetPx)
         val position = CaretBadgePlacement.place(caret, size, ScreenGeometry(screenWidthPx), pxPerDp)
+        view.visibility = View.VISIBLE
+        if (position.xPx == placedX && position.yPx == placedY) return
         val params = view.layoutParams as? WindowManager.LayoutParams ?: return
         params.x = position.xPx
         params.y = position.yPx
-        runCatching { windowManager().updateViewLayout(view, params) }
+        if (runCatching { windowManager.updateViewLayout(view, params) }.isSuccess) {
+            placedX = position.xPx
+            placedY = position.yPx
+        }
     }
 
     /** spec SS4.6: "The remembered caret is forgotten and the badge hidden when the editor finishes...". */
     fun hide() {
         val view = badgeView ?: return
         badgeView = null
-        runCatching { windowManager().removeView(view) }
+        placedX = Int.MIN_VALUE
+        placedY = Int.MIN_VALUE
+        runCatching { windowManager.removeView(view) }
     }
 
     private fun createView(): CaretBadgeOverlayView? {
@@ -103,7 +123,7 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
             PixelFormat.TRANSLUCENT,
         )
         params.gravity = Gravity.TOP or Gravity.START
-        val added = runCatching { windowManager().addView(view, params) }.isSuccess
+        val added = runCatching { windowManager.addView(view, params) }.isSuccess
         if (!added) {
             rejected = true
             return null
@@ -112,5 +132,12 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
         return view
     }
 
-    private fun windowManager(): WindowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    /**
+     * The overlay context's own window manager. The service's is typed for an input method, and
+     * adding or moving an overlay through it made StrictMode log a window-type mismatch, with a
+     * stack trace, on every keystroke (SS4.5).
+     */
+    private val windowManager: WindowManager by lazy {
+        overlayContext.getSystemService(WindowManager::class.java) ?: service.getSystemService(WindowManager::class.java)
+    }
 }
