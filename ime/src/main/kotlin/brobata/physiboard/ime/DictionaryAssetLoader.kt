@@ -33,33 +33,34 @@ internal object DictionaryLoadSequence {
         onFailure: (what: String, error: Throwable) -> Unit = { _, _ -> },
         onFinished: () -> Unit = {},
     ) {
-        var dictionary: D? = null
         try {
-            dictionary = readDictionary()
-        } catch (e: Exception) {
-            onFailure("dictionary", e)
-        } catch (e: OutOfMemoryError) {
-            onFailure("dictionary", e)
+            var dictionary: D? = null
+            try {
+                dictionary = readDictionary()
+            } catch (e: Exception) {
+                onFailure("dictionary", e)
+            } catch (e: OutOfMemoryError) {
+                onFailure("dictionary", e)
+            } finally {
+                // Posted even if an error nobody should catch is on its way out of this thread.
+                val built = dictionary
+                post { onDictionary(built) }
+            }
+            if (dictionary == null) return
+            val model = try {
+                readContextModel()
+            } catch (e: Exception) {
+                onFailure("context", e)
+                null
+            } catch (e: OutOfMemoryError) {
+                onFailure("context", e)
+                null
+            }
+            if (model != null) post { onContextModel(model) }
         } finally {
-            // Posted even if an error nobody should catch is on its way out of this thread.
-            val built = dictionary
-            post { onDictionary(built) }
-        }
-        if (dictionary == null) {
+            // Whatever happened, including an error nobody should catch: a waiter must not wait for ever.
             post(onFinished)
-            return
         }
-        val model = try {
-            readContextModel()
-        } catch (e: Exception) {
-            onFailure("context", e)
-            null
-        } catch (e: OutOfMemoryError) {
-            onFailure("context", e)
-            null
-        }
-        if (model != null) post { onContextModel(model) }
-        post(onFinished)
     }
 }
 

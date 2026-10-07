@@ -53,4 +53,10 @@ class DictionaryLoadSequenceTest {
         load(readDictionary = { throw OutOfMemoryError() }, readContextModel = { "pairs" })
         assertEquals(listOf("failed dictionary OutOfMemoryError", "dictionary null", "finished"), events)
     }
+
+    @Test
+    fun `an error nobody catches still reports the load finished`() {
+        runCatching { load(readDictionary = { "en" }, readContextModel = { throw StackOverflowError() }) }
+        assertEquals(listOf("dictionary en", "table read", "finished"), events)
+    }
 }

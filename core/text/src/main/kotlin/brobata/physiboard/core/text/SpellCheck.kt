@@ -214,7 +214,18 @@ object SpellCheck {
         is Preceding.Word -> previous.key
     } + '\u0000' + word + '\u0000' + limit
 
+    /**
+     * The dictionaries and word lists spell apostrophes straight; text from elsewhere (a paste, a
+     * document, the keyboard's own curly output) may not. A word is judged with its apostrophes
+     * straightened and its suggestions handed back in the apostrophe the user's text uses.
+     */
     private fun judge(word: String, previous: Preceding, r: SpellResources, limit: Int): SpellFinding {
+        val curly = word.firstOrNull { WordChars.isApostrophe(it) && it != '\'' } ?: return judgeStraight(word, previous, r, limit)
+        val judged = judgeStraight(WordChars.straightenAll(word), previous, r, limit)
+        return judged.copy(suggestions = judged.suggestions.map { it.replace('\'', curly) })
+    }
+
+    private fun judgeStraight(word: String, previous: Preceding, r: SpellResources, limit: Int): SpellFinding {
         val letters = word.filter { it.isLetter() }
         if (letters.isEmpty() || word.any { it.isDigit() }) return finding(SpellKind.SKIPPED)
         if (!inScript(letters, r.script)) return finding(SpellKind.SKIPPED)

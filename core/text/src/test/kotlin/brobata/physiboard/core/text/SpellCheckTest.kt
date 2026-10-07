@@ -176,6 +176,19 @@ class SpellCheckTest {
     }
 
     @Test
+    fun `curly apostrophes read as straight ones and suggestions keep the user's style`() {
+        assertEquals(emptyList(), flagged("It isn’t here and she doesn’t know."))
+        assertEquals(emptyList(), flagged("The players’ bus was late, wasn’t it? We weren’t sure you’d come."))
+        val f = finding("I dont think so", "dont")
+        assertEquals("don't", f.suggestions.first())
+        val mixup = finding("The dog wagged it’s tail", "it’s")
+        assertEquals(SpellKind.MIXUP, mixup.kind)
+        val typo = finding("I wouldn’ recieve", "recieve")
+        assertEquals("receive", typo.suggestions.first())
+        assertEquals("doesn’t", finding("she doesn’y know", "doesn’y").suggestions.firstOrNull { it.startsWith("doesn") })
+    }
+
+    @Test
     fun `a mix-up keeps the case the user typed`() {
         val f = finding("Your welcome to come", "Your")
         assertEquals(SpellKind.MIXUP, f.kind)

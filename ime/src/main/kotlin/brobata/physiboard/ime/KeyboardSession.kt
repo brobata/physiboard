@@ -410,14 +410,21 @@ internal class KeyboardSession(
      */
     private val shared = SharedDictionaries.get(service)
 
-    /** Runs on the main thread after every change to [shared]: re-asks for what this session wants (a reload dropped everything), then hands it over. */
+    /**
+     * Runs on the main thread after every change to [shared]: re-asks for what this session wants
+     * (a reload dropped everything), then hands it over. The strip refreshes only when what the
+     * pipeline holds changed, not for a change only the spell checker uses (another language,
+     * Android's user dictionary), since a refresh also closes an open quick-actions overlay.
+     */
     private val sharedListener: () -> Unit = {
         loadDictionary(primaryLanguage)
         extraLanguages.forEach(::loadDictionary)
+        val before = pipeline.resources
         val words = shared.snapshot.userWords ?: UserWordStore.empty()
-        if (words !== pipeline.resources.userWords) pipeline.resources = pipeline.resources.copy(userWords = words)
+        if (words !== before.userWords) pipeline.resources = pipeline.resources.copy(userWords = words)
         rebuildDictionaries()
-        refreshCandidatesStrip()
+        val after = pipeline.resources
+        if (after.userWords !== before.userWords || after.dictionaries != before.dictionaries || after.contextModel !== before.contextModel) refreshCandidatesStrip()
     }
 
     // spec dictionaries-languages.md SS7: the default and personal user words, loaded once at

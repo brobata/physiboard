@@ -1074,7 +1074,8 @@ nothing. Nothing is learned, stored or sent.
 `@`, contains `@ / \ _ = ~ #`, or has a `.` between two letters or digits (`site.com/its`,
 `e.g.`, `1.5`) is skipped whole. Every other piece is cut into runs of letters and digits joined by
 apostrophes (`well-known` is two words). A run with a digit is skipped. A closing apostrophe stays
-on a word only after an `s` (`players'`).
+on a word only after an `s` (`players'`). A curly apostrophe (`’ ‘ ʼ`) is judged as a straight
+one, and the word's suggestions are given back in the apostrophe the text uses (`doesn’t`).
 
 **Judgement**, per word, with the word before it read as `SentenceContext` reads it (the start of
 the text the app sent counts as a sentence start):
