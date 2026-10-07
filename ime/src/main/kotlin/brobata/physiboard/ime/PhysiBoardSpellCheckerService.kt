@@ -47,7 +47,12 @@ class PhysiBoardSpellCheckerService : SpellCheckerService() {
         private val cache = object : LinkedHashMap<String, SpellFinding>(256, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, SpellFinding>?): Boolean = size > CACHE_SIZE
         }
-        private var cachedFor: SharedDictionaries.Snapshot? = null
+        /**
+         * The [SharedDictionaries.Snapshot.version] the cache was filled under. A number, not the
+         * snapshot itself: a session left idle after a dictionary reload must not keep the old
+         * dictionary and word-pair table alive beside the new ones.
+         */
+        private var cachedForVersion: Long = -1
 
         override fun onCreate() {
             val tag = localeOverride ?: runCatching { locale }.getOrNull()
@@ -104,9 +109,9 @@ class PhysiBoardSpellCheckerService : SpellCheckerService() {
             }
             val dictionary = current.dictionaries[lang] ?: return null
             synchronized(cache) {
-                if (cachedFor !== current) {
+                if (cachedForVersion != current.version) {
                     cache.clear()
-                    cachedFor = current
+                    cachedForVersion = current.version
                 }
             }
             return SpellResources(

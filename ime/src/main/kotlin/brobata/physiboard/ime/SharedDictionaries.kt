@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.provider.UserDictionary
 import android.util.Log
 import androidx.annotation.VisibleForTesting
@@ -48,6 +47,11 @@ import kotlin.concurrent.withLock
 internal class SharedDictionaries private constructor(context: Context) {
 
     data class Snapshot(
+        /**
+         * Stamped afresh by every publish, so a reader can tell two snapshots apart by number
+         * without holding on to the older one (and with it a whole dictionary and word-pair table).
+         */
+        val version: Long = 0,
         val generation: Int = 0,
         val dictionaries: Map<LanguageCode, DictionaryIndex> = emptyMap(),
         val contextModels: Map<LanguageCode, ContextModel> = emptyMap(),
@@ -210,13 +214,15 @@ internal class SharedDictionaries private constructor(context: Context) {
     fun awaitReady(language: LanguageCode, timeoutMillis: Long): Boolean {
         if (snapshot.isReady(language)) return true
         if (Looper.myLooper() == Looper.getMainLooper()) return false
-        val deadline = SystemClock.uptimeMillis() + timeoutMillis
+        // A monotonic clock of the JVM's own: the bound must hold wherever this runs, including
+        // under a test framework that holds Android's SystemClock still.
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
         readyLock.withLock {
             while (!snapshot.isReady(language)) {
-                val left = deadline - SystemClock.uptimeMillis()
+                val left = deadline - System.nanoTime()
                 if (left <= 0) return false
                 try {
-                    readyChanged.await(left, TimeUnit.MILLISECONDS)
+                    readyChanged.await(left, TimeUnit.NANOSECONDS)
                 } catch (e: InterruptedException) {
                     Thread.currentThread().interrupt()
                     return false
@@ -241,8 +247,12 @@ internal class SharedDictionaries private constructor(context: Context) {
         )
     }
 
+    private var publishedVersions = 0L
+
     private fun publish(next: Snapshot) {
-        snapshot = next
+        // Main thread only, like every other change to the snapshot.
+        publishedVersions++
+        snapshot = next.copy(version = publishedVersions)
         readyLock.withLock { readyChanged.signalAll() }
         for (listener in listeners.toList()) {
             runCatching(listener).onFailure { error -> Log.e(TAG, "dictionary listener crashed", error) }
