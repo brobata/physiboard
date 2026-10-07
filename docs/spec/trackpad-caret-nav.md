@@ -523,7 +523,10 @@ own context is typed as an input method, and adding an overlay through it makes 
 log a window-type mismatch on every layout pass. On Android 12 and newer PhysiBoard creates
 a window context of type `TYPE_APPLICATION_OVERLAY` for the badge and falls back to the
 service context only if that fails, which then costs only the log line (commit a44a9b6,
-changelog 2.0.7 "The caret badge no longer logs a window warning on every cursor move").
+changelog 2.0.7 "The caret badge no longer logs a window warning on every cursor move"). The
+window must also be added, moved and removed through that context's own window manager: 3.0
+used the service's for a while, and StrictMode logged the mismatch with a stack trace on every
+modifier press (2026-10-06).
 
 ### 4.6 When it shows, moves and hides
 
@@ -548,6 +551,12 @@ Permission: the overlay permission is re-checked on every show, never cached, so
 takes effect without restarting the keyboard (commit d837c83). A badge window that the
 window manager actually rejects is latched off until the service restarts, so a broken
 overlay is not retried on every keystroke.
+
+Cost: this runs on every keystroke, so the badge's window is added once and afterwards only
+shown and hidden (an empty item list or an unusable caret hides the view, the window stays);
+it is removed when the editor finishes, the setting is turned off or the permission is gone.
+Its position is written to the window manager only when it moved. Adding and removing the
+window at every Shift or Alt press cost 26 to 37 ms per modifier key on the Titan (2026-10-06).
 
 ### 4.7 Asking the editor for the caret position
 

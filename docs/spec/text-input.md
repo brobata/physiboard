@@ -490,7 +490,10 @@ change the decision.
 
 - Shift one-shot armed by auto-cap and Shift pressed by the user are the same one-shot; the
   keyboard remembers which of the two armed it so that a context change clears only the
-  automatic one.
+  automatic one. A Shift press of the user's that arms a one-shot or Caps Lock always records
+  the user as its owner, even when auto-cap had armed (and seen typed) an earlier one: until
+  2026-10-06 auto-cap kept crediting itself after its capital was typed and cleared the
+  user's next Shift at the following re-evaluation.
 - If the user taps Shift while auto-cap has it armed (turning it off), the keyboard records
   the current cursor context (200 characters before, 1 after) as suppressed. Auto-cap will
   not arm again while that exact context recurs, which covers the selection updates that
