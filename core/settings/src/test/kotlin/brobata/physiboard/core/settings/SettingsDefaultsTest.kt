@@ -73,7 +73,7 @@ class SettingsDefaultsTest {
 
     @Test
     fun `sym pages default to the baseline order with the picker first and the device page gone`() {
-        assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF), d.symPages.pages.order)
+        assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), d.symPages.pages.order)
         assertTrue(d.symPages.pages.emojiPickerEnabled && d.symPages.pages.symbolsEnabled)
         assertFalse(d.symPages.pages.emojiEnabled || d.symPages.pages.clipboardEnabled || d.symPages.pages.gifEnabled)
         assertFalse(d.symPages.emojiPickerExpandedHeight)

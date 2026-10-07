@@ -221,4 +221,24 @@ class BackupCodecTest {
         assertFalse(outcome.settings.symPages.doubleTapChooser)
         assertTrue(outcome.settings.symPages.pages.gifEnabled)
     }
+
+    @Test
+    fun `the long-press accents and the user's own Sym pages go out in a backup and come back through a restore`() {
+        val changed = Settings().let {
+            it.copy(
+                keys = it.keys.copy(variationChooser = false, customVariations = mapOf("a" to listOf("ą", "à"))),
+                symPages = it.symPages.copy(
+                    pages = it.symPages.pages.copy(custom1Enabled = true),
+                    customPages = listOf(brobata.physiboard.core.settings.CustomSymPage("Mine", mapOf("KEYCODE_Q" to "ż")), brobata.physiboard.core.settings.CustomSymPage(), brobata.physiboard.core.settings.CustomSymPage()),
+                ),
+            )
+        }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", changed))!!
+        assertTrue(entries.containsKey("custom_variations"))
+        assertTrue(entries.containsKey("sym_custom_pages"))
+        val outcome = BackupRestore.restore(Settings(), BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries))
+        assertEquals(0, outcome.skippedCount)
+        assertEquals(changed.keys, outcome.settings.keys)
+        assertEquals(changed.symPages, outcome.settings.symPages)
+    }
 }

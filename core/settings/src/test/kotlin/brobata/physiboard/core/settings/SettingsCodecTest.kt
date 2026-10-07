@@ -44,7 +44,8 @@ class SettingsCodecTest {
             appLanguageTag = "de",
         ),
         keys = KeyPrefs(
-            longPressMode = LongPressMode.VARIATIONS, longPressThresholdMs = 700, navModeEnabled = false,
+            longPressMode = LongPressMode.VARIATIONS, longPressThresholdMs = 700,
+            variationChooser = false, customVariations = mapOf("a" to listOf("ą", "à"), "E" to emptyList()), navModeEnabled = false,
             navModeCtrlHoldEnabled = true, layoutAwareCtrlShortcuts = true, symEditShortcuts = false,
             navModeMappingsUpdatedAtMs = 1700000000000L, navModeDefaultMappingsVersion = 3, bounceKeysEnabled = true, bounceKeysDelayMs = 120,
             bounceKeysCharacterKeysEnabled = false, bounceKeysModifierKeysEnabled = true, bounceKeysSpaceEnabled = false,
@@ -52,8 +53,10 @@ class SettingsCodecTest {
         ),
         symPages = SymPagePrefs(
             pages = SymPagesConfig(emojiEnabled = true, symbolsEnabled = false, clipboardEnabled = true, emojiPickerEnabled = false, gifEnabled = true,
-                order = listOf(SymPage.EMOJI, SymPage.GIF, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER)),
+                custom2Enabled = true,
+                order = listOf(SymPage.EMOJI, SymPage.CUSTOM_2, SymPage.GIF, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER, SymPage.CUSTOM_3, SymPage.CUSTOM_1)),
             customEmojiPage = mapOf("KEYCODE_Q" to "😀"), customSymbolsPage = mapOf("KEYCODE_W" to "€"),
+            customPages = listOf(CustomSymPage(), CustomSymPage("Polski", mapOf("KEYCODE_A" to "ą", "KEYCODE_S" to "你好")), CustomSymPage()),
             autoClose = false, autoCloseOnTouch = false, emojiPickerExpandedHeight = true, doubleTapChooser = false,
             defaultSkinTone = brobata.physiboard.core.actions.emoji.SkinTone.MEDIUM_DARK,
             restoreSymPage = 2, pendingRestoreSymPage = 1,
@@ -264,22 +267,63 @@ class SettingsCodecTest {
     @Test
     fun `sym pages without an order derive it from emojiFirst and skip the device page, spec SS12 test 20`() {
         val s = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"emojiFirst": false, "deviceEnabled": true}"""))
-        assertEquals(listOf(SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.EMOJI_PICKER, SymPage.GIF), s.symPages.pages.order)
+        assertEquals(listOf(SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), s.symPages.pages.order)
         val withDevice = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"symPageOrder": ["device", "symbols"]}"""))
-        assertEquals(listOf(SymPage.SYMBOLS, SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.GIF), withDevice.symPages.pages.order)
+        assertEquals(listOf(SymPage.SYMBOLS, SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), withDevice.symPages.pages.order)
     }
 
     @Test
     fun `a config written before the GIF page reads with gif last and switched off, layers-sym-alt SS4-1`() {
         val old = """{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":true,"emojiPickerEnabled":true,"symPageOrder":["clipboard","emoji_picker","symbols","emoji"]}"""
         val pages = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to old)).symPages.pages
-        assertEquals(listOf(SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.EMOJI, SymPage.GIF), pages.order)
+        assertEquals(listOf(SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), pages.order)
         assertEquals(false, pages.gifEnabled)
         assertEquals(true, pages.clipboardEnabled)
         val placed = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"gifEnabled":true,"symPageOrder":["gif"," symbols ","gif"]}""")).symPages.pages
         assertEquals(true, placed.gifEnabled)
         assertEquals(SymPage.GIF, placed.order.first(), "a stored place for gif is kept and a duplicate collapses")
         assertEquals(1, placed.order.count { it == SymPage.GIF })
+    }
+
+    @Test
+    fun `long press accents - the chooser defaults on and the user's lists round-trip, layers-sym-alt SS8-3`() {
+        val d = SettingsCodec.fromMap(emptyMap()).keys
+        assertEquals(true, d.variationChooser)
+        assertEquals(emptyMap(), d.customVariations)
+        val lists = mapOf("a" to listOf("ą", "à", "中文"), "Z" to emptyList())
+        val map = SettingsCodec.toMap(Settings().let { it.copy(keys = it.keys.copy(customVariations = lists, variationChooser = false)) })
+        assertEquals("false", map[SettingsKeys.LONG_PRESS_VARIATION_CHOOSER])
+        val back = SettingsCodec.fromMap(map).keys
+        assertEquals(lists, back.customVariations)
+        assertEquals(false, back.variationChooser)
+    }
+
+    @Test
+    fun `custom_variations reads leniently - keys longer than one character and non-arrays are skipped`() {
+        val stored = """{"a":["ą",1,"à"],"ab":["x"],"b":"not a list","":["y"]}"""
+        assertEquals(mapOf("a" to listOf("ą", "à")), SettingsCodec.fromMap(mapOf(SettingsKeys.CUSTOM_VARIATIONS to stored)).keys.customVariations)
+        assertEquals(emptyMap(), SettingsCodec.fromMap(mapOf(SettingsKeys.CUSTOM_VARIATIONS to "garbage")).keys.customVariations)
+    }
+
+    @Test
+    fun `the user's own Sym pages - always three, read leniently, off in an old config, layers-sym-alt SS4-6`() {
+        val d = SettingsCodec.fromMap(emptyMap()).symPages
+        assertEquals(3, d.customPages.size)
+        assertEquals(false, d.pages.custom1Enabled || d.pages.custom2Enabled || d.pages.custom3Enabled)
+        val stored = """{"pages":[{"name":"  A very long page name that goes on and on  ","mappings":{"KEYCODE_A":"ą"}},"junk"]}"""
+        val pages = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_CUSTOM_PAGES to stored)).symPages.customPages
+        assertEquals(3, pages.size)
+        assertEquals("A very long page name th", pages[0].name)
+        assertEquals(mapOf("KEYCODE_A" to "ą"), pages[0].mappings)
+        assertEquals(CustomSymPage(), pages[1])
+        assertEquals(CustomSymPage(), pages[2])
+        val oldConfig = """{"gifEnabled":true,"symPageOrder":["symbols","gif"]}"""
+        val config = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to oldConfig)).symPages.pages
+        assertEquals(listOf(SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), config.order.takeLast(3))
+        assertEquals(false, config.custom1Enabled)
+        val placed = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"custom3Enabled":true,"symPageOrder":["custom3","emoji"]}""")).symPages.pages
+        assertEquals(SymPage.CUSTOM_3, placed.order.first())
+        assertEquals(true, placed.custom3Enabled)
     }
 
     @Test

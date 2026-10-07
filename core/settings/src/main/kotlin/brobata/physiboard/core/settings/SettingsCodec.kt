@@ -76,6 +76,8 @@ object SettingsKeys {
     // SS2.4 keys
     const val LONG_PRESS_MODE = "long_press_modifier"
     const val LONG_PRESS_THRESHOLD = "long_press_threshold"
+    const val LONG_PRESS_VARIATION_CHOOSER = "long_press_variation_chooser"
+    const val CUSTOM_VARIATIONS = "custom_variations"
     const val NAV_MODE_ENABLED = "nav_mode_enabled"
     const val NAV_MODE_CTRL_HOLD = "nav_mode_ctrl_hold_enabled"
     const val LAYOUT_AWARE_CTRL = "layout_aware_ctrl_shortcuts"
@@ -95,6 +97,7 @@ object SettingsKeys {
     const val SYM_PAGES_CONFIG = "sym_pages_config"
     const val SYM_MAPPINGS_CUSTOM = "sym_mappings_custom"
     const val SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
+    const val SYM_CUSTOM_PAGES = "sym_custom_pages"
     const val RESTORE_SYM_PAGE = "restore_sym_page"
     const val PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page"
     const val SYM_AUTO_CLOSE = "sym_auto_close"
@@ -415,6 +418,8 @@ object SettingsCodec {
     private fun MutableMap<String, String>.writeKeys(k: KeyPrefs) {
         put(SettingsKeys.LONG_PRESS_MODE, StoredValues.longPressMode(k.longPressMode))
         put(SettingsKeys.LONG_PRESS_THRESHOLD, k.longPressThresholdMs.toString())
+        put(SettingsKeys.LONG_PRESS_VARIATION_CHOOSER, k.variationChooser.toString())
+        put(SettingsKeys.CUSTOM_VARIATIONS, JsonRows.encode(StoredValues.customVariations(k.customVariations)))
         put(SettingsKeys.NAV_MODE_ENABLED, k.navModeEnabled.toString())
         put(SettingsKeys.NAV_MODE_CTRL_HOLD, k.navModeCtrlHoldEnabled.toString())
         put(SettingsKeys.LAYOUT_AWARE_CTRL, k.layoutAwareCtrlShortcuts.toString())
@@ -436,6 +441,8 @@ object SettingsCodec {
         return KeyPrefs(
             longPressMode = StoredValues.longPressMode(r.string(SettingsKeys.LONG_PRESS_MODE)),
             longPressThresholdMs = r.long(SettingsKeys.LONG_PRESS_THRESHOLD, d.longPressThresholdMs, 50L..1000L),
+            variationChooser = r.bool(SettingsKeys.LONG_PRESS_VARIATION_CHOOSER, d.variationChooser),
+            customVariations = StoredValues.customVariations(JsonRows.parseObject(r.string(SettingsKeys.CUSTOM_VARIATIONS))) ?: d.customVariations,
             navModeEnabled = r.bool(SettingsKeys.NAV_MODE_ENABLED, d.navModeEnabled),
             navModeCtrlHoldEnabled = r.bool(SettingsKeys.NAV_MODE_CTRL_HOLD, d.navModeCtrlHoldEnabled),
             layoutAwareCtrlShortcuts = r.bool(SettingsKeys.LAYOUT_AWARE_CTRL, d.layoutAwareCtrlShortcuts),
@@ -461,6 +468,7 @@ object SettingsCodec {
         put(SettingsKeys.SYM_PAGES_CONFIG, JsonRows.encode(StoredValues.symPagesConfig(s.pages)))
         put(SettingsKeys.SYM_MAPPINGS_CUSTOM, JsonRows.encode(StoredValues.symMappings(s.customEmojiPage)))
         put(SettingsKeys.SYM_MAPPINGS_PAGE2_CUSTOM, JsonRows.encode(StoredValues.symMappings(s.customSymbolsPage)))
+        put(SettingsKeys.SYM_CUSTOM_PAGES, JsonRows.encode(StoredValues.customSymPages(s.customPages)))
         put(SettingsKeys.SYM_AUTO_CLOSE, s.autoClose.toString())
         put(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, s.autoCloseOnTouch.toString())
         put(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, s.doubleTapChooser.toString())
@@ -476,6 +484,7 @@ object SettingsCodec {
             pages = StoredValues.symPagesConfig(JsonRows.parseObject(r.string(SettingsKeys.SYM_PAGES_CONFIG))) ?: d.pages,
             customEmojiPage = StoredValues.symMappings(JsonRows.parseObject(r.string(SettingsKeys.SYM_MAPPINGS_CUSTOM))) ?: d.customEmojiPage,
             customSymbolsPage = StoredValues.symMappings(JsonRows.parseObject(r.string(SettingsKeys.SYM_MAPPINGS_PAGE2_CUSTOM))) ?: d.customSymbolsPage,
+            customPages = StoredValues.customSymPages(JsonRows.parseObject(r.string(SettingsKeys.SYM_CUSTOM_PAGES))) ?: d.customPages,
             autoClose = r.bool(SettingsKeys.SYM_AUTO_CLOSE, d.autoClose),
             autoCloseOnTouch = r.bool(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, d.autoCloseOnTouch),
             doubleTapChooser = r.bool(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, d.doubleTapChooser),
@@ -990,6 +999,9 @@ internal object StoredValues {
             "clipboardEnabled" to JsonPrimitive(c.clipboardEnabled),
             "emojiPickerEnabled" to JsonPrimitive(c.emojiPickerEnabled),
             "gifEnabled" to JsonPrimitive(c.gifEnabled),
+            "custom1Enabled" to JsonPrimitive(c.custom1Enabled),
+            "custom2Enabled" to JsonPrimitive(c.custom2Enabled),
+            "custom3Enabled" to JsonPrimitive(c.custom3Enabled),
             "symPageOrder" to JsonRows.stringListOf(c.order.map { it.id }),
         ),
     )
@@ -998,7 +1010,9 @@ internal object StoredValues {
      * spec settings-catalog.md SS2.5 and SS6.3: a missing `symPageOrder` derives from the legacy
      * `emojiFirst` (emoji, symbols, clipboard, reversed when false, then emoji_picker); unknown
      * page ids (including the dropped `device`) are skipped and missing pages appended last, so
-     * a config written before the GIF page existed reads with `gif` last and `gifEnabled` false.
+     * a config written before the GIF page existed reads with `gif` last and `gifEnabled` false,
+     * and one written before the user's own pages existed reads with `custom1` to `custom3` last
+     * and switched off (SS4.6).
      */
     fun symPagesConfig(obj: JsonObject?): SymPagesConfig? {
         obj ?: return null
@@ -1017,8 +1031,48 @@ internal object StoredValues {
             clipboardEnabled = obj.boolean("clipboardEnabled") ?: d.clipboardEnabled,
             emojiPickerEnabled = obj.boolean("emojiPickerEnabled") ?: d.emojiPickerEnabled,
             gifEnabled = obj.boolean("gifEnabled") ?: d.gifEnabled,
+            custom1Enabled = obj.boolean("custom1Enabled") ?: d.custom1Enabled,
+            custom2Enabled = obj.boolean("custom2Enabled") ?: d.custom2Enabled,
+            custom3Enabled = obj.boolean("custom3Enabled") ?: d.custom3Enabled,
             order = complete,
         )
+    }
+
+    /**
+     * `custom_variations`: `{"a": ["ą", "à"], "A": ["Ą"], ...}`. spec layers-sym-alt.md SS8.3.
+     * Keys that are not exactly one character and values that are not arrays are skipped;
+     * non-string members of an array are skipped too.
+     */
+    fun customVariations(m: Map<String, List<String>>): JsonObject = JsonObject(m.mapValues { JsonRows.stringListOf(it.value) })
+
+    fun customVariations(obj: JsonObject?): Map<String, List<String>>? =
+        obj?.entries?.mapNotNull { (key, value) ->
+            if (key.length != 1) return@mapNotNull null
+            JsonRows.stringList(value)?.let { key to it }
+        }?.toMap()
+
+    /**
+     * `sym_custom_pages`: `{"pages": [{"name": "...", "mappings": {"KEYCODE_Q": "..."}}, ...]}`.
+     * spec layers-sym-alt.md SS4.6. Always read back as exactly [CustomSymPage.COUNT] pages: a
+     * missing or malformed page reads empty, extra pages are ignored, a name is trimmed and cut.
+     */
+    fun customSymPages(pages: List<CustomSymPage>): JsonObject = JsonObject(
+        mapOf(
+            "pages" to JsonArray(
+                pages.map { page -> JsonObject(mapOf("name" to JsonPrimitive(page.name), "mappings" to JsonRows.stringMapOf(page.mappings))) },
+            ),
+        ),
+    )
+
+    fun customSymPages(obj: JsonObject?): List<CustomSymPage>? {
+        val stored = obj?.get("pages") as? JsonArray ?: return null
+        return List(CustomSymPage.COUNT) { index ->
+            val page = stored.getOrNull(index) as? JsonObject ?: return@List CustomSymPage()
+            CustomSymPage(
+                name = page.string("name")?.trim()?.take(CustomSymPage.MAX_NAME_LENGTH).orEmpty(),
+                mappings = JsonRows.stringMap(page["mappings"]).orEmpty(),
+            )
+        }
     }
 
     fun symMappings(m: Map<String, String>): JsonObject = JsonObject(mapOf("mappings" to JsonRows.stringMapOf(m)))

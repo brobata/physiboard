@@ -183,6 +183,17 @@ data class LanguagePrefs(
 data class KeyPrefs(
     val longPressMode: LongPressMode = LongPressMode.ALT,
     val longPressThresholdMs: Long = 500,
+    /**
+     * `long_press_variation_chooser`. spec: layers-sym-alt.md SS8.4: a long press in Accent mode
+     * on a letter with more than one variation also shows them all, to pick another.
+     */
+    val variationChooser: Boolean = true,
+    /**
+     * `custom_variations`. spec: layers-sym-alt.md SS8.3: the user's own variation lists, one
+     * character (a letter in either case) to its list in order; it replaces the built-in list
+     * for that character only, and an empty list means no variations for it.
+     */
+    val customVariations: Map<String, List<String>> = emptyMap(),
     val navModeEnabled: Boolean = true,
     val navModeCtrlHoldEnabled: Boolean = false,
     val layoutAwareCtrlShortcuts: Boolean = false,
@@ -215,7 +226,10 @@ enum class SymPage(val id: String) {
     EMOJI("emoji"), SYMBOLS("symbols"), CLIPBOARD("clipboard"), EMOJI_PICKER("emoji_picker"),
 
     /** 3.0's own (layers-sym-alt.md SS4.5): GIF search, the one page that goes online. */
-    GIF("gif");
+    GIF("gif"),
+
+    /** 3.0's own (layers-sym-alt.md SS4.6): the user's own key layers, "My page 1" to 3. */
+    CUSTOM_1("custom1"), CUSTOM_2("custom2"), CUSTOM_3("custom3");
 
     companion object {
         fun fromId(id: String?): SymPage? = entries.firstOrNull { it.id == id }
@@ -235,8 +249,33 @@ data class SymPagesConfig(
     val emojiPickerEnabled: Boolean = true,
     /** `gifEnabled`: off by default, since it is the only page that sends anything off the phone. */
     val gifEnabled: Boolean = false,
-    val order: List<SymPage> = listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF),
+    /** `custom1Enabled` to `custom3Enabled`: the user's own pages (layers-sym-alt.md SS4.6), off until switched on. */
+    val custom1Enabled: Boolean = false,
+    val custom2Enabled: Boolean = false,
+    val custom3Enabled: Boolean = false,
+    val order: List<SymPage> = listOf(
+        SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF,
+        SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3,
+    ),
 )
+
+/**
+ * One of the user's own Sym pages (layers-sym-alt.md SS4.6): its name (blank shows "My page N")
+ * and what each letter key types on it, keyed `KEYCODE_A` to `KEYCODE_Z` like the custom Emoji
+ * and Symbols pages.
+ */
+data class CustomSymPage(
+    val name: String = "",
+    val mappings: Map<String, String> = emptyMap(),
+) {
+    companion object {
+        /** There are always exactly this many, pages 7, 8 and 9. */
+        const val COUNT: Int = 3
+
+        /** spec SS4.6: a name is cut to this many characters. */
+        const val MAX_NAME_LENGTH: Int = 24
+    }
+}
 
 /**
  * The Sym layer's own settings. spec: settings-catalog.md SS2.5. `alt_character_layer_binding`
@@ -248,6 +287,8 @@ data class SymPagePrefs(
     val customEmojiPage: Map<String, String> = emptyMap(),
     /** `sym_mappings_page2_custom`, same shape, page 2. */
     val customSymbolsPage: Map<String, String> = emptyMap(),
+    /** `sym_custom_pages`: the user's own pages 7 to 9, always [CustomSymPage.COUNT] of them. */
+    val customPages: List<CustomSymPage> = List(CustomSymPage.COUNT) { CustomSymPage() },
     val autoClose: Boolean = true,
     val autoCloseOnTouch: Boolean = true,
     val emojiPickerExpandedHeight: Boolean = false,
