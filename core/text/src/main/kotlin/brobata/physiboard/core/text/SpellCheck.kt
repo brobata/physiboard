@@ -13,7 +13,7 @@ data class SpellToken(val start: Int, val end: Int, val skipped: Boolean)
 
 /**
  * Splits text into the words the system spell checker judges. spec: autocorrect-suggestions.md
- * §19 (the system spell checker), word characters as §1.1 has them.
+ * §18 (the system spell checker), word characters as §1.1 has them.
  *
  * The text is first cut at whitespace. A piece that is a web address, an email address, a path,
  * an identifier, a hashtag or an @mention is one skipped token, whatever letters it holds:
@@ -141,7 +141,7 @@ data class SpellFinding(val start: Int, val end: Int, val kind: SpellKind, val s
 
 /**
  * The system spell checker's judgement, the keyboard's own engine read without changing any
- * text. spec: autocorrect-suggestions.md §19.
+ * text. spec: autocorrect-suggestions.md §18.
  *
  * - A word any dictionary, the personal or default words, or Android's user dictionary holds is
  *   known, as is a known word with a contraction or possessive ending (§10). A lowercase word

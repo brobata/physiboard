@@ -268,7 +268,15 @@ region is ignored: `en_US` and `en_GB` share one). A dictionary is created for:
 - the primary language when the keyboard service starts (preloaded in the background at once),
 - the primary language whenever the active subtype changes to a different language,
 - every extra suggestion language of the active input style, the first time a suggestion is
-  computed while it is configured.
+  computed while it is configured;
+- the system spell checker's language, when an app first asks it to check text
+  (`autocorrect-suggestions.md` section 18).
+
+In 3.0 the dictionaries, word-pair tables and user words are held once per process and shared
+by the keyboard and the system spell checker, which runs in the same process; a dictionary the
+spell checker loaded is the keyboard's too, and the reverse. An install, import or uninstall
+broadcast (`ACTION_DICTIONARY_CHANGED`) drops them all and the keyboard asks for its languages
+again at once, whether or not a keyboard session is running when it arrives.
 
 Once loaded, a dictionary stays loaded until the keyboard process dies. Switching to another
 language and back does not reload. Installing, importing or uninstalling a dictionary does

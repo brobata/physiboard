@@ -15,7 +15,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * The system spell checker's judgement ([SpellCheck], autocorrect-suggestions.md §19) on the
+ * The system spell checker's judgement ([SpellCheck], autocorrect-suggestions.md §18) on the
  * shipped English dictionary and word-pair table.
  */
 class SpellCheckTest {

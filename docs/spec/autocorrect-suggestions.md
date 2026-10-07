@@ -507,7 +507,7 @@ Given the text before the cursor including the boundary just typed:
    applies, known word or not**: with English rules on, `its`, `ill`, `wed`, `shell`, `id` and
    `hes` are rewritten on Space. The known-word guard only takes effect in tests that run the
    lookup without a settings store; a clean-room implementation should decide whether to enforce
-   it (see section 18).
+   it (see section 19).
 
 The replacement's casing follows the trigger as typed: an all-uppercase word (with at least one
 letter) uppercases the replacement from its first letter on; a leading capital capitalizes the
@@ -1040,7 +1040,70 @@ vocabulary unless stated. Settings default to code defaults unless stated.
 | T52 | Eval, small vocabulary, distance 2, proximity on | 74 cases | fcr 0.000, recall ≥ 0.775, controls ≥ 24 |
 | T53 | Eval, shipped English dictionary | 74 cases; 116 controls | 0 known words clobbered; fcr ≤ 0.014; recall ≥ 0.650; wrong ≤ 1; 0 controls missing; 0 overruled |
 
-## 18. Keep / Drop for 3.0
+## 18. The system spell checker
+
+PhysiBoard is also an Android system spell checker, so apps underline misspellings with the
+keyboard's own dictionary and offer its corrections in their own suggestion popup. With no
+suggestion bar (removed for good), this is where the user sees alternatives in every app. It
+never changes text; it only answers the app.
+
+**Registration.** A spell checker service bound with `android.permission.BIND_TEXT_SERVICE`,
+described by `res/xml/spellchecker.xml`, with one subtype per language PhysiBoard has a
+dictionary for (`dictionaries-languages.md` section 1.1): `en cs da de el es fr gd hu it nl no pl
+pt ru sv tr uk vi`. English is bundled; another language is checked once its dictionary is
+downloaded or imported and flags nothing until then. Its settings entry opens PhysiBoard's
+settings. The user selects it in Android Settings > System > Languages (or Keyboard) > Spell
+checker. Auto-correction > "System spell checker" says whether it is selected ("On", "Another
+spell checker is selected", "Off", re-read on every return to the screen) and opens Android's
+picker: the screen `com.android.settings/.Settings$SpellCheckersSettingsActivity` (Android has no
+public action for it; present on the Titan, Android 16), else Android's keyboard settings, else
+Settings. It is a link, not a setting: nothing is stored or backed up. Search finds it under
+"spell checker", "underline", "misspelled".
+
+**Resources.** It runs in the keyboard's process and reads the same in-memory dictionary,
+word-pair table, personal words and default words the keyboard types with (one copy per process,
+loaded once off the main thread, reloaded on `ACTION_DICTIONARY_CHANGED` and
+`ACTION_USER_DICTIONARY_UPDATED` whether or not PhysiBoard is the active keyboard). It also reads
+Android's own user dictionary (the words an app's "Add to dictionary" saves, any locale, at most
+20,000), re-read when it changes, and counts those words as known; the keyboard itself does not.
+No request reads a file. The first request for a language whose dictionary is still loading waits
+for it up to 1,500 ms; after that, or when the language has no dictionary, the answer flags
+nothing. Nothing is learned, stored or sent.
+
+**Words.** The text is cut at whitespace. A piece that contains `://`, starts with `www.`, `#` or
+`@`, contains `@ / \ _ = ~ #`, or has a `.` between two letters or digits (`site.com/its`,
+`e.g.`, `1.5`) is skipped whole. Every other piece is cut into runs of letters and digits joined by
+apostrophes (`well-known` is two words). A run with a digit is skipped. A closing apostrophe stays
+on a word only after an `s` (`players'`).
+
+**Judgement**, per word, with the word before it read as `SentenceContext` reads it (the start of
+the text the app sent counts as a sentence start):
+
+| Word | Answer |
+|---|---|
+| In any dictionary, the personal or default words, or Android's user dictionary (case ignored), or such a word with a contraction or possessive ending | In the dictionary, except: a lowercase word the primary list holds only capitalised is a typo with that spelling as a recommended suggestion (section 7.2 step 8's case repair) |
+| Letters of another script than the language's (Cyrillic for `ru uk`, Greek for `el`, Latin otherwise) | Not judged |
+| All capitals (two letters or more), or a capital after the first letter | Not judged |
+| Unknown, fewer than three letters | Not flagged |
+| Unknown, the language has no dictionary loaded | Not flagged |
+| Unknown lowercase, with a word-pair table | A typo, suggestions ranked by section 16's noisy channel (distance 2, 1 for four letters or fewer; a missing apostrophe or accent always offered, whatever `max_auto_replace_distance` and `accent_matching_enabled` say), cased as typed. Not flagged when the best candidate is the other regional spelling or the word is the best candidate plus an inflection ending |
+| Unknown capitalised, with a word-pair table | Flagged only when the best candidate holds the 70% share automatic correction needs (a name otherwise) |
+| Unknown lowercase, no table | A typo, with the section 3 ranking's fuzzy candidates (completions left out) |
+| Unknown capitalised, no table | Not flagged |
+| A word of a shipped confusion set (section 10), standing alone, exactly one space before the next word | A grammar error with its twin, only when section 10's mix-up judgement clears its bar with the next word as typed; independent of `fix_word_mixups` |
+
+Up to 5 suggestions. A typo or mix-up whose first suggestion is what automatic correction would
+commit is marked as having a recommended suggestion. Every judged or skipped word gets an answer
+(skipped and unflagged words an empty one, so an old underline there is cleared); text with no
+words gets one empty answer covering it all, because an app left with no answer treats the text
+as still being checked. Verdicts are cached per word and preceding word (512 entries per session),
+emptied whenever the dictionaries or word lists change.
+
+Tests: `SpellTokensTest`, `SpellCheckTest` (shipped English list and table) and
+`SpellCheckerServiceTest` (the session through Android's own request and answer types, on
+Robolectric).
+
+## 19. Keep / Drop for 3.0
 
 | Item | Decision | Reason |
 |---|---|---|
@@ -1080,7 +1143,7 @@ vocabulary unless stated. Settings default to code defaults unless stated.
 | On-screen keyboard Space path into the boundary engine | Drop | No soft keyboard in 3.0 |
 | Text-field trigger for a boundary from the on-screen keyboard (null event) | Drop | Same |
 
-## 19. Provenance
+## 20. Provenance
 
 - /home/disdiqqq/projects/pastiera/docs/spec/README.md
 - /home/disdiqqq/projects/pastiera/docs/plans/autocorrect-rework.md

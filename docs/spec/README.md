@@ -54,3 +54,5 @@ around.
 | `keys-and-modifiers.md` | 5.4, 5.5, 22 | The Alt+Ctrl dictation chord is removed; Alt or Ctrl down with the other's meta bit is now an ordinary press. | fcec53b |
 | `keys-and-modifiers.md` | 7.5 | Ctrl+Space only consumes and switches when another input subtype exists; with one layout, Fn+Space no longer vanishes. | fcec53b |
 | `autocorrect-suggestions.md` | 6.1, 7.2, 9, 10 | Primary case repair and the automatic-correction decision's "exact primary case" fact now consult the personal and default word stores and every loaded dictionary, not only the primary list. | fcec53b |
+| `autocorrect-suggestions.md` | 18, 19, 20 | New section 18, the system spell checker; Keep/Drop and Provenance renumbered to 19 and 20. | d4cc06c |
+| `dictionaries-languages.md` | 4.1 | Dictionaries, tables and user words are held once per process and shared with the spell checker; the change broadcasts are handled even with no keyboard session running. | d4cc06c |

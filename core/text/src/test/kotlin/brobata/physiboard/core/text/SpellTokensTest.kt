@@ -3,7 +3,7 @@ package brobata.physiboard.core.text
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** Which stretches of a text the system spell checker judges ([SpellTokens]); autocorrect-suggestions.md §19. */
+/** Which stretches of a text the system spell checker judges ([SpellTokens]); autocorrect-suggestions.md §18. */
 class SpellTokensTest {
 
     /** Each token as its text, skipped ones in brackets. */
