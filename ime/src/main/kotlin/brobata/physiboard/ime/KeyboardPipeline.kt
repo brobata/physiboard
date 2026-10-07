@@ -1172,6 +1172,9 @@ internal class KeyboardPipeline(
                     textInputState.autoCap.consumedUnconditionally()
                 },
             )
+        } else if (result.state.shift.value != ShiftValue.OFF && result.state.shift.value != modifierState.shift.value) {
+            // The user's own press armed this Shift; auto-cap must never clear it as its own.
+            textInputState = textInputState.copy(autoCap = textInputState.autoCap.onUserArmed())
         }
         return result
     }

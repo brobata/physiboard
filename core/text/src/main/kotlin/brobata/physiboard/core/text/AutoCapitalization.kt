@@ -47,6 +47,14 @@ data class AutoCapState(
      */
     fun consumedUnconditionally(): AutoCapState = copy(armSource = null)
 
+    /**
+     * The user's own Shift press armed a one-shot (or Caps Lock), so the Shift now active is the
+     * user's and no later re-evaluation may clear it as auto-cap's. Without this, auto-cap kept
+     * crediting itself with the one-shot it armed for a capital already typed, and cleared the
+     * Shift the user tapped next at its following re-evaluation. spec: text-input.md SS9.3.
+     */
+    fun onUserArmed(): AutoCapState = copy(armSource = ShiftArmSource.USER)
+
     internal fun isSuppressedAt(context: String?): Boolean = context != null && context == suppressedContext
 
     internal fun withArmSource(source: ShiftArmSource?): AutoCapState = copy(armSource = source)

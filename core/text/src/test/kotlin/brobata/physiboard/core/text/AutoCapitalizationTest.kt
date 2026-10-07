@@ -118,6 +118,16 @@ class AutoCapitalizationTest {
         assertEquals(CapDecision.ClearOneShot, second)
     }
 
+    @Test
+    fun `a one-shot the user armed is never cleared as auto-cap's, in a field with suggestions or without`() {
+        val stale = AutoCapState.initial().withArmSourceForTest(ShiftArmSource.AUTO_CAP)
+        val users = stale.onUserArmed()
+        assertEquals(CapDecision.Leave, AutoCapitalization.evaluate(users, normal, defaultSettings, "Hello").second)
+        val terminal = FieldContext(FieldKind.RAW_MODE_APP, appDisablesSuggestions = true)
+        assertEquals(CapDecision.Leave, AutoCapitalization.evaluate(users, terminal, defaultSettings, "").second)
+        assertEquals(CapDecision.ClearOneShot, AutoCapitalization.evaluate(stale, normal, defaultSettings, "Hello").second)
+    }
+
     /** The maintainer's terminal, a web field that asks for no suggestions, was capitalising its first word. */
     @Test
     fun `a field that wants no suggestions gets no automatic capital`() {

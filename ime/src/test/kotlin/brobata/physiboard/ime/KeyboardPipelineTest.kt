@@ -171,6 +171,27 @@ class KeyboardPipelineTest {
         assertEquals("h", editor.text, "the user's cancel of auto-cap must survive the very next selection update")
     }
 
+    /**
+     * spec: text-input.md SS9.3: auto-cap clears only a one-shot it armed itself. It used to keep
+     * crediting itself after its capital was typed, so a Shift the user tapped next was cleared
+     * by the next re-evaluation (here a selection update) as if auto-cap owned it.
+     */
+    @Test
+    fun `a Shift the user taps after an auto-capped letter is never cleared as auto-cap's`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL), textBeforeCursor = "")
+        step(pipeline, editor, letter('H'))
+
+        val shiftAt = editor.nextSnapshot()
+        pipeline.onKeyStroke(KeyStroke(modifier(ModifierKey.SHIFT), KeyEdge.DOWN, 0, shiftAt.nowMs, ModifierFlags(shift = true)), shiftAt)
+        pipeline.onKeyStroke(KeyStroke(modifier(ModifierKey.SHIFT), KeyEdge.UP, 0, shiftAt.nowMs + 60), EditorSnapshot(null, nowMs = shiftAt.nowMs + 60))
+        pipeline.onExternalSelectionChange(textBeforeCursor = editor.text)
+        step(pipeline, editor, letter('I'))
+
+        assertEquals("HI", editor.text)
+    }
+
     // -----------------------------------------------------------------------------------------
     // The Space/Enter/Backspace baseline (see LayerResolver.withBaselineControlAction's KDoc):
     // without it these three keys would resolve to Action.PassThrough and never reach
