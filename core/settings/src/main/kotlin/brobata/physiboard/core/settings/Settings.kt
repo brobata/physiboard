@@ -525,7 +525,7 @@ enum class AssistantAction(val storedValue: String) {
 
 /**
  * Dictation and the assistant. spec: settings-catalog.md SS2.8, dictation.md SS15 ("First-run
- * defaults for this subsystem: Fn-hold on, cues on, masking off, 2000 ms pause; but do not set
+ * defaults for this subsystem: Fn-hold on, cues on, masking off; but do not set
  * `side_key_assistant` without binding"). [engine] is blank (system default) rather than the
  * asset's Google component: the component is a fact about the maintainer's phone (D4), and a
  * component that is not installed falls to the system default anyway (dictation.md SS5).
@@ -534,12 +534,18 @@ data class DictationPrefs(
     val fnLongPressSpeech: Boolean = true,
     val haptics: Boolean = true,
     val hapticStrength: HapticStrength = HapticStrength.STRONG,
-    val endSilenceMs: Int = 2000,
+    /** `dictation_stop_after_silence_ms`: 0 means the session runs until stopped (dictation.md SS6.4); else that much silence ends it. */
+    val stopAfterSilenceMs: Int = 0,
     val maskOffensive: Boolean = false,
     /** `""` system default, `ondevice`, or a flattened recognition-service component name. */
     val engine: String = "",
-    val continuousSession: Boolean = true,
     val autoPunctuation: Boolean = true,
+    /** `dictation_prefer_offline`: the engine's on-device recognizer first (dictation.md SS4.3). */
+    val preferOffline: Boolean = true,
+    /** `dictation_pause_media`: hold exclusive audio focus for the session (dictation.md SS6.7). */
+    val pauseMedia: Boolean = true,
+    /** `dictation_stop_on_typing`: any key other than a modifier stops the session (dictation.md SS3). */
+    val stopOnTyping: Boolean = true,
     val symLongPressAssistant: Boolean = false,
     val sideKeyAssistant: Boolean = false,
     val assistantAction: AssistantAction = AssistantAction.AUTO,

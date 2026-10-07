@@ -33,7 +33,10 @@ class SettingsDefaultsTest {
         assertTrue(d.dictation.fnLongPressSpeech)
         assertTrue(d.dictation.haptics)
         assertFalse(d.dictation.maskOffensive)
-        assertEquals(2000, d.dictation.endSilenceMs)
+        assertEquals(0, d.dictation.stopAfterSilenceMs, "the session runs until stopped")
+        assertTrue(d.dictation.preferOffline)
+        assertTrue(d.dictation.pauseMedia)
+        assertTrue(d.dictation.stopOnTyping)
         assertFalse(d.dictation.sideKeyAssistant, "not set without the binding")
         assertEquals("", d.dictation.engine)
     }

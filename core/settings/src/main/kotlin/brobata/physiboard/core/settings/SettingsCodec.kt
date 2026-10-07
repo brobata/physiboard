@@ -135,10 +135,12 @@ object SettingsKeys {
     const val FN_LONG_PRESS_SPEECH = "fn_long_press_speech"
     const val DICTATION_HAPTICS = "dictation_haptics"
     const val DICTATION_HAPTIC_STRENGTH = "dictation_haptic_strength"
-    const val DICTATION_END_SILENCE = "dictation_end_silence_ms"
+    const val DICTATION_STOP_AFTER_SILENCE = "dictation_stop_after_silence_ms"
     const val DICTATION_MASK_OFFENSIVE = "dictation_mask_offensive"
     const val DICTATION_ENGINE = "dictation_engine"
-    const val DICTATION_CONTINUOUS = "dictation_continuous_session"
+    const val DICTATION_PREFER_OFFLINE = "dictation_prefer_offline"
+    const val DICTATION_PAUSE_MEDIA = "dictation_pause_media"
+    const val DICTATION_STOP_ON_TYPING = "dictation_stop_on_typing"
     const val DICTATION_AUTO_PUNCTUATION = "dictation_auto_punctuation"
     const val SYM_LONG_PRESS_ASSISTANT = "sym_long_press_assistant"
     const val SIDE_KEY_ASSISTANT = "side_key_assistant"
@@ -572,10 +574,12 @@ object SettingsCodec {
         put(SettingsKeys.FN_LONG_PRESS_SPEECH, x.fnLongPressSpeech.toString())
         put(SettingsKeys.DICTATION_HAPTICS, x.haptics.toString())
         put(SettingsKeys.DICTATION_HAPTIC_STRENGTH, x.hapticStrength.storedValue)
-        put(SettingsKeys.DICTATION_END_SILENCE, x.endSilenceMs.toString())
+        put(SettingsKeys.DICTATION_STOP_AFTER_SILENCE, x.stopAfterSilenceMs.toString())
         put(SettingsKeys.DICTATION_MASK_OFFENSIVE, x.maskOffensive.toString())
         put(SettingsKeys.DICTATION_ENGINE, x.engine)
-        put(SettingsKeys.DICTATION_CONTINUOUS, x.continuousSession.toString())
+        put(SettingsKeys.DICTATION_PREFER_OFFLINE, x.preferOffline.toString())
+        put(SettingsKeys.DICTATION_PAUSE_MEDIA, x.pauseMedia.toString())
+        put(SettingsKeys.DICTATION_STOP_ON_TYPING, x.stopOnTyping.toString())
         put(SettingsKeys.DICTATION_AUTO_PUNCTUATION, x.autoPunctuation.toString())
         put(SettingsKeys.SYM_LONG_PRESS_ASSISTANT, x.symLongPressAssistant.toString())
         put(SettingsKeys.SIDE_KEY_ASSISTANT, x.sideKeyAssistant.toString())
@@ -588,10 +592,12 @@ object SettingsCodec {
             fnLongPressSpeech = r.bool(SettingsKeys.FN_LONG_PRESS_SPEECH, d.fnLongPressSpeech),
             haptics = r.bool(SettingsKeys.DICTATION_HAPTICS, d.haptics),
             hapticStrength = HapticStrength.fromStored(r.string(SettingsKeys.DICTATION_HAPTIC_STRENGTH)) ?: d.hapticStrength,
-            endSilenceMs = r.int(SettingsKeys.DICTATION_END_SILENCE, d.endSilenceMs, 0..10000),
+            stopAfterSilenceMs = r.int(SettingsKeys.DICTATION_STOP_AFTER_SILENCE, d.stopAfterSilenceMs, 0..60000),
             maskOffensive = r.bool(SettingsKeys.DICTATION_MASK_OFFENSIVE, d.maskOffensive),
             engine = r.string(SettingsKeys.DICTATION_ENGINE)?.trim() ?: d.engine,
-            continuousSession = r.bool(SettingsKeys.DICTATION_CONTINUOUS, d.continuousSession),
+            preferOffline = r.bool(SettingsKeys.DICTATION_PREFER_OFFLINE, d.preferOffline),
+            pauseMedia = r.bool(SettingsKeys.DICTATION_PAUSE_MEDIA, d.pauseMedia),
+            stopOnTyping = r.bool(SettingsKeys.DICTATION_STOP_ON_TYPING, d.stopOnTyping),
             autoPunctuation = r.bool(SettingsKeys.DICTATION_AUTO_PUNCTUATION, d.autoPunctuation),
             symLongPressAssistant = r.bool(SettingsKeys.SYM_LONG_PRESS_ASSISTANT, d.symLongPressAssistant),
             sideKeyAssistant = r.bool(SettingsKeys.SIDE_KEY_ASSISTANT, d.sideKeyAssistant),

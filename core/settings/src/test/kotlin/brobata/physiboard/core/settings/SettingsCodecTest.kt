@@ -77,8 +77,8 @@ class SettingsCodecTest {
             enterOverrides = listOf(EnterOverrideRow("com.example.chat", EnterBehavior.NEWLINE_CTRL_SEND, EnterSendMethod.CTRL_ENTER, ExtraSendShortcut.SYM_ENTER)),
         ),
         dictation = DictationPrefs(
-            fnLongPressSpeech = false, haptics = false, hapticStrength = HapticStrength.LIGHT, endSilenceMs = 3500,
-            maskOffensive = true, engine = "ondevice", continuousSession = false, autoPunctuation = false,
+            fnLongPressSpeech = false, haptics = false, hapticStrength = HapticStrength.LIGHT, stopAfterSilenceMs = 15000,
+            maskOffensive = true, engine = "ondevice", autoPunctuation = false, preferOffline = false, pauseMedia = false, stopOnTyping = false,
             symLongPressAssistant = true, sideKeyAssistant = true, assistantAction = AssistantAction.HANDS_FREE,
         ),
         trackpad = TrackpadPrefs(enabled = true, triggerKey = TriggerKey.SHIFT_EITHER, activation = ActivationMode.DOUBLE_TAP, stepPx = 48, showHint = false),
@@ -167,7 +167,7 @@ class SettingsCodecTest {
         val s = SettingsCodec.fromMap(
             mapOf(
                 SettingsKeys.TRACKPAD_STEP to "200",
-                SettingsKeys.DICTATION_END_SILENCE to "20000",
+                SettingsKeys.DICTATION_STOP_AFTER_SILENCE to "90000",
                 SettingsKeys.RING_MINUTES to "2",
                 SettingsKeys.MAX_AUTO_REPLACE_DISTANCE to "9",
                 SettingsKeys.LONG_PRESS_THRESHOLD to "10",
@@ -175,7 +175,7 @@ class SettingsCodecTest {
             ),
         )
         assertEquals(64, s.trackpad.stepPx)
-        assertEquals(10000, s.dictation.endSilenceMs)
+        assertEquals(60000, s.dictation.stopAfterSilenceMs)
         assertEquals(2, s.device.ringMinutes)
         assertEquals(3, s.correction.maxAutoReplaceDistance)
         assertEquals(50, s.keys.longPressThresholdMs)

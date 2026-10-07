@@ -58,9 +58,9 @@ class LegacyImportTest {
 
     @Test
     fun `a wrong-typed value is read where it can be and defaulted where it cannot`() {
-        val r = import("status_bar_height_dp" to "48", "shift_tap_latches" to "true", "dictation_end_silence_ms" to "soon", "auto_capitalize_first_letter" to "maybe", "notification_ring_minutes" to 7.0)
+        val r = import("status_bar_height_dp" to "48", "shift_tap_latches" to "true", "dictation_stop_after_silence_ms" to "soon", "auto_capitalize_first_letter" to "maybe", "notification_ring_minutes" to 7.0)
         assertEquals(48, r.settings.statusBar.heightDp)
-        assertEquals(2000, r.settings.dictation.endSilenceMs)
+        assertEquals(0, r.settings.dictation.stopAfterSilenceMs)
         assertTrue(r.settings.typing.capitalizeAtTextStart)
         assertEquals(7, r.settings.device.ringMinutes)
         assertTrue("shift_tap_latches" in r.ignored)
@@ -369,6 +369,6 @@ class LegacyImportTest {
             dictation = DictationPrefs(sideKeyAssistant = true),
         )
         assertEquals(expected, r.settings)
-        assertEquals(setOf("alt_ctrl_speech_shortcut", "auto_show_keyboard", "modifier_indicator_mode", "physical_keyboard_currency_symbol", "screen_trackpad_enabled", "software_keyboard_mode"), r.ignored)
+        assertEquals(setOf("alt_ctrl_speech_shortcut", "auto_show_keyboard", "dictation_end_silence_ms", "modifier_indicator_mode", "physical_keyboard_currency_symbol", "screen_trackpad_enabled", "software_keyboard_mode"), r.ignored)
     }
 }
