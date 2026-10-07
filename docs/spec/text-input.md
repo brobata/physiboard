@@ -136,7 +136,9 @@ Composition is used only in three narrow places:
    marks the target character's span as the composing region, commits the replacement over
    it, finishes composition again, and restores the selection adjusted by the length change.
    All inside one batch edit. If the app refuses to set the composing region, nothing is
-   changed.
+   changed. 3.0 replaces the letter with a delete-and-commit in one batch edit instead, guarded
+   by "the text before the caret still ends with it" (layers-sym-alt.md 7.4, 8.4), since a web
+   terminal drops composed text.
 2. **Dictation**: partial results are shown as composing text and replaced as the recognizer
    refines them; the final result is committed. Specified in the dictation document.
 3. **Before every boundary**: before Space, Enter or boundary punctuation are processed the

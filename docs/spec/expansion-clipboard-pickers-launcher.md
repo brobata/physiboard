@@ -826,6 +826,11 @@ returns it. The categories, in chip order, and their contents:
 The Variations category is the largest and the last-but-one chip; the chip row scrolls
 horizontally.
 
+3.0: the dialog also edits the user's own Sym pages (layers-sym-alt.md 4.6), where the reset
+button reads "Clear this key" and removes the key, and adds an entry on Customize Variations
+(layers-sym-alt.md 8.3), where it reads "Cancel" and adds nothing. The skin-tone chooser's row
+(4.7) also draws the accent chooser (layers-sym-alt.md 8.4), numbered 1 to 9 then 0.
+
 ### 5.3 Orphan assets
 
 `assets/common/emoji_shortcodes.json` (a JSON object with `provider` = `unicode`, `categories`

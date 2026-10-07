@@ -95,7 +95,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `swipe_to_delete` | boolean | false | | Swipe left on the keyboard deletes a word | No screen in 2.x (keys-and-modifiers.md) |
 | `swipe_to_delete_provider` | string `titan2_keycode` or `native_ime`; written synchronously | `native_ime` | | Which event source the swipe comes from | No screen in 2.x |
 | `layout_aware_ctrl_shortcuts` | boolean | false | | Ctrl+letter resolved through the active layout | Keyboard > Fn Layer > "Layout-aware app Ctrl shortcuts" |
-| `long_press_threshold` | long ms, 50 to 1000 | 300, but see the quirk: the Alt/Sym layer reads the raw row with a fallback of 500 when it is absent | | Hold time before a key is a long press | Only on the "Key Behaviour & Timing" screen, which no row navigates to in 2.x (dead UI) |
+| `long_press_threshold` | long ms, 50 to 1000 | 300, but see the quirk: the Alt/Sym layer reads the raw row with a fallback of 500 when it is absent; 3.0: 500 for both | | Hold time before a key is a long press | 2.x: only on the "Key Behaviour & Timing" screen, which no row navigates to (dead UI); 3.0: Keyboard > Long press > "Hold time" |
 | `swipe_incremental_threshold` | float dp, 3 to 25 | 9.6 | | Distance per cursor step on the retired swipe bar | Dead: written by nothing, read by nothing since 2.0 |
 
 ### 2.2 Autocorrect and suggestions (autocorrect-suggestions.md)
@@ -155,7 +155,9 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `ctrl_tap_latches` | boolean | false | | Tap Ctrl arms it | No screen |
 | `alt_latch_stays_on_space` | boolean | false | | Armed Alt survives Space | No screen |
 | `ctrl_latch_stays_on_space` | boolean | false | | Armed Ctrl survives Space | No screen |
-| `long_press_modifier` | string `alt`, `shift`, `variations`, `sym`, `sym_symbols`, `sym_emoji`; anything else reads as `alt` | `alt` | | What holding a letter produces | No screen in 2.x |
+| `long_press_modifier` | string `alt`, `shift`, `variations`, `sym`, `sym_symbols`, `sym_emoji`; anything else reads as `alt` | `alt` | | What holding a letter produces | No screen in 2.x; 3.0: Keyboard > Long press > "Long press types" |
+| `long_press_variation_chooser` (3.0) | boolean | true | | In Accent mode, a letter with several accents shows them all in a transient bar to pick another (layers-sym-alt.md 8.4) | Keyboard > Long press > "Show every accent" |
+| `custom_variations` (3.0) | string, JSON object from one character to an array of strings, `{"a": ["ą", "à"], "E": []}`; keys that are not one character, non-arrays and non-string members are skipped; unparseable reads as `{}` | `{}` | | The user's own accent lists, each replacing the built-in list for that character; an empty array means none (layers-sym-alt.md 8.3) | Keyboard > Long press > "Customize Variations" |
 | `bounce_keys_enabled` | boolean | false | | Ignore a repeat of the same key inside the delay | No screen (Accessibility screen deleted) |
 | `bounce_keys_delay_ms` | long 20 to 500 | 80 | | The delay | No screen |
 | `bounce_keys_character_keys_enabled` | boolean | true | | Filter applies to letters | No screen |
@@ -182,7 +184,8 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 |---|---|---|---|---|---|
 | `sym_mappings_custom` | string, JSON `{"mappings": {"KEYCODE_Q": "text", ...}}` for the 26 letter keys | none | | Custom Sym page 1 (emoji) | SYM customization activity |
 | `sym_mappings_page2_custom` | string, same shape | none | | Custom Sym page 2 (symbols) | SYM customization activity |
-| `sym_pages_config` | string, JSON object with `deviceEnabled`, `emojiEnabled`, `symbolsEnabled`, `clipboardEnabled`, `emojiPickerEnabled`, `gifEnabled` (3.0) (booleans), `emojiFirst` (legacy boolean, written for older builds), `symPageOrder` (array of page ids `device`, `emoji`, `symbols`, `clipboard`, `emoji_picker`, `gif` (3.0)) | device off, emoji on, symbols on, clipboard off, picker off, order device, emoji, symbols, clipboard, emoji_picker | emoji off, symbols on, clipboard off, picker on, `emojiFirst` false, order emoji_picker, symbols, clipboard, emoji (device is absent from the order and is appended last when read; 3.0: `gif` is appended last and `gifEnabled` reads false when absent, so the GIF page starts off) | Which Sym pages exist and in what order | SYM customization > "Arrange SYM pages order" |
+| `sym_custom_pages` (3.0) | string, JSON `{"pages": [{"name": "...", "mappings": {"KEYCODE_Q": "text", ...}}, ...]}`; always read as exactly three pages, a missing or malformed page empty, a name trimmed and cut to 24 characters | three empty pages | | The user's own Sym pages 7 to 9 (layers-sym-alt.md 4.6) | Customize SYM Keyboard > the pencil on "My page 1" to 3 > "Page name", the grid, "Clear page" |
+| `sym_pages_config` | string, JSON object with `deviceEnabled`, `emojiEnabled`, `symbolsEnabled`, `clipboardEnabled`, `emojiPickerEnabled`, `gifEnabled` (3.0), `custom1Enabled` to `custom3Enabled` (3.0) (booleans), `emojiFirst` (legacy boolean, written for older builds), `symPageOrder` (array of page ids `device`, `emoji`, `symbols`, `clipboard`, `emoji_picker`, `gif` (3.0), `custom1` to `custom3` (3.0)) | device off, emoji on, symbols on, clipboard off, picker off, order device, emoji, symbols, clipboard, emoji_picker | emoji off, symbols on, clipboard off, picker on, `emojiFirst` false, order emoji_picker, symbols, clipboard, emoji (device is absent from the order and is appended last when read; 3.0: `gif` is appended last and `gifEnabled` reads false when absent, so the GIF page starts off; `custom1` to `custom3` are appended after it and read off likewise) | Which Sym pages exist and in what order | SYM customization > "Arrange SYM pages order" |
 | `alt_character_layer_binding` | string `first`, `emoji`, `symbols`, or `device:<something>`; anything else reads as `device:auto` | `device:auto` | | Which Sym page the Alt layer shows | SYM customization > "Alt character layer" |
 | `sym_auto_close` | boolean | true | | Sym page closes after a key | SYM customization > "Auto-Close SYM Layout" |
 | `sym_auto_close_on_touch` | boolean | true | | Also after an on-screen Sym key | "Also close after on-screen SYM keys" |
@@ -802,6 +805,12 @@ description is the screen title.
 | Text box under the bar | Text box under the bar | Text box under the bar | teams hidden covered text box compose field under bar inset blink |
 | Private mode (3.0) | Privacy | Privacy | private privacy incognito offline learn learning history network |
 | Clean links (3.0) | Privacy | Privacy | clean links tracking utm fbclid gclid url redirect copy paste clipboard privacy |
+| My Sym pages (3.0) | Customize SYM Keyboard | Customize SYM Keyboard | my page own custom sym layer extra symbols characters keys personal |
+| Long press (3.0) | Long press | Long press | long press hold held key alt symbol capital uppercase accents diacritics variations sym emoji |
+| Long press types (3.0) | Long press | Long press | long press mode accent variation capital alt symbol sym emoji diacritics |
+| Hold time (3.0) | Long press | Long press | hold time long press threshold delay milliseconds ms |
+| Show every accent (3.0) | Long press | Long press | accents diacritics variations chooser bar pick number |
+| Customize Variations (3.0) | Long press | Customize Variations | accents diacritics variations letters ą ć ę ł ń ó ś ź ż é è ü ö ä ß ñ ç polish french german |
 
 Target resolution differs by where the search was started:
 
@@ -926,6 +935,16 @@ control; ">" means the row navigates.
       correction" switch; "Maximum correction distance" slider 0 to 3 ("Off" at 0); "Personal
       dictionary" > User dictionary (search, add, edit, delete); "Suggestions while typing";
       "Accent & spelling marks"; "Keyboard Proximity Ranking"; "Edit Type Ranking"
+  - 3.0: "Long press" > "What holding a letter types (Alt symbol, capital, accent, Sym
+    character) and how long to hold" (keys-and-modifiers.md 8, layers-sym-alt.md 7.1, 7.2)
+    - header "Long press types": intro "Hold a letter key to type something else in place of
+      the letter."; radio rows Alt symbol, Capital letter, Accent / variation, Sym symbol, Sym
+      emoji, First Sym page (`long_press_modifier`); "Hold time" slider 50 to 1000 ms in 50 ms
+      steps (`long_press_threshold`)
+    - header "Accents": "Show every accent" (`long_press_variation_chooser`, greyed unless
+      the mode is Accent / variation); "Customize Variations" > "Choose, order or add the accents
+      each letter offers" (layers-sym-alt.md 8.3: "Order shown for", the letters a to z,
+      "Accents for <letter>" with its small and capital lists, "Reset every letter to default")
   - "Voice" > "Hold Fn to dictate, and the assistant triggers"
     - intro; header "Triggers": "Long-press Fn for speech input"
     - header "Transcription": "Speech engine" picker (system default, on-device, each installed
@@ -993,7 +1012,9 @@ control; ">" means the row navigates.
   Keyboard"): "Arrange SYM pages order" (five pages, move up/down, edit layer), "Alt character
   layer", header "SYM behaviour and display": "Sym+C/V/X/A: copy, paste, cut, select all",
   "Auto-Close SYM Layout", "Also close after on-screen SYM keys", "Larger emoji picker", "Reset
-  to Default" with confirmation (layers-sym-alt.md)
+  to Default" with confirmation (layers-sym-alt.md). 3.0: the order also lists the GIF page and
+  "My page 1" to 3, each of the last three with a pencil that opens "Edit <name>" ("Page name",
+  the grid, "Clear page"; layers-sym-alt.md 4.6)
 - **Fn Layer** (title "Fn Layer", reached from Smart Features, Key mapping, search and the
   `fn_layer_destination` deep link): "Fn Layer guide"; "Set Fn key to Ctrl" card with warning,
   "already set" state, apply and reset buttons and status lines; "Enable Fn Layer" switch;

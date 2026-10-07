@@ -678,7 +678,7 @@ never for a key in an active multi-tap cycle):
 |---|---|
 | `alt` (default) | the key has an entry in the device Alt layer |
 | `shift` | the key's system unicode character is a letter |
-| `variations` | the character the key would type (given Shift/caps/one-shot) has a variation list |
+| `variations` | the character the key would type (given Shift/caps/one-shot) has a variation list; 3.0: and the field takes accents (not an email field, text-input.md 3) |
 | `sym`, `sym_symbols`, `sym_emoji` | the key has an entry on the long-press Sym page (page 1 emoji or page 2 symbols per `layers-sym-alt.md`), the shifted entry counting when Shift is active |
 
 ### 8.3 Timer and outcome
@@ -693,7 +693,7 @@ character is replaced:
 |---|---|
 | `alt` | delete 1 character, then commit the Alt-layer value with the auto-space and French-spacing rules |
 | `shift` | delete 1 character, commit the layout's uppercase for the key (for an unmapped key, the uppercase of what was committed) |
-| `variations` | replace the committed character with the first variation of the character (looked up in the case the key was pressed in), only if the text at the caret still matches what was committed |
+| `variations` | replace the committed character with the first variation of the character (looked up in the case the key was pressed in), only if the text at the caret still matches what was committed; 3.0: a delete-one-and-commit like the other modes, the match check skipped in a terminal-mode app, and with two or more variations the accent chooser opens (layers-sym-alt.md 7.4, 8.4) |
 | `sym*` | delete 1 character, commit the Sym page value (shifted entry when the press was shifted) with the auto-space and French-spacing rules |
 
 A long press that produced a replacement reports the inserted character to auto-space tracking
@@ -704,6 +704,13 @@ Default threshold: the settings screen shows and stores 300 ms, but a never-writ
 is read by the long-press timer with a fallback of 500 ms. Until the user moves the slider once,
 the effective long press is 500 ms while the screen says 300 ms. The tutorial's "Devs choice"
 preset writes 200 ms and `variations`.
+
+3.0: one default, 500 ms, read the same way by the screen and the timer. The mode and the hold
+time are set on Keyboard > Long press ("Long press types", "Hold time"; layers-sym-alt.md 7.1,
+7.2), where the accent options sit too: "Show every accent" (`long_press_variation_chooser`)
+and "Customize Variations" (`custom_variations`, layers-sym-alt.md 8.3). The variation lists
+come from 3.0's built-in table in the keyboard language's order, with the user's own lists over
+it (layers-sym-alt.md 8.1, 8.2).
 
 ## 9. Multi-tap
 
@@ -957,8 +964,10 @@ and Space to the screen trackpad screen. Keys nobody can change say so.
 
 | Preference key | Type | Default | What it changes | Screen | Label |
 |---|---|---|---|---|---|
-| `long_press_threshold` | long (ms) | 300 (timer falls back to 500 when unset) | long-press timer, section 8.3; clamped 50 to 1000, slider in 50 ms steps | Key Behaviour & Timing | Long Press |
-| `long_press_modifier` | string: `alt`, `shift`, `variations`, `sym`, `sym_symbols`, `sym_emoji` | `alt` | what a long press produces | tutorial "Devs choice" preset and long-press selector (`app-shell.md`) | (long-press selector) |
+| `long_press_threshold` | long (ms) | 2.x: 300 (timer falls back to 500 when unset); 3.0: 500 | long-press timer, section 8.3; clamped 50 to 1000, slider in 50 ms steps | 2.x: Key Behaviour & Timing; 3.0: Keyboard > Long press | 2.x: Long Press; 3.0: Hold time |
+| `long_press_modifier` | string: `alt`, `shift`, `variations`, `sym`, `sym_symbols`, `sym_emoji` | `alt` | what a long press produces | 2.x: tutorial "Devs choice" preset and long-press selector (`app-shell.md`); 3.0: Keyboard > Long press | 3.0: Long press types (Alt symbol, Capital letter, Accent / variation, Sym symbol, Sym emoji, First Sym page) |
+| `long_press_variation_chooser` | boolean | true | 3.0: in `variations` mode a letter with several variations opens the accent chooser (layers-sym-alt.md 8.4) | Keyboard > Long press | Show every accent |
+| `custom_variations` | string, JSON object of one character to an array of strings | `{}` | 3.0: the user's own variation lists (layers-sym-alt.md 8.3) | Keyboard > Long press > Customize Variations | (per-letter lists) |
 | `fn_long_press_speech` | boolean | false | hold-Fn burst detection and dictation, section 3.3 | Voice | Long-press Fn for speech input |
 | `fn_speech_scan_code` | int | 251 | scancode recognised as Fn | none (preference only) | none |
 | `sym_long_press_assistant` | boolean | false | 600 ms Sym hold opens the assistant | Voice | Hold Sym for the assistant |
@@ -1159,7 +1168,7 @@ set is now just an ordinary Alt press (one-shot armed, down consumed), not a dic
 | Numeric-field Ctrl forcing of copy/cut/paste/select all | keep | tested, fixes Fn+V in number fields |
 | Ctrl+Space language switch | keep | on by default and the only always-available switch chord |
 | Alt+Shift and Alt+Enter language switch | undecided | off by default; Alt+Shift also collides with the system chord |
-| Long press with four modes and a slider | keep, fix the 300/500 default mismatch | used daily; one default only |
+| Long press with four modes and a slider | keep, done in 3.0 | used daily; one default only (500 ms); all six modes on Keyboard > Long press with the accent chooser and Customize Variations |
 | Multi-tap | keep | needed by multi-tap layouts; the ẞ exception must survive |
 | Bounce filter | undecided | accessibility value, no UI today; keep only with a screen |
 | Accidental-press (overlap) filter | undecided | same as bounce |

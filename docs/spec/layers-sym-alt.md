@@ -20,12 +20,15 @@ hosts the Sym pages; `dictionaries-languages.md` owns language (subtype) switchi
   character printed on each keycap, reached with the physical Alt key. Comes from a per-device
   asset file (section 3).
 - **Sym pages**: the pages the Sym key cycles through. Three are *key layers* that remap the 26
-  letter keys (Device, Emoji, Symbols; 3.0 drops Device); the rest are *panels* (Clipboard,
-  Emoji Picker, and 3.0's GIF page) that are content, not key maps.
+  letter keys (Device, Emoji, Symbols; 3.0 drops Device and adds the user's own three, "My
+  page 1" to 3, section 4.6); the rest are *panels* (Clipboard, Emoji Picker, and 3.0's GIF
+  page) that are content, not key maps.
 - **Page chooser** (3.0): a small transient panel, opened by a double tap of Sym, that lists
   every page with a letter and opens the one whose letter is pressed (section 5.10).
 - **Variations**: accented or related characters for a base character (a to à á ä ...), reached
-  by long press when the long-press action is set to Variations.
+  by long press when the long-press action is set to Variations ("Accent / variation" in 3.0).
+- **Accent chooser** (3.0): a transient bar a long press in Accent mode opens when the letter
+  has more than one variation; it numbers them and swaps the one just typed (section 8.4).
 - **Long-press action**: what holding a letter key past the long-press threshold does. One of:
   device layer character, uppercase, first variation, or a Sym page character.
 
@@ -40,6 +43,7 @@ extras:
 | `clipboard` | 3 | panel | clipboard history |
 | `emoji_picker` | 4 | panel | searchable emoji picker |
 | `gif` | 6 | panel | GIF search (3.0; section 4.5) |
+| `custom1`, `custom2`, `custom3` | 7, 8, 9 | key layer | the user's own pages, "My page 1" to 3 (3.0; section 4.6) |
 
 Page number 0 means no page is open. Page number 5 stays reserved for the dropped Device page.
 
@@ -160,7 +164,8 @@ Preference `sym_pages_config` holds one JSON object:
 | `clipboardEnabled` | boolean | false | Clipboard panel is in the cycle |
 | `emojiPickerEnabled` | boolean | false | Emoji picker panel is in the cycle |
 | `gifEnabled` | boolean | false | GIF page is in the cycle (3.0). Off unless the user turns it on: it is the only page that sends anything off the phone |
-| `symPageOrder` | array of page ids | `["device","emoji","symbols","clipboard","emoji_picker","gif"]` | cycle order |
+| `custom1Enabled`, `custom2Enabled`, `custom3Enabled` | boolean | false | the user's own pages 7, 8 and 9 are in the cycle (3.0, section 4.6) |
+| `symPageOrder` | array of page ids | `["device","emoji","symbols","clipboard","emoji_picker","gif","custom1","custom2","custom3"]` | cycle order |
 | `emojiFirst` | boolean | true | legacy; written for old builds as "emoji comes before symbols in the order" |
 
 Reading is tolerant: unknown ids in `symPageOrder` are dropped, duplicates collapse to the
@@ -171,7 +176,8 @@ emoji_picker, then device appended by normalisation. A malformed value yields th
 
 3.0: a config written before the GIF page existed has no `gif` in `symPageOrder` and no
 `gifEnabled`; it reads with `gif` appended last and `gifEnabled` false, every other field as
-stored. 3.0 never writes `deviceEnabled` or `emojiFirst`, and drops `device` from the order when
+stored. Likewise a config written before the user's own pages existed reads with `custom1`,
+`custom2` and `custom3` appended last, in that order, and all three switched off. 3.0 never writes `deviceEnabled` or `emojiFirst`, and drops `device` from the order when
 reading.
 
 The factory baseline shipped in `common/default_settings.json` (applied once to every install)
@@ -336,6 +342,42 @@ nothing. While learning is off (private mode, or a field asking for no personali
 a sent GIF is not added to recents and a star is refused (toast "Private: favourites are not
 changed"); removing a star still works.
 
+### 4.6 The user's own pages (3.0)
+
+Three key layers of the user's own, pages 7, 8 and 9 (`custom1` to `custom3`), so a user who
+wants more characters at hand need not give up the Emoji or Symbols page for them. Each has a
+name and, for any of the 26 letter keys, a text to type: a character, a symbol, an emoji, a
+character from another script, or a short word. They are stored together in the preference
+`sym_custom_pages`:
+
+```
+{"pages": [{"name": "Polski", "mappings": {"KEYCODE_A": "ą", "KEYCODE_S": "ś"}},
+           {"name": "", "mappings": {}}, {"name": "", "mappings": {}}]}
+```
+
+Reading is tolerant: there are always exactly three pages; a missing or malformed page reads
+empty; extra pages are ignored; a name is trimmed and cut to 24 characters; a blank name shows
+as "My page 1", "My page 2" or "My page 3"; a key name other than `KEYCODE_A` to `KEYCODE_Z`
+or an empty text is skipped. A page with no key has no characters (every key types as usual
+while it is open). Like the custom Emoji and Symbols pages (4.4) the pages have no uppercase
+map, and the default skin tone (expansion-clipboard-pickers-launcher.md 4.7) tones their emoji.
+
+Each page has a switch and a place in the cycle in `sym_pages_config` (4.1), off by default.
+A page behaves like the Emoji and Symbols pages in every way: it is drawn as the grid of 5.7
+(a word shrinks to fit its key, down to 14 px), a key on it types its text (5.4) and closes it
+under `sym_auto_close` (5.5), a Sym chord draws from it when it is the open page or the first
+switched-on key layer (5.3), its pencil and a long press on a key open its editor (5.8; the
+keyboard passes page number 7, 8 or 9), and a page restored after the editor follows 5.8.
+The page chooser opens one with M, N or B (5.10).
+
+**Editing** (Customize SYM Keyboard, 5.9): the three pages are rows in "Arrange SYM pages
+order", each with a switch, the arrows and a pencil, and the kind label "Key layer · your own ·
+chooser letter M" (N, B). The pencil opens "Edit <name>": a "Page name" field, the grid of 5.9,
+and a red "Clear page" button that asks "Remove every key from this page? Its name stays. This
+cannot be undone." Tapping a grid key opens the character dialog (expansion-clipboard-pickers-
+launcher.md 5.2): any text in its custom field, or a character from its grid; its "Clear this
+key" choice removes the key. Every change is written at once and travels in backups.
+
 ## 5. The Sym key session
 
 ### 5.1 Key identity
@@ -383,7 +425,9 @@ not open a page.
    preferred text page is the open page if it is Device, Emoji or Symbols; otherwise the first
    enabled key layer (Device, Emoji or Symbols) in the configured order; if none is enabled,
    nothing is committed. With Shift held, one-shot Shift or Caps Lock active, the page's
-   uppercase entry is used when it exists, else the normal entry.
+   uppercase entry is used when it exists, else the normal entry. 3.0: the user's own pages
+   (4.6) are key layers too, so the preferred text page is the open key layer, else the first
+   switched-on key layer of Emoji, Symbols and the user's own pages in the configured order.
 4. No match: the key falls through to normal handling, but the press still counts as a chord.
 
 Pure modifier keys (Shift, Ctrl, Alt, Sym itself) pressed while Sym is held do not count as
@@ -404,7 +448,7 @@ an editable field is handled by the page:
 | Back | closes the page; the key is consumed |
 | Enter | if `sym_auto_close` is on: closes the page and the Enter goes on to the app as usual; if off: falls through (Enter behaves normally, page stays) |
 | Alt | closes the page, then Alt is processed normally (it may arm one-shot or lock) |
-| a letter with a character on the current key layer (pages 1, 2, 5) | the character is committed (with French punctuation spacing applied when enabled and the character is one of `?!;:`); if `sym_auto_close` is on the page closes; the key is consumed |
+| a letter with a character on the current key layer (pages 1, 2, 5; 3.0: 1, 2, 7, 8, 9) | the character is committed (with French punctuation spacing applied when enabled and the character is one of `?!;:`); if `sym_auto_close` is on the page closes; the key is consumed |
 | a letter with no entry, Space, digits, or any key on a panel page (3, 4) | not handled here; normal typing proceeds with the page still open |
 
 Auto-space replacement (turning "word " plus punctuation into "word, ") is *not* applied to
@@ -581,8 +625,15 @@ picker. A page that is off in the cycle is drawn at 60% opacity but opens all th
 | K | Emoji picker (4) in Kaomoji mode |
 | U | Emoji picker (4) in Symbols (Unicode) mode |
 | G | GIF page (6) |
+| M | the user's own page 1 (7), under its name (3.0, 4.6) |
+| N | the user's own page 2 (8), under its name |
+| B | the user's own page 3 (9), under its name |
 
 The letter is the one printed on the physical key (the QWERTY position), whatever the layout.
+One of the user's own pages has a row only when it is set up: switched on in the cycle, or
+holding at least one key. Its letter does nothing in the chooser otherwise (it closes the
+chooser and types, like any letter without a row), so three empty "My page" rows never crowd
+it. M stands for "My page"; N and B are the keys beside it, all free of the other letters.
 There is no Device row: the Device page is dropped in 3.0.
 
 While the chooser is open:
@@ -690,6 +741,11 @@ the key is unset. The factory baseline does not set the key, so a fresh install 
 500 ms while the slider claims 300 until the slider is touched once. The Dev's Choice onboarding
 preset writes 200.
 
+3.0: one default, 500 ms, for the screen and the timer alike. The row is "Hold time" on the
+Keyboard > Long press screen ("How long to hold a key before it counts as a long press."), a
+slider from 50 to 1000 ms in 50 ms steps showing "N ms"; a stored value outside the range is
+clamped.
+
 ### 7.2 Modes
 
 `long_press_modifier` (set from the onboarding tutorial's "Long Press Modifier" dropdown; no
@@ -705,6 +761,23 @@ other screen exposes it):
 | `sym_emoji` | Emoji Layer | the Emoji page entry |
 
 Unknown stored values read as `alt`.
+
+3.0: the modes are chosen on Keyboard > Long press, under "Long press types", one radio row
+each, with the stored values unchanged:
+
+| Value | 3.0 label | Description shown |
+|---|---|---|
+| `alt` (default) | Alt symbol | The symbol printed on the key, as with Alt. The default. |
+| `shift` | Capital letter | Hold a for A. |
+| `variations` | Accent / variation | Hold a for its first accent, ą in Polish or ä in German, in your keyboard language's order. |
+| `sym_symbols` | Sym symbol | The key's character on the Symbols page. |
+| `sym_emoji` | Sym emoji | The key's emoji on the Emoji page. |
+| `sym` | First Sym page | The key's character on the Emoji or Symbols page, whichever comes first in your Sym page order. |
+
+The same screen holds "Hold time" (7.1), "Show every accent" (8.4; greyed out unless the mode
+is `variations`) and a row to "Customize Variations" (8.3). Search finds it under "Long press",
+"Long press types", "Hold time", "Show every accent" and words such as accents, diacritics,
+variations and hold.
 
 ### 7.3 Sequence
 
@@ -759,11 +832,86 @@ All timers and anchors are dropped on IME reset.
   original stays. Later input typed after the character (before the timer fires) is preserved:
   "u" then "3" then timer gives "ü3".
 
+3.0, `variations`: the replacement is the same delete-one-and-commit as every other mode (one
+batch edit), not a composing-region swap: a web terminal is on record dropping composed text
+(per-app-behavior.md D7), and in 3.0 no input can come between the letter and the timer (another
+letter re-arms the long press for itself, an Alt or Ctrl key cancels it), so the anchor has
+nothing to protect. What is kept is the check: the letter is replaced only while the field's
+text before the caret still ends with it; an unreadable field is trusted. In a terminal-mode
+app (per-app-behavior.md 4.6) the check is skipped, since the terminal empties its text box
+after every key, and the accent reaches the app like any other character (a commit, or key
+presses for a character a key produces). The long press does not arm at all in a field that
+takes no accents (text-input.md 3, the "Variations" column: an email address); the letter
+types and auto-repeats as usual there. When the letter has more than one variation, the accent
+chooser opens (8.4).
+
 ## 8. Variations
+
+3.0 replaces the 2.x data files with one built-in table written for PhysiBoard 3.0 (no list is
+taken from another keyboard), the user's own lists stored as a setting, and an accent chooser
+that needs no bar. Each subsection gives 3.0 first and keeps the 2.x record after it.
 
 ### 8.1 Data
 
-Shipped file `common/variations/variations.json` with these top-level fields:
+**3.0.** A built-in table of the Latin letters that take accents, lower and upper case, at most
+ten entries each (one for each digit printed on the keys, 8.4). Accented forms come first, in
+the order grave, acute, circumflex, diaeresis, tilde, ring, macron, ogonek, breve and the rest,
+then related letters (ø œ æ ł đ ß þ ı), then a currency sign on its letter's name:
+
+| Base | Variations (neutral order) |
+|---|---|
+| a | à á â ä ã å ā ą ă æ |
+| c | ç ć č ¢ |
+| d | ď đ |
+| e | è é ê ë ē ę ě ė € |
+| g | ğ ģ |
+| i | ì í î ï ī į ı |
+| l | ł ľ ĺ ļ £ |
+| n | ñ ń ň ņ |
+| o | ò ó ô ö õ ø ō ő œ ơ |
+| r | ř ŕ |
+| s | ß ś š ş ș $ |
+| t | ť ț ţ þ |
+| u | ù ú û ü ū ů ű ų ư |
+| y | ý ÿ ¥ |
+| z | ź ž ż |
+
+The capital key's list is the same list in capitals, in the same order, with three exceptions:
+ß becomes the capital sharp s ẞ, Turkish dotless ı becomes the dotted capital İ (the letter a
+Turkish capital I lacks), and currency signs stay as they are. Outside Latin: Cyrillic е gives
+ё є (Е gives Ё Є), г gives ґ (Г: Ґ), і gives ї (І: Ї), Р gives ₽, Armenian Դ gives ֏. Every
+other character (h, p, digits, punctuation) has no variations by default.
+
+**Language order.** When the active input style's language (its subtype locale, for example
+`pl_PL`; Norwegian `nb` and `nn` count as `no`) has letters of its own, those letters move to
+the front of their base letter's list, in the order below; every other entry keeps its place
+behind them, and nothing is dropped:
+
+| Language | Letters first (per base letter) |
+|---|---|
+| pl | ą ć ę ł ń ó ś ź ż |
+| fr | é è ê ë, à â æ, ç, î ï, ô œ, ù û ü, ÿ |
+| de | ä ö ü ß |
+| es | á é í ó ú ü ñ |
+| pt | ã á â à, õ ó ô, é ê, í, ú, ç |
+| it | à, è é, ì í, ò ó, ù ú |
+| ca | à, è é, í ï, ò ó, ú ü, ç |
+| cs | á č ď é ě í ň ó ř š ť ú ů ý ž |
+| sk | á ä č ď é í ĺ ľ ň ó ô ŕ š ť ú ý ž |
+| ro | ă â î ș ț |
+| tr | ç ğ ı ö ş ü |
+| nl | é ë è, ï, ó ö, á, ü |
+| sv | å ä, ö, é |
+| da | å æ, ø, é |
+| no | å æ, ø ô ò ó, é è ê |
+| hu | á é í ó ö ő ú ü ű |
+| gd | à è ì ò ù |
+| vi | ă â, đ, ê, ô ơ, ư |
+
+Any other language (English included) gets the neutral order. Spanish ¿ and ¡ are not on a
+letter: they are on the Symbols page (¡ on B) and in the Unicode picker.
+
+**2.x record.** Shipped file `common/variations/variations.json` with these top-level fields:
 
 - `variations`: object from a single base character to an ordered list of strings. Shipped
   base characters: a e i o u l c n s z y d g r p t (lowercase and uppercase), plus Cyrillic
@@ -779,9 +927,18 @@ Shipped file `common/variations/variations.json` with these top-level fields:
 `common/variations/defaultvariations.json` is the copy used by "reset variations"; it lacks the
 `german_multitap_qwertz` override. `common/variations/AllVariations.json` is a much larger
 per-letter catalogue (A to Z, each with several dozen forms, base letter last) intended for a
-picker dialog that no screen opens any more.
+picker dialog that no screen opens any more. 3.0 orders by language rather than by layout, so a
+German typist on `qwerty` gets ä first too, and drops `p` → `%`.
 
 ### 8.2 Effective list
+
+**3.0.** The table a long press reads is the built-in table in the active language's order,
+with each character the user customised (8.3) replaced by the user's own list for it, exactly
+as saved; an empty saved list means that character has no variations. It is rebuilt whenever
+the settings change and on every input style switch. A character with a list of one entry
+types it on a long press and opens no chooser.
+
+**2.x record.**
 
 1. Source text: `files/variations.json` in the app's private files directory if it exists,
    else the shipped file.
@@ -798,20 +955,82 @@ The list is rebuilt when the layout changes and when the preference `variations_
 touched (any write to the variations file does that). A parse failure yields no variations at
 all.
 
-### 8.3 Writing
+### 8.3 Writing: Customize Variations
 
-Only the Dev's Choice onboarding preset writes `files/variations.json` today (it saves the
-currently effective lists unchanged), and "reset" copies `defaultvariations.json` over it. The
-picker dialog ("Select variation for X", with a "Custom character" text field, "Clear (Empty)"
-and a grid of 48 dp cells at least 4 per row) exists but is unreachable. Backups include
-`variations.json` and merge it with the shipped defaults on restore rather than overwriting.
+**3.0.** The preference `custom_variations` holds the user's lists as one JSON object from a
+single character to an array of strings, `{"a": ["ą", "à"], "E": []}`. Reading is tolerant: a
+key that is not exactly one character, a value that is not an array and a member that is not a
+string are skipped; an unparseable value reads as empty. Every list is cleaned on use: blanks
+dropped, an entry cut to 16 characters, duplicates removed keeping the first, at most ten kept.
 
-### 8.4 Where variations show
+The screen "Customize Variations" (Keyboard > Long press > Customize Variations) says: "With
+Long press set to Accent / variation, holding a letter types the first accent in its list. Tap a
+letter to choose, order or add its accents. Your changes apply in every language." Then:
 
-Only through the long-press `variations` mode. The accent row under the suggestions was removed
-with the strip's second row; the per-keystroke cursor read that fed it is gone, and the code
-path that would insert a tapped variation (delete one character, commit the variation; commit
-without delete for punctuation and brackets) has no button left to call it.
+- "Order shown for": a dropdown of "No particular language" and the languages of 8.1, starting
+  on the phone's language when it is one of them. It only chooses the order this screen
+  previews untouched letters in; the keyboard uses its own language.
+- One row per letter a to z: the letter (with "· changed" when either case is customised) and
+  its accents, or "No accents".
+- "Reset every letter to default" (red, greyed when nothing is customised) removes every list.
+
+Tapping a letter opens "Accents for a": a section for the small letter and one for the capital
+("a (changed)" when customised). Each entry is a row with its number (1 to 9, then 0; the first
+is marked "Typed by a long press"), up and down arrows and a remove button. "Add" (greyed as
+"Full (10)" at ten) opens the character dialog (expansion-clipboard-pickers-launcher.md 5.2),
+which takes any text, a character from another script included; its "Cancel" adds nothing.
+"Reset to default" (greyed unless customised) removes that case's list. The first change to a
+case stores the whole list as shown (in the previewed order) and it is used as stored in every
+language from then on. Every change is written at once and travels in backups. Search finds
+the screen as "Customize Variations" and by words such as accents, diacritics, variations and
+the accented letters.
+
+**2.x record.** Only the Dev's Choice onboarding preset writes `files/variations.json` today
+(it saves the currently effective lists unchanged), and "reset" copies `defaultvariations.json`
+over it. The picker dialog ("Select variation for X", with a "Custom character" text field,
+"Clear (Empty)" and a grid of 48 dp cells at least 4 per row) exists but is unreachable.
+Backups include `variations.json` and merge it with the shipped defaults on restore rather than
+overwriting.
+
+### 8.4 Where variations show: the accent chooser
+
+**3.0.** The suggestion bar is gone for good, so the accents show in a transient bar of their
+own, the same row the skin-tone chooser uses (expansion-clipboard-pickers-launcher.md 4.7).
+
+When a long press in `variations` mode replaces a letter with the first of two or more
+variations, and `long_press_variation_chooser` is on (default on), the bar opens above the
+keyboard with every variation of that letter, in order, each labelled with a digit and the
+letter key that carries the digit on the device layer: the first is 1, then 2 to 9, then 0 for
+the tenth; on the Titan 2 Elite that is 1 · W, 2 · E, 3 · R, 4 · S, 5 · D, 6 · F, 7 · Z,
+8 · X, 9 · C, 0 · Q. A close button sits at its end.
+
+The pick keys are ordinary letters, and typing straight on after an accent is common ("będę":
+hold e for ę, then d), so a bare letter picks only while the long-pressed key is still held:
+
+| Key | Effect |
+|---|---|
+| A key carrying a listed digit (or a digit key), while the long-pressed key is still down | the accent just typed is replaced by that variation; the bar closes; the key and its release are consumed |
+| The same key after Alt was pressed with the bar open, or with Alt held | the same pick |
+| Alt | consumed with its release; the bar stays and the next pick key picks (so Alt then W picks the first, and no Alt one-shot is left armed) |
+| The long-pressed key's own auto-repeat | consumed; the bar stays |
+| An auto-repeat of any other key held from before (Shift, Fn) | goes on as usual; the bar stays |
+| Back | closes the bar without a change; consumed |
+| Any other key (a letter once the held key is up, a letter with no listed digit, Space, Enter, Backspace, Shift, Sym, Ctrl) | closes the bar, then does exactly what it would have done |
+
+A tap on a variation in the bar picks it the same way. A pick replaces the variation the long
+press typed only while the field's text before the caret still ends with it, an unreadable
+field being trusted; otherwise nothing changes. A terminal-mode app skips that check
+and gets the character the way it gets every other (per-app-behavior.md 4.6). Picking the
+variation already typed changes nothing. The pick goes through the same path as the long press
+itself, so the word being tracked follows. The bar also closes after 10 seconds without a key,
+when the field finishes, when the keyboard window hides and when the keyboard service ends. It
+never opens on its own, and it intercepts Space, Enter, Shift and Backspace only by closing.
+
+**2.x record.** Only through the long-press `variations` mode. The accent row under the
+suggestions was removed with the strip's second row; the per-keystroke cursor read that fed it
+is gone, and the code path that would insert a tapped variation (delete one character, commit
+the variation; commit without delete for punctuation and brackets) has no button left to call
+it.
 
 ## 9. Layouts
 
@@ -985,6 +1204,7 @@ is empty.
 | `sym_pages_config` | string (JSON, 4.1) | see 4.1; baseline in D12 | which pages are in the cycle and in what order | Customize SYM Keyboard | Arrange SYM pages order |
 | `sym_mappings_custom` | string (JSON, 3.1) | unset | Emoji page characters | Customize SYM Keyboard, Edit Emoji Layer | (grid) |
 | `sym_mappings_page2_custom` | string (JSON, 3.1) | unset | Symbols page characters | Customize SYM Keyboard, Edit Symbols Layer | (grid) |
+| `sym_custom_pages` | string (JSON, 4.6) | three empty pages | 3.0: the user's own pages 7 to 9, their names and characters | Customize SYM Keyboard, Edit <name> | Page name, (grid), Clear page |
 | `sym_auto_close` | boolean | true | page closes after a character, Alt or Enter | Customize SYM Keyboard | Auto-Close SYM Layout |
 | `sym_auto_close_on_touch` | boolean | true | page closes after an on-screen key tap (needs the one above) | Customize SYM Keyboard | Also close after on-screen SYM keys |
 | `sym_edit_shortcuts` | boolean | true | Sym+C/V/X/A copy, paste, cut, select all | Customize SYM Keyboard | Sym+C/V/X/A: copy, paste, cut, select all |
@@ -997,8 +1217,10 @@ is empty.
 | `alt_tap_latches` | boolean | false | a single Alt tap locks instead of one-shot | none found | Single-tap locks Alt |
 | `clear_alt_on_space` | boolean | true | Space/Enter end Alt one-shot and lock | Text input | Release Alt with Space |
 | `alt_latch_stays_on_space` | boolean | false | a locked Alt survives Space | none found | Keep locked Alt after Space |
-| `long_press_modifier` | string | `alt` | long-press action (7.2) | onboarding tutorial | Long Press Modifier |
-| `long_press_threshold` | long ms | 300 shown, 500 used when unset (7.1) | hold time before the alternate | Keyboard timing | Long Press |
+| `long_press_modifier` | string | `alt` | long-press action (7.2) | 2.x: onboarding tutorial; 3.0: Keyboard > Long press | 2.x: Long Press Modifier; 3.0: Long press types |
+| `long_press_threshold` | long ms | 2.x: 300 shown, 500 used when unset (7.1); 3.0: 500, clamped 50 to 1000 | hold time before the alternate | 2.x: Keyboard timing; 3.0: Keyboard > Long press | 2.x: Long Press; 3.0: Hold time |
+| `long_press_variation_chooser` | boolean | true | 3.0: a long press in `variations` mode on a letter with several variations opens the accent chooser (8.4) | Keyboard > Long press | Show every accent |
+| `custom_variations` | string (JSON, 8.3) | `{}` | 3.0: the user's own variation lists, per character | Keyboard > Long press > Customize Variations | (per-letter lists) |
 | `physical_keyboard_profile_override` | string | `auto` | device layer profile | Built-in Keyboards | Physical Keyboard Profile |
 | `titan2_layout_enabled` | boolean | unset (reads as true on the Titan family) | ortholinear on-screen Sym grid | Built-in Keyboards | Titan 2 Layout Alignment |
 | `physical_keyboard_currency_symbol` | string | `€` (baseline `$`) | replaces a `KEYCODE_GRAVE` device entry; inert on Titan | Text input | Currency Symbol |
@@ -1015,7 +1237,11 @@ is empty.
 | `french_punctuation_spacing` | boolean | false | narrow no-break space before `?!;:` | Text input | (see text-input document) |
 | `french_punctuation_only_french_layouts` | boolean | false | restrict the above to French | Text input | (see text-input document) |
 
-Files, not preferences: `files/variations.json`, `files/keyboard_layouts/*.json`,
+3.0 keeps no variations file: `custom_variations` replaces `files/variations.json`, and
+`variations_updated` and `global_variation_layout_override` are not read. Backups carry
+`custom_variations` and `sym_custom_pages` like every other preference.
+
+Files, not preferences (2.x): `files/variations.json`, `files/keyboard_layouts/*.json`,
 `files/locale_layout_mapping.json`, `cache/layout_downloads/*.tmp`. Backups carry
 `sym_mappings_custom`, `sym_pages_config`, `variations.json` (merged on restore),
 `locale_layout_mapping.json` and the `keyboard_layouts` directory. The one-time settings
@@ -1209,6 +1435,44 @@ GIF page (3.0, section 4.5):
     round-trips; a malformed value is empty; an entry without slug or with an `http://` URL is
     skipped; a duplicate slug keeps the first.
 
+The user's own pages (3.0, section 4.6), default config unless stated:
+
+63. The user's own pages are numbers 7, 8 and 9, key layers, off by default: the cycle is still
+    0, 1, 2; with `custom2Enabled` true it is 0, 1, 2, 8.
+64. `custom1Enabled` true, names {page 1: "Polski", page 3: "  "}: the chooser lists M
+    "Polski" (in the cycle) and B "My page 3" (dimmed), no N.
+65. Chooser listing Emoji and page 1 only: M opens page 7; N closes the chooser and types.
+66. Emoji off, Symbols on, page 1 on, order [custom1, symbols], page 1 Q = "ą": Sym held + Q
+    commits "ą".
+67. Page 8 open, A = "你好": A commits "你好" and the page closes (`sym_auto_close`).
+
+Variations (3.0, section 8):
+
+68. Language `pl_PL`: a, c, e, l, n, o, s start with ą, ć, ę, ł, ń, ó, ś; z starts ź ż; A
+    starts Ą; Z starts Ź Ż.
+69. `fr_FR` e starts é; `de_DE` a ä, s ß; `es_ES` n ñ; `pt_PT` a ã; `cs` r ř; `ro` s ș;
+    `tr` i ı and I İ; `nb_NO` a å, o ø. Every language's lists hold the same entries as the
+    neutral lists.
+70. `en_US`, `xx`, null and "" give the neutral order; a is à á â ä ã å ā ą ă æ.
+71. No list is longer than ten, in any language; each capital list is as long as its small
+    one; S is ẞ Ś Š Ş Ș $; E ends with €.
+72. `pl_PL` → `pl`, `pt-BR` → `pt`, `nb` and `nn_NO` → `no`.
+73. `pl_PL` with saved {a: [à, ą, 中], q: [¿]}: a gives à ą 中, q gives ¿, e still starts ę,
+    A still starts Ą.
+74. Saved {a: []}: a has no variations, e still does.
+75. Cleaning [a, " ", "", a, 40 x's, 1..20]: a, then 16 x's, ten entries in all. Stored keys
+    "ab" and "" are skipped.
+76. One variation opens no chooser; two do.
+77. Choices are labelled 1 2 3 4 5 6 7 8 9 0; digit 1 picks the first, 0 the tenth; device
+    text "1" is digit 1, "@" none.
+78. Chooser for A held with [ą, à, á]: W (digit 1) picks ą; after A comes up, W closes the
+    bar and types; Alt held + E picks à; Alt pressed (consumed), then R picks á; S (digit 4)
+    closes the bar (no fourth choice).
+79. Chooser open: A's auto-repeat is consumed; a Shift repeat passes on with the bar open;
+    Back closes it, consumed; Space and H close it and pass on.
+80. A pick of ą → à: allowed when the text before the caret is "zażółć ą", refused for
+    "zażółć a", allowed when the field cannot be read, allowed in a terminal.
+
 ## 15. Keep / Drop for 3.0
 
 | Item | Verdict | Reasoning |
@@ -1239,10 +1503,14 @@ GIF page (3.0, section 4.5):
 | Device SYM Layer Editor stub | drop | never built |
 | Physical keyboard profile override | drop | 3.0 is Titan-only |
 | Long-press modes `alt`, `variations`, `shift` | keep | all useful on a hardware keyboard |
-| Long-press modes `sym`, `sym_symbols`, `sym_emoji` | undecided | niche; cheap to keep if pages stay |
-| Long-press threshold with one default | keep | fix the 300/500 split |
-| Anchored composing-region replacement for variations | keep | it is what keeps fast typing intact |
-| Variations data and layout overrides | keep | but expose an editor or drop the custom file |
+| Long-press modes `sym`, `sym_symbols`, `sym_emoji` | keep | a user asked to choose between capital, accent and symbol (2026-10); cheap with the pages kept |
+| Long-press threshold with one default | keep, done | 500 ms for the screen and the timer (7.1) |
+| A screen for the long-press mode and threshold | new in 3.0 | Keyboard > Long press (7.2) |
+| Anchored composing-region replacement for variations | drop, keep the check | delete-and-commit like every other mode, guarded by "the text still ends with the letter" (7.4); composed text is dropped by a web terminal |
+| Variations data and layout overrides | replace | one built-in table ordered by language, not layout (8.1, 8.2) |
+| `files/variations.json` | replace | `custom_variations`, edited on Customize Variations (8.3) |
+| Accent chooser (8.4) | new in 3.0 | the variation row lived in the suggestion bar, which is gone for good; a transient bar that picks only while the letter is held, or after Alt |
+| The user's own Sym pages 7 to 9 (4.6) | new in 3.0 | more characters at hand without giving up Emoji or Symbols |
 | `AllVariations.json` and the picker dialog | drop | unreachable |
 | Static/email variation lists | drop | the row they fed is gone |
 | Layout files and the identity default | keep | needed for qwertz/azerty users |
