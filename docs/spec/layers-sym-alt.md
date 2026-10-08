@@ -159,11 +159,11 @@ Preference `sym_pages_config` holds one JSON object:
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `deviceEnabled` | boolean | false | Device page is in the cycle |
-| `emojiEnabled` | boolean | true | Emoji page is in the cycle |
+| `emojiEnabled` | boolean | true (3.0: false) | Emoji page (the letter-key layer, "Emoji keys" in 3.0) is in the cycle |
 | `symbolsEnabled` | boolean | true | Symbols page is in the cycle |
 | `clipboardEnabled` | boolean | false | Clipboard panel is in the cycle |
-| `emojiPickerEnabled` | boolean | false | Emoji picker panel is in the cycle |
-| `gifEnabled` | boolean | false | GIF page is in the cycle (3.0). Off unless the user turns it on: it is the only page that sends anything off the phone |
+| `emojiPickerEnabled` | boolean | false (3.0: true) | Emoji picker panel ("Emoji" in 3.0) is in the cycle |
+| `gifEnabled` | boolean | true | GIF page is in the cycle (3.0). On by the maintainer's choice (2026-10-07); it is the only page that sends anything off the phone, and only while it is open |
 | `custom1Enabled`, `custom2Enabled`, `custom3Enabled` | boolean | false | the user's own pages 7, 8 and 9 are in the cycle (3.0, section 4.6) |
 | `symPageOrder` | array of page ids | `["device","emoji","symbols","clipboard","emoji_picker","gif","custom1","custom2","custom3"]` | cycle order |
 | `emojiFirst` | boolean | true | legacy; written for old builds as "emoji comes before symbols in the order" |
@@ -175,7 +175,7 @@ symbols, clipboard (reversed to clipboard, symbols, emoji when `emojiFirst` is f
 emoji_picker, then device appended by normalisation. A malformed value yields the defaults.
 
 3.0: a config written before the GIF page existed has no `gif` in `symPageOrder` and no
-`gifEnabled`; it reads with `gif` appended last and `gifEnabled` false, every other field as
+`gifEnabled`; it reads with `gif` appended last and `gifEnabled` false (its owner never chose it, whatever a fresh install's default), every other field as
 stored. Likewise a config written before the user's own pages existed reads with `custom1`,
 `custom2` and `custom3` appended last, in that order, and all three switched off. 3.0 never writes `deviceEnabled` or `emojiFirst`, and drops `device` from the order when
 reading.
@@ -185,6 +185,13 @@ sets `{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":false,
 "emojiPickerEnabled":true,"emojiFirst":false,"symPageOrder":["emoji_picker","symbols",
 "clipboard","emoji"]}`. On a fresh Titan the cycle is therefore: no page, Emoji Picker,
 Symbols, no page. `device` is absent from that order and is appended last, disabled.
+
+3.0 (baseline 8, 2026-10-07): a fresh install, and once every existing install through the
+settings baseline, has Emoji (the picker), Symbols and GIFs on, in that order, and every other
+page off: `symPageOrder` `["emoji_picker","symbols","gif","clipboard","emoji","custom1",
+"custom2","custom3"]`. Sym therefore steps Emoji, Symbols, GIFs, closed. The letter-key Emoji
+page stays in the list, off: it is still the one-press way to an emoji on each key and the
+first key layer a Sym chord can draw from when the user turns it on.
 
 ### 4.2 The cycle
 
@@ -240,8 +247,10 @@ The IME reloads the page maps when either preference changes.
 
 ### 4.5 The GIF page (3.0)
 
-Page 6, a panel. Off in the cycle by default (`gifEnabled` false); the user turns it on and
-places it under Customize SYM Keyboard (5.9), or opens it from the chooser with G (5.10). It is
+Page 6, a panel. In the cycle by default, third after Emoji and Symbols (`gifEnabled` true
+since baseline 8; before, it was off and only the chooser reached it, which the maintainer
+never found); the user moves or switches it off under Customize SYM Keyboard (5.9), and the
+chooser opens it with G (5.10). It is
 the only Sym page that sends anything off the phone, and only while it is open.
 
 When it opens while `gifEnabled` is on, it asks for trending 300 ms later (the Sym double-tap
@@ -401,7 +410,22 @@ With an editable field focused:
 
 Without an editable field, Sym down and up do not touch the pages at all: the down goes to the
 launcher-shortcut logic (power shortcuts toggle, out of scope) or to the system, and the up
-just clears the flags.
+just clears the flags. 3.0 makes two exceptions:
+
+- While a page is open, Sym steps it (section 4.2) whether or not a field is there; Sym is never
+  the launcher key with a page on screen.
+- **A text box that went away.** When the app's editable field goes (the field finishes, or a
+  start or restart replaces it with a field that is not editable), the keyboard notes the app,
+  the time and the page that was open; a restart into a field that is not editable also closes
+  the page, which has nothing left to type into. For 15 seconds after, in that same app, a Sym
+  press with no editable field does not arm the launcher shortcuts: it is consumed and the
+  toast "Tap the text box, then Sym" shows. When an editable field of that app starts again
+  within the 15 seconds, the noted page reopens. Found on the Titan (2026-10-07): with the emoji
+  page open in Messages, a screenshot took window focus, Messages came back with no focused
+  text box (Android logs `HIDE_SAME_WINDOW_FOCUSED_WITHOUT_EDITOR`), the page closed, and the
+  next Sym toasted "Press shortcut key to launch". Another app (the home screen) or a press
+  after the 15 seconds gets the launcher shortcuts as before. Moving between two fields of one
+  app goes through a finish, so an open page follows to the next field of the same app.
 
 Key repeats of Sym while held are ignored for toggling purposes.
 
@@ -526,6 +550,18 @@ background in the theme's background colour:
 - A close button (36 dp by 32 dp, bottom right, close icon on a translucent red 95/255 alpha
   background unless themed) is visible on pages 1, 2 and 5; the clipboard and emoji picker
   panels carry their own chrome.
+- 3.0: the Symbols page (2) puts a search button (🔍) in row 2's spare cell after L. It opens
+  the emoji picker (4) in Unicode symbols mode with its search field up and capturing, the way
+  into every Unicode symbol now that symbols are no longer one of the picker's mode-button
+  modes (expansion-clipboard-pickers-launcher.md 4.3).
+- 3.0: every page is a panel of its own at the bottom of the screen (key layers, picker,
+  clipboard, GIFs, the chooser); the strip collapses while one is open, so no strip button
+  shows under a page (status-bar.md 3.4). With `titan2_elite_rounded_corner_insets` on, a
+  panel whose bottom sits within the display's corner radius of the screen bottom pads its sides
+  and bottom by r times (1 - 1/sqrt 2), plus 2 dp, in its own background, and grows by the
+  bottom padding: on the Titan 2 Elite, which reports r = 100 px, 33 px. The radius is the
+  display's reported bottom-corner radius, else 24 dp. The key-layer grid takes its key width
+  from the width left between the paddings.
 - Surface height: the measured grid height, or 600 dp until measured. Page 4 uses the emoji
   picker's own height, which is 1.5 times its compact height when
   `emoji_picker_expanded_height` is on (default on; the factory baseline sets it off).
@@ -555,6 +591,15 @@ routes to the Device SYM Layer Editor instead (section 6.5).
 ### 5.9 The customisation screen
 
 Title "Customize SYM Keyboard". Sections, top to bottom:
+
+3.0: the first section is **Sym pages** ("Each Sym press opens the next page that is switched
+on, in this order; after the last one Sym closes. ..."), a line reading the result back ("Sym:
+Emoji → Symbols → GIFs → closed"), then one row per page: its name numbered with the press
+that reaches it while on ("1. Emoji"), what it holds and its chooser letter, a pencil where the
+page can be edited, up and down arrows, and its switch. The picker is called "Emoji" and the
+letter-key layer "Emoji keys". Under the list, "Kaomoji on the Emoji page"
+(`emoji_picker_kaomoji`, expansion-clipboard-pickers-launcher.md 4.3). There is no drag handle;
+the arrows reorder. The 2.x screen, for the record:
 
 1. **Arrange SYM pages order** ("Drag or use the arrows to set the cycle order. The switch only
    controls whether an item appears in the cycle."): one row per page in normalised order with
@@ -614,7 +659,10 @@ needs an editable field (otherwise "No input context").
 **The panel** sits at the bottom above the keyboard window like the other panels: a title
 "Open a Sym page: press its letter", a close button, and two columns of rows, one per page, each
 showing its letter and name. Rows follow the cycle order; the picker's own modes follow the
-picker. A page that is off in the cycle is drawn at 60% opacity but opens all the same.
+picker. A page that is off in the cycle is drawn at 60% opacity but opens all the same. The
+picker's row is named "Emoji" and the letter-key layer's "Emoji keys". The K row exists only
+with `emoji_picker_kaomoji` on; without it K closes the chooser and types like any unlisted
+letter.
 
 | Key | Opens |
 |---|---|
@@ -1202,7 +1250,8 @@ is empty.
 | Preference key | Type | Default | What it changes | Screen | Label |
 |---|---|---|---|---|---|
 | `current_sym_page` | int | 0 | page currently open (0, 1..5); internal | none | none |
-| `sym_pages_config` | string (JSON, 4.1) | see 4.1; baseline in D12 | which pages are in the cycle and in what order | Customize SYM Keyboard | Arrange SYM pages order |
+| `sym_pages_config` | string (JSON, 4.1) | see 4.1; baseline in D12; 3.0 baseline 8: Emoji, Symbols, GIFs | which pages are in the cycle and in what order | Customize SYM Keyboard | Sym pages |
+| `emoji_picker_kaomoji` | boolean | false | 3.0: kaomoji is a mode of the Emoji page and has a chooser row (expansion-clipboard-pickers-launcher.md 4.3) | Customize SYM Keyboard | Kaomoji on the Emoji page |
 | `sym_mappings_custom` | string (JSON, 3.1) | unset | Emoji page characters | Customize SYM Keyboard, Edit Emoji Layer | (grid) |
 | `sym_mappings_page2_custom` | string (JSON, 3.1) | unset | Symbols page characters | Customize SYM Keyboard, Edit Symbols Layer | (grid) |
 | `sym_custom_pages` | string (JSON, 4.6) | three empty pages | 3.0: the user's own pages 7 to 9, their names and characters | Customize SYM Keyboard, Edit <name> | Page name, (grid), Clear page |

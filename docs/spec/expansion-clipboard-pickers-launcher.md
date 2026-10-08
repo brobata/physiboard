@@ -430,6 +430,8 @@ Cleaning is idempotent: a cleaned link cleans to itself.
 ## 4. The emoji picker (Sym page 4)
 
 Page 4 shows one of three modes: Emoji (sections 4.1 to 4.7), Kaomoji (4.9) and Symbols (4.8).
+It is the Emoji page (3.0 calls it "Emoji"): it opens on emoji every time, kaomoji exist only
+when the user switches them on, and neither kaomoji nor symbols ever stand in for emoji (4.3).
 New in 3.0: the kaomoji and Unicode symbol modes, the hardware-key skin-tone chooser and the
 default skin tone. Everything else in this section is the 2.x picker.
 
@@ -529,16 +531,23 @@ dp divider border (white at alpha 100 without a theme), 6 dp corners.
 Tab row, left to right: a search toggle button (magnifier, 32 dp square), a keyboard-switcher
 button that is visible only in software keyboard mode (dropped in 3.0), the mode button (3.0:
 56 dp wide, the button colour, labelled with the mode on screen: "Emoji", "Kaomoji" or
-"Symbols"; a tap moves to the next mode in that order and wraps), the category tabs (one per
+"Symbols"; a tap moves Emoji to Kaomoji and back, and Symbols back to Emoji; there is no mode
+button while Emoji is the only mode, that is with `emoji_picker_kaomoji` off), the category tabs (one per
 category present, recents first), and a close button (36 by 32 dp, same style as the clipboard
 panel's). Tab labels shrink to fit their cell, from 14 sp down to 8 sp, on one line.
 
-The mode is kept for the life of the keyboard service, so page 4 reopens in the mode it was
-left in; a fresh service starts in Emoji. Switching mode with a query in the search field runs
-that query in the new mode; with none it draws the new mode's sections, scrolled to the top.
-The Sym page chooser (layers-sym-alt.md section 5.10) opens the page straight in a mode: P in
-Emoji, K in Kaomoji, U in Symbols. On a page already open in another mode that is a mode switch
-as above.
+Every open of page 4 starts in Emoji mode, whatever mode the last visit ended in. (3.0 first
+kept the mode for the life of the keyboard service, so one tap of the mode button left kaomoji
+where the emoji had been on every later open: "it got rid of real emojis for kaomoji",
+2026-10-07.) Only the open itself may ask for another mode: the Sym page chooser (layers-sym-alt.md
+section 5.10) opens the page in Emoji with P, in Kaomoji with K (only listed, and only honoured,
+with `emoji_picker_kaomoji` on) and in Symbols with U; the Symbols page's search button
+(layers-sym-alt.md 5.7) opens it in Symbols with the search field up and capturing. Kaomoji is
+a mode only with `emoji_picker_kaomoji` on (default off); Unicode symbols are never in the mode
+button's cycle. Switching mode with a query in the search field runs that query in the new
+mode; with none it draws the new mode's sections, scrolled to the top. Each mode keeps its own
+recents (`recent_emojis`, `recent_kaomoji`, `recent_symbols`); the Emoji keys page and Sym
+chords draw from the key-layer maps, never from the kaomoji list.
 
 While loading, a centered progress indicator is shown; a failure to load anything shows "Unable
 to load emoji". Loading happens the first time the page opens, on every open when it was on
@@ -628,6 +637,7 @@ search that cannot run because the index failed to build shows "Unable to load e
 | `recent_emojis` (file `recent_emojis_prefs`) | string, JSON array | absent | The recents list, most recent first, at most 40 | none | (Recents tab) |
 
 | `emoji_default_skin_tone` | string `none`, `light`, `medium_light`, `medium`, `medium_dark`, `dark`; anything else reads as `none` | `none` | The tone every emoji that takes one is inserted and shown in (section 4.7) | Customize SYM Keyboard | Default skin tone ("Emoji that come in skin tones are typed in this one, from the Emoji page, Sym chords, the emoji picker and its recents. Hold an emoji to pick another tone.") |
+| `emoji_picker_kaomoji` (3.0) | boolean | false | Kaomoji is a mode of page 4 and has the chooser's K row; off, the page shows emoji only and has no mode button. Backed up | Customize SYM Keyboard | Kaomoji on the Emoji page ("Adds a button on the Emoji page that switches to text faces like (^_^), and a K row in the chooser. Off: the Emoji page only ever shows emoji.") |
 | `recent_kaomoji` (file `recent_emojis_prefs`) | string, JSON array | absent | Kaomoji recents, most recent first, at most 40 | none | (Kaomoji Recents tab) |
 | `recent_symbols` (file `recent_emojis_prefs`) | string, JSON array | absent | Symbol recents, most recent first, at most 40 | none | (Symbols Recents tab) |
 

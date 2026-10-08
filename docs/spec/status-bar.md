@@ -144,6 +144,12 @@ into:
 Exception: an open Sym page is content the user asked for with the Sym key, so a Sym page
 still shows while the mode says hidden, and the strip collapses again when the page closes.
 Before this exception the Sym key did nothing at all with the bar hidden (changelog 1.0.6).
+3.0 drops the exception: every Sym page is its own panel at the bottom of the screen, so the
+strip collapses while a page is open, whatever the mode, and none of its buttons show under a
+page (the maintainer saw the clipboard and microphone buttons under the Symbols page,
+2026-10-07). The panels keep clear of the rounded display corners themselves
+(layers-sym-alt.md 5.7), using `titan2_elite_rounded_corner_insets` and the display's reported
+bottom-corner radius, 100 px on the Titan 2 Elite (`dumpsys display`, 2026-10-07), else 24 dp.
 
 The app list is seeded the first time it is read with twenty messaging, mail and social
 packages: Gmail, Google Messages, AOSP Messaging, WhatsApp, WhatsApp Business, Messenger,
