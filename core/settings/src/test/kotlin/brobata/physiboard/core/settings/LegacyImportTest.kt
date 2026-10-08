@@ -367,6 +367,14 @@ class LegacyImportTest {
             perApp = PerAppPrefs(exactTypingPackages = setOf("org.chromium.webapk.a5d49fddf77614419_v2")),
             device = DevicePrefs(ringAppColors = mapOf("co.kidcasa.app" to -757066, "com.google.android.apps.googlevoice" to -13318311)),
             dictation = DictationPrefs(sideKeyAssistant = true),
+            // A 2.x config never chose the GIF page, so it reads off and last of the old pages;
+            // baseline 8 then moves the install to today's list.
+            symPages = SymPagePrefs(
+                pages = SymPagesConfig(
+                    gifEnabled = false,
+                    order = listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3),
+                ),
+            ),
         )
         assertEquals(expected, r.settings)
         assertEquals(setOf("alt_ctrl_speech_shortcut", "auto_show_keyboard", "dictation_end_silence_ms", "modifier_indicator_mode", "physical_keyboard_currency_symbol", "screen_trackpad_enabled", "software_keyboard_mode"), r.ignored)

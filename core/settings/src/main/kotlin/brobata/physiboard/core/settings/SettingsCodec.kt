@@ -104,6 +104,7 @@ object SettingsKeys {
     const val SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch"
     const val SYM_DOUBLE_TAP_CHOOSER = "sym_double_tap_chooser"
     const val EMOJI_PICKER_EXPANDED = "emoji_picker_expanded_height"
+    const val EMOJI_PICKER_KAOMOJI = "emoji_picker_kaomoji"
     const val EMOJI_DEFAULT_SKIN_TONE = "emoji_default_skin_tone"
 
     // SS2.6 status bar
@@ -475,6 +476,7 @@ object SettingsCodec {
         put(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, s.autoCloseOnTouch.toString())
         put(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, s.doubleTapChooser.toString())
         put(SettingsKeys.EMOJI_PICKER_EXPANDED, s.emojiPickerExpandedHeight.toString())
+        put(SettingsKeys.EMOJI_PICKER_KAOMOJI, s.kaomojiEnabled.toString())
         put(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE, s.defaultSkinTone.storedValue)
         put(SettingsKeys.RESTORE_SYM_PAGE, s.restoreSymPage.toString())
         put(SettingsKeys.PENDING_RESTORE_SYM_PAGE, s.pendingRestoreSymPage.toString())
@@ -491,6 +493,7 @@ object SettingsCodec {
             autoCloseOnTouch = r.bool(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, d.autoCloseOnTouch),
             doubleTapChooser = r.bool(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, d.doubleTapChooser),
             emojiPickerExpandedHeight = r.bool(SettingsKeys.EMOJI_PICKER_EXPANDED, d.emojiPickerExpandedHeight),
+            kaomojiEnabled = r.bool(SettingsKeys.EMOJI_PICKER_KAOMOJI, d.kaomojiEnabled),
             defaultSkinTone = SkinTone.fromStored(r.string(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE)),
             restoreSymPage = r.int(SettingsKeys.RESTORE_SYM_PAGE, d.restoreSymPage),
             pendingRestoreSymPage = r.int(SettingsKeys.PENDING_RESTORE_SYM_PAGE, d.pendingRestoreSymPage),
@@ -1036,7 +1039,9 @@ internal object StoredValues {
             symbolsEnabled = obj.boolean("symbolsEnabled") ?: d.symbolsEnabled,
             clipboardEnabled = obj.boolean("clipboardEnabled") ?: d.clipboardEnabled,
             emojiPickerEnabled = obj.boolean("emojiPickerEnabled") ?: d.emojiPickerEnabled,
-            gifEnabled = obj.boolean("gifEnabled") ?: d.gifEnabled,
+            // A config written before the GIF page existed never chose it: it reads off, whatever
+            // today's default for a fresh install is (layers-sym-alt.md SS4.1).
+            gifEnabled = obj.boolean("gifEnabled") ?: false,
             custom1Enabled = obj.boolean("custom1Enabled") ?: d.custom1Enabled,
             custom2Enabled = obj.boolean("custom2Enabled") ?: d.custom2Enabled,
             custom3Enabled = obj.boolean("custom3Enabled") ?: d.custom3Enabled,

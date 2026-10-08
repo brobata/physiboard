@@ -336,6 +336,22 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `emoji_picker_kaomoji defaults off and round-trips`() {
+        assertEquals(false, SettingsCodec.fromMap(emptyMap()).symPages.kaomojiEnabled)
+        val on = Settings().let { it.copy(symPages = it.symPages.copy(kaomojiEnabled = true)) }
+        val map = SettingsCodec.toMap(on)
+        assertEquals("true", map[SettingsKeys.EMOJI_PICKER_KAOMOJI])
+        assertEquals(true, SettingsCodec.fromMap(map).symPages.kaomojiEnabled)
+    }
+
+    @Test
+    fun `a stored config from before the GIF page reads it off, a fresh install has it on`() {
+        val old = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"emojiPickerEnabled":true,"symbolsEnabled":true,"symPageOrder":["emoji_picker","symbols"]}""")).symPages.pages
+        assertEquals(false, old.gifEnabled)
+        assertEquals(true, SettingsCodec.fromMap(emptyMap()).symPages.pages.gifEnabled)
+    }
+
+    @Test
     fun `unknown and empty strip buttons vanish from a slot list, spec SS12 test 19`() {
         val s = SettingsCodec.fromMap(mapOf(SettingsKeys.STATUS_BAR_SLOTS_RIGHT to """["bogus","undo","none","software_keyboard_mode"]"""))
         assertEquals(listOf(BarButton.UNDO), s.statusBar.rightButtons)

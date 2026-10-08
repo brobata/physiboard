@@ -238,26 +238,38 @@ enum class SymPage(val id: String) {
 
 /**
  * Which Sym pages exist and in what order, the `sym_pages_config` contract without its dropped
- * `deviceEnabled` and legacy `emojiFirst` members. spec: settings-catalog.md SS2.5; the baseline
- * is "emoji off, symbols on, clipboard off, picker on, order emoji_picker, symbols, clipboard,
- * emoji". A page missing from [order] is appended last when read.
+ * `deviceEnabled` and legacy `emojiFirst` members. spec: settings-catalog.md SS2.5,
+ * layers-sym-alt.md SS4.1. Since baseline 8 (2026-10-07, the maintainer's model): Emoji (the
+ * picker), Symbols and GIFs are on, in that order, and every other page is off; Sym steps
+ * through the switched-on pages in this order and then closes. A page missing from [order] is
+ * appended last when read.
  */
 data class SymPagesConfig(
+    /** `emojiEnabled`: the Emoji keys page (26 emoji on the letter keys), not the picker. */
     val emojiEnabled: Boolean = false,
     val symbolsEnabled: Boolean = true,
     val clipboardEnabled: Boolean = false,
+    /** `emojiPickerEnabled`: the searchable emoji page, called "Emoji" on screen. */
     val emojiPickerEnabled: Boolean = true,
-    /** `gifEnabled`: off by default, since it is the only page that sends anything off the phone. */
-    val gifEnabled: Boolean = false,
+    /**
+     * `gifEnabled`: on by the maintainer's choice; the page asks KLIPY for anything only while it
+     * is open. A stored config that predates the page reads it off (StoredValues.symPagesConfig).
+     */
+    val gifEnabled: Boolean = true,
     /** `custom1Enabled` to `custom3Enabled`: the user's own pages (layers-sym-alt.md SS4.6), off until switched on. */
     val custom1Enabled: Boolean = false,
     val custom2Enabled: Boolean = false,
     val custom3Enabled: Boolean = false,
-    val order: List<SymPage> = listOf(
-        SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF,
-        SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3,
-    ),
-)
+    val order: List<SymPage> = DEFAULT_ORDER,
+) {
+    companion object {
+        /** Emoji, Symbols, GIFs first (the three that are on), then the rest. */
+        val DEFAULT_ORDER: List<SymPage> = listOf(
+            SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF, SymPage.CLIPBOARD, SymPage.EMOJI,
+            SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3,
+        )
+    }
+}
 
 /**
  * One of the user's own Sym pages (layers-sym-alt.md SS4.6): its name (blank shows "My page N")
@@ -292,6 +304,12 @@ data class SymPagePrefs(
     val autoClose: Boolean = true,
     val autoCloseOnTouch: Boolean = true,
     val emojiPickerExpandedHeight: Boolean = false,
+    /**
+     * `emoji_picker_kaomoji`. spec: expansion-clipboard-pickers-launcher.md SS4.3: Kaomoji is a
+     * mode of the emoji page only when the user asks for it; off, the mode button and the
+     * chooser's K row are gone.
+     */
+    val kaomojiEnabled: Boolean = false,
     /**
      * `sym_double_tap_chooser`. spec: layers-sym-alt.md SS5.10: two quick Sym taps open the page
      * chooser instead of stepping two pages.

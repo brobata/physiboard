@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 7 sets dictation's silence limit to 2.5 s. */
-    const val CURRENT_VERSION: Int = 7
+    /** The baseline version this build ships with; version 8 sets the Sym pages to Emoji, Symbols, GIFs. */
+    const val CURRENT_VERSION: Int = 8
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -67,7 +67,29 @@ object SettingsBaseline {
         // stop counted from the last word rather than the engine's late tidy-up. Typed in, any
         // value from 1 to 60 s.
         7 to mapOf(SettingsKeys.DICTATION_STOP_AFTER_SILENCE to "2500"),
+        // Version 8, 2026-10-07: one list of Sym pages the maintainer can follow. Sym steps
+        // through Emoji (the picker), Symbols and GIFs, in that order, then closes; every other
+        // page is off and still reachable from the chooser. The dev build stored GIFs off, which
+        // left them behind a double tap nobody found, and kaomoji goes back to opt-in.
+        8 to mapOf(
+            SettingsKeys.SYM_PAGES_CONFIG to JsonRows.encode(StoredValues.symPagesConfig(SYM_PAGES_V8)),
+            SettingsKeys.EMOJI_PICKER_KAOMOJI to "false",
+        ),
     )
+
+    /**
+     * Version 8's page list, spelt out rather than read from [SymPagesConfig]'s defaults, so a
+     * later change to those defaults cannot change what version 8 wrote.
+     */
+    private val SYM_PAGES_V8: SymPagesConfig
+        get() = SymPagesConfig(
+            emojiEnabled = false, symbolsEnabled = true, clipboardEnabled = false, emojiPickerEnabled = true, gifEnabled = true,
+            custom1Enabled = false, custom2Enabled = false, custom3Enabled = false,
+            order = listOf(
+                SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF, SymPage.CLIPBOARD, SymPage.EMOJI,
+                SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3,
+            ),
+        )
 
     /** The baseline version already applied to [flatMap], or 0 when the marker was never written. Mirrors [SettingsCodec.schemaVersionOf]'s style. */
     fun storedVersion(flatMap: Map<String, String>): Int = flatMap[SettingsKeys.BASELINE_VERSION]?.toIntOrNull() ?: 0

@@ -122,4 +122,26 @@ class SettingsBaselineTest {
         val chosenSince = SettingsBaseline.apply(imported, storedVersion = SettingsBaseline.CURRENT_VERSION)
         assertEquals("true", chosenSince[SettingsKeys.ALT_SHIFT_LAYOUT_SWITCH], "a later choice must stand")
     }
+
+    /**
+     * Version 8: the maintainer's dev build stored GIFs off and the picker first, so GIFs were
+     * reachable only through a double tap. The correction puts Emoji, Symbols, GIFs on in that
+     * order, the rest off, and kaomoji back to opt-in; a fresh install reads the same.
+     */
+    @Test
+    fun `version 8 moves this install to Emoji, Symbols, GIFs and nothing else`() {
+        val phone = mapOf(
+            SettingsKeys.SYM_PAGES_CONFIG to """{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":false,"emojiPickerEnabled":true,"gifEnabled":false,"custom1Enabled":false,"custom2Enabled":false,"custom3Enabled":false,"symPageOrder":["emoji_picker","symbols","clipboard","emoji","gif","custom1","custom2","custom3"]}""",
+            SettingsKeys.BASELINE_VERSION to "7",
+        )
+        val corrected = SettingsCodec.fromMap(SettingsBaseline.apply(phone, storedVersion = 7)).symPages
+        val pages = corrected.pages
+        assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF), pages.order.take(3))
+        assertEquals(true, pages.emojiPickerEnabled)
+        assertEquals(true, pages.symbolsEnabled)
+        assertEquals(true, pages.gifEnabled)
+        assertEquals(listOf(false, false, false, false, false), listOf(pages.emojiEnabled, pages.clipboardEnabled, pages.custom1Enabled, pages.custom2Enabled, pages.custom3Enabled))
+        assertEquals(false, corrected.kaomojiEnabled)
+        assertEquals(SettingsCodec.fromMap(emptyMap()).symPages.pages, pages, "a fresh install gets the same list")
+    }
 }

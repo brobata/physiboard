@@ -209,9 +209,9 @@ class BackupCodecTest {
     }
 
     @Test
-    fun `the GIF page switch and sym_double_tap_chooser go out in a backup and come back through a restore`() {
+    fun `the GIF page switch, kaomoji and sym_double_tap_chooser go out in a backup and come back through a restore`() {
         val changed = Settings().let {
-            it.copy(symPages = it.symPages.copy(doubleTapChooser = false, pages = it.symPages.pages.copy(gifEnabled = true)))
+            it.copy(symPages = it.symPages.copy(doubleTapChooser = false, kaomojiEnabled = true, pages = it.symPages.pages.copy(gifEnabled = false)))
         }
         val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", changed))!!
         assertEquals("false", entries["sym_double_tap_chooser"])
@@ -219,7 +219,9 @@ class BackupCodecTest {
         val outcome = BackupRestore.restore(Settings(), backup)
         assertEquals(0, outcome.skippedCount)
         assertFalse(outcome.settings.symPages.doubleTapChooser)
-        assertTrue(outcome.settings.symPages.pages.gifEnabled)
+        assertEquals("true", entries["emoji_picker_kaomoji"])
+        assertTrue(outcome.settings.symPages.kaomojiEnabled)
+        assertFalse(outcome.settings.symPages.pages.gifEnabled)
     }
 
     @Test
