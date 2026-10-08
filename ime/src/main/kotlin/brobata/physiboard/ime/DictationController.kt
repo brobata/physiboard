@@ -41,7 +41,9 @@ import brobata.physiboard.core.speech.DictationStartFailureReason
 import brobata.physiboard.core.speech.DictationTextSettings
 import brobata.physiboard.core.speech.DirectCommit
 import brobata.physiboard.core.speech.DirectCommitState
+import brobata.physiboard.core.speech.DictationPartialDisplay
 import brobata.physiboard.core.speech.LanguageTagResolver
+import brobata.physiboard.core.speech.PendingUtterance
 import brobata.physiboard.core.speech.RecognizerRequest
 import brobata.physiboard.core.speech.RecognizerResolution
 import brobata.physiboard.core.speech.RecognizerTarget
@@ -106,13 +108,44 @@ internal class DictationController(
     /** A session exists: starting, listening or stopping. The strip's microphone, the status icon and the key hook all read this. */
     val isActive: Boolean get() = session != null
 
-    /** spec SS3: the session has finished words into this field, so the field going empty under it is the app's doing. A composing partial does not count: a field that holds no composing region has had nothing written yet. */
-    val hasWrittenThisSession: Boolean
-        get() = session?.utterance?.finishedThisSession?.isNotEmpty() == true
+    /**
+     * spec SS3: the session has put text into this field, finished or still composing, so the
+     * field going empty under it is the app's doing. In a field that cannot hold a composing
+     * region (DirectCommit) a partial is not in the field yet; [composingAllowed] gates the caller.
+     */
+    val hasTextInFieldThisSession: Boolean
+        get() = session?.utterance?.let { it.finishedThisSession.isNotEmpty() || it.pending is PendingUtterance.Live } == true
+
+    /** The composing partial as the field shows it (capitalised like [DictationPartialDisplay] did), for [FieldVerdict] checks; null when nothing is composing. */
+    val composingTextInField: String?
+        get() {
+            val utterance = session?.utterance ?: return null
+            val live = utterance.pending as? PendingUtterance.Live ?: return null
+            return DictationPartialDisplay.display(live.text, utterance.context, textSettings)
+        }
 
     /** spec SS3: the app emptied the field itself (a send); the session ends and nothing later lands. */
     fun onFieldClearedByApp() {
         if (session != null) dispatch(DictationEvent.FieldClearedByApp)
+    }
+
+    /**
+     * spec SS3, SS7.4: before a result is applied over a composing partial, [KeyboardSession] is
+     * asked whether the field still holds that partial. Emptied: the session ends. Changed: the
+     * utterance is dead, the result writes nothing. Intact or unknown: the result applies.
+     */
+    var verifyField: (() -> FieldVerdict)? = null
+
+    /** Fires when the session ended because the app emptied the field, so a press meant to stop it is not taken as a start. */
+    var onEndedByApp: (() -> Unit)? = null
+
+    private fun beforeResult() {
+        if (composingTextInField == null || !composingAllowed) return
+        when (runCatching { verifyField?.invoke() }.getOrNull() ?: FieldVerdict.UNKNOWN) {
+            FieldVerdict.CLEARED -> dispatch(DictationEvent.FieldClearedByApp)
+            FieldVerdict.CHANGED -> dispatch(DictationEvent.UserEditedComposingText)
+            FieldVerdict.INTACT, FieldVerdict.UNKNOWN -> Unit
+        }
     }
 
     /**
@@ -239,6 +272,7 @@ internal class DictationController(
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
         session = outcome.session
         if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
+        if (wasActive && session == null && event == DictationEvent.FieldClearedByApp) runCatching { onEndedByApp?.invoke() }
         outcome.newSegmentedRefusalLatch?.let { segmentedRefusalLatch = it }
         // spec SS3: "The field rejected an insert (exception while writing)": the one write this
         // whole feature makes that can throw (a hostile or misbehaving editor), so it is the one
@@ -535,13 +569,22 @@ internal class DictationController(
             DiagnosticLog.i(TAG) { "recognizer error $error phase=${session?.phase}" }
             dispatch(DictationEvent.Error(error))
         }
-        override fun onResults(results: Bundle?) = dispatch(DictationEvent.FinalResult(firstResult(results)))
+        override fun onResults(results: Bundle?) {
+            beforeResult()
+            dispatch(DictationEvent.FinalResult(firstResult(results)))
+        }
         override fun onPartialResults(partialResults: Bundle?) {
-            firstResult(partialResults)?.let { dispatch(DictationEvent.PartialResult(it)) }
+            firstResult(partialResults)?.let {
+                beforeResult()
+                dispatch(DictationEvent.PartialResult(it))
+            }
         }
         override fun onEvent(eventType: Int, params: Bundle?) = Unit
         override fun onSegmentResults(segmentResults: Bundle) {
-            firstResult(segmentResults)?.let { dispatch(DictationEvent.SegmentResult(it)) }
+            firstResult(segmentResults)?.let {
+                beforeResult()
+                dispatch(DictationEvent.SegmentResult(it))
+            }
         }
         override fun onEndOfSegmentedSession() {
             DiagnosticLog.i(TAG) { "segmented session ended phase=${session?.phase}" }
@@ -586,4 +629,16 @@ internal class DictationController(
         /** Google's recognizer's own continuous-dictation flag; see [buildRecognizerIntent]. */
         const val GOOGLE_DICTATION_MODE_EXTRA = "android.speech.extra.DICTATION_MODE"
     }
+}
+
+/** spec: dictation.md SS3: what the field holds of the composing partial, as [KeyboardSession] can tell. */
+internal enum class FieldVerdict {
+    /** The partial is still there at the caret. */
+    INTACT,
+    /** The field is empty (the app's send cleared it). */
+    CLEARED,
+    /** The field has text, but not the partial at the caret: the app or the user changed it. */
+    CHANGED,
+    /** The field cannot be read reliably (a web field answering nothing). */
+    UNKNOWN,
 }

@@ -215,6 +215,71 @@ class ContinuousSessionTest {
     }
 
     @Test
+    fun `A2 - the send empties the box while the FIRST utterance is still composing, then Fn, then the late final - nothing is re-inserted`() {
+        // 19:58 in the trace: partials only, no finished segment; the app's send emptied the box;
+        // the user pressed Fn; the final for the sent words was typed into the empty box.
+        val h = started()
+        h.send(DictationEvent.PartialResult("I'm pretty sure I have a tasting at eleven"), now = 2_000L)
+        assertEquals("I'm pretty sure I have a tasting at eleven", h.field.text)
+        h.field.apply(listOf(DictationTextOp.SetComposingText(""), DictationTextOp.FinishComposing)) // the app's send
+        val cleared = h.send(DictationEvent.FieldClearedByApp, now = 4_300L)
+        assertNull(cleared.session)
+        assertEquals("", h.field.text)
+        val press = h.send(DictationEvent.FinalResult("I'm pretty sure I have a tasting at eleven."), now = 5_700L)
+        assertTrue(press.textOps.isEmpty() && press.effects.isEmpty())
+        assertEquals("", h.field.text)
+
+        // The same with the stop already requested when the box empties.
+        val s = started()
+        s.send(DictationEvent.PartialResult("I'm pretty sure I have a tasting at eleven"), now = 2_000L)
+        s.send(DictationEvent.Trigger("app", null), now = 4_000L)
+        assertEquals(DictationPhase.STOPPING, s.session?.phase)
+        s.field.apply(listOf(DictationTextOp.SetComposingText(""), DictationTextOp.FinishComposing))
+        val ended = s.send(DictationEvent.FieldClearedByApp, now = 4_300L)
+        assertNull(ended.session)
+        assertTrue(DictationEffect.CancelListening in ended.effects && DictationEffect.ReleaseImeVisible in ended.effects)
+        s.send(DictationEvent.FinalResult("I'm pretty sure I have a tasting at eleven."), now = 4_400L)
+        assertEquals("", s.field.text)
+
+        // And when the field is not empty but no longer holds our partial, the utterance is dead
+        // even while stopping: the final writes nothing, the session still ends.
+        val c = started()
+        c.send(DictationEvent.PartialResult("I'm pretty sure I have a tasting at eleven"), now = 2_000L)
+        c.send(DictationEvent.Trigger("app", null), now = 4_000L)
+        c.send(DictationEvent.UserEditedComposingText, now = 4_300L)
+        val dead = c.send(DictationEvent.FinalResult("I'm pretty sure I have a tasting at eleven."), now = 4_400L)
+        assertNull(dead.session)
+        assertTrue(dead.textOps.isEmpty())
+    }
+
+    @Test
+    fun `A2 - the same order in a terminal-mode field commits the words once, at the stop`() {
+        // A terminal holds no composing region: nothing is written until the utterance ends,
+        // and the terminal emptying its box is its own doing, never a signal (the keyboard does
+        // not raise FieldClearedByApp there). The user never saw the words, so the stop's
+        // final is their one appearance. A terminal is a raw-mode field: no capitalisation.
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36), DictationTextSettings(capitalizationAllowed = false))
+        h.send(DictationEvent.Trigger("app", ""), now = 0L)
+        h.send(DictationEvent.ReadyForSpeech, now = 10L)
+        h.send(DictationEvent.FirstAudio, now = 40L)
+        var direct = DirectCommitState()
+        val written = mutableListOf<DictationTextOp>()
+        fun apply(ops: List<DictationTextOp>) {
+            val t = DirectCommit.translate(ops, direct)
+            direct = t.state
+            written += t.ops
+        }
+        apply(h.send(DictationEvent.PartialResult("ls minus la"), now = 2_000L).textOps)
+        assertTrue(written.isEmpty(), "a terminal gets no running preview")
+        apply(h.send(DictationEvent.Trigger("app", null), now = 4_000L).textOps)
+        apply(h.send(DictationEvent.FinalResult("ls -la"), now = 4_200L).textOps)
+        assertEquals(listOf<DictationTextOp>(DictationTextOp.CommitText("ls -la ")), written)
+        assertNull(h.session)
+        apply(h.send(DictationEvent.FinalResult("ls -la"), now = 4_400L).textOps)
+        assertEquals(1, written.size, "a late final after the end writes nothing")
+    }
+
+    @Test
     fun `the 15 s default survives a count to ten and ends a session left in silence`() {
         val h = started()
         h.send(DictationEvent.FinalResult("one."), now = 2_000L)
