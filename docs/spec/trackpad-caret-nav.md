@@ -471,6 +471,10 @@ long as `private_mode` is on (app-shell.md section 31.4). It keeps the badge up 
 while private mode lasts, so a refresh that changes neither the items nor the position updates
 nothing.
 
+3.0 also adds "FILL" last, in the one-shot colour at the faint alpha, while the Fill page has
+something for this field (a code in a code's field, or a password manager's suggestions) and no
+Sym page is open (layers-sym-alt.md section 4.7): the cue that Sym will open the Fill page first.
+
 ### 4.3 How it is drawn
 
 | Quantity | Value |

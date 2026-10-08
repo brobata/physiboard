@@ -121,6 +121,41 @@ The restrictions are computed per field, not per app, except raw mode. "Shift in
 fields" (`auto_capitalize_restricted_fields`) lifts the auto-cap restriction for URL, email and
 filter fields only; password fields and raw-mode apps stay off.
 
+### 3.1 One-time code fields (3.0)
+
+The Fill page (layers-sym-alt.md 4.7) is the first Sym page in a field a one-time code goes
+into, when a code is waiting. Android does not hand an input method a field's autofill hints or
+its maximum length; the keyboard reads what the field's editor info does carry, once at the
+field's start: the input type, and as text the hint, the label, the field name, the private IME
+options and any text the app put in the extras (where a browser may pass `autocomplete`). A
+password manager's inline suggestions for the field carry autofill hints too, and are read
+when they arrive.
+
+Each text is read as words (camelCase and punctuation split: `smsOTPCode` is sms, otp, code;
+`one-time-code` is one, time, code), so a short word never matches inside a longer one, and run
+together (`onetimecode`) for longer names and scripts without spaces. A field is a code's field
+when:
+
+1. a suggestion's hints name a code (`smsOTPCode`, Android's `AUTOFILL_HINT_SMS_OTP`;
+   `one-time-code`, `otp`, `2fa`, `totp`); or
+2. its texts name a code (the words code, otp, 2fa, mfa, totp, tan, passcode, verification,
+   código, codice, kod, код and the like; or `smsOTPCode`, `one-time-code`,
+   `verificationCode`, `securityCode`, 验证码, 認証コード, 인증번호 and the like run together)
+   and do not name another kind (promo, coupon, discount, gift, referral, zip, postal, country,
+   area, phone, mobile, card, CVV, IBAN, amount, price, quantity and the like); or
+3. it is a plain number field (class NUMBER without the signed or decimal flags, or a number
+   password) whose texts name neither another kind nor something a code never is (amount,
+   price, quantity, age, year, date, time, card, expiry, zip, phone, street, number, id,
+   account, order and the like). Without a maximum length to check, a plain number field with a
+   code waiting is taken for the code's.
+
+Never a phone, date or time field, a signed or decimal number field, or a text password field
+(a password manager covers that one) unless its texts name a code. Test cases: a number field
+and a number password field are code fields; a decimal number, a phone field and a text field
+are not; a number field hinted "Amount" is not; a text field hinted "Enter verification code"
+is, and so is one whose extras say `autocomplete` `one-time-code`; one hinted "Promo code" is
+not.
+
 ## 4. Composition: what is composed and what is committed
 
 Ordinary typing on the hardware keyboard never composes. Every character is committed to the

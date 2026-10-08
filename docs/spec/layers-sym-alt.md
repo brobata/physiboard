@@ -44,6 +44,7 @@ extras:
 | `emoji_picker` | 4 | panel | searchable emoji picker |
 | `gif` | 6 | panel | GIF search (3.0; section 4.5) |
 | `custom1`, `custom2`, `custom3` | 7, 8, 9 | key layer | the user's own pages, "My page 1" to 3 (3.0; section 4.6) |
+| `fill` | 10 | panel | one-time codes and a password manager's suggestions, in the cycle only while it has something (3.0; section 4.7) |
 
 Page number 0 means no page is open. Page number 5 stays reserved for the dropped Device page.
 
@@ -165,7 +166,8 @@ Preference `sym_pages_config` holds one JSON object:
 | `emojiPickerEnabled` | boolean | false (3.0: true) | Emoji picker panel ("Emoji" in 3.0) is in the cycle |
 | `gifEnabled` | boolean | true | GIF page is in the cycle (3.0). On by the maintainer's choice (2026-10-07); it is the only page that sends anything off the phone, and only while it is open |
 | `custom1Enabled`, `custom2Enabled`, `custom3Enabled` | boolean | false | the user's own pages 7, 8 and 9 are in the cycle (3.0, section 4.6) |
-| `symPageOrder` | array of page ids | `["device","emoji","symbols","clipboard","emoji_picker","gif","custom1","custom2","custom3"]` | cycle order |
+| `fillEnabled` | boolean | true | the Fill page may join the cycle; it joins only while it has something (3.0, section 4.7) |
+| `symPageOrder` | array of page ids | `["device","emoji","symbols","clipboard","emoji_picker","gif","custom1","custom2","custom3","fill"]` | cycle order |
 | `emojiFirst` | boolean | true | legacy; written for old builds as "emoji comes before symbols in the order" |
 
 Reading is tolerant: unknown ids in `symPageOrder` are dropped, duplicates collapse to the
@@ -177,7 +179,9 @@ emoji_picker, then device appended by normalisation. A malformed value yields th
 3.0: a config written before the GIF page existed has no `gif` in `symPageOrder` and no
 `gifEnabled`; it reads with `gif` appended last and `gifEnabled` false (its owner never chose it, whatever a fresh install's default), every other field as
 stored. Likewise a config written before the user's own pages existed reads with `custom1`,
-`custom2` and `custom3` appended last, in that order, and all three switched off. 3.0 never writes `deviceEnabled` or `emojiFirst`, and drops `device` from the order when
+`custom2` and `custom3` appended last, in that order, and all three switched off. A config
+written before the Fill page reads with `fill` appended last and `fillEnabled` true: unlike the
+GIF page it sends nothing anywhere and shows only when it has something for the field. 3.0 never writes `deviceEnabled` or `emojiFirst`, and drops `device` from the order when
 reading.
 
 The factory baseline shipped in `common/default_settings.json` (applied once to every install)
@@ -197,7 +201,9 @@ first key layer a Sym chord can draw from when the user turns it on.
 ### 4.2 The cycle
 
 The cycle is the ordered list of enabled pages with "no page" (0) prepended. Tapping Sym moves
-one step forward and wraps. If the current page is not in the cycle, the next step is the first
+one step forward and wraps. 3.0: the Fill page (4.7) is in the list only while it has something,
+and moves to the front when what it has is for this field; whether it is, is decided at each
+Sym press. If the current page is not in the cycle, the next step is the first
 enabled page. If no page is enabled, Sym never opens anything.
 
 Consistency rule applied on every read of the current page: if the current page is the Emoji
@@ -387,6 +393,118 @@ and a red "Clear page" button that asks "Remove every key from this page? Its na
 cannot be undone." Tapping a grid key opens the character dialog (expansion-clipboard-pickers-
 launcher.md 5.2): any text in its custom field, or a character from its grid; its "Clear this
 key" choice removes the key. Every change is written at once and travels in backups.
+
+### 4.7 The Fill page (3.0)
+
+Page 10, a panel: one-time codes from notifications and a password manager's suggestions,
+where a phone with an on-screen keyboard would show them in a bar. There is no bar (the
+suggestion bar is gone for good): nothing pops up by itself, and the page is reached with Sym
+like every other page.
+
+**When it is in the cycle.** Unlike every other page, the Fill page joins the cycle only while
+it has something, and its place depends on what:
+
+| The page has | Its place |
+|---|---|
+| nothing (no code waiting, no suggestions) | not in the cycle; the chooser (5.10, F) still opens it, showing why it is empty |
+| a code, and the field is not a code's field (text-input.md 3.1) | at its own place in the order (last by default, so after GIFs) |
+| a code, in a code's field | first: the first Sym press opens it, ahead of Emoji, Symbols and GIFs |
+| a password manager's suggestions for this field | first |
+
+`fillEnabled` off keeps it out of the cycle whatever it has. What the page has is decided at
+every Sym press (codes come and go with the clock) and at every field start; a Fill page that
+followed to the next field of the same app (5.2) closes there if it has nothing for it.
+
+**The cue.** When the page would be first and no page is open, the caret badge
+(trackpad-caret-nav.md 4.2) adds a faint `FILL` after its other glyphs, in the one-shot colour
+at the faint alpha. The badge was chosen over a toast, a vibration or a strip button because it
+already sits at the caret, already comes and goes with state, and costs nothing when the user
+does not care; with `caret_modifier_badge` off there is no cue, and Sym still opens the page
+first.
+
+**The page.** A panel at the bottom like the other panels (5.7), its height its content's:
+
+1. A header, "Fill: press a code's key, or tap", and the close button.
+2. A password manager's suggestions, when there are any: one row of chips the manager draws
+   itself (a login, "Autofill with ...", its own icon). Chips it marks pinned sit at the start
+   and never scroll; the rest scroll sideways. A tap on a chip lets the manager fill the field;
+   PhysiBoard never sees the login or the password.
+3. The codes, newest first, each a row: the key that types it, the code in large monospace,
+   and "Code from <app> · <age>" ("just now" under a minute, then "N min ago", redrawn every
+   30 s while the page is up).
+4. With neither, one line saying why: one-time codes are switched off; or "give PhysiBoard
+   notification access in its settings (Customize SYM Keyboard)"; or that codes show here for
+   10 minutes.
+
+**Typing a code.** The key printed with 1 types the first code, 2 the second, 3 the third: the
+letter keys whose device-layer character (3.2) is that digit, W, E and R on the Titan 2 Elite,
+labelled with that letter on the row, as the accent chooser labels its picks (8.4). Bare or with
+Alt (an armed Alt one-shot is spent on the pick); never with Sym held (that is a Sym chord) or
+Ctrl in any form (a Ctrl shortcut), which go on as usual. The key's release and auto-repeats are
+consumed with it. A key types the code the page shows on its row, even if another arrived since. A tap on a row types it too. Any
+other key behaves as on any panel page (5.4): it types with the page open, Back closes it.
+The code goes in as one finished commit (no composing, no auto-space); in a Terminal mode field
+(per-app-behavior.md) each character is sent as its key press, the way that field gets every
+character. A typed code leaves the list and is not taken again from its notification while it
+would still be valid (a messaging app posts its conversation again on every change). With
+`sym_auto_close` on the page closes first (for a tap, with `sym_auto_close_on_touch`).
+
+**Where codes come from.** A notification listener, "PhysiBoard one-time codes", its own entry
+in Android's notification access list (separate from the notification ring's, so each is its
+own choice; the privileged setup pass grants only the ring's). It works only after the user
+allows it; then, while `otp_from_notifications` is on and private mode (app-shell.md 31) is
+off, it reads each posted notification's title and text (a conversation's messages newest
+first, the expanded text, the text, an inbox's lines), ignoring PhysiBoard's own notifications
+and group summaries, and keeps a code when the extractor below finds one in a text posted less
+than 10 minutes ago. When it connects, and when reading is switched back on, it reads the
+notifications already showing the same way.
+
+**The extractor.** A code is only ever taken next to a word that says it is one: "code",
+"OTP", "one-time", "passcode", "password", "verification", "PIN", "TAN", "2FA", "sign in"
+and the like in English, Spanish, Portuguese, French, German, Dutch, the Scandinavian
+languages, Italian, Polish, Czech, Turkish, Indonesian, Vietnamese, Russian, Ukrainian, Greek,
+Hebrew, Arabic, Persian, Hindi, Chinese, Japanese and Korean. "Promo code", "zip code",
+"country code", "code review" and their kind are not that word, and a word from the title (the
+sender or the subject) counts only for a body of at most 60 characters. Near it, at most 60
+characters away, it takes 4 to 8 digits; 9 or 10 digits, or a 4-digit year (1900 to 2099),
+only right beside the word ("code: 1234567890", "2024 is your code"); two groups of 3 or 4
+digits written apart ("482 913", "482-913") joined; a 1 to 3 letter prefix and digits
+("G-482913" gives "482913"); or 4 to 10 capitals and digits mixing both ("F7K2QX"). It never
+takes a phone number (international, North American, four groups, or after "call", "text",
+"reply" and the like), a date or time, an amount (a currency sign or code before or after,
+thousands separators, a decimal part, a percentage, or after "payment of", "balance", "total"
+and the like), an IP address, a masked card or account number ("****1234", "XX1234", "ending in
+1234"), a number named as an order, invoice, tracking, booking, reference, account, ticket and
+the like, a quantity with a unit, or anything in a link or an e-mail address. Of several
+candidates the nearest wins, one right beside the word ("code is 123456", "123456 is your
+code") first, six digits over other lengths, digits over letters and digits. Digits in any
+script (Arabic-Indic, full-width) are read as ASCII digits; codes are typed in ASCII.
+
+**Kept in memory only.** At most 3 codes, newest first; a code is dropped 10 minutes after its
+notification was posted, when it is typed, when the screen turns off, when private mode comes
+on, when `otp_from_notifications` goes off, and when notification access is withdrawn; a code
+received before such a clear is not taken again when its notification is posted again (a
+conversation re-posted after the screen comes back). The page and the caret cue are redrawn
+when the oldest code expires. Nothing
+is written to disk, put in the settings or a backup, logged, traced, put in a diagnostics
+report or sent anywhere; a process restart forgets them. The phone-testing log line that
+quotes the text before the caret after an outside change says "(hidden)" in a code's field and
+for 60 s after a code is typed. A failure while reading is logged by
+its kind alone, never with any text.
+
+**Password manager suggestions (experimental, `fill_inline_suggestions`, off).** Android 11
+and later lets a keyboard show an autofill service's suggestions inline. On the Titan this
+needs two things the keyboard otherwise never does, which is why it ships off: Android's
+autofill sends the suggestions only while the keyboard's input view is up (the AOSP autofill
+session sends its response only after the input method's input view starts; D15), and a
+keyboard that asks for inline suggestions takes over from the manager's own drop-down list.
+With it on, when Android asks (as a field that autofill can fill starts), PhysiBoard answers
+with chips of 40 dp, its theme's colours, at most 6 suggestions, and asks for its input view,
+an empty view of no height, for that field, so the response arrives. A response replaces the
+field's suggestions; an empty one clears them; the field finishing clears them and lets the
+input view go. Suggestions whose autofill hints name a one-time code (`smsOTPCode`) make the
+field a code's field too. With it off PhysiBoard answers nothing and the password manager's
+drop-down works as before.
 
 ## 5. The Sym key session
 
@@ -600,7 +718,13 @@ on, in this order; after the last one Sym closes. ..."), a line reading the resu
 Emoji → Symbols → GIFs → closed"), then one row per page: its name numbered with the press
 that reaches it while on ("1. Emoji"), what it holds and its chooser letter, a pencil where the
 page can be edited, up and down arrows, and its switch. The picker is called "Emoji" and the
-letter-key layer "Emoji keys". Under the list, "Kaomoji on the Emoji page"
+letter-key layer "Emoji keys". The Fill page (4.7) has a row like the others ("One-time codes
+and saved logins; joins only when it has one, first in a code or login box · chooser letter F")
+with its switch and arrows, but no press number and no place in the read-back line, since it
+joins the cycle only when it has something. Under the list, a section "Fill page: one-time
+codes": "One-time codes from notifications" (`otp_from_notifications`), "Notification access"
+(the state, and a button that opens Android's page for the listener, 4.7), and "Password
+manager suggestions (experimental)" (`fill_inline_suggestions`). Then "Kaomoji on the Emoji page"
 (`emoji_picker_kaomoji`, expansion-clipboard-pickers-launcher.md 4.3). There is no drag handle;
 the arrows reorder. The 2.x screen, for the record:
 
@@ -679,6 +803,7 @@ letter.
 | M | the user's own page 1 (7), under its name (3.0, 4.6) |
 | N | the user's own page 2 (8), under its name |
 | B | the user's own page 3 (9), under its name |
+| F | the Fill page (10, 4.7), whatever it has; dimmed while it has nothing for this field |
 
 The letter is the one printed on the physical key (the QWERTY position), whatever the layout.
 One of the user's own pages has a row only when it is set up: switched on in the cycle, or
@@ -1247,6 +1372,7 @@ is empty.
 | D11 | Sym pages still open while the status bar is hidden, because they render in the same chrome the toggle collapses. | `PHYSIBOARD_CHANGES.md` 1.0.6; commit 80bbe0b |
 | D12 | Fresh Titan installs start with Emoji off, Emoji Picker on, Symbols on, order picker, symbols, clipboard, emoji, currency `$`, larger emoji picker off, Alt+Shift switch on, screen trackpad on. | `common/default_settings.json`, captured from a Titan 2 Elite on 2026-08-29 |
 | D13 | The maintainer's onboarding preset (Dev's Choice) selects `qwertz` as the only layout with automatic mapping off, long press = Variations at 200 ms. | onboarding preset in the tutorial |
+| D15 | Android's autofill hands an input method its inline suggestions only while the input method's input view is started, and a keyboard that returns an inline suggestions request takes the place of the autofill drop-down. PhysiBoard has no input view (no soft keyboard), so without raising one it would get no suggestions and the user would lose the drop-down: the reason `fill_inline_suggestions` ships off. Not yet seen on the Titan. | AOSP `services/autofill/.../AutofillInlineSuggestionsRequestSession.java` (`maybeUpdateResponseToImeLocked` sends only when `mImeInputViewStarted`; `onInlineSuggestionsResponseLocked` returns true, keeping the drop-down away, once the keyboard sent a request) and `core/java/android/inputmethodservice/InlineSuggestionSessionController.java`, android14-release, read 2026-10-08 |
 | D14 | The "Long Press Mappings" help text in the tutorial still lists the non-Elite Titan 2 legend (Q 0 ... O ', P :, A @, G *, H #, J +, K ", L ', Z !, B ., N ', M ?), which is wrong for the Elite. | `res/values/strings.xml` long press mapping lines |
 
 ## 12. Settings
@@ -1256,6 +1382,8 @@ is empty.
 | `current_sym_page` | int | 0 | page currently open (0, 1..5); internal | none | none |
 | `sym_pages_config` | string (JSON, 4.1) | see 4.1; baseline in D12; 3.0 baseline 8: Emoji, Symbols, GIFs | which pages are in the cycle and in what order | Customize SYM Keyboard | Sym pages |
 | `emoji_picker_kaomoji` | boolean | false | 3.0: kaomoji is a mode of the Emoji page and has a chooser row (expansion-clipboard-pickers-launcher.md 4.3) | Customize SYM Keyboard | Kaomoji on the Emoji page |
+| `otp_from_notifications` | boolean | true | 3.0: one-time codes are read from notifications for the Fill page (4.7); inert until notification access is given; off clears every code | Customize SYM Keyboard | One-time codes from notifications |
+| `fill_inline_suggestions` | boolean | false | 3.0, experimental: a password manager's inline suggestions on the Fill page (4.7) | Customize SYM Keyboard | Password manager suggestions (experimental) |
 | `sym_mappings_custom` | string (JSON, 3.1) | unset | Emoji page characters | Customize SYM Keyboard, Edit Emoji Layer | (grid) |
 | `sym_mappings_page2_custom` | string (JSON, 3.1) | unset | Symbols page characters | Customize SYM Keyboard, Edit Symbols Layer | (grid) |
 | `sym_custom_pages` | string (JSON, 4.6) | three empty pages | 3.0: the user's own pages 7 to 9, their names and characters | Customize SYM Keyboard, Edit <name> | Page name, (grid), Clear page |
@@ -1528,6 +1656,30 @@ Variations (3.0, section 8):
     "zażółć a", allowed when the field cannot be read or reads back empty, allowed in a
     terminal.
 
+The Fill page (3.0, section 4.7):
+
+81. Pages Emoji, Symbols, GIFs on: with the Fill page having nothing, Sym steps Emoji, Symbols,
+    GIFs, closed; with a code for another field, Emoji, Symbols, GIFs, Fill, closed; with a code
+    in a code's field or a password manager's suggestions, Fill, Emoji, Symbols, GIFs, closed;
+    with `fillEnabled` off, never Fill.
+82. The extractor's table (its own test): "Your verification code is 482913" gives 482913;
+    "G-602144 is your Google verification code." 602144; "Your code is 482 913" 482913;
+    "Rs. 5,000 debited from a/c XX1234 on 12-05-24. OTP 778899 for txn. Call 1800-123-4567"
+    778899; "【Acme】您的验证码是482913，5分钟内有效。" 482913; "Ваш код: ٤٨٢٩١٣" 482913;
+    "Your 2FA code is F7K2QX" F7K2QX. Nothing from "Use promo code SAVE2025 for 20% off",
+    "Your order 123456 has shipped", "Meeting moved to 3:30, room 4412", "Call me at
+    555-123-4567", "You paid $1,250.00", "Confirm your payment of 2500 to Acme", "New login from
+    192.168.10.20 on 2025-05-06", "Code review: 3 comments on PR 4821".
+83. Codes: at most 3, newest first; one is gone 10 minutes after it was posted; the same code
+    from the same app is listed once; a typed code is not taken again from its notification
+    until it would have expired; "Code from Messages · 2 min ago".
+84. Fill page open with codes 482913 and 551204: W types 482913 and the page closes
+    (`sym_auto_close`); E types 551204; R (no third code) types as on any panel page.
+85. A Terminal mode field: the code reaches the app as key presses.
+86. Private mode on, or `otp_from_notifications` off: no notification is read and every code
+    held is dropped. Screen off: every code is dropped.
+87. `fill_inline_suggestions` off: the keyboard answers Android's inline request with nothing.
+
 ## 15. Keep / Drop for 3.0
 
 | Item | Verdict | Reasoning |
@@ -1538,6 +1690,7 @@ Variations (3.0, section 8):
 | Clipboard and emoji picker as Sym pages | keep | overlays are in the 3.0 scope; cycling into them is how the Titan reaches them |
 | Page order and enable switches, `sym_pages_config` shape | keep | user content that survives migration; keep the JSON contract |
 | Legacy `emojiFirst` field | drop | 3.0 writes and reads `symPageOrder` only |
+| The Fill page (one-time codes from notifications, a password manager's suggestions) | new in 3.0 | the bar other keyboards show them in is gone for good; Sym reaches them instead. Inline suggestions ship off until proven on the Titan (D15) |
 | GIF page (6), KLIPY, off by default (4.5) | new in 3.0 | maintainer's request; the only page that goes online, so it stays off until switched on and passes the network gate |
 | Page chooser on a Sym double tap (5.10) | new in 3.0 | the status bar's direct-open buttons are gone for good; the chooser is the transient replacement |
 | Custom Emoji/Symbols maps, `sym_mappings_*` shape | keep | user content in backups |
@@ -1650,3 +1803,5 @@ Variations (3.0, section 8):
 - /home/disdiqqq/projects/pastiera/app/src/test/java/brobata/physiboard/inputmethod/subtype/AdditionalSubtypeUtilsLayoutTest.kt
 - /home/disdiqqq/projects/pastiera/app/src/test/java/brobata/physiboard/SettingsManagerLayoutSwitchTest.kt
 - git log (commits 54b5fdc, 0286208, 80bbe0b, 96c2d73, 55f2a74, e4b5974, ef222dc)
+- https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android14-release/services/autofill/java/com/android/server/autofill/AutofillInlineSuggestionsRequestSession.java (3.0, section 4.7, D15)
+- https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android14-release/core/java/android/inputmethodservice/InlineSuggestionSessionController.java (3.0, section 4.7, D15)

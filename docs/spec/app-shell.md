@@ -1215,6 +1215,49 @@ There is no bar (status-bar.md); the indicator lives where the keyboard already 
 | P10a | stored `private_mode` true, a layout switch before the store's first value | nothing learned |
 | P11 | any Kotlin source outside the gated opener and the ADB broker opens a connection | the build fails |
 | P12 | private mode in a backup | restored |
+| P13 | private mode on, a notification with a one-time code arrives | no code is kept; codes already held are dropped when private mode comes on |
+
+### 31.6 Notification access for one-time codes, and what it means for privacy
+
+The Fill page (layers-sym-alt.md 4.7) offers sign-in codes that arrive by text message, e-mail
+or an app's notification. To see them PhysiBoard needs **notification access**, one of
+Android's special permissions: an app holding it is shown every notification's content. It is
+sensitive, so:
+
+- **Asked for by the user, never taken.** The listener ("PhysiBoard one-time codes") works only
+  after the user allows it in Android's settings. Customize SYM Keyboard > "Notification access"
+  says what it is for and opens Android's own page for this one listener
+  (`Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS` with
+  `Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME`, falling back to
+  `Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`). The row re-reads the grant every time the
+  screen resumes. It is a separate entry from the notification ring's listener
+  (device-backlight-ring.md), and the privileged setup pass never grants it: allowing the ring
+  does not allow code reading. An install made outside a store may find the entry marked
+  "Restricted setting" on Android 13 and later; App info > ⋮ > "Allow restricted settings"
+  lifts that.
+- **What is read.** The title and text of each notification posted while access is given (and
+  those already showing when it connects), only while `otp_from_notifications` is on and
+  private mode is off; never PhysiBoard's own. Each text is searched for a code and then
+  dropped.
+- **What is kept.** Only the code, the posting app's name and package, and when it arrived: at
+  most 3, in memory, for at most 10 minutes; gone sooner when typed, when the screen turns off,
+  when private mode comes on, when the switch goes off or access is withdrawn, or when the
+  process ends.
+- **What never happens.** No text and no code is written to disk, to the settings, to a backup,
+  to the debug capture store or a diagnostics report, to the log or a trace, and nothing is
+  sent anywhere: the listener makes no network request (31.2's gate has no purpose for it).
+- **Turning it off.** The switch "One-time codes from notifications" makes the listener inert
+  and drops every code; withdrawing access in Android's settings unbinds it.
+
+**Store compliance notes.** Google Play: notification access is not a runtime permission and is
+not on Play's restricted-permissions list, but the listing and the in-app row must say plainly
+what is read and why (the row above is the in-app disclosure, shown before the user goes to
+Android's page), and the Data safety form answers "no data collected or shared" for it, since
+nothing leaves the phone and nothing is kept beyond 10 minutes in memory. The privacy policy
+needs a sentence: "If you allow notification access, PhysiBoard reads incoming notifications on
+your phone only to find one-time sign-in codes, keeps a found code in memory for up to 10
+minutes, and never stores or sends notification content." The inline-suggestions switch reads
+no data at all: the suggestions are drawn by the password manager.
 
 ## 32. Provenance
 
