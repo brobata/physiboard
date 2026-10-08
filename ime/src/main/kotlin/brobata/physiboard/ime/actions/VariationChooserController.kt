@@ -47,6 +47,7 @@ internal class VariationChooserController(service: InputMethodService, private v
         close()
         if (!VariationChooser.opens(choices)) return
         state = VariationChooser.State(heldKey = key, choices = choices, committed = committed)
+        trace("open held=$key choices=${choices.size}")
         panel.show(
             forms = choices,
             keyLabels = choices.indices.map { host.digitKeyLabel(VariationChooser.digitForIndex(it)) },
@@ -66,6 +67,14 @@ internal class VariationChooserController(service: InputMethodService, private v
      * false lets it go on to the keyboard as usual.
      */
     fun onKey(key: KeyId, down: Boolean, repeatCount: Int, altHeld: Boolean): Boolean {
+        val consumed = decide(key, down, repeatCount, altHeld)
+        if (state != null || consumed || key in consumedUps) {
+            trace("key $key ${if (down) "down" else "up"} rep=$repeatCount alt=$altHeld -> ${if (consumed) "consumed" else "passed"} open=${state != null} shown=${panel.isShown}")
+        }
+        return consumed
+    }
+
+    private fun decide(key: KeyId, down: Boolean, repeatCount: Int, altHeld: Boolean): Boolean {
         if (!down) {
             if (consumedUps.remove(key)) return true
             state?.let { state = VariationChooser.onKeyUp(it, key) }
@@ -92,6 +101,11 @@ internal class VariationChooserController(service: InputMethodService, private v
                 true
             }
             VariationChooser.KeyOutcome.Swallow -> true
+            VariationChooser.KeyOutcome.Cycle -> {
+                consumedUps.add(key)
+                cycle(current)
+                true
+            }
             VariationChooser.KeyOutcome.ArmAlt -> {
                 consumedUps.add(key)
                 state = current.copy(altArmed = true)
@@ -117,7 +131,23 @@ internal class VariationChooserController(service: InputMethodService, private v
         val picked = current.choices.getOrNull(index)
         close()
         if (picked == null || picked == current.committed) return
-        host?.replace(current.committed, picked)
+        val replaced = host?.replace(current.committed, picked)
+        trace("pick index=$index replaced=$replaced")
+    }
+
+    /** The same letter again: the next accent replaces the current one and the bar stays open for another tap. */
+    private fun cycle(current: VariationChooser.State) {
+        val next = current.choices[VariationChooser.nextIndex(current)]
+        val replaced = host?.replace(current.committed, next) == true
+        state = if (replaced) current.copy(committed = next) else null
+        if (!replaced) panel.hide()
+        trace("cycle replaced=$replaced")
+        restartIdle()
+    }
+
+    /** A compact, always-on trace (Log.println survives the release build's stripping); keys only, never field text. */
+    private fun trace(line: String) {
+        android.util.Log.println(android.util.Log.INFO, "PhysiBoardAccentTrace", line)
     }
 
     private fun close() {

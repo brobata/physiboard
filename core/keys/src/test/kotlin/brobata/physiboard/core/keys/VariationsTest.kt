@@ -139,6 +139,17 @@ class VariationsTest {
     }
 
     @Test
+    fun `after the release, the same letter again cycles to the next accent and any other letter types on`() {
+        val released = VariationChooser.onKeyUp(open, a)
+        assertEquals(VariationChooser.KeyOutcome.Cycle, VariationChooser.onKeyDown(released, a, 0, digit = null, altHeld = false))
+        assertEquals(VariationChooser.KeyOutcome.CloseAndPassOn, VariationChooser.onKeyDown(released, KeyId.Letter('D'), 0, digit = 5, altHeld = false), "będę: d after ę types d")
+        assertEquals(VariationChooser.KeyOutcome.Swallow, VariationChooser.onKeyDown(open, a, 3, digit = null, altHeld = false), "the hold's own repeat is not a cycle")
+        assertEquals(1, VariationChooser.nextIndex(released))
+        val last = released.copy(committed = released.choices.last())
+        assertEquals(0, VariationChooser.nextIndex(last), "wraps round to the first")
+    }
+
+    @Test
     fun `case 79 - repeats, Back and other keys`() {
         assertEquals(VariationChooser.KeyOutcome.Swallow, VariationChooser.onKeyDown(open, a, 3, digit = null, altHeld = false))
         assertEquals(VariationChooser.KeyOutcome.PassOnKeepOpen, VariationChooser.onKeyDown(open, KeyId.Modifier(ModifierKey.SHIFT), 2, digit = null, altHeld = false))

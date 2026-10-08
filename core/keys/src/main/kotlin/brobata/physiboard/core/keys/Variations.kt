@@ -187,6 +187,9 @@ object VariationChooser {
         /** The held key's own auto-repeat: consumed, the chooser stays open. */
         data object Swallow : KeyOutcome()
 
+        /** The long-pressed letter tapped again after its release: the next accent replaces the current one; the bar stays. */
+        data object Cycle : KeyOutcome()
+
         /** Alt: consumed with its release, the chooser stays open and the next pick key picks. */
         data object ArmAlt : KeyOutcome()
 
@@ -221,10 +224,16 @@ object VariationChooser {
         repeatCount > 0 -> KeyOutcome.PassOnKeepOpen
         key == KeyId.Control(ControlKey.BACK) -> KeyOutcome.Dismiss
         key == KeyId.Modifier(ModifierKey.ALT) -> KeyOutcome.ArmAlt
+        // The Titan reports a second key only after the held one is up (live, 2026-10-07), so the
+        // natural way on: tap the same letter again for the next accent. Any other letter types.
+        key == state.heldKey && !state.heldKeyDown && !(state.altArmed || altHeld) -> KeyOutcome.Cycle
         digit != null && indexForDigit(digit) in state.choices.indices && (state.heldKeyDown || state.altArmed || altHeld) ->
             KeyOutcome.Pick(indexForDigit(digit))
         else -> KeyOutcome.CloseAndPassOn
     }
+
+    /** The choice after [State.committed], wrapping round to the first. */
+    fun nextIndex(state: State): Int = (state.choices.indexOf(state.committed) + 1).mod(state.choices.size)
 
     /** A key came up: once the held key is up, bare pick keys stop picking. */
     fun onKeyUp(state: State, key: KeyId): State = if (key == state.heldKey) state.copy(heldKeyDown = false) else state

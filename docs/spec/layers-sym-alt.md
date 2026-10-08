@@ -1065,6 +1065,7 @@ hold e for ę, then d), so a bare letter picks only while the long-pressed key i
 | The same key after Alt was pressed with the bar open, or with Alt held | the same pick |
 | Alt | consumed with its release; the bar stays and the next pick key picks (so Alt then W picks the first, and no Alt one-shot is left armed) |
 | The long-pressed key's own auto-repeat | consumed; the bar stays |
+| The long-pressed letter tapped again once it is up (no Alt) | the next accent replaces the current one, wrapping round; the bar stays; consumed. The Titan reports a second key only after the held one is up (measured 2026-10-07), so this, not a bare pick key, is how a hand goes on |
 | An auto-repeat of any other key held from before (Shift, Fn) | goes on as usual; the bar stays |
 | Back | closes the bar without a change; consumed |
 | Any other key (a letter once the held key is up, a letter with no listed digit, Space, Enter, Backspace, Shift, Sym, Ctrl) | closes the bar, then does exactly what it would have done |
