@@ -1061,7 +1061,7 @@ hold e for ę, then d), so a bare letter picks only while the long-pressed key i
 
 | Key | Effect |
 |---|---|
-| A key carrying a listed digit (or a digit key), while the long-pressed key is still down | the accent just typed is replaced by that variation; the bar closes; the key and its release are consumed |
+| A key carrying a listed digit (or a digit key), while the bar is open, the long-pressed key held or not (amended 2026-10-07: the maintainer lets go first, then presses the pick key; typing straight on with a pick key while the bar is up now picks) | the accent just typed is replaced by that variation; the bar closes; the key and its release are consumed |
 | The same key after Alt was pressed with the bar open, or with Alt held | the same pick |
 | Alt | consumed with its release; the bar stays and the next pick key picks (so Alt then W picks the first, and no Alt one-shot is left armed) |
 | The long-pressed key's own auto-repeat | consumed; the bar stays |

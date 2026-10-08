@@ -126,11 +126,12 @@ class VariationsTest {
     }
 
     @Test
-    fun `case 78 - with the held key still down a pick key picks, after it is up only Alt or a held Alt picks`() {
+    fun `case 78 - a pick key picks while the bar is open, held or not, and Alt still arms`() {
         assertEquals(VariationChooser.KeyOutcome.Pick(0), VariationChooser.onKeyDown(open, w, 0, digit = 1, altHeld = false))
         val released = VariationChooser.onKeyUp(open, a)
         assertFalse(released.heldKeyDown)
-        assertEquals(VariationChooser.KeyOutcome.CloseAndPassOn, VariationChooser.onKeyDown(released, w, 0, digit = 1, altHeld = false), "typing on never picks")
+        assertEquals(VariationChooser.KeyOutcome.Pick(0), VariationChooser.onKeyDown(released, w, 0, digit = 1, altHeld = false), "let go, then W: picks")
+        assertEquals(VariationChooser.KeyOutcome.Pick(2), VariationChooser.onKeyDown(released, KeyId.Letter('R'), 0, digit = 3, altHeld = false), "let go, then R: the third")
         assertEquals(VariationChooser.KeyOutcome.Pick(1), VariationChooser.onKeyDown(released, KeyId.Letter('E'), 0, digit = 2, altHeld = true))
         assertEquals(VariationChooser.KeyOutcome.ArmAlt, VariationChooser.onKeyDown(released, KeyId.Modifier(ModifierKey.ALT), 0, digit = null, altHeld = false))
         assertEquals(VariationChooser.KeyOutcome.Pick(2), VariationChooser.onKeyDown(released.copy(altArmed = true), KeyId.Letter('R'), 0, digit = 3, altHeld = false))
@@ -142,7 +143,7 @@ class VariationsTest {
     fun `after the release, the same letter again cycles to the next accent and any other letter types on`() {
         val released = VariationChooser.onKeyUp(open, a)
         assertEquals(VariationChooser.KeyOutcome.Cycle, VariationChooser.onKeyDown(released, a, 0, digit = null, altHeld = false))
-        assertEquals(VariationChooser.KeyOutcome.CloseAndPassOn, VariationChooser.onKeyDown(released, KeyId.Letter('D'), 0, digit = 5, altHeld = false), "będę: d after ę types d")
+        assertEquals(VariationChooser.KeyOutcome.CloseAndPassOn, VariationChooser.onKeyDown(released, KeyId.Letter('G'), 0, digit = null, altHeld = false), "a letter with no listed digit types on")
         assertEquals(VariationChooser.KeyOutcome.Swallow, VariationChooser.onKeyDown(open, a, 3, digit = null, altHeld = false), "the hold's own repeat is not a cycle")
         assertEquals(1, VariationChooser.nextIndex(released))
         val last = released.copy(committed = released.choices.last())

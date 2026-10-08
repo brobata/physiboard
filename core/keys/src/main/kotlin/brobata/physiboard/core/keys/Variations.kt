@@ -227,7 +227,11 @@ object VariationChooser {
         // The Titan reports a second key only after the held one is up (live, 2026-10-07), so the
         // natural way on: tap the same letter again for the next accent. Any other letter types.
         key == state.heldKey && !state.heldKeyDown && !(state.altArmed || altHeld) -> KeyOutcome.Cycle
-        digit != null && indexForDigit(digit) in state.choices.indices && (state.heldKeyDown || state.altArmed || altHeld) ->
+        // The maintainer lets go of the letter and then presses the pick key (live trace,
+        // 2026-10-07, twice): while the bar is open, the key labelled with a choice picks it,
+        // held or not. The cost: typing straight on with a pick key while the bar is still up
+        // picks rather than types (Polish "będę" typed fast), accepted for this.
+        digit != null && indexForDigit(digit) in state.choices.indices ->
             KeyOutcome.Pick(indexForDigit(digit))
         else -> KeyOutcome.CloseAndPassOn
     }
