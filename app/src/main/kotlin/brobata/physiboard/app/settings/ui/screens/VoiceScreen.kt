@@ -1,5 +1,7 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import brobata.physiboard.core.settings.SilenceSeconds
+import brobata.physiboard.app.settings.ui.TextFieldRow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -80,15 +82,29 @@ fun VoiceScreen(onBack: () -> Unit) {
                 SwitchRow("Block offensive words", checked = dictation.maskOffensive, onCheckedChange = { set { p -> p.copy(maskOffensive = it) } })
             }
             item {
-                // dictation.md SS12.1, SS6.4: how much silence ends the session by itself; 0 is
-                // "runs until you stop it" (the safety limits of SS6.4 still apply).
-                SingleChoiceChipsRow(
-                    label = "Stop after silence",
-                    options = STOP_AFTER_SILENCE_CHOICES,
-                    optionLabel = ::stopAfterSilenceLabel,
-                    selected = nearestStopAfterSilenceChoice(dictation.stopAfterSilenceMs),
-                    onSelect = { value -> set { p -> p.copy(stopAfterSilenceMs = value) } },
+                // dictation.md SS12.1, SS6.4: how much silence after the last word ends the
+                // session by itself; 0 is "runs until you stop it" (the safety limits still apply).
+                SwitchRow(
+                    "Stop when I go quiet",
+                    description = "Off: dictation runs until you press Fn or a key.",
+                    checked = dictation.stopAfterSilenceMs > 0,
+                    onCheckedChange = { on -> set { p -> p.copy(stopAfterSilenceMs = if (on) SilenceSeconds.DEFAULT_MS else 0) } },
                 )
+            }
+            if (dictation.stopAfterSilenceMs > 0) {
+                item {
+                    var text by remember(dictation.stopAfterSilenceMs) { mutableStateOf(SilenceSeconds.format(dictation.stopAfterSilenceMs)) }
+                    TextFieldRow(
+                        label = "Seconds of silence",
+                        description = "After your last word. Any number from 1 to 60, e.g. 2.5.",
+                        value = text,
+                        onValueChange = { typed ->
+                            text = typed
+                            SilenceSeconds.parse(typed)?.let { ms -> set { p -> p.copy(stopAfterSilenceMs = ms) } }
+                        },
+                        validate = { typed -> if (SilenceSeconds.parse(typed) == null) "A number from 1 to 60" else null },
+                    )
+                }
             }
             item {
                 SwitchRow(
@@ -172,13 +188,9 @@ fun VoiceScreen(onBack: () -> Unit) {
 }
 
 /** dictation.md SS12.1: the five choices; 0 is never. */
-private val STOP_AFTER_SILENCE_CHOICES: List<Int> = listOf(3000, 5000, 8000, 15000, 0)
 
-private fun stopAfterSilenceLabel(ms: Int): String = if (ms == 0) "Never" else "${ms / 1000} s"
 
 /** Only 0 is Never; any other stored value (an import, a hand edit) shows as the nearest timed choice. */
-private fun nearestStopAfterSilenceChoice(ms: Int): Int =
-    if (ms == 0) 0 else STOP_AFTER_SILENCE_CHOICES.filter { it > 0 }.minByOrNull { kotlin.math.abs(it - ms) } ?: 5000
 
 private fun assistantActionLabel(action: AssistantAction): String = when (action) {
     AssistantAction.AUTO -> "Auto"

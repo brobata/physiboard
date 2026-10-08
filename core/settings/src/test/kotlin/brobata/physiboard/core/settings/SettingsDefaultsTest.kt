@@ -33,7 +33,7 @@ class SettingsDefaultsTest {
         assertTrue(d.dictation.fnLongPressSpeech)
         assertTrue(d.dictation.haptics)
         assertFalse(d.dictation.maskOffensive)
-        assertEquals(5000, d.dictation.stopAfterSilenceMs, "the maintainer's decision 2026-10-07: 15 s of silence felt like forever")
+        assertEquals(2500, d.dictation.stopAfterSilenceMs, "the maintainer's number 2026-10-07: 2.5 s after the last word")
         assertTrue(d.dictation.preferOffline)
         assertTrue(d.dictation.pauseMedia)
         assertTrue(d.dictation.stopOnTyping)

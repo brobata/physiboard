@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  */
 class ContinuousSessionTest {
 
-    private fun started(settings: DictationSettings = DictationSettings(androidApiLevel = 36), textBefore: String = ""): DictationHarness {
+    private fun started(settings: DictationSettings = DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 5_000L), textBefore: String = ""): DictationHarness {
         val h = DictationHarness(settings)
         h.send(DictationEvent.Trigger("app", textBefore), now = 0L)
         h.send(DictationEvent.ReadyForSpeech, now = 10L)
@@ -191,7 +191,7 @@ class ContinuousSessionTest {
 
     @Test
     fun `German keeps its capitals - the engine's segment capital is left alone`() {
-        val h = DictationHarness(DictationSettings(androidApiLevel = 36), DictationTextSettings(undoEngineSegmentCapitals = false))
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 5_000L), DictationTextSettings(undoEngineSegmentCapitals = false))
         h.send(DictationEvent.Trigger("app", "ich habe das "), now = 0L)
         h.send(DictationEvent.FinalResult("Haus gesehen."), now = 2_000L)
         assertEquals("Haus gesehen. ", h.field.text)
@@ -258,7 +258,7 @@ class ContinuousSessionTest {
         // and the terminal emptying its box is its own doing, never a signal (the keyboard does
         // not raise FieldClearedByApp there). The user never saw the words, so the stop's
         // final is their one appearance. A terminal is a raw-mode field: no capitalisation.
-        val h = DictationHarness(DictationSettings(androidApiLevel = 36), DictationTextSettings(capitalizationAllowed = false))
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 5_000L), DictationTextSettings(capitalizationAllowed = false))
         h.send(DictationEvent.Trigger("app", ""), now = 0L)
         h.send(DictationEvent.ReadyForSpeech, now = 10L)
         h.send(DictationEvent.FirstAudio, now = 40L)
@@ -280,7 +280,7 @@ class ContinuousSessionTest {
     }
 
     @Test
-    fun `the 5 s default survives a breath and ends a session left in silence`() {
+    fun `a 5 s limit survives a breath and ends a session left in silence`() {
         val h = started()
         h.send(DictationEvent.FinalResult("one."), now = 2_000L)
         h.send(DictationEvent.BeginningOfSpeech, now = 2_100L) // the engine is alive: no re-listen probe
@@ -336,5 +336,15 @@ class ContinuousSessionTest {
         h.drainEffects()
         val stop = h.runClockTo(6_000L).single { it.effects.isNotEmpty() }
         assertEquals(listOf(DictationEffect.StopListening), stop.effects)
+    }
+
+    @Test
+    fun `the 2_5 s default stops two and a half seconds after the last word`() {
+        val h = started(DictationSettings(androidApiLevel = 36))
+        h.send(DictationEvent.PartialResult("see you at noon"), now = 1_000L)
+        h.send(DictationEvent.BeginningOfSpeech, now = 1_100L)
+        h.drainEffects()
+        assertTrue(h.runClockTo(3_499L).all { it.effects.isEmpty() })
+        assertEquals(listOf(DictationEffect.StopListening), h.runClockTo(3_500L).single().effects)
     }
 }

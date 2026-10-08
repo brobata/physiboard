@@ -385,7 +385,7 @@ Two timers, both the keyboard's own, both ending the session **gracefully** (6.5
 last words still land:
 
 - **Silence limit**: the session stops once nothing has been heard for the silence limit
-  (`dictation_stop_after_silence_ms`, 5 s by default; or 60 s when it is 0). "Heard" means new
+  (`dictation_stop_after_silence_ms`, 2.5 s by default; or 60 s when it is 0). "Heard" means new
   words: a partial whose text differs from the last one, or a segment or final that adds words
   the partials had not shown (its tidied copy of words already shown arrives seconds later and
   does not count; Titan 2026-10-07: it pushed the stop 2.6 s late); the
@@ -400,7 +400,7 @@ The engine's own complete-silence length is the keyboard's limit plus 1000 ms (s
 the keyboard's timer fires first; should the engine end first anyway, 6.2 re-listens and the
 keyboard's timer still ends the session on time.
 
-With the default (5 s, the maintainer's decision 2026-10-07: "15 seconds of silence sounds like
+With the default (2.5 s after the last word, the maintainer's number 2026-10-07, first set at 5 s: "15 seconds of silence sounds like
 forever"; Google's one-shot endpointing is about 1.5-2 s), the session runs until Fn, a key, five
 seconds without new words (a breath or a short think survives; a longer think wants 8 s or 15 s), ten minutes, or the field going away; "Never" makes it a minute of silence. That is
 the toggle-microphone model the maintainer asked for, with a safety net for a microphone left
@@ -775,7 +775,7 @@ Section **Triggers**: switch "Long-press Fn for speech input".
 
 Section **Transcription**: navigation row "Speech engine" with the current engine's label;
 switch "Automatic punctuation"; switch "Block offensive words"; chips "Stop after silence" with
-3 s, 5 s, 8 s, 15 s and Never (a stored value between two choices shows the nearer); switch "Typing stops dictation" ("Any key except a modifier ends the session, keeps
+a typed number of seconds (1 to 60, decimals allowed) under a "Stop when I go quiet" switch (off = Never) (a stored value between two choices shows the nearer); switch "Typing stops dictation" ("Any key except a modifier ends the session, keeps
 the words on screen, then does its usual job. Hold Fn again stops it either way."); switch "Keep
 speech on the phone" ("Use the engine's on-device recognizer: faster, works with no signal, and
 it is the one that punctuates. Falls back online only when the language pack is missing. Private
@@ -810,7 +810,7 @@ buttons screen places or removes the `microphone` slot (status-bar document).
 | `dictation_engine` | string | empty | which recognizer: empty = system default, `ondevice`, or `package/class` | Voice > Transcription | Speech engine |
 | `dictation_auto_punctuation` | boolean | true | asks the engine to punctuate and capitalise (Android 13+) | Voice > Transcription | Automatic punctuation |
 | `dictation_mask_offensive` | boolean | false | per-request profanity masking | Voice > Transcription | Block offensive words |
-| `dictation_stop_after_silence_ms` | int | 5000; stored clamped to 0..60000 | the silence limit; 0 = the session runs until stopped (60 s safety) | Voice > Transcription | Stop after silence |
+| `dictation_stop_after_silence_ms` | int | 2500; stored clamped to 0..60000 | the silence limit; 0 = the session runs until stopped (60 s safety) | Voice > Transcription | Stop after silence |
 | `dictation_stop_on_typing` | boolean | true | any key other than a modifier ends the session before doing its work | Voice > Transcription | Typing stops dictation |
 | `dictation_prefer_offline` | boolean | true | `EXTRA_PREFER_OFFLINE` on the request; one online fallback when the pack is missing | Voice > Transcription | Keep speech on the phone |
 | `dictation_pause_media` | boolean | true | exclusive transient audio focus for the session | Voice > Transcription | Pause music while dictating |

@@ -37,7 +37,7 @@ class DictationCuesTest {
     fun `the request plan follows the settings - segmented and formatting need Android 13, private mode forces offline`() {
         val on33 = DictationSettings(androidApiLevel = 33, maskOffensive = true)
         val planned = RecognizerRequestPlanner.plan(on33, segmentedRefusalLatch = false)
-        assertEquals(RecognizerRequest(segmented = true, preferOffline = true, enableFormatting = true, maskOffensive = true, completeSilenceMs = 6_000L, minimumLengthMs = 6_000L), planned)
+        assertEquals(RecognizerRequest(segmented = true, preferOffline = true, enableFormatting = true, maskOffensive = true, completeSilenceMs = 3_500L, minimumLengthMs = 3_500L), planned)
         assertFalse(RecognizerRequestPlanner.plan(on33.copy(maskOffensive = false), false).maskOffensive)
         assertFalse(RecognizerRequestPlanner.plan(on33.copy(autoPunctuation = false), false).enableFormatting)
         assertFalse(RecognizerRequestPlanner.plan(on33.copy(androidApiLevel = 32), false).enableFormatting)

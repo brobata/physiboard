@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class LoggedRecognizerScenariosTest {
 
-    private fun harness(settings: DictationSettings = DictationSettings(androidApiLevel = 36)) = DictationHarness(settings)
+    private fun harness(settings: DictationSettings = DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 5_000L)) = DictationHarness(settings)
 
     /** The trigger, "ready" and the first audio report, as the log times them (D14: the microphone opens ~40 ms after the request). */
     private fun DictationHarness.start(now: Long = 0L): DictationHarness {

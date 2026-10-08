@@ -10,7 +10,7 @@ package brobata.physiboard.core.speech
  */
 data class DictationSettings(
     /** `dictation_stop_after_silence_ms`: 15 s by the maintainer's decision; 0 means never (the session runs until stopped, within the safety limits of SS6.4). */
-    val stopAfterSilenceMs: Long = 5_000L,
+    val stopAfterSilenceMs: Long = 2_500L,
     val androidApiLevel: Int = 0,
     /** `dictation_mask_offensive`, the per-request profanity masking (spec SS5). */
     val maskOffensive: Boolean = false,

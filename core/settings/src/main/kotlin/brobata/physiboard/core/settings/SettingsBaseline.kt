@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 6 sets dictation's silence limit to 5 s. */
-    const val CURRENT_VERSION: Int = 6
+    /** The baseline version this build ships with; version 7 sets dictation's silence limit to 2.5 s. */
+    const val CURRENT_VERSION: Int = 7
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -63,6 +63,10 @@ object SettingsBaseline {
         // ("15 seconds of silence sounds like forever"). The 15 s default shipped only to the
         // maintainer's dev build, where it was written to the store, so it is replaced once.
         6 to mapOf(SettingsKeys.DICTATION_STOP_AFTER_SILENCE to "5000"),
+        // Version 7, the same evening: 2.5 s after the last word, the maintainer's number once the
+        // stop counted from the last word rather than the engine's late tidy-up. Typed in, any
+        // value from 1 to 60 s.
+        7 to mapOf(SettingsKeys.DICTATION_STOP_AFTER_SILENCE to "2500"),
     )
 
     /** The baseline version already applied to [flatMap], or 0 when the marker was never written. Mirrors [SettingsCodec.schemaVersionOf]'s style. */
