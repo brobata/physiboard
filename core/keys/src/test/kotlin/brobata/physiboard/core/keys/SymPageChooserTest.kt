@@ -2,6 +2,7 @@ package brobata.physiboard.core.keys
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -131,7 +132,7 @@ class SymPageChooserTest {
             emojiEnabled = false, symbolsEnabled = true, clipboardEnabled = false, emojiPickerEnabled = true, gifEnabled = false,
             order = listOf(SymPageId.EMOJI_PICKER, SymPageId.SYMBOLS, SymPageId.CLIPBOARD, SymPageId.EMOJI),
         )
-        val rows = SymPageChooser.entries(baseline)
+        val rows = SymPageChooser.entries(baseline, kaomojiEnabled = true)
         assertEquals(
             listOf(
                 SymChooserTarget.EMOJI_PICKER, SymChooserTarget.KAOMOJI, SymChooserTarget.UNICODE_SYMBOLS,
@@ -140,6 +141,16 @@ class SymPageChooserTest {
             rows.map { it.target },
         )
         assertEquals(listOf(true, true, true, true, false, false, false), rows.map { it.inCycle })
+    }
+
+    @Test
+    fun `kaomoji has no chooser row unless the user switched it on, Unicode symbols always do`() {
+        val rows = SymPageChooser.entries(SymPagesConfig()).map { it.target }
+        assertFalse(SymChooserTarget.KAOMOJI in rows)
+        assertTrue(SymChooserTarget.UNICODE_SYMBOLS in rows)
+        val listed = rows.toSet()
+        assertEquals(SymPageChooser.KeyOutcome.CloseAndPassOn, SymPageChooser.onKeyDown(KeyId.Letter('K'), isRepeat = false, listed = listed))
+        assertEquals("Emoji", SymChooserTarget.EMOJI_PICKER.label)
     }
 
     @Test

@@ -6,10 +6,11 @@ package brobata.physiboard.core.keys
  * now that the strip's page buttons are gone. spec: layers-sym-alt.md SS5.10.
  */
 enum class SymChooserTarget(val letter: Char, val label: String, val page: SymPageId) {
-    EMOJI('E', "Emoji", SymPageId.EMOJI),
+    /** The key layer with one emoji per letter key. The picker is the page called "Emoji". */
+    EMOJI('E', "Emoji keys", SymPageId.EMOJI),
     SYMBOLS('S', "Symbols", SymPageId.SYMBOLS),
     CLIPBOARD('C', "Clipboard", SymPageId.CLIPBOARD),
-    EMOJI_PICKER('P', "Emoji picker", SymPageId.EMOJI_PICKER),
+    EMOJI_PICKER('P', "Emoji", SymPageId.EMOJI_PICKER),
     KAOMOJI('K', "Kaomoji", SymPageId.EMOJI_PICKER),
     UNICODE_SYMBOLS('U', "Unicode symbols", SymPageId.EMOJI_PICKER),
     GIF('G', "GIFs", SymPageId.GIF),
@@ -55,8 +56,12 @@ object SymPageChooser {
      * [customPageNames] names the user's own pages that are set up (switched on, or holding at
      * least one key); one missing from it has no row, so three empty "My page" rows never crowd
      * the chooser. A blank name shows the page's default name.
+     *
+     * Kaomoji has a row only when [kaomojiEnabled] (`emoji_picker_kaomoji`, off by default): the
+     * user who never asked for kaomoji never meets them. Unicode symbols always keep theirs, the
+     * secondary way into the picker's symbol search.
      */
-    fun entries(config: SymPagesConfig, customPageNames: Map<SymPageId, String> = emptyMap()): List<SymChooserEntry> {
+    fun entries(config: SymPagesConfig, customPageNames: Map<SymPageId, String> = emptyMap(), kaomojiEnabled: Boolean = false): List<SymChooserEntry> {
         val rows = ArrayList<SymChooserEntry>()
         for (page in config.normalizedOrder) {
             val inCycle = config.isEnabled(page)
@@ -66,7 +71,7 @@ object SymPageChooser {
                 SymPageId.CLIPBOARD -> rows.add(SymChooserEntry(SymChooserTarget.CLIPBOARD, inCycle))
                 SymPageId.EMOJI_PICKER -> {
                     rows.add(SymChooserEntry(SymChooserTarget.EMOJI_PICKER, inCycle))
-                    rows.add(SymChooserEntry(SymChooserTarget.KAOMOJI, inCycle))
+                    if (kaomojiEnabled) rows.add(SymChooserEntry(SymChooserTarget.KAOMOJI, inCycle))
                     rows.add(SymChooserEntry(SymChooserTarget.UNICODE_SYMBOLS, inCycle))
                 }
                 SymPageId.GIF -> rows.add(SymChooserEntry(SymChooserTarget.GIF, inCycle))
