@@ -16,16 +16,17 @@ import brobata.physiboard.core.actions.snippets.SnippetSettings
 import brobata.physiboard.core.dict.Bigram
 import brobata.physiboard.core.dict.NgramPrefix
 import brobata.physiboard.core.dict.NgramStore
-import brobata.physiboard.core.keys.Action
 import brobata.physiboard.core.keys.AccidentalPressFilter
 import brobata.physiboard.core.keys.AccidentalPressFilterState
 import brobata.physiboard.core.keys.AccidentalPressSettings
+import brobata.physiboard.core.keys.Action
 import brobata.physiboard.core.keys.BounceFilter
 import brobata.physiboard.core.keys.BounceFilterState
 import brobata.physiboard.core.keys.BounceKeySettings
-import brobata.physiboard.core.keys.FilterVerdict
 import brobata.physiboard.core.keys.ControlKey
 import brobata.physiboard.core.keys.EditEffect
+import brobata.physiboard.core.keys.FieldLoss
+import brobata.physiboard.core.keys.FilterVerdict
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
@@ -38,7 +39,7 @@ import brobata.physiboard.core.keys.ModifierMachine
 import brobata.physiboard.core.keys.ModifierSettings
 import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
-import brobata.physiboard.core.text.ShiftArmSource
+import brobata.physiboard.core.keys.SymFieldBounce
 import brobata.physiboard.core.keys.TypingSessionState
 import brobata.physiboard.core.keys.VariationChooser
 import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
@@ -53,7 +54,6 @@ import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripInputs
 import brobata.physiboard.core.strip.StripModel
 import brobata.physiboard.core.strip.StripSettings
-import brobata.physiboard.core.text.LengthChangeAllowance
 import brobata.physiboard.core.text.AddWordCandidate
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
@@ -69,9 +69,11 @@ import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.ExtraSendShortcut
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
+import brobata.physiboard.core.text.LengthChangeAllowance
+import brobata.physiboard.core.text.NextWordSuggestions
 import brobata.physiboard.core.text.RankedSuggestion
 import brobata.physiboard.core.text.RankingOptions
-import brobata.physiboard.core.text.NextWordSuggestions
+import brobata.physiboard.core.text.ShiftArmSource
 import brobata.physiboard.core.text.SuggestionRanking
 import brobata.physiboard.core.text.TextInputPipeline
 import brobata.physiboard.core.text.TextInputRequest
@@ -231,6 +233,12 @@ data class PipelineResult(
     val altLayerStroke: Boolean = false,
     /** layers-sym-alt.md SS8.4: a long press in Accent mode just typed the first of several accents; `:ime` may offer them all. */
     val variationChoice: VariationChoice? = null,
+    /**
+     * layers-sym-alt.md SS5.2: a Sym press with no text box, in the app whose box just went away;
+     * consumed, and `:ime` says to tap the box ([SymFieldBounce.TAP_THE_BOX]) instead of arming
+     * the launcher shortcuts.
+     */
+    val symWantsTheField: Boolean = false,
 ) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
@@ -331,6 +339,22 @@ internal class KeyboardPipeline(
     /** spec SS6.2 B: the Sym-armed power shortcut mode, which only exists with no editable field. */
     private var powerMode = PowerShortcutState.IDLE
 
+    /** layers-sym-alt.md SS5.2: the text box an app took away a moment ago, and the page that was open on it. */
+    private var fieldLoss: FieldLoss? = null
+
+    /** Records that the really editable [activeField] is going away at [nowMs], with whatever page is open. */
+    private fun noteFieldLost(nowMs: Long) {
+        if (!activeField.isReallyEditable) return
+        fieldLoss = SymFieldBounce.onEditorLost(fieldLoss, activeAppProfile.packageName, modifierState.sym.currentPageNumber, nowMs)
+    }
+
+    /** A really editable field of [packageName] just started: the page that went with that app's last box comes back. */
+    private fun restorePageAfterFieldLoss(packageName: String?, nowMs: Long) {
+        val page = SymFieldBounce.pageToRestore(fieldLoss, packageName, nowMs)
+        fieldLoss = null
+        if (page != 0) modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = page))
+    }
+
     /** spec SS6.2 A: whether the foreground package answers HOME; `:ime` resolves it, this class only routes on it. */
     var foregroundIsHome: Boolean = false
 
@@ -376,6 +400,11 @@ internal class KeyboardPipeline(
     fun openSymPage(page: Int) {
         modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = page, lastTapUpAtMs = null, secondTapPending = false))
     }
+
+    private val symPageOpen: Boolean get() = modifierState.sym.currentPageNumber != 0
+
+    /** layers-sym-alt.md SS5.2: Sym steps the pages with a text box, and also while a page is open without one. */
+    private val symSessionLive: Boolean get() = activeField.isReallyEditable || symPageOpen
 
     /** spec SS3.5, SS4.3: the panels' own close buttons "ask the Sym session to close the page". */
     fun closeSymPage() {
@@ -438,7 +467,10 @@ internal class KeyboardPipeline(
         trust: EditorTrust = EditorTrust.FULL,
         appProfile: AppProfile = AppProfile.default(null),
         textBeforeCursor: String? = null,
+        nowMs: Long = 0L,
     ) {
+        // layers-sym-alt.md SS5.2: an editable box replaced by a box-less start is a box the app took away.
+        if (!field.isReallyEditable) noteFieldLost(nowMs)
         activeField = field
         activeTrust = trust
         activeAppProfile = appProfile
@@ -452,6 +484,7 @@ internal class KeyboardPipeline(
         textInputState = textInputState.forNewField()
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
+        if (field.isReallyEditable) restorePageAfterFieldLoss(appProfile.packageName, nowMs)
         expansion = ExpansionState.EMPTY
         // spec: keys-and-modifiers.md SS10.1 ("Filter memory clears on every start of input"), SS11 ("state resets on start... of input").
         bounceFilterState = BounceFilterState()
@@ -485,10 +518,20 @@ internal class KeyboardPipeline(
         trust: EditorTrust = EditorTrust.FULL,
         appProfile: AppProfile = AppProfile.default(null),
         textBeforeCursor: String?,
+        nowMs: Long = 0L,
     ) {
+        // layers-sym-alt.md SS5.2: a restart into a box-less field takes the box away like a
+        // finish would, and closes the page, which has nothing left to type into; a restart back
+        // into a box of the same app brings that page back.
+        val wasEditable = activeField.isReallyEditable
+        if (wasEditable && !field.isReallyEditable) {
+            noteFieldLost(nowMs)
+            closeSymPage()
+        }
         activeField = field
         activeTrust = trust
         activeAppProfile = appProfile
+        if (!wasEditable && field.isReallyEditable) restorePageAfterFieldLoss(appProfile.packageName, nowMs)
         val restarted = textInputState.afterInputRestart(textBeforeCursor)
         applyCapDecision(CapDecision.ClearOneShot)
         val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
@@ -501,7 +544,8 @@ internal class KeyboardPipeline(
     }
 
     /** spec: status-bar.md SS13, "field finishes": modifiers reset, nav mode preserved. */
-    fun onFinishInput() {
+    fun onFinishInput(nowMs: Long = 0L) {
+        noteFieldLost(nowMs)
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
         expansion = ExpansionState.EMPTY
@@ -634,6 +678,13 @@ internal class KeyboardPipeline(
     /** spec SS6.2 B: Sym down (repeat 0) with no editable field arms or disarms the mode. */
     private fun powerModeOnSymDown(stroke: KeyStroke): PipelineResult? {
         if (activeField.isReallyEditable || stroke.edge != KeyEdge.DOWN || stroke.repeatCount > 0) return null
+        // layers-sym-alt.md SS5.2: Sym steps an open page whatever the field; it is never the
+        // launcher key while a page is on screen.
+        if (symPageOpen) return null
+        // SS5.2: no box, but this app had one a moment ago: the press was meant for it.
+        if (SymFieldBounce.symWantsTheField(fieldLoss, activeAppProfile.packageName, stroke.timeMs)) {
+            return PipelineResult(emptyList(), consumed = true, symWantsTheField = true)
+        }
         val (next, effect) = PowerShortcutMode.onSymDown(powerMode, stroke.timeMs, settings.launcherKeys.symShortcutsEnabled, navModeActive = modifierState.ctrl.latchFromNavMode)
         powerMode = next
         if (effect.suspendNavMode) suspendNavModeLatch()
@@ -752,7 +803,7 @@ internal class KeyboardPipeline(
             val armed = if (stroke.key == SYM_KEY) powerModeOnSymDown(stroke) else null
             val action = dispatchModifier(stroke, editor)
             val result = applyAction(action, shiftHeld = stroke.meta.shift, altActive = modifierState.isAltActive(stroke.meta.alt), editor)
-            return if (armed != null) result.copy(consumed = true, powerModeArmedAtMs = armed.powerModeArmedAtMs) else result
+            return if (armed != null) result.copy(consumed = true, powerModeArmedAtMs = armed.powerModeArmedAtMs, symWantsTheField = armed.symWantsTheField) else result
         }
 
         if (stroke.edge == KeyEdge.UP) {
@@ -1258,9 +1309,9 @@ internal class KeyboardPipeline(
             ModifierKey.CTRL -> if (down) ModifierMachine.ctrlDown(modifierState, stroke, settings.modifier) else ModifierMachine.ctrlUp(modifierState, stroke, settings.modifier)
             ModifierKey.ALT -> if (down) ModifierMachine.altDown(modifierState, stroke, settings.modifier, canSwitchLayout = chordCanSwitchLayout) else ModifierMachine.altUp(modifierState, stroke, settings.modifier)
             ModifierKey.SYM -> if (down) {
-                ModifierMachine.symDown(modifierState, stroke, settings.modifier, hasEditableField = activeField.isReallyEditable)
+                ModifierMachine.symDown(modifierState, stroke, settings.modifier, hasEditableField = symSessionLive)
             } else {
-                ModifierMachine.symUp(modifierState, stroke, hasEditableField = activeField.isReallyEditable, pages = layout.symPagesConfig)
+                ModifierMachine.symUp(modifierState, stroke, hasEditableField = symSessionLive, pages = layout.symPagesConfig)
             }
             ModifierKey.FN -> if (down) ModifierMachine.fnKeyDown(modifierState, stroke, settings.modifier) else ModifierMachine.fnKeyUp(modifierState, stroke, settings.modifier)
         }

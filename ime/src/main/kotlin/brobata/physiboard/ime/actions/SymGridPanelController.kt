@@ -45,6 +45,9 @@ internal class SymGridPanelController(service: InputMethodService) {
         /** spec SS5.7: the globe button, "opens the system input-method picker." */
         fun onGlobe()
 
+        /** layers-sym-alt.md SS5.7: the Symbols page's search, into the picker's Unicode symbols. */
+        fun onSearch()
+
         fun onClose()
     }
 
@@ -65,7 +68,7 @@ internal class SymGridPanelController(service: InputMethodService) {
         if (panel.isShown) panel.hide()
         shownPage = page
         val metrics = panel.overlayContext.resources.displayMetrics
-        val geometry = SymGridGeometry.forScreenWidth(metrics.widthPixels, metrics.density)
+        val geometry = SymGridGeometry.forScreenWidth(metrics.widthPixels, metrics.density, cornerSideInsetPx = panel.cornerInsets(aboveBottomPx).sidePx)
         val root = build(page, geometry, characters, listener)
         panel.show(root, heightPx = geometry.contentHeightPx, bottomMarginPx = aboveBottomPx)
     }
@@ -88,7 +91,7 @@ internal class SymGridPanelController(service: InputMethodService) {
             gravity = Gravity.START
             setPadding(geometry.sideInsetPx, 0, geometry.sideInsetPx, 0)
         }
-        SymGridModel.rows(toGridLetters(characters))
+        SymGridModel.rows(toGridLetters(characters), withSearch = page == SymGridPage.SYMBOLS)
             .forEachIndexed { rowIndex, row ->
                 val rowView = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -125,6 +128,7 @@ internal class SymGridPanelController(service: InputMethodService) {
         SymGridCell.Blank -> View(context)
         SymGridCell.Pencil -> chromeCell(context, geometry, "✏") { listener.onPencil() }
         SymGridCell.Globe -> chromeCell(context, geometry, "🌐") { listener.onGlobe() }
+        SymGridCell.Search -> chromeCell(context, geometry, "🔍") { listener.onSearch() }.apply { contentDescription = "Search symbols" }
     }
 
     private fun buildKeyCell(context: android.content.Context, page: SymGridPage, geometry: SymGridGeometry, cell: SymGridCell.Key, listener: Listener): View {

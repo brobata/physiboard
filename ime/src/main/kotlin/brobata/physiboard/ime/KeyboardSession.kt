@@ -24,6 +24,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.keys.ModifierKey
@@ -50,6 +51,7 @@ import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyCommands
 import brobata.physiboard.core.keys.SymChooserTarget
+import brobata.physiboard.core.keys.SymFieldBounce
 import brobata.physiboard.core.keys.SymPageChooser
 import brobata.physiboard.core.keys.SymPageId
 import brobata.physiboard.core.keys.SymPageMap
@@ -378,6 +380,8 @@ internal class KeyboardSession(
     /** layers-sym-alt.md SS5.10: the Sym page chooser a Sym double tap (or its command) opens. */
     private val symChooser = SymPageChooserController(service, handler)
     private var emojiPickerExpanded = false
+    /** `emoji_picker_kaomoji`: kaomoji exist on the emoji page and in the chooser only when on. */
+    private var kaomojiEnabled = false
     private var symAutoClose = true
     private var symAutoCloseOnTouch = true
     /** spec expansion-clipboard-pickers-launcher.md SS4.7: `emoji_default_skin_tone`. */
@@ -913,6 +917,9 @@ internal class KeyboardSession(
         clipboard.retentionMinutes = settings.expansion.clipboardRetentionMinutes
         clipboard.applyEnabledOnce(settings.expansion.clipboardHistoryEnabled)
         emojiPickerExpanded = settings.symPages.emojiPickerExpandedHeight
+        kaomojiEnabled = settings.symPages.kaomojiEnabled
+        // status-bar.md SS4, layers-sym-alt.md SS5.7: the Sym panels keep clear of the rounded corners.
+        brobata.physiboard.ime.actions.BottomOverlay.roundedCornersEnabled = settings.statusBar.roundedCornerInsets
         defaultSkinTone = settings.symPages.defaultSkinTone
         variationChooserEnabled = settings.keys.variationChooser
         symAutoClose = settings.symPages.autoClose
@@ -1082,12 +1089,12 @@ internal class KeyboardSession(
         if (restarting) {
             // spec: text-input.md line 85, 463, 497: a restart reclassifies and re-evaluates, but
             // does not wipe the word in progress; web fields restart input mid-word all the time.
-            pipeline.onRestartInput(field, profile.editorTrust, profile, openingText)
+            pipeline.onRestartInput(field, profile.editorTrust, profile, openingText, nowMs = SystemClock.uptimeMillis())
             // The pipeline keeps a pending long press across a restart (the key is still held);
             // the timer cancelled above is re-armed for it rather than leaving it to never fire.
             scheduleLongPressIfNeeded()
         } else {
-            pipeline.onStartInput(field, profile.editorTrust, profile, openingText)
+            pipeline.onStartInput(field, profile.editorTrust, profile, openingText, nowMs = SystemClock.uptimeMillis())
         }
         // An app that refuses to be resized for a keyboard draws its text box where the strip
         // already is; the strip gives up the space for the whole field. See [StripOverlap].
@@ -1161,7 +1168,7 @@ internal class KeyboardSession(
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         handler.removeCallbacksAndMessages(selectionSyncToken)
         currentFieldKind = FieldKind.NOT_EDITABLE
-        pipeline.onFinishInput()
+        pipeline.onFinishInput(nowMs = SystemClock.uptimeMillis())
         requestCandidatesShown(false)
         fieldChangeInProgress = true
         try {
@@ -1870,6 +1877,8 @@ internal class KeyboardSession(
         // to see; this synthesizes the real combo instead of the bare letter that used to reach it.
         result.forwardAsCtrlCombo?.let { key -> runCatching { sendCtrlCombo(key, event, withShift = stroke.meta.shift && currentFieldKind == FieldKind.RAW_MODE_APP) }.onFailure { error -> Log.e(TAG, "Ctrl combo synth crashed", error) } }
         result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
+        // layers-sym-alt.md SS5.2: Sym in an app whose text box just went away is meant for that box.
+        if (result.symWantsTheField) runCatching { Toast.makeText(service, SymFieldBounce.TAP_THE_BOX, Toast.LENGTH_SHORT).show() }
         if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
         syncSymPanels()
         // spec SS2.4: the lookup is "scheduled, coalesced to one run 24 ms after the last request: after every hardware key release that is not a pure modifier".
@@ -1977,7 +1986,7 @@ internal class KeyboardSession(
     private fun openSymPageChooser(): Boolean {
         if (!pipeline.fieldContext.isReallyEditable) return false
         if (quickLauncher.isOpen) quickLauncher.dismiss()
-        symChooser.show(SymPageChooser.entries(pipeline.layout.symPagesConfig, ImeSettings.customPageNames(lastSettings)), pipeline.settings.statusBar.theme, stripHeightPx()) { target ->
+        symChooser.show(SymPageChooser.entries(pipeline.layout.symPagesConfig, ImeSettings.customPageNames(lastSettings), kaomojiEnabled), pipeline.settings.statusBar.theme, stripHeightPx()) { target ->
             runCatching { openFromChooser(target) }.onFailure { error -> Log.e(TAG, "sym chooser pick crashed", error) }
         }
         return true
@@ -2087,6 +2096,16 @@ internal class KeyboardSession(
                 .onFailure { error -> Log.e(TAG, "sym grid globe crashed", error) }
         }
 
+        // layers-sym-alt.md SS5.7: the Symbols page's search opens the picker's Unicode symbols, typing into its search.
+        override fun onSearch() {
+            runCatching {
+                emojiPicker.presetMode(brobata.physiboard.core.actions.emoji.PickerMode.SYMBOLS, withSearch = true)
+                pipeline.openSymPage(SymPageId.EMOJI_PICKER.pageNumber)
+                syncSymPanels()
+                refreshCandidatesStrip()
+            }.onFailure { error -> Log.e(TAG, "symbol search crashed", error) }
+        }
+
         override fun onClose() = closeSymPanel()
     }
 
@@ -2110,7 +2129,7 @@ internal class KeyboardSession(
                 clipboardPanel.hide()
             }
             if (page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
-                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), defaultSkinTone, emojiPickerListener)
+                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), defaultSkinTone, emojiPickerListener, kaomojiEnabled)
             } else {
                 emojiPicker.hide()
             }

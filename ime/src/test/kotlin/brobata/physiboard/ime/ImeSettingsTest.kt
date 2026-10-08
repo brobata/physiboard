@@ -161,6 +161,7 @@ class ImeSettingsTest {
             symbolsEnabled = false,
             clipboardEnabled = true,
             emojiPickerEnabled = false,
+            gifEnabled = false,
             order = listOf(SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.SYMBOLS, SymPage.EMOJI_PICKER),
         )
         val layout = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(pages = stored)))

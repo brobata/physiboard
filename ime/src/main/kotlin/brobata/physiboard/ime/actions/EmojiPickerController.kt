@@ -25,6 +25,7 @@ import brobata.physiboard.core.actions.emoji.EmojiPickerGeometry as G
 import brobata.physiboard.core.actions.emoji.EmojiTabIcon
 import brobata.physiboard.core.actions.emoji.PickerMode
 import brobata.physiboard.core.actions.emoji.PickerModeGeometry as M
+import brobata.physiboard.core.actions.emoji.PickerModes
 import brobata.physiboard.core.actions.emoji.RecentEmojis
 import brobata.physiboard.core.actions.emoji.SearchCapture
 import brobata.physiboard.core.actions.emoji.SearchFieldState
@@ -93,8 +94,17 @@ internal class EmojiPickerController(
     private val searchRunnable = Runnable { runSearch() }
     private var searchGeneration = 0
 
-    /** spec SS4.3: what the page shows; kept across opens for the life of the keyboard. */
+    /** spec SS4.3: what the page shows. Every open starts on emoji ([PickerModes.openingMode]); only the open itself may ask for another mode. */
     private var mode: PickerMode = PickerMode.EMOJI
+
+    /** The mode the next open was asked for (the chooser's K or U, the Symbols page's search); used once. */
+    private var requestedMode: PickerMode? = null
+
+    /** Open the next show with the search field up and typing into it. */
+    private var requestedSearch = false
+
+    /** `emoji_picker_kaomoji`: whether kaomoji is a mode at all. */
+    private var kaomojiEnabled = false
 
     /** spec SS4.8: the symbol group on screen (Symbols mode draws one group at a time). */
     private var symbolGroup: String? = null
@@ -105,15 +115,24 @@ internal class EmojiPickerController(
 
     val isShown: Boolean get() = panel.isShown
 
-    fun show(expanded: Boolean, theme: StripTheme, aboveBottomPx: Int, skinTone: SkinTone, listener: Listener) {
+    fun show(expanded: Boolean, theme: StripTheme, aboveBottomPx: Int, skinTone: SkinTone, listener: Listener, kaomojiEnabled: Boolean = false) {
         this.listener = listener
         this.theme = theme
+        this.kaomojiEnabled = kaomojiEnabled
         if (panel.isShown) {
             // spec SS4.3: "a reopen straight after the same page merely scrolls to the top"
             if (lastOpenedPage4) scroll?.scrollTo(0, 0)
             return
         }
         this.skinTone = skinTone
+        // "it got rid of real emojis for kaomoji" (2026-10-07): the page used to reopen in whatever
+        // mode the last visit ended in. It is the Emoji page: emoji, unless this open asked otherwise.
+        mode = PickerModes.openingMode(requestedMode, kaomojiEnabled)
+        requestedMode = null
+        selectedTab = null
+        symbolGroup = null
+        val openSearch = requestedSearch
+        requestedSearch = false
         symbolsTriedThisOpen = false
         lastOpenedPage4 = true
         captureOn = false
@@ -135,6 +154,7 @@ internal class EmojiPickerController(
             if (searching) runSearch() else renderMode()
         }
         if (mode != PickerMode.EMOJI) renderMode()
+        if (openSearch) toggleSearch()
     }
 
     fun hide() {
@@ -474,15 +494,18 @@ internal class EmojiPickerController(
         val row = tabRow ?: return
         row.removeAllViews()
         row.addView(tabButton("🔍", alwaysEnabled = true) { toggleSearch() }, LinearLayout.LayoutParams(panel.dp(G.SEARCH_TOGGLE_DP), LinearLayout.LayoutParams.MATCH_PARENT))
-        row.addView(
-            tabButton(mode.buttonLabel, alwaysEnabled = true) { switchMode() }.apply {
-                background = GradientDrawable().apply {
-                    setColor(theme.button)
-                    cornerRadius = panel.dp(6).toFloat()
-                }
-            },
-            LinearLayout.LayoutParams(panel.dp(M.MODE_BUTTON_DP), LinearLayout.LayoutParams.MATCH_PARENT),
-        )
+        // spec SS4.3: no mode button while emoji is the only mode (kaomoji off, not in symbols).
+        if (PickerModes.showsModeButton(mode, kaomojiEnabled)) {
+            row.addView(
+                tabButton(mode.buttonLabel, alwaysEnabled = true) { switchMode() }.apply {
+                    background = GradientDrawable().apply {
+                        setColor(theme.button)
+                        cornerRadius = panel.dp(6).toFloat()
+                    }
+                },
+                LinearLayout.LayoutParams(panel.dp(M.MODE_BUTTON_DP), LinearLayout.LayoutParams.MATCH_PARENT),
+            )
+        }
         for ((id, label) in tabs) {
             val button = tabButton(label, alwaysEnabled = false) { onTab(id) }
             button.tag = id
@@ -530,18 +553,19 @@ internal class EmojiPickerController(
      * (P Emoji, K Kaomoji, U Unicode symbols). Before [show] it only sets the mode the page opens
      * in; on an open page it switches like the mode button.
      */
-    fun presetMode(target: PickerMode) {
-        if (mode == target) return
+    fun presetMode(target: PickerMode, withSearch: Boolean = false) {
         if (!panel.isShown) {
-            mode = target
-            selectedTab = null
+            requestedMode = target
+            requestedSearch = withSearch
             return
         }
-        switchMode(target)
+        val resolved = PickerModes.openingMode(target, kaomojiEnabled)
+        if (mode != resolved) switchMode(resolved)
+        if (withSearch && searchPanel?.visibility != View.VISIBLE) toggleSearch()
     }
 
     /** spec SS4.3: the mode button cycles Emoji, Kaomoji, Symbols; a query being typed is re-run in the new mode. */
-    private fun switchMode(target: PickerMode = mode.next()) {
+    private fun switchMode(target: PickerMode = PickerModes.next(mode, kaomojiEnabled)) {
         mode = target
         selectedTab = null
         pendingRecentsRedraw = false
