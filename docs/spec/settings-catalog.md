@@ -380,7 +380,7 @@ section "On-screen Keyboard") is not reachable from any row in 2.x.
 | `impact_defaults_applied` | boolean marker | false | Section 4.3 ran |
 | `prefs_migrated_v2` | boolean marker | false | Section 5 ran |
 | `v2_migration_notice_seen` | boolean marker | false | The rename notice was dismissed |
-| `settings_baseline_version` | int marker | 0 | Which baseline version has been applied; 3.0's current is 8 (version 8 sets `sym_pages_config` to Emoji, Symbols, GIFs and `emoji_picker_kaomoji` false) |
+| `settings_baseline_version` | int marker | 0 | Which baseline version has been applied; 3.0's current is 8 (version 8 sets `sym_pages_config` to Emoji, Symbols, GIFs, except on a store the 2.x importer filled in the same start, and `emoji_picker_kaomoji` false) |
 
 ### 2.16 Rows that exist only in the restore schema
 

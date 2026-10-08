@@ -186,8 +186,9 @@ sets `{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":false,
 "clipboard","emoji"]}`. On a fresh Titan the cycle is therefore: no page, Emoji Picker,
 Symbols, no page. `device` is absent from that order and is appended last, disabled.
 
-3.0 (baseline 8, 2026-10-07): a fresh install, and once every existing install through the
-settings baseline, has Emoji (the picker), Symbols and GIFs on, in that order, and every other
+3.0 (baseline 8, 2026-10-07): a fresh install, and once every existing 3.0 install through
+the settings baseline (not a store the 2.x importer filled in the same start, whose pages and
+order are the user's own), has Emoji (the picker), Symbols and GIFs on, in that order, and every other
 page off: `symPageOrder` `["emoji_picker","symbols","gif","clipboard","emoji","custom1",
 "custom2","custom3"]`. Sym therefore steps Emoji, Symbols, GIFs, closed. The letter-key Emoji
 page stays in the list, off: it is still the one-press way to an emoji on each key and the
@@ -417,9 +418,11 @@ just clears the flags. 3.0 makes two exceptions:
 - **A text box that went away.** When the app's editable field goes (the field finishes, or a
   start or restart replaces it with a field that is not editable), the keyboard notes the app,
   the time and the page that was open; a restart into a field that is not editable also closes
-  the page, which has nothing left to type into. For 15 seconds after, in that same app, a Sym
-  press with no editable field does not arm the launcher shortcuts: it is consumed and the
-  toast "Tap the text box, then Sym" shows. When an editable field of that app starts again
+  the page, which has nothing left to type into; the window hiding counts the same, since the
+  system may hide it before it finishes the field. When a page was open as the box went, for 15
+  seconds after, in that same app, a Sym press with no editable field does not arm the launcher
+  shortcuts: it is consumed and the toast "Tap the text box, then Sym" shows. A box left with no
+  page open (Back to an app's list) leaves Sym the launcher key there at once. When an editable field of that app starts again
   within the 15 seconds, the noted page reopens. Found on the Titan (2026-10-07): with the emoji
   page open in Messages, a screenshot took window focus, Messages came back with no focused
   text box (Android logs `HIDE_SAME_WINDOW_FOCUSED_WITHOUT_EDITOR`), the page closed, and the
