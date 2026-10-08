@@ -18,7 +18,9 @@ data class FieldLoss(val packageName: String, val atMs: Long, val openPage: Int)
  * shortcut key to launch". To the person holding the phone the box was still on screen and Sym
  * had simply broken.
  *
- * Two rules come out of it, both limited to the same app and [WINDOW_MS] after the box went:
+ * Two rules come out of it, both limited to the same app, [WINDOW_MS] after the box went, and a
+ * box that went with a Sym page open (leaving a box in the ordinary way, Back to an app's list,
+ * keeps Sym the launcher key there):
  * - Sym does not arm the launcher shortcuts there ([symWantsTheField]); the keyboard says to tap
  *   the box instead, since a Sym page has nothing to type into without one.
  * - When that app's text box comes back, the page that was open comes back with it
@@ -49,7 +51,7 @@ object SymFieldBounce {
 
     /** Whether a Sym press at [nowMs] with no text box, in [packageName], is meant for the box that just went. */
     fun symWantsTheField(loss: FieldLoss?, packageName: String?, nowMs: Long): Boolean =
-        loss != null && !packageName.isNullOrEmpty() && loss.packageName == packageName && within(loss, nowMs)
+        loss != null && loss.openPage != 0 && !packageName.isNullOrEmpty() && loss.packageName == packageName && within(loss, nowMs)
 
     private fun within(loss: FieldLoss, nowMs: Long): Boolean = nowMs - loss.atMs in 0..WINDOW_MS
 

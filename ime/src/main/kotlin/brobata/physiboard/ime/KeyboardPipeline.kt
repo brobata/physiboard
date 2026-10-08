@@ -1255,6 +1255,9 @@ internal class KeyboardPipeline(
 
     fun onWindowHidden(nowMs: Long): Boolean {
         if (StripDip.skipsWindowHidden(dip, nowMs)) return false
+        // layers-sym-alt.md SS5.2: the system may hide the window before it finishes the field
+        // (the screenshot case); the page open at the hide is the one to bring back.
+        noteFieldLost(nowMs)
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
         textInputState = textInputState.afterExternalCursorMove(null)

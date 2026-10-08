@@ -1140,8 +1140,8 @@ internal class KeyboardSession(
             pipeline.restoreSymPage(pendingSymPageRestore)
             settingsSource?.write { stored -> stored.copy(symPages = stored.symPages.copy(restoreSymPage = 0)) }
         }
-        syncSymPanels()
         refreshCandidatesStrip()
+        syncSymPanels()
         // spec trackpad-caret-nav.md SS3.3: re-attached "whenever the editor starts".
         attachKeyboardSwipeListener()
     }
@@ -1827,6 +1827,7 @@ internal class KeyboardSession(
         // maintainer could out-type this keyboard (2026-09-27) and guessing at the cause twice
         // was one time too many.
         val tStart = System.nanoTime()
+        val symPageBefore = pipeline.currentSymPage
         // A key coming back up changes no text: its work is modifier bookkeeping and the
         // long-press timer, neither of which reads the field. Asking the app for its text again
         // there doubled what every character cost, 7 ms of it for an up that applied nothing
@@ -1880,6 +1881,10 @@ internal class KeyboardSession(
         // layers-sym-alt.md SS5.2: Sym in an app whose text box just went away is meant for that box.
         if (result.symWantsTheField) runCatching { Toast.makeText(service, SymFieldBounce.TAP_THE_BOX, Toast.LENGTH_SHORT).show() }
         if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
+        // A Sym release that opens or closes a page has no ops, but the strip must follow it
+        // (status-bar.md 3.5: it collapses under a page), and before the panel is placed.
+        val symPageChanged = pipeline.currentSymPage != symPageBefore
+        if (symPageChanged) refreshCandidatesStrip()
         syncSymPanels()
         // spec SS2.4: the lookup is "scheduled, coalesced to one run 24 ms after the last request: after every hardware key release that is not a pure modifier".
         if (stroke.edge == KeyEdge.UP && stroke.key !is KeyId.Modifier) {
@@ -1887,7 +1892,7 @@ internal class KeyboardSession(
             handler.postDelayed(expansionRefreshRunnable, SnippetExpansion.LOOKUP_DELAY_MS)
         }
         // The strip only changes when something was typed; a bare key-up leaves it as it was.
-        if (stroke.edge == KeyEdge.DOWN || result.ops.isNotEmpty()) refreshCandidatesStrip()
+        if (!symPageChanged && (stroke.edge == KeyEdge.DOWN || result.ops.isNotEmpty())) refreshCandidatesStrip()
         val totalMs = (System.nanoTime() - tStart) / 1_000_000.0
         if (totalMs >= SLOW_KEYSTROKE_MS) {
             Log.w(
@@ -2001,8 +2006,8 @@ internal class KeyboardSession(
             else -> Unit
         }
         pipeline.openSymPage(target.page.pageNumber)
-        syncSymPanels()
         refreshCandidatesStrip()
+        syncSymPanels()
     }
 
     private val emojiPickerListener = object : EmojiPickerController.Listener {
@@ -2055,8 +2060,8 @@ internal class KeyboardSession(
 
     private fun closeSymPanel() {
         pipeline.closeSymPage()
-        syncSymPanels()
         refreshCandidatesStrip()
+        syncSymPanels()
     }
 
     private val symGridListener = object : SymGridPanelController.Listener {
@@ -2101,8 +2106,8 @@ internal class KeyboardSession(
             runCatching {
                 emojiPicker.presetMode(brobata.physiboard.core.actions.emoji.PickerMode.SYMBOLS, withSearch = true)
                 pipeline.openSymPage(SymPageId.EMOJI_PICKER.pageNumber)
-                syncSymPanels()
                 refreshCandidatesStrip()
+                syncSymPanels()
             }.onFailure { error -> Log.e(TAG, "symbol search crashed", error) }
         }
 
@@ -2120,29 +2125,33 @@ internal class KeyboardSession(
     private fun syncSymPanels() {
         runCatching {
             val page = pipeline.currentSymPage
+            // The strip collapses under every Sym page (status-bar.md 3.5), so a page sits on the
+            // bottom edge whatever the strip measured a moment ago; reading its height here placed
+            // the first page of a session a strip's height up, clear of the corner padding.
+            val pageBottomPx = 0
             if (page > 0 && quickLauncher.isOpen) quickLauncher.dismiss()
             val theme = pipeline.settings.statusBar.theme
             if (page == brobata.physiboard.core.strip.SYM_PAGE_CLIPBOARD) {
                 clipboard.cleanup(forced = true)
-                clipboardPanel.show(clipboard.history, theme, stripHeightPx(), clipboardPanelListener, notSaving = !privacy.learningAllowed)
+                clipboardPanel.show(clipboard.history, theme, pageBottomPx, clipboardPanelListener, notSaving = !privacy.learningAllowed)
             } else {
                 clipboardPanel.hide()
             }
             if (page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
-                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), defaultSkinTone, emojiPickerListener, kaomojiEnabled)
+                emojiPicker.show(emojiPickerExpanded, theme, pageBottomPx, defaultSkinTone, emojiPickerListener, kaomojiEnabled)
             } else {
                 emojiPicker.hide()
             }
             if (page == SymPageId.GIF.pageNumber) {
                 // layers-sym-alt.md SS4.5: opened from the chooser while switched off for the cycle,
                 // the page asks KLIPY for nothing until the user searches.
-                gifPage.show(theme, stripHeightPx(), gifPageListener, loadAtOnce = pipeline.layout.symPagesConfig.gifEnabled)
+                gifPage.show(theme, pageBottomPx, gifPageListener, loadAtOnce = pipeline.layout.symPagesConfig.gifEnabled)
             } else {
                 gifPage.hide()
             }
             val gridPage = SymGridPage.forPageNumber(page)
             if (gridPage != null) {
-                symGridPanel.show(gridPage, symGridCharacters(gridPage), theme, stripHeightPx(), symGridListener)
+                symGridPanel.show(gridPage, symGridCharacters(gridPage), theme, pageBottomPx, symGridListener)
             } else {
                 symGridPanel.hide()
             }

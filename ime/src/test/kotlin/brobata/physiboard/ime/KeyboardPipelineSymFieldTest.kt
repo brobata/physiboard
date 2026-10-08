@@ -117,4 +117,28 @@ class KeyboardPipelineSymFieldTest {
         q.onStartInput(noBox, appProfile = messages, nowMs = 1_050)
         assertEquals(30_000L, tap(q, 30_000).powerModeArmedAtMs)
     }
+
+    @Test
+    fun `the window hiding before the field finishes still brings the page back`() {
+        val p = pipeline()
+        p.onStartInput(editable, appProfile = messages, nowMs = 0)
+        tap(p, 1_000)
+        assertEquals(emoji, p.currentSymPage)
+        p.onWindowHidden(nowMs = 5_000)
+        assertEquals(0, p.currentSymPage)
+        p.onFinishInput(nowMs = 5_020)
+        p.onStartInput(noBox, appProfile = messages, nowMs = 5_050)
+        assertTrue(tap(p, 6_000).symWantsTheField)
+        p.onStartInput(editable, appProfile = messages, nowMs = 8_000)
+        assertEquals(emoji, p.currentSymPage)
+    }
+
+    @Test
+    fun `leaving a box with no page open keeps Sym the launcher key in that app`() {
+        val p = pipeline()
+        p.onStartInput(editable, appProfile = messages, nowMs = 0)
+        p.onFinishInput(nowMs = 1_000)
+        p.onStartInput(noBox, appProfile = messages, nowMs = 1_050)
+        assertEquals(2_000L, tap(p, 2_000).powerModeArmedAtMs)
+    }
 }

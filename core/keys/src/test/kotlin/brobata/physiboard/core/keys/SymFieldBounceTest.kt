@@ -30,10 +30,10 @@ class SymFieldBounceTest {
     }
 
     @Test
-    fun `a box that went with no page open restores nothing but still keeps Sym off the launcher`() {
+    fun `a box left with no page open (Back to the conversation list) leaves Sym the launcher key`() {
         val loss = SymFieldBounce.onEditorLost(null, messages, openPage = 0, nowMs = 0)
         assertEquals(0, SymFieldBounce.pageToRestore(loss, messages, nowMs = 100))
-        assertTrue(SymFieldBounce.symWantsTheField(loss, messages, nowMs = 100))
+        assertFalse(SymFieldBounce.symWantsTheField(loss, messages, nowMs = 100))
     }
 
     @Test
