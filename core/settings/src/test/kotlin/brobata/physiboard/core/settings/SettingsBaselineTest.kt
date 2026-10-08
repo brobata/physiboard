@@ -144,4 +144,18 @@ class SettingsBaselineTest {
         assertEquals(false, corrected.kaomojiEnabled)
         assertEquals(SettingsCodec.fromMap(emptyMap()).symPages.pages, pages, "a fresh install gets the same list")
     }
+
+    @Test
+    fun `version 8 leaves the pages a 2x import just carried over`() {
+        val imported = mapOf(
+            SettingsKeys.SYM_PAGES_CONFIG to """{"emojiEnabled":true,"clipboardEnabled":true,"symPageOrder":["clipboard","emoji"]}""",
+            "legacy_import_state" to "imported",
+        )
+        val result = SettingsBaseline.apply(imported, storedVersion = 0)
+        assertEquals(imported[SettingsKeys.SYM_PAGES_CONFIG], result[SettingsKeys.SYM_PAGES_CONFIG])
+        assertEquals("false", result[SettingsKeys.EMOJI_PICKER_KAOMOJI])
+        // An install that imported long ago and has run 3.0 since is moved like any other.
+        val later = SettingsBaseline.apply(imported, storedVersion = 7)
+        assertEquals(false, later[SettingsKeys.SYM_PAGES_CONFIG] == imported[SettingsKeys.SYM_PAGES_CONFIG])
+    }
 }

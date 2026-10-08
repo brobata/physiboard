@@ -60,12 +60,12 @@ class LegacyImporter(private val context: Context, private val store: SettingsSt
         const val LEGACY_PREFS_NAME: String = "physiboard_prefs"
 
         /** The markers, outside the schema's vocabulary so the codec ignores them and [SettingsStore.update] preserves them. */
-        const val STATE_KEY: String = "legacy_import_state"
+        const val STATE_KEY: String = brobata.physiboard.core.settings.SettingsBaseline.LEGACY_IMPORT_STATE_KEY
         const val AT_KEY: String = "legacy_import_at"
         const val CARRIED_KEY: String = "legacy_import_carried"
         const val IGNORED_KEY: String = "legacy_import_ignored"
         const val SIDE_FILES_KEY: String = "legacy_import_side_files"
-        const val STATE_IMPORTED: String = "imported"
+        const val STATE_IMPORTED: String = brobata.physiboard.core.settings.SettingsBaseline.LEGACY_IMPORT_STATE_IMPORTED
         const val STATE_ABSENT: String = "absent"
 
         /**

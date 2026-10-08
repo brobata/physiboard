@@ -78,6 +78,17 @@ object SettingsBaseline {
     )
 
     /**
+     * Keys a version leaves alone on a store the 2.x importer filled in this same start (stored
+     * version 0 and `legacy_import_state` "imported"): version 8 fixes a 3.0 default the dev build
+     * stored, not a 2.x user's own choice of pages and order, which the import carried over.
+     */
+    val KEEP_ON_FRESH_IMPORT: Map<Int, Set<String>> = mapOf(8 to setOf(SettingsKeys.SYM_PAGES_CONFIG))
+
+    /** The 2.x importer's marker (`:app`'s LegacyImporter.STATE_KEY) and its value after an import. */
+    const val LEGACY_IMPORT_STATE_KEY: String = "legacy_import_state"
+    const val LEGACY_IMPORT_STATE_IMPORTED: String = "imported"
+
+    /**
      * Version 8's page list, spelt out rather than read from [SymPagesConfig]'s defaults, so a
      * later change to those defaults cannot change what version 8 wrote.
      */
@@ -116,11 +127,14 @@ object SettingsBaseline {
         storedVersion: Int,
         corrections: Map<Int, Map<String, String>> = CORRECTIONS,
         toVersion: Int = CURRENT_VERSION,
+        keepOnFreshImport: Map<Int, Set<String>> = KEEP_ON_FRESH_IMPORT,
     ): Map<String, String> {
         if (storedVersion >= toVersion) return flatMap
+        val freshImport = storedVersion == 0 && flatMap[LEGACY_IMPORT_STATE_KEY] == LEGACY_IMPORT_STATE_IMPORTED
         val result = flatMap.toMutableMap()
         for (version in (storedVersion + 1)..toVersion) {
-            corrections[version]?.let { result.putAll(it) }
+            val kept = if (freshImport) keepOnFreshImport[version].orEmpty() else emptySet()
+            corrections[version]?.let { table -> table.forEach { (key, value) -> if (key !in kept) result[key] = value } }
         }
         result[SettingsKeys.BASELINE_VERSION] = toVersion.toString()
         return result
