@@ -89,7 +89,8 @@ object SearchCatalog {
         SearchEntry("Configure Fn layer key mappings", "Fn Layer", Routes.FN_LAYER, "fn layer key grid mapping keycode action command"),
         // layers-sym-alt.md SS5.9: "Customize SYM Keyboard".
         SearchEntry("Customize SYM Keyboard", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym emoji symbols pages order edit auto-close picker"),
-        SearchEntry("Arrange SYM pages order", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym pages order emoji symbols clipboard picker cycle"),
+        SearchEntry("Sym pages", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym pages order emoji symbols gif gifs clipboard picker cycle reorder hide switch"),
+        SearchEntry("Kaomoji on the Emoji page", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "kaomoji text faces emoticons emoji picker mode"),
         SearchEntry("Auto-Close SYM Layout", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym auto close layout one-shot"),
         SearchEntry("Larger emoji picker", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji picker height expanded larger sym"),
         SearchEntry("Default skin tone", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "emoji skin tone colour color fitzpatrick hand people default"),

@@ -58,8 +58,8 @@ import brobata.physiboard.device.titan.TitanLayouts
  * [initialKeyCode], [openPickerImmediately], [returnAfterPicker]).
  *
  * The Device page (5) does not exist in 3.0 ([SymPage]'s own KDoc: dropped), so this screen's
- * "Arrange SYM pages order" has no Device row, pencil or "under construction" badge; it has the
- * GIF page (SS4.5) instead, off by default and labelled as the one page that goes online, and
+ * "Sym pages" list has no Device row, pencil or "under construction" badge; it has the
+ * GIF page (SS4.5) instead, on by default and labelled as the one page that goes online, and
  * the user's own three pages (SS4.6), each with a pencil that opens its name and grid.
  */
 @Composable
@@ -108,26 +108,45 @@ fun CustomizeSymKeyboardScreen(
     if (page == null) {
         SettingsScreenScaffold(title = "Customize SYM Keyboard", onBack = { leaveNormally(onBack) }) {
             RowList {
-                item { SectionHeader("Arrange SYM pages order") }
+                item { SectionHeader("Sym pages") }
                 item {
                     Text(
-                        "Drag or use the arrows to set the cycle order. The switch only controls whether an item appears in the cycle. My page 1 to 3 are your own key layers: tap ✏ to fill one, then switch it on.",
+                        "Each Sym press opens the next page that is switched on, in this order; after the last one Sym closes. Use the arrows to reorder and the switch to add or remove a page. A page that is off still opens from the chooser (Sym twice, then its letter). My page 1 to 3 are your own key layers: tap ✏ to fill one, then switch it on.",
                         style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+                item {
+                    val steps = symPages.pages.order.filter { enabledFor(symPages.pages, it) }.map { displayName(it, symPages.customPages) }
+                    Text(
+                        "Sym: " + (steps + "closed").joinToString(" → "),
+                        style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     )
                 }
                 items(symPages.pages.order.size) { index ->
                     val entry = symPages.pages.order[index]
+                    val enabledEntry = enabledFor(symPages.pages, entry)
                     SymPageOrderRow(
                         page = entry,
                         name = displayName(entry, symPages.customPages),
-                        enabled = enabledFor(symPages.pages, entry),
+                        position = if (enabledEntry) symPages.pages.order.take(index + 1).count { enabledFor(symPages.pages, it) } else null,
+                        enabled = enabledEntry,
                         canMoveUp = index > 0,
                         canMoveDown = index < symPages.pages.order.lastIndex,
                         onMoveUp = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index - 1)))) } },
                         onMoveDown = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index + 1)))) } },
                         onToggleEnabled = { checked -> controller.update { it.copy(symPages = it.symPages.copy(pages = withEnabled(it.symPages.pages, entry, checked))) } },
                         onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS || customIndex(entry) != null) ({ editingPage = entry }) else null,
+                    )
+                }
+                item {
+                    // expansion-clipboard-pickers-launcher.md SS4.3: kaomoji only on request.
+                    SwitchRow(
+                        label = "Kaomoji on the Emoji page",
+                        description = "Adds a button on the Emoji page that switches to text faces like (^_^), and a K row in the chooser. Off: the Emoji page only ever shows emoji.",
+                        checked = symPages.kaomojiEnabled,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(kaomojiEnabled = checked)) } },
                     )
                 }
                 item {
@@ -397,10 +416,10 @@ private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean):
 }
 
 private fun displayName(page: SymPage, customPages: List<CustomSymPage>): String = when (page) {
-    SymPage.EMOJI -> "Emoji"
+    SymPage.EMOJI -> "Emoji keys"
     SymPage.SYMBOLS -> "Symbols"
     SymPage.CLIPBOARD -> "Clipboard"
-    SymPage.EMOJI_PICKER -> "Emoji Picker"
+    SymPage.EMOJI_PICKER -> "Emoji"
     SymPage.GIF -> "GIFs"
     SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3 -> {
         val index = customIndex(page)!!
@@ -413,16 +432,20 @@ private fun displayName(page: SymPage, customPages: List<CustomSymPage>): String
  * rest are content panels. The GIF page says it goes online (SS4.5), since it is the only one.
  */
 private fun kindLabel(page: SymPage): String = when (page) {
-    SymPage.EMOJI, SymPage.SYMBOLS -> "Key layer"
-    SymPage.GIF -> "Panel · searches KLIPY online"
+    SymPage.EMOJI_PICKER -> "Every emoji, with search and recents · chooser letter P"
+    SymPage.SYMBOLS -> "A symbol on each letter key, 🔍 for every symbol · chooser letter S"
+    SymPage.GIF -> "GIF search, online only while the page is open · chooser letter G"
+    SymPage.CLIPBOARD -> "Your recent copies · chooser letter C"
+    SymPage.EMOJI -> "An emoji on each letter key · chooser letter E"
     SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3 -> "Key layer · your own · chooser letter ${chooserLetter(page)}"
-    else -> "Panel"
 }
 
 @Composable
 private fun SymPageOrderRow(
     page: SymPage,
     name: String,
+    /** Where Sym reaches this page (1 for the first press), or null while it is off. */
+    position: Int?,
     enabled: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -436,7 +459,7 @@ private fun SymPageOrderRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.bodyLarge)
+            Text(if (position != null) "$position. $name" else name, style = MaterialTheme.typography.bodyLarge)
             Text(kindLabel(page), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (onEdit != null) {
