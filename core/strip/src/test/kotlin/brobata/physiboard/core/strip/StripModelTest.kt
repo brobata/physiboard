@@ -33,9 +33,9 @@ class StripModelTest {
     }
 
     @Test
-    fun `SS17 a Sym page open hides the row but shows the strip even when the mode hides it`() {
-        val model = StripModel.build(inputs("a").copy(modifiers = ModifierIndicatorInput(symPage = 2)), settings.copy(visibility = StripVisibilityMode.NEVER))
-        assertEquals(StripFootprint.SHOWN, model.footprint)
+    fun `a Sym page open hides the row and the strip with its buttons, whatever the mode`() {
+        val model = StripModel.build(inputs("a").copy(modifiers = ModifierIndicatorInput(symPage = 2)), settings.copy(visibility = StripVisibilityMode.ALWAYS))
+        assertEquals(StripFootprint.COLLAPSED, model.footprint)
         assertEquals(SuggestionRow.Hidden, model.row)
     }
 

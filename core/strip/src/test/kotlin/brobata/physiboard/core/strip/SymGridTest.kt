@@ -80,4 +80,16 @@ class SymGridTest {
         assertTrue(rows[2][4] is SymGridCell.Pencil)
         assertTrue(rows[2][5] is SymGridCell.Globe)
     }
+
+    @Test
+    fun `the Symbols page puts its search in row 2's spare cell, and corner insets narrow the keys`() {
+        val rows = SymGridModel.rows(emptyMap(), withSearch = true)
+        assertEquals(SymGridCell.Search, rows[1].last())
+        assertEquals(SymGridCell.Blank, rows[2].last())
+        assertEquals(SymGridCell.Blank, SymGridModel.rows(emptyMap())[1].last())
+        val plain = SymGridGeometry.forScreenWidth(1076, 1.875f)
+        val inset = SymGridGeometry.forScreenWidth(1076, 1.875f, cornerSideInsetPx = 33)
+        assertTrue(inset.keyWidthPx * 10 + 9 * inset.spacingPx + 2 * inset.sideInsetPx <= 1076 - 66)
+        assertTrue(inset.keyWidthPx < plain.keyWidthPx)
+    }
 }

@@ -118,11 +118,12 @@ data class SymGridGeometry(
         /** spec SS5.7: "Surface height: the measured grid height, or 600 dp until measured." A caller that must give a window manager a height before this geometry can be computed (no screen width known yet) uses this as that placeholder. */
         const val SURFACE_HEIGHT_FALLBACK_DP: Int = 600
 
-        fun forScreenWidth(screenWidthPx: Int, pxPerDp: Float): SymGridGeometry {
+        /** [cornerSideInsetPx] is the extra room each side gives the display's rounded corners ([RoundedCornerInsets]). */
+        fun forScreenWidth(screenWidthPx: Int, pxPerDp: Float, cornerSideInsetPx: Int = 0): SymGridGeometry {
             fun dp(value: Double): Int = (value * pxPerDp).toInt()
             val keyHeightPx = dp(KEY_HEIGHT_DP.toDouble())
             val spacingPx = dp(SPACING_DP.toDouble())
-            val keyWidthPx = (screenWidthPx - dp(SIDE_INSET_DP.toDouble()) - (SymGridLayout.COLUMNS - 1) * spacingPx) / SymGridLayout.COLUMNS
+            val keyWidthPx = (screenWidthPx - 2 * cornerSideInsetPx - dp(SIDE_INSET_DP.toDouble()) - (SymGridLayout.COLUMNS - 1) * spacingPx) / SymGridLayout.COLUMNS
             return SymGridGeometry(
                 keyHeightPx = keyHeightPx,
                 keyWidthPx = keyWidthPx,
@@ -148,6 +149,9 @@ sealed class SymGridCell {
     data object Blank : SymGridCell()
     data object Pencil : SymGridCell()
     data object Globe : SymGridCell()
+
+    /** The Symbols page's way into the picker's Unicode symbol search, in row 2's spare cell. */
+    data object Search : SymGridCell()
 }
 
 /** Builds what the grid draws for one open page. spec SS5.7. */
@@ -158,11 +162,13 @@ object SymGridModel {
      * concern since this module does not know `:core:keys`' types). A letter missing from it
      * draws with no big character and [SymGridCell.Key.isTappable] false.
      */
-    fun rows(characters: Map<SymGridLetter, String>): List<List<SymGridCell>> = SymGridLayout.rows.map { row ->
+    fun rows(characters: Map<SymGridLetter, String>, withSearch: Boolean = false): List<List<SymGridCell>> = SymGridLayout.rows.mapIndexed { rowIndex, row ->
         row.map { slot ->
             when (slot) {
                 is SymGridSlot.LetterKey -> SymGridCell.Key(slot.letter, slot.letter.letter, characters[slot.letter])
-                SymGridSlot.Blank -> SymGridCell.Blank
+                // Row 2's spare cell, after L: the search on the Symbols page (layers-sym-alt.md
+                // SS5.7); row 3's spare cell stays blank under the close button.
+                SymGridSlot.Blank -> if (withSearch && rowIndex == 1) SymGridCell.Search else SymGridCell.Blank
                 SymGridSlot.Pencil -> SymGridCell.Pencil
                 SymGridSlot.Globe -> SymGridCell.Globe
             }

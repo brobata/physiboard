@@ -167,7 +167,40 @@ enum class PickerMode(val buttonLabel: String, val searchHint: String, val noRes
     SYMBOLS("Symbols", "Search symbols...", "No symbols found", "recent_symbols"),
     ;
 
-    fun next(): PickerMode = entries[(ordinal + 1) % entries.size]
+}
+
+/**
+ * Which picker modes the emoji page offers, and which one it opens in. spec:
+ * expansion-clipboard-pickers-launcher.md SS4.3.
+ *
+ * The page is the Emoji page: it opens on emoji every time, whatever mode the last visit ended in
+ * ("it got rid of real emojis for kaomoji", 2026-10-07: the page used to keep its last mode for
+ * the life of the keyboard, so one tap of the mode button turned the Emoji page into a kaomoji
+ * page for good). Kaomoji is a mode only when the user switched it on (`emoji_picker_kaomoji`);
+ * Unicode symbols is never in the mode button's cycle, and is reached from the Symbols page's
+ * search and the chooser's U row.
+ */
+object PickerModes {
+    /** The modes the mode button steps through. */
+    fun cycle(kaomojiEnabled: Boolean): List<PickerMode> =
+        if (kaomojiEnabled) listOf(PickerMode.EMOJI, PickerMode.KAOMOJI) else listOf(PickerMode.EMOJI)
+
+    /** The mode a fresh open shows: emoji, unless this open asked for symbols, or for kaomoji while they are on. */
+    fun openingMode(requested: PickerMode?, kaomojiEnabled: Boolean): PickerMode = when (requested) {
+        PickerMode.SYMBOLS -> PickerMode.SYMBOLS
+        PickerMode.KAOMOJI -> if (kaomojiEnabled) PickerMode.KAOMOJI else PickerMode.EMOJI
+        else -> PickerMode.EMOJI
+    }
+
+    /** The mode button's next mode; from a mode outside the cycle (symbols) it goes back to emoji. */
+    fun next(current: PickerMode, kaomojiEnabled: Boolean): PickerMode {
+        val modes = cycle(kaomojiEnabled)
+        val index = modes.indexOf(current)
+        return if (index < 0) PickerMode.EMOJI else modes[(index + 1) % modes.size]
+    }
+
+    /** No mode button when it would have nowhere to go: emoji alone. */
+    fun showsModeButton(current: PickerMode, kaomojiEnabled: Boolean): Boolean = next(current, kaomojiEnabled) != current
 }
 
 /** The kaomoji and symbol grids' geometry. spec SS4.3. */

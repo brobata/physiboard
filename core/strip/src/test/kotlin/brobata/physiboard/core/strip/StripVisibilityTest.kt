@@ -62,11 +62,11 @@ class StripVisibilityTest {
     }
 
     @Test
-    fun `SS17 a Sym page shows on a strip the mode hides, and it collapses again when the page closes`() {
-        val hidden = StripVisibility.footprint(StripVisibilityMode.NEVER, emptySet(), "a", symPageOpen = false, navModeLatched = false)
-        assertEquals(StripFootprint.COLLAPSED, hidden)
-        val withPage = StripVisibility.footprint(StripVisibilityMode.NEVER, emptySet(), "a", symPageOpen = true, navModeLatched = false)
-        assertEquals(StripFootprint.SHOWN, withPage)
+    fun `an open Sym page never brings the strip or its buttons up under it, whatever the mode`() {
+        for (mode in StripVisibilityMode.entries) {
+            val withPage = StripVisibility.footprint(mode, setOf("a"), "a", symPageOpen = true, navModeLatched = false)
+            assertEquals(StripFootprint.COLLAPSED, withPage, "mode $mode")
+        }
     }
 
     @Test
@@ -83,13 +83,13 @@ class StripVisibilityTest {
 
     /** The maintainer's terminal: an empty black band across the bottom, because no slot can ever fill there. */
     @Test
-    fun `a field that offers no suggestions collapses the strip, unless a Sym page is open`() {
+    fun `a field that offers no suggestions collapses the strip, and so does an open Sym page`() {
         fun call(offers: Boolean, sym: Boolean = false, hide: Boolean = true) = StripVisibility.footprint(
             StripVisibilityMode.ALWAYS, emptySet(), "com.android.chrome",
             symPageOpen = sym, navModeLatched = false, fieldOffersSuggestions = offers, hideWhereNothingToSuggest = hide,
         )
         assertEquals(StripFootprint.COLLAPSED, call(offers = false))
-        assertEquals(StripFootprint.SHOWN, call(offers = false, sym = true))
+        assertEquals(StripFootprint.COLLAPSED, call(offers = true, sym = true))
         assertEquals(StripFootprint.SHOWN, call(offers = false, hide = false))
         assertEquals(StripFootprint.SHOWN, call(offers = true))
     }

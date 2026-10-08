@@ -27,9 +27,8 @@ object StripVisibility {
 
     /**
      * The whole footprint decision. spec SS3.4: nav mode latched makes the root invisible with
-     * the window up; SS3.5's exception: "a Sym page still shows while the mode says hidden, and
-     * the strip collapses again when the page closes" (SS17, "Strip hidden by mode, user presses
-     * Sym").
+     * the window up. 2.x drew the Sym pages inside the strip and so showed it for an open page
+     * whatever the mode; 3.0's pages are panels of their own and the strip collapses under them.
      *
      * SPEC GAP: nothing says which wins when nav mode is latched and a Sym page is open at once.
      * Nav mode wins here, since it is the only case where the strip must contribute no height for
@@ -49,7 +48,10 @@ object StripVisibility {
         // Ahead of the Sym exception: a page the user cannot see under the app's own message box
         // is worse than no page. See [StripOverlap].
         fieldDrawsUnderStrip -> StripFootprint.COLLAPSED
-        symPageOpen -> StripFootprint.SHOWN
+        // 3.0: every Sym page is its own panel at the bottom of the screen, so the strip (and the
+        // buttons it carries) has no business under one: the maintainer saw the clipboard and
+        // microphone buttons under the Symbols page (2026-10-07) when the bar is gone for good.
+        symPageOpen -> StripFootprint.COLLAPSED
         // A field that allows no suggestions can never fill a slot, so the strip is a band of
         // nothing: the maintainer's terminal showed an empty black bar taking a tenth of the
         // screen (2026-09-26, "if I'm using a terminal app it's useless"). It keeps its
