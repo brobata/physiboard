@@ -3,9 +3,15 @@ package brobata.physiboard.core.pointer.caret
 /**
  * What a badge glyph reports. spec: trackpad-caret-nav.md SS4.2 ("the fixed order Shift, Alt,
  * Ctrl, Sym"), then [PRIVATE], which is not a modifier: it is private mode's indicator
- * (app-shell.md SS31.4), drawn last so the modifiers keep their places.
+ * (app-shell.md SS31.4), and [FILL], the Fill page's cue; both drawn after the modifiers so those
+ * keep their places.
  */
-enum class ModifierGlyph { SHIFT, ALT, CTRL, SYM, PRIVATE }
+enum class ModifierGlyph {
+    SHIFT, ALT, CTRL, SYM, PRIVATE,
+
+    /** layers-sym-alt.md SS4.7: the Fill page has a code or a password manager's suggestions for this field; drawn faint, last. */
+    FILL,
+}
 
 /** How a glyph is drawn. spec: trackpad-caret-nav.md SS4.2, SS4.3 ("Colour: blue for one click, red for two... A held modifier is drawn faint"). */
 enum class GlyphStyle { LOCKED_FULL, ARMED_FULL, ARMED_FAINT }
@@ -37,6 +43,8 @@ data class ModifierGlyphInput(
     val symPageOpen: Boolean = false,
     /** app-shell.md SS31.4: the user's private mode is on, so the badge shows its marker whatever the modifiers are. */
     val privateMode: Boolean = false,
+    /** layers-sym-alt.md SS4.7: the Fill page has something for this field (and no Sym page is open). */
+    val fillAvailable: Boolean = false,
 )
 
 /**
@@ -54,6 +62,7 @@ object CaretBadge {
         ctrlItem(input),
         symItem(input),
         privateItem(input),
+        fillItem(input),
     )
 
     private fun shiftItem(input: ModifierGlyphInput): BadgeItem? = when {
@@ -83,6 +92,10 @@ object CaretBadge {
     /** app-shell.md SS31.4: drawn in the locked colour, since it stays until switched off. */
     private fun privateItem(input: ModifierGlyphInput): BadgeItem? =
         if (input.privateMode) BadgeItem(ModifierGlyph.PRIVATE, GlyphStyle.LOCKED_FULL) else null
+
+    /** layers-sym-alt.md SS4.7: a quiet cue, faint in the one-shot colour, never on its own a reason to look. */
+    private fun fillItem(input: ModifierGlyphInput): BadgeItem? =
+        if (input.fillAvailable) BadgeItem(ModifierGlyph.FILL, GlyphStyle.ARMED_FAINT) else null
 }
 
 /**

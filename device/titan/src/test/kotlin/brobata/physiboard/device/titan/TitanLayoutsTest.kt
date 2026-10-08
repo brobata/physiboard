@@ -120,7 +120,7 @@ class TitanLayoutsTest {
     @Test
     fun `Sym page order is Emoji, Symbols, Clipboard, Emoji Picker, GIFs with Emoji and Symbols enabled`() {
         assertEquals(
-            listOf(SymPageId.EMOJI, SymPageId.SYMBOLS, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF, SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3),
+            listOf(SymPageId.EMOJI, SymPageId.SYMBOLS, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF, SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3, SymPageId.FILL),
             layout.symPagesConfig.normalizedOrder,
         )
         // spec test case 1: config default, page 0: Sym tap sequence gives 1, 2, 0.

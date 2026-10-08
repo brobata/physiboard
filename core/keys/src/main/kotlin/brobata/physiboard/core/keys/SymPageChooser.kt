@@ -19,6 +19,9 @@ enum class SymChooserTarget(val letter: Char, val label: String, val page: SymPa
     CUSTOM_1('M', "My page 1", SymPageId.CUSTOM_1),
     CUSTOM_2('N', "My page 2", SymPageId.CUSTOM_2),
     CUSTOM_3('B', "My page 3", SymPageId.CUSTOM_3),
+
+    /** One-time codes and saved logins (SS4.7). */
+    FILL('F', "Fill", SymPageId.FILL),
 }
 
 /**
@@ -75,6 +78,8 @@ object SymPageChooser {
                     rows.add(SymChooserEntry(SymChooserTarget.UNICODE_SYMBOLS, inCycle))
                 }
                 SymPageId.GIF -> rows.add(SymChooserEntry(SymChooserTarget.GIF, inCycle))
+                // SS4.7: always listed, so a code is one letter away even when the page is not in the cycle; dimmed while it has nothing.
+                SymPageId.FILL -> rows.add(SymChooserEntry(SymChooserTarget.FILL, inCycle))
                 SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3 -> {
                     val name = customPageNames[page] ?: continue
                     val target = SymChooserTarget.entries.first { it.page == page }

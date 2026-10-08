@@ -1,11 +1,14 @@
 package brobata.physiboard.ime
 
 import android.inputmethodservice.InputMethodService
+import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InlineSuggestionsRequest
+import android.view.inputmethod.InlineSuggestionsResponse
 import android.view.inputmethod.InputMethodSubtype
 import brobata.physiboard.device.privileged.PrivilegedServices
 import brobata.physiboard.device.privileged.setup.SetupReasons
@@ -20,8 +23,10 @@ import brobata.physiboard.device.privileged.setup.SetupReasons
  * `:device:titan`, where it can be driven by a JVM test.
  *
  * PhysiBoard is a physical-keyboard keyboard, so it never offers a software
- * keyboard: [onEvaluateInputViewShown] stays false and the only surface it puts
- * on screen is the strip, rendered in the candidates view ([onCreateCandidatesView]).
+ * keyboard: [onEvaluateInputViewShown] stays false (the one exception is an empty
+ * input view of no height for the experimental inline suggestions, off by default)
+ * and the only surface it puts on screen is the strip, rendered in the candidates
+ * view ([onCreateCandidatesView]).
  */
 class PhysiBoardInputMethodService : InputMethodService() {
 
@@ -54,17 +59,29 @@ class PhysiBoardInputMethodService : InputMethodService() {
             .onFailure { error -> Log.e(TAG, "privileged setup at IME start crashed", error) }
     }
 
-    override fun onCreateInputView(): View? = null
+    /**
+     * No soft keyboard: the input view is an empty view of no height, and it is up only while
+     * the Fill page's experimental password manager suggestions want it for the field
+     * (layers-sym-alt.md SS4.7, D15: Android hands an input method those only while its input
+     * view is up).
+     */
+    override fun onCreateInputView(): View = View(this).apply { minimumHeight = 0 }
 
     /**
-     * A hardware keyboard is always present on this phone, so the answer is always no.
-     * The platform still wants its own implementation called, because it records the
-     * configuration it was asked about; the answer it returns is simply not ours.
+     * A hardware keyboard is always present on this phone, so the answer is no, except while the
+     * experimental inline suggestions want the empty input view up (`fill_inline_suggestions`,
+     * off by default). The platform still wants its own implementation called, because it
+     * records the configuration it was asked about; the answer it returns is simply not ours.
      */
     override fun onEvaluateInputViewShown(): Boolean {
         super.onEvaluateInputViewShown()
-        return false
+        return keyboard.inlineInputViewWanted
     }
+
+    /** layers-sym-alt.md SS4.7: null (the password manager keeps its drop-down) unless `fill_inline_suggestions` is on. */
+    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest? = keyboard.onCreateInlineSuggestionsRequest()
+
+    override fun onInlineSuggestionsResponse(response: InlineSuggestionsResponse): Boolean = keyboard.onInlineSuggestionsResponse(response)
 
     override fun onEvaluateFullscreenMode(): Boolean = false
 

@@ -44,6 +44,11 @@ Project Authors, under the **SIL Open Font License, version 1.1**. It is the app
 required typeface (app-shell.md SS22.1) and is not PhysiBoard's work; the full licence text is
 in `third_party/licenses/OFL-1.1.txt`.
 
+The Fill page's password manager suggestions use **androidx.autofill** (Android Jetpack, by
+the Android Open Source Project, Apache License 2.0) as an ordinary library dependency, like the
+other Jetpack libraries the app is built with: it writes the chip style password managers read.
+None of its code is copied into PhysiBoard's source.
+
 ### Unicode data
 
 The emoji picker's emoji lists and English search names (`ime/src/main/assets/emoji/`,

@@ -229,7 +229,10 @@ enum class SymPage(val id: String) {
     GIF("gif"),
 
     /** 3.0's own (layers-sym-alt.md SS4.6): the user's own key layers, "My page 1" to 3. */
-    CUSTOM_1("custom1"), CUSTOM_2("custom2"), CUSTOM_3("custom3");
+    CUSTOM_1("custom1"), CUSTOM_2("custom2"), CUSTOM_3("custom3"),
+
+    /** 3.0's own (layers-sym-alt.md SS4.7): one-time codes and a password manager's suggestions. */
+    FILL("fill");
 
     companion object {
         fun fromId(id: String?): SymPage? = entries.firstOrNull { it.id == id }
@@ -260,13 +263,22 @@ data class SymPagesConfig(
     val custom1Enabled: Boolean = false,
     val custom2Enabled: Boolean = false,
     val custom3Enabled: Boolean = false,
+    /**
+     * `fillEnabled`: the Fill page (layers-sym-alt.md SS4.7). On by default and harmless: the page
+     * joins the cycle only while it has a code or a password manager's suggestions, and is first
+     * when those are for the field. A stored config that predates the page reads it on.
+     */
+    val fillEnabled: Boolean = true,
     val order: List<SymPage> = DEFAULT_ORDER,
 ) {
     companion object {
-        /** Emoji, Symbols, GIFs first (the three that are on), then the rest. */
+        /**
+         * Emoji, Symbols, GIFs first (the three that are on), then the rest. Fill is last, as a
+         * config from before it reads: with codes for another field it comes after GIFs.
+         */
         val DEFAULT_ORDER: List<SymPage> = listOf(
             SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF, SymPage.CLIPBOARD, SymPage.EMOJI,
-            SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3,
+            SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL,
         )
     }
 }
@@ -310,6 +322,19 @@ data class SymPagePrefs(
      * chooser's K row are gone.
      */
     val kaomojiEnabled: Boolean = false,
+    /**
+     * `otp_from_notifications`. spec: layers-sym-alt.md SS4.7: one-time codes are read from
+     * notifications for the Fill page. On by default, but it does nothing until the user gives
+     * PhysiBoard notification access; codes are held in memory only, never stored or sent.
+     */
+    val otpFromNotifications: Boolean = true,
+    /**
+     * `fill_inline_suggestions`. spec: layers-sym-alt.md SS4.7: a password manager's suggestions
+     * on the Fill page. Off by default and experimental: Android hands an input method these only
+     * while its input view is up, which PhysiBoard (no soft keyboard) otherwise never has, and an
+     * input method that asks for them takes over from the password manager's own drop-down.
+     */
+    val inlineSuggestions: Boolean = false,
     /**
      * `sym_double_tap_chooser`. spec: layers-sym-alt.md SS5.10: two quick Sym taps open the page
      * chooser instead of stepping two pages.

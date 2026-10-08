@@ -117,7 +117,8 @@ fun CustomizeSymKeyboardScreen(
                     )
                 }
                 item {
-                    val steps = symPages.pages.order.filter { enabledFor(symPages.pages, it) }.map { displayName(it, symPages.customPages) }
+                    // layers-sym-alt.md SS4.7: Fill joins the cycle only when it has something, so it is not a fixed step.
+                    val steps = symPages.pages.order.filter { it != SymPage.FILL && enabledFor(symPages.pages, it) }.map { displayName(it, symPages.customPages) }
                     Text(
                         "Sym: " + (steps + "closed").joinToString(" → "),
                         style = MaterialTheme.typography.bodyMedium,
@@ -130,7 +131,7 @@ fun CustomizeSymKeyboardScreen(
                     SymPageOrderRow(
                         page = entry,
                         name = displayName(entry, symPages.customPages),
-                        position = if (enabledEntry) symPages.pages.order.take(index + 1).count { enabledFor(symPages.pages, it) } else null,
+                        position = if (enabledEntry && entry != SymPage.FILL) symPages.pages.order.take(index + 1).count { it != SymPage.FILL && enabledFor(symPages.pages, it) } else null,
                         enabled = enabledEntry,
                         canMoveUp = index > 0,
                         canMoveDown = index < symPages.pages.order.lastIndex,
@@ -402,6 +403,7 @@ private fun enabledFor(pages: SymPagesConfig, page: SymPage): Boolean = when (pa
     SymPage.CUSTOM_1 -> pages.custom1Enabled
     SymPage.CUSTOM_2 -> pages.custom2Enabled
     SymPage.CUSTOM_3 -> pages.custom3Enabled
+    SymPage.FILL -> pages.fillEnabled
 }
 
 private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean): SymPagesConfig = when (page) {
@@ -413,6 +415,7 @@ private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean):
     SymPage.CUSTOM_1 -> pages.copy(custom1Enabled = checked)
     SymPage.CUSTOM_2 -> pages.copy(custom2Enabled = checked)
     SymPage.CUSTOM_3 -> pages.copy(custom3Enabled = checked)
+    SymPage.FILL -> pages.copy(fillEnabled = checked)
 }
 
 private fun displayName(page: SymPage, customPages: List<CustomSymPage>): String = when (page) {
@@ -421,6 +424,7 @@ private fun displayName(page: SymPage, customPages: List<CustomSymPage>): String
     SymPage.CLIPBOARD -> "Clipboard"
     SymPage.EMOJI_PICKER -> "Emoji"
     SymPage.GIF -> "GIFs"
+    SymPage.FILL -> "Fill"
     SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3 -> {
         val index = customIndex(page)!!
         customPages.getOrNull(index)?.name?.trim()?.ifEmpty { null } ?: defaultCustomName(index)
@@ -438,6 +442,7 @@ private fun kindLabel(page: SymPage): String = when (page) {
     SymPage.CLIPBOARD -> "Your recent copies · chooser letter C"
     SymPage.EMOJI -> "An emoji on each letter key · chooser letter E"
     SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3 -> "Key layer · your own · chooser letter ${chooserLetter(page)}"
+    SymPage.FILL -> "One-time codes and saved logins; joins only when it has one, first in a code or login box · chooser letter F"
 }
 
 @Composable

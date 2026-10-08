@@ -24,4 +24,6 @@
     <string name="spell_swedish">Svenska</string>
     <string name="spell_turkish">Türkçe</string>
     <string name="spell_vietnamese">Tiếng Việt</string>
+    <!-- layers-sym-alt.md SS4.7: the name Android's "Notification access" list shows for the one-time code reader. -->
+    <string name="otp_listener_name">PhysiBoard one-time codes</string>
 </resources>

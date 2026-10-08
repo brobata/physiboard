@@ -4,6 +4,7 @@ junit = "5.11.4"
 agp = "8.13.0"
 androidx-core = "1.15.0"
 androidx-appcompat = "1.7.0"
+androidx-autofill = "1.1.0"
 bouncycastle = "1.79"
 hiddenapibypass = "6.1"
 androidx-lifecycle = "2.8.7"
@@ -38,6 +39,7 @@ junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
+androidx-autofill = { group = "androidx.autofill", name = "autofill", version.ref = "androidx-autofill" }
 bouncycastle-bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
 hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version.ref = "hiddenapibypass" }
 androidx-lifecycle-livedata = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "androidx-lifecycle" }

@@ -54,7 +54,7 @@ class SettingsCodecTest {
         symPages = SymPagePrefs(
             pages = SymPagesConfig(emojiEnabled = true, symbolsEnabled = false, clipboardEnabled = true, emojiPickerEnabled = false, gifEnabled = true,
                 custom2Enabled = true,
-                order = listOf(SymPage.EMOJI, SymPage.CUSTOM_2, SymPage.GIF, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER, SymPage.CUSTOM_3, SymPage.CUSTOM_1)),
+                order = listOf(SymPage.EMOJI, SymPage.CUSTOM_2, SymPage.GIF, SymPage.CLIPBOARD, SymPage.SYMBOLS, SymPage.EMOJI_PICKER, SymPage.CUSTOM_3, SymPage.CUSTOM_1, SymPage.FILL), fillEnabled = false),
             customEmojiPage = mapOf("KEYCODE_Q" to "😀"), customSymbolsPage = mapOf("KEYCODE_W" to "€"),
             customPages = listOf(CustomSymPage(), CustomSymPage("Polski", mapOf("KEYCODE_A" to "ą", "KEYCODE_S" to "你好")), CustomSymPage()),
             autoClose = false, autoCloseOnTouch = false, emojiPickerExpandedHeight = true, doubleTapChooser = false,
@@ -267,16 +267,16 @@ class SettingsCodecTest {
     @Test
     fun `sym pages without an order derive it from emojiFirst and skip the device page, spec SS12 test 20`() {
         val s = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"emojiFirst": false, "deviceEnabled": true}"""))
-        assertEquals(listOf(SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), s.symPages.pages.order)
+        assertEquals(listOf(SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL), s.symPages.pages.order)
         val withDevice = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"symPageOrder": ["device", "symbols"]}"""))
-        assertEquals(listOf(SymPage.SYMBOLS, SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), withDevice.symPages.pages.order)
+        assertEquals(listOf(SymPage.SYMBOLS, SymPage.EMOJI, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL), withDevice.symPages.pages.order)
     }
 
     @Test
     fun `a config written before the GIF page reads with gif last and switched off, layers-sym-alt SS4-1`() {
         val old = """{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":true,"emojiPickerEnabled":true,"symPageOrder":["clipboard","emoji_picker","symbols","emoji"]}"""
         val pages = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to old)).symPages.pages
-        assertEquals(listOf(SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), pages.order)
+        assertEquals(listOf(SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL), pages.order)
         assertEquals(false, pages.gifEnabled)
         assertEquals(true, pages.clipboardEnabled)
         val placed = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"gifEnabled":true,"symPageOrder":["gif"," symbols ","gif"]}""")).symPages.pages
@@ -319,7 +319,9 @@ class SettingsCodecTest {
         assertEquals(CustomSymPage(), pages[2])
         val oldConfig = """{"gifEnabled":true,"symPageOrder":["symbols","gif"]}"""
         val config = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to oldConfig)).symPages.pages
-        assertEquals(listOf(SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), config.order.takeLast(3))
+        assertEquals(listOf(SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL), config.order.takeLast(4))
+        // layers-sym-alt.md SS4.7: a config from before the Fill page reads it on, unlike the GIF page.
+        assertEquals(true, config.fillEnabled)
         assertEquals(false, config.custom1Enabled)
         val placed = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"custom3Enabled":true,"symPageOrder":["custom3","emoji"]}""")).symPages.pages
         assertEquals(SymPage.CUSTOM_3, placed.order.first())
@@ -333,6 +335,20 @@ class SettingsCodecTest {
         val map = SettingsCodec.toMap(off)
         assertEquals("false", map[SettingsKeys.SYM_DOUBLE_TAP_CHOOSER])
         assertEquals(false, SettingsCodec.fromMap(map).symPages.doubleTapChooser)
+    }
+
+    @Test
+    fun `otp_from_notifications and fill_inline_suggestions round-trip, and fillEnabled travels in sym_pages_config`() {
+        assertEquals(true, SettingsCodec.fromMap(emptyMap()).symPages.otpFromNotifications)
+        assertEquals(false, SettingsCodec.fromMap(emptyMap()).symPages.inlineSuggestions, "experimental, off by default")
+        val off = Settings().let { it.copy(symPages = it.symPages.copy(otpFromNotifications = false, inlineSuggestions = true, pages = it.symPages.pages.copy(fillEnabled = false))) }
+        val map = SettingsCodec.toMap(off)
+        assertEquals("false", map[SettingsKeys.OTP_FROM_NOTIFICATIONS])
+        assertEquals("true", map[SettingsKeys.FILL_INLINE_SUGGESTIONS])
+        val back = SettingsCodec.fromMap(map).symPages
+        assertEquals(false, back.otpFromNotifications)
+        assertEquals(true, back.inlineSuggestions)
+        assertEquals(false, back.pages.fillEnabled)
     }
 
     @Test

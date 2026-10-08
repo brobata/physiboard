@@ -225,6 +225,21 @@ class BackupCodecTest {
     }
 
     @Test
+    fun `the Fill page switch, otp_from_notifications and fill_inline_suggestions go out in a backup and come back through a restore`() {
+        val changed = Settings().let {
+            it.copy(symPages = it.symPages.copy(otpFromNotifications = false, inlineSuggestions = true, pages = it.symPages.pages.copy(fillEnabled = false)))
+        }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", changed))!!
+        assertEquals("false", entries["otp_from_notifications"])
+        val backup = BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries)
+        val outcome = BackupRestore.restore(Settings(), backup)
+        assertEquals(0, outcome.skippedCount)
+        assertFalse(outcome.settings.symPages.otpFromNotifications)
+        assertTrue(outcome.settings.symPages.inlineSuggestions)
+        assertFalse(outcome.settings.symPages.pages.fillEnabled)
+    }
+
+    @Test
     fun `the long-press accents and the user's own Sym pages go out in a backup and come back through a restore`() {
         val changed = Settings().let {
             it.copy(

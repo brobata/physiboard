@@ -6,6 +6,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import brobata.physiboard.core.actions.fill.FieldFacts
 import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.EditorOp
@@ -390,4 +391,41 @@ private fun imeActionOf(info: EditorInfo): ImeAction {
         EditorInfo.IME_ACTION_PREVIOUS -> ImeAction.PREVIOUS
         else -> ImeAction.NONE
     }
+}
+
+/**
+ * text-input.md SS3.1: the field's own words about itself, for the code-field check: its input
+ * type, its hint, label and name, the private options string, and any text the app put in
+ * its extras (where a browser may pass `autocomplete`).
+ */
+internal fun fillFieldFacts(info: EditorInfo?): FieldFacts? {
+    info ?: return null
+    val inputType = info.inputType
+    val inputClass = when (inputType and InputType.TYPE_MASK_CLASS) {
+        InputType.TYPE_CLASS_TEXT -> FieldFacts.InputClass.TEXT
+        InputType.TYPE_CLASS_NUMBER -> FieldFacts.InputClass.NUMBER
+        InputType.TYPE_CLASS_PHONE -> FieldFacts.InputClass.PHONE
+        InputType.TYPE_CLASS_DATETIME -> FieldFacts.InputClass.DATETIME
+        else -> FieldFacts.InputClass.OTHER
+    }
+    val variation = inputType and InputType.TYPE_MASK_VARIATION
+    val password = when (inputType and InputType.TYPE_MASK_CLASS) {
+        InputType.TYPE_CLASS_TEXT -> variation == InputType.TYPE_TEXT_VARIATION_PASSWORD || variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD || variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+        InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        else -> false
+    }
+    val signedOrDecimal = inputClass == FieldFacts.InputClass.NUMBER && inputType and (InputType.TYPE_NUMBER_FLAG_SIGNED or InputType.TYPE_NUMBER_FLAG_DECIMAL) != 0
+    val hints = ArrayList<String>()
+    listOfNotNull(info.hintText, info.label, info.fieldName, info.privateImeOptions).forEach { hints.add(it.toString()) }
+    runCatching {
+        val extras = info.extras
+        extras?.keySet()?.forEach { key ->
+            @Suppress("DEPRECATION")
+            when (val value = extras.get(key)) {
+                is CharSequence -> hints.add(value.toString())
+                is Array<*> -> value.filterIsInstance<CharSequence>().forEach { hints.add(it.toString()) }
+            }
+        }
+    }
+    return FieldFacts(inputClass, password, signedOrDecimal, hints)
 }

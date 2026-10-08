@@ -152,6 +152,13 @@ import brobata.physiboard.ime.actions.TypingSoundPlayer
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
 import brobata.physiboard.ime.pointer.KeyboardSwipeController
 import brobata.physiboard.ime.pointer.TrackpadOverlayController
+import brobata.physiboard.core.actions.fill.FieldFacts
+import brobata.physiboard.core.actions.fill.OneTimeCode
+import brobata.physiboard.core.actions.fill.OneTimeCodeField
+import brobata.physiboard.core.keys.FillPresence
+import brobata.physiboard.ime.fill.FillPageController
+import brobata.physiboard.ime.fill.InlineFill
+import brobata.physiboard.ime.fill.OneTimeCodeHolder
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -379,6 +386,22 @@ internal class KeyboardSession(
 
     /** layers-sym-alt.md SS5.10: the Sym page chooser a Sym double tap (or its command) opens. */
     private val symChooser = SymPageChooserController(service, handler)
+
+    // layers-sym-alt.md SS4.7: the Fill page, its one-time codes and a password manager's suggestions.
+    private val fillPage = FillPageController(service, handler)
+    private val inlineFill = InlineFill()
+    /** What the field said about itself at its start, for the code-field check (text-input.md SS3.1). */
+    private var fieldFacts: FieldFacts? = null
+    /** `otp_from_notifications`. */
+    private var otpFromNotifications = true
+    /** `fill_inline_suggestions`: experimental, off by default (SS4.7). */
+    private var inlineSuggestionsEnabled = false
+    /** The service's input view is wanted up for this field so the password manager's response arrives (SS4.7). */
+    var inlineInputViewWanted = false
+        private set
+    /** Pick keys the Fill page consumed, so their releases are consumed too. */
+    private val fillConsumedUps = HashSet<KeyId>()
+    private val codesChanged: () -> Unit = { onCodesChanged() }
     private var emojiPickerExpanded = false
     /** `emoji_picker_kaomoji`: kaomoji exist on the emoji page and in the chooser only when on. */
     private var kaomojiEnabled = false
@@ -526,6 +549,8 @@ internal class KeyboardSession(
      */
     fun onServiceDestroyed() {
         shared.removeListener(sharedListener)
+        OneTimeCodeHolder.removeListener(codesChanged)
+        runCatching { fillPage.hide() }.onFailure { error -> Log.e(TAG, "fill page teardown crashed", error) }
         runCatching { service.unregisterReceiver(runCommandNowReceiver) }.onFailure { error -> Log.e(TAG, "run-command receiver teardown crashed", error) }
         settingsScope.cancel()
         handler.removeCallbacks(longPressRunnable)
@@ -661,6 +686,8 @@ internal class KeyboardSession(
     init {
         // app-shell.md SS31: the learning paths start in [privacy]'s initial state, not learning until the store is read.
         pushPrivacy()
+        // layers-sym-alt.md SS4.7: a code arriving, typed or expiring redraws the Fill page and its cue.
+        OneTimeCodeHolder.addListener(codesChanged)
         persistCtrlMappingMigrationIfNeeded(lastSettings.keys.navModeDefaultMappingsVersion)
         quickLauncher.executor = commandExecutor
         quickLauncher.quickLauncherKey = pipeline.settings.launcherShortcuts.quickLauncherKeycode?.let(AssignableKeys::keyOf)
@@ -918,6 +945,8 @@ internal class KeyboardSession(
         clipboard.applyEnabledOnce(settings.expansion.clipboardHistoryEnabled)
         emojiPickerExpanded = settings.symPages.emojiPickerExpandedHeight
         kaomojiEnabled = settings.symPages.kaomojiEnabled
+        otpFromNotifications = settings.symPages.otpFromNotifications
+        inlineSuggestionsEnabled = settings.symPages.inlineSuggestions
         // status-bar.md SS4, layers-sym-alt.md SS5.7: the Sym panels keep clear of the rounded corners.
         brobata.physiboard.ime.actions.BottomOverlay.roundedCornersEnabled = settings.statusBar.roundedCornerInsets
         defaultSkinTone = settings.symPages.defaultSkinTone
@@ -1135,6 +1164,13 @@ internal class KeyboardSession(
         // spec: layers-sym-alt.md SS5.8: "when the IME next starts input and restore_sym_page is
         // greater than 0... the preference is then cleared." Runs on every start (restart
         // included); once consumed the stored value is 0, so a later start is a no-op.
+        // layers-sym-alt.md SS4.7: what the Fill page has for this field. A Fill page carried over
+        // from the last field (a page follows to the next field of the same app) closes when it
+        // has nothing here.
+        fieldFacts = if (field.isReallyEditable) fillFieldFacts(info) else null
+        refreshCodeField()
+        refreshFill()
+        if (pipeline.currentSymPage == SymPageId.FILL.pageNumber && pipeline.fillPresence == FillPresence.NONE) pipeline.closeSymPage()
         val pendingSymPageRestore = lastSettings.symPages.restoreSymPage
         if (pendingSymPageRestore > 0) {
             pipeline.restoreSymPage(pendingSymPageRestore)
@@ -1191,6 +1227,13 @@ internal class KeyboardSession(
         variationChooser.reset()
         // layers-sym-alt.md SS5.10: so does the Sym page chooser.
         symChooser.reset()
+        // layers-sym-alt.md SS4.7: a password manager's suggestions belong to the field that finished.
+        inlineFill.clear()
+        fieldFacts = null
+        refreshCodeField()
+        fillConsumedUps.clear()
+        setInlineInputViewWanted(false)
+        refreshFill()
         // spec SS5.3: "Action mode also ends when... the field finishes"; SS6.4: "the overlay is
         // also closed whenever the connection to the app changes".
         statusBar?.exitActionMode()
@@ -1581,7 +1624,7 @@ internal class KeyboardSession(
             handler.removeCallbacksAndMessages(selectionSyncToken)
             handler.postDelayed({
                 val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
-                DiagnosticLog.i(TAG) { "selection external: $oldSelStart->$newSelStart textBefore='${textBeforeCursor?.takeLast(12)}'" }
+                DiagnosticLog.i(TAG) { "selection external: $oldSelStart->$newSelStart textBefore='${if (textMayHoldCode) "(hidden)" else textBeforeCursor?.takeLast(12)}'" }
                 pipeline.onExternalSelectionChange(textBeforeCursor, selectionCollapsed = selectionCollapsed)
                 refreshCandidatesStrip()
             }, selectionSyncToken, CurrentWordTracker.CURSOR_MOVE_DEBOUNCE_MS)
@@ -1649,6 +1692,8 @@ internal class KeyboardSession(
         if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalized?.key)) return@runCatching true
         // layers-sym-alt.md SS4.5: the GIF page's search field captures the same way.
         if (gifPage.isShown && gifPage.captureOn && gifPage.onHardwareKey(event, normalized?.key)) return@runCatching true
+        // layers-sym-alt.md SS4.7: on the Fill page the key printed with 1, 2, 3... types that code.
+        normalized?.let { stroke -> if (onFillPageKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, metaCtrl = event.isCtrlPressed)) return@runCatching true }
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
@@ -1845,6 +1890,9 @@ internal class KeyboardSession(
         }
         val tRead = System.nanoTime()
         val glyphBefore = pipeline.modifierGlyphInput()
+        // layers-sym-alt.md SS4.7: whether the Fill page is in the cycle, and first, is decided at
+        // the Sym press itself; codes come and go between presses. One in-memory read.
+        if (stroke.key == KeyId.Modifier(ModifierKey.SYM)) pipeline.fillPresence = fillPresenceNow()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val tPipeline = System.nanoTime()
         val consumed = applyResult(ic, result, readout, keyTypes = event?.typedCharacter())
@@ -1991,7 +2039,8 @@ internal class KeyboardSession(
     private fun openSymPageChooser(): Boolean {
         if (!pipeline.fieldContext.isReallyEditable) return false
         if (quickLauncher.isOpen) quickLauncher.dismiss()
-        symChooser.show(SymPageChooser.entries(pipeline.layout.symPagesConfig, ImeSettings.customPageNames(lastSettings), kaomojiEnabled), pipeline.settings.statusBar.theme, stripHeightPx()) { target ->
+        pipeline.fillPresence = fillPresenceNow()
+        symChooser.show(SymPageChooser.entries(pipeline.symPagesNow, ImeSettings.customPageNames(lastSettings), kaomojiEnabled), pipeline.settings.statusBar.theme, stripHeightPx()) { target ->
             runCatching { openFromChooser(target) }.onFailure { error -> Log.e(TAG, "sym chooser pick crashed", error) }
         }
         return true
@@ -2149,6 +2198,11 @@ internal class KeyboardSession(
             } else {
                 gifPage.hide()
             }
+            if (page == SymPageId.FILL.pageNumber) {
+                fillPage.show(theme, pageBottomPx, fillContent, fillPageListener)
+            } else {
+                fillPage.hide()
+            }
             val gridPage = SymGridPage.forPageNumber(page)
             if (gridPage != null) {
                 symGridPanel.show(gridPage, symGridCharacters(gridPage), theme, pageBottomPx, symGridListener)
@@ -2184,6 +2238,171 @@ internal class KeyboardSession(
             if (clipboardPanel.isShown) clipboardPanel.refresh(clipboard.history, clipboardPanelListener, scrollToTop = false)
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "clipboard change crashed", error) }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The Fill page. spec: layers-sym-alt.md SS4.7; text-input.md SS3.1.
+    // -----------------------------------------------------------------------------------------
+
+    /** The codes the page offers: none while `otp_from_notifications` is off. */
+    private fun fillCodes(): List<OneTimeCode> = if (otpFromNotifications) OneTimeCodeHolder.current() else emptyList()
+
+    /** When a code was last typed; the text before the caret is kept out of the log for a while after. */
+    private var codeTypedAtMs = Long.MIN_VALUE / 2
+
+    /** SS4.7: the text around the caret may hold a one-time code: in a code's field, or just after one was typed. */
+    private val textMayHoldCode: Boolean
+        get() = codeField || SystemClock.uptimeMillis() - codeTypedAtMs < CODE_LOG_QUIET_MS
+
+    /** text-input.md SS3.1's verdict for this field, decided at its start and again when a password manager answers; never on a keystroke. */
+    private var codeField = false
+
+    private fun refreshCodeField() {
+        codeField = runCatching { fieldFacts?.let { facts -> OneTimeCodeField.isOneTimeCodeField(facts.copy(suggestionHints = inlineFill.hints)) } ?: false }.getOrDefault(false)
+    }
+
+    private fun fillPresenceNow(): FillPresence =
+        FillPresence.of(codesWaiting = fillCodes().isNotEmpty(), codeField = codeField, inlineSuggestions = inlineFill.hasSuggestions)
+
+    /** Re-decides what the Fill page has, and redraws the page and the caret badge's cue. */
+    private fun refreshFill() {
+        runCatching {
+            pipeline.fillPresence = fillPresenceNow()
+            fillPage.refresh()
+            refreshCaretBadge()
+        }.onFailure { error -> Log.e(TAG, "fill refresh crashed", error) }
+    }
+
+    private fun onCodesChanged() = refreshFill()
+
+    private val fillContent = object : FillPageController.Content {
+        override val codes: List<OneTimeCode> get() = fillCodes()
+        override val inline: InlineFill get() = inlineFill
+        override val nowMs: Long get() = OneTimeCodeHolder.now()
+        override fun keyLabel(digit: Int): String? = digitKeyLabel(digit)
+        override val emptyNote: String
+            get() = when {
+                !otpFromNotifications -> "Nothing to fill here. One-time codes from notifications are switched off in PhysiBoard settings."
+                !notificationAccessGranted() -> "Nothing to fill here. To see one-time codes from your messages and mail here, give PhysiBoard notification access in its settings (Customize SYM Keyboard)."
+                else -> "Nothing to fill here. One-time codes from your notifications show here for 10 minutes."
+            }
+    }
+
+    private val fillPageListener = object : FillPageController.Listener {
+        override fun onCode(code: OneTimeCode) {
+            runCatching {
+                if (symAutoClose && symAutoCloseOnTouch) closeSymPanel()
+                typeCode(code)
+            }.onFailure { error -> Log.e(TAG, "fill code tap crashed", error) }
+        }
+
+        override fun onClose() = closeSymPanel()
+    }
+
+    /** The letter key printed with [digit] on the device layer (W for 1 on the Titan 2 Elite), as the accent chooser labels its picks. */
+    private fun digitKeyLabel(digit: Int): String? = pipeline.layout.deviceLayer.entries.entries
+        .filter { (key, text) -> key is KeyId.Letter && text == digit.toString() }
+        .map { (key, _) -> (key as KeyId.Letter).qwertyLetter.toString() }
+        .minOrNull()
+
+    /**
+     * SS4.7: with the Fill page up, a letter key whose device-layer character is the digit of a
+     * listed code types that code, bare or with Alt (an armed Alt one-shot is spent on it); its
+     * release and repeats are consumed with it. Sym held (a chord) and Ctrl in any form pass on.
+     * Every other key goes on as on any panel page.
+     */
+    private fun onFillPageKey(key: KeyId, down: Boolean, repeatCount: Int, metaCtrl: Boolean): Boolean {
+        if (!down) return fillConsumedUps.remove(key)
+        if (repeatCount > 0) return key in fillConsumedUps
+        if (!fillPage.isShown || pipeline.currentSymPage != SymPageId.FILL.pageNumber) return false
+        if (key !is KeyId.Letter) return false
+        if (!pipeline.fillPickAllowed(metaCtrl)) return false
+        val digit = pipeline.layout.deviceLayer[key]?.toIntOrNull() ?: return false
+        val code = fillPage.shownCodes.getOrNull(digit - 1) ?: return false
+        fillConsumedUps.add(key)
+        runCatching {
+            pipeline.consumeAltOneShotForPick()
+            if (symAutoClose) closeSymPanel()
+            typeCode(code)
+        }.onFailure { error -> Log.e(TAG, "fill pick crashed", error) }
+        return true
+    }
+
+    /**
+     * Types [code] into the field and takes it off the list. A terminal-mode field gets it as key
+     * presses, the way it gets every other character the keyboard puts down
+     * (per-app-behavior.md D8); any other field gets one finished commit. Never logged.
+     */
+    private fun typeCode(code: OneTimeCode) {
+        val ic = service.currentInputConnection ?: return
+        // The editor's report of this edit is ours, not an outside change: the outside-change
+        // path writes the text before the caret to the phone-testing log, which must never hold a code.
+        codeTypedAtMs = SystemClock.uptimeMillis()
+        ownEdit = OwnEditExpectation(selStart = lastReportedSelStart + code.code.length, expiresAtMs = SystemClock.uptimeMillis() + OwnEditExpectation.SETTLE_WINDOW_MS)
+        ic.beginBatchEdit()
+        try {
+            ic.finishComposingText()
+            if (currentFieldKind == FieldKind.RAW_MODE_APP) {
+                for (ch in code.code) if (!ic.sendCharacterAsKeys(ch)) ic.commitText(ch.toString(), 1)
+            } else {
+                ic.commitText(code.code, 1)
+            }
+        } finally {
+            ic.endBatchEdit()
+        }
+        OneTimeCodeHolder.consume(code)
+        noteFieldEditedDuringDictation()
+        refreshCandidatesStrip()
+    }
+
+    private fun notificationAccessGranted(): Boolean = runCatching {
+        val component = android.content.ComponentName(service, brobata.physiboard.ime.fill.OneTimeCodeListenerService::class.java)
+        service.getSystemService(android.app.NotificationManager::class.java)?.isNotificationListenerAccessGranted(component) ?: false
+    }.getOrDefault(false)
+
+    /**
+     * SS4.7: Android asks what inline suggestions the keyboard can show. Only with the
+     * experimental `fill_inline_suggestions` on, the Fill page switched on and an editable field:
+     * answering at all takes over from the password manager's own drop-down, and its answer
+     * arrives only while the service's input view is up (AOSP's autofill session sends the
+     * response only after the input view starts), so the input view is asked up for this field.
+     */
+    fun onCreateInlineSuggestionsRequest(): android.view.inputmethod.InlineSuggestionsRequest? = runCatching {
+        // Asked before the field's own start (AOSP calls it as the input starts), so the field
+        // cannot be checked here; autofill only asks for a field it can fill.
+        if (!inlineSuggestionsEnabled || !pipeline.layout.symPagesConfig.fillEnabled) return@runCatching null
+        val width = service.resources.displayMetrics.widthPixels
+        val request = inlineFill.request(service, pipeline.settings.statusBar.theme, width)
+        setInlineInputViewWanted(true)
+        request
+    }.onFailure { error -> Log.e(TAG, "inline request crashed", error) }.getOrNull()
+
+    /** SS4.7: the password manager's answer for this field. Nothing pops up; Sym opens the Fill page first. */
+    fun onInlineSuggestionsResponse(response: android.view.inputmethod.InlineSuggestionsResponse): Boolean = runCatching {
+        val has = inlineFill.onResponse(response)
+        DiagnosticLog.i(TAG) { "inline suggestions: ${response.inlineSuggestions.size}" }
+        refreshCodeField()
+        refreshFill()
+        if (fillPage.isShown) syncSymPanels()
+        has
+    }.onFailure { error -> Log.e(TAG, "inline response crashed", error) }.getOrDefault(false)
+
+    private fun setInlineInputViewWanted(wanted: Boolean) {
+        if (inlineInputViewWanted == wanted) return
+        inlineInputViewWanted = wanted
+        if (!wanted) {
+            runCatching { service.updateInputViewShown() }.onFailure { error -> Log.e(TAG, "inline input view toggle crashed", error) }
+            return
+        }
+        // Android asks for the request as the field's input starts, before the keyboard's own
+        // start runs; the show is asked for after it, for the field that is then current.
+        handler.post {
+            if (!inlineInputViewWanted) return@post
+            runCatching {
+                service.updateInputViewShown()
+                requestOwnShow()
+            }.onFailure { error -> Log.e(TAG, "inline input view toggle crashed", error) }
+        }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -3186,7 +3405,9 @@ internal class KeyboardSession(
         runCatching {
             val metrics = service.resources.displayMetrics
             // app-shell.md SS31.4: the badge also carries private mode's marker.
-            caretBadge.update(pipeline.modifierGlyphInput().copy(privateMode = privacy.showsIndicator), lastCaretGeometry, metrics.widthPixels.toFloat(), metrics.density)
+            // layers-sym-alt.md SS4.7: and a faint FILL while the Fill page has something for this field and no page is open.
+            val fillCue = pipeline.fillPresence == FillPresence.FIRST && pipeline.currentSymPage == 0 && pipeline.layout.symPagesConfig.fillEnabled
+            caretBadge.update(pipeline.modifierGlyphInput().copy(privateMode = privacy.showsIndicator, fillAvailable = fillCue), lastCaretGeometry, metrics.widthPixels.toFloat(), metrics.density)
         }.onFailure { error -> Log.e(TAG, "caret badge refresh crashed", error) }
     }
 
@@ -3198,6 +3419,9 @@ internal class KeyboardSession(
         const val DIP_RESHOW_RETRY_MS = 32L
 
         const val TAG = "PhysiBoardKeyboard"
+
+        /** layers-sym-alt.md SS4.7: how long after a code is typed the field's text stays out of the log. */
+        const val CODE_LOG_QUIET_MS = 60_000L
 
         /** app-shell.md SS31.3: how long a keyboard toggle outranks the store if its write never lands. */
         const val PENDING_PRIVATE_MODE_TIMEOUT_MS = 5_000L

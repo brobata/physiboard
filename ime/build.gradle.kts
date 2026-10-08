@@ -65,6 +65,9 @@ dependencies {
     // DebugCaptureSink seam (mirrors SettingsSource), since :app owns the store and depends on :ime.
     api(project(":core:shell"))
     implementation(libs.androidx.core.ktx)
+    // layers-sym-alt.md SS4.7: the inline suggestion style password managers read (Apache-2.0,
+    // Android Jetpack). Without a style in this library's format they offer the keyboard nothing.
+    implementation(libs.androidx.autofill)
     // The settings store is read as a Flow (SettingsSource); collection happens on the main looper.
     implementation(libs.kotlinx.coroutines.android)
 

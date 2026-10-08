@@ -260,6 +260,7 @@ internal object ImeSettings {
         custom1Enabled = stored.custom1Enabled,
         custom2Enabled = stored.custom2Enabled,
         custom3Enabled = stored.custom3Enabled,
+        fillEnabled = stored.fillEnabled,
         order = stored.order.mapNotNull(::symPageId),
     )
 
@@ -272,6 +273,7 @@ internal object ImeSettings {
         brobata.physiboard.core.settings.SymPage.CUSTOM_1 -> SymPageId.CUSTOM_1
         brobata.physiboard.core.settings.SymPage.CUSTOM_2 -> SymPageId.CUSTOM_2
         brobata.physiboard.core.settings.SymPage.CUSTOM_3 -> SymPageId.CUSTOM_3
+        brobata.physiboard.core.settings.SymPage.FILL -> SymPageId.FILL
     }
 
     /**

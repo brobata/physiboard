@@ -52,6 +52,8 @@ internal class CaretBadgeOverlayView(context: Context) : View(context) {
         ModifierGlyph.SYM -> "SYM"
         // app-shell.md SS31.4: private mode's marker.
         ModifierGlyph.PRIVATE -> "PRIVATE"
+        // layers-sym-alt.md SS4.7: the Fill page has something for this field.
+        ModifierGlyph.FILL -> "FILL"
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

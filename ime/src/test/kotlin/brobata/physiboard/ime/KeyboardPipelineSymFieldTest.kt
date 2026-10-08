@@ -141,4 +141,40 @@ class KeyboardPipelineSymFieldTest {
         p.onStartInput(noBox, appProfile = messages, nowMs = 1_050)
         assertEquals(2_000L, tap(p, 2_000).powerModeArmedAtMs)
     }
+
+    @Test
+    fun `layers-sym-alt SS4_7 - the Fill page is the first Sym press when it has something for the field, and not in the cycle otherwise`() {
+        val fill = SymPageId.FILL.pageNumber
+        val p = pipeline()
+        p.onStartInput(editable, appProfile = messages, nowMs = 0)
+        p.fillPresence = brobata.physiboard.core.keys.FillPresence.FIRST
+        val first = (0 until 5).map { i -> tap(p, 1_000L + i * 1_000); p.currentSymPage }
+        assertEquals(listOf(fill, emoji, symbols, gif, 0), first)
+
+        p.fillPresence = brobata.physiboard.core.keys.FillPresence.LISTED
+        val listed = (0 until 5).map { i -> tap(p, 10_000L + i * 1_000); p.currentSymPage }
+        assertEquals(listOf(emoji, symbols, gif, fill, 0), listed, "codes for another field: after the pages before it in the order")
+
+        p.fillPresence = brobata.physiboard.core.keys.FillPresence.NONE
+        val none = (0 until 4).map { i -> tap(p, 20_000L + i * 1_000); p.currentSymPage }
+        assertEquals(listOf(emoji, symbols, gif, 0), none)
+    }
+
+    @Test
+    fun `layers-sym-alt SS4_7 - a Fill pick is a plain press, never a Sym chord or a Ctrl shortcut, and spends Alt's one-shot`() {
+        val p = pipeline()
+        p.onStartInput(editable, appProfile = messages, nowMs = 0)
+        assertTrue(p.fillPickAllowed(metaCtrl = false))
+        assertFalse(p.fillPickAllowed(metaCtrl = true), "Ctrl held")
+        p.onKeyStroke(KeyStroke(sym, KeyEdge.DOWN, 0, 1_000), nothing)
+        assertFalse(p.fillPickAllowed(metaCtrl = false), "Sym held: a chord")
+        p.onKeyStroke(KeyStroke(sym, KeyEdge.UP, 0, 1_100), nothing)
+        assertTrue(p.fillPickAllowed(metaCtrl = false))
+        val alt = KeyId.Modifier(ModifierKey.ALT)
+        p.onKeyStroke(KeyStroke(alt, KeyEdge.DOWN, 0, 2_000), nothing)
+        p.onKeyStroke(KeyStroke(alt, KeyEdge.UP, 0, 2_050), nothing)
+        assertTrue(p.modifierGlyphInput().altOneShotArmed)
+        p.consumeAltOneShotForPick()
+        assertFalse(p.modifierGlyphInput().altOneShotArmed)
+    }
 }

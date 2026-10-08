@@ -66,11 +66,14 @@ data class SymPageMap(val entries: Map<KeyId, SymPageEntry> = emptyMap()) {
 /**
  * spec: layers-sym-alt.md SS1 (the page id/page number contract). The Device page (page 5) is
  * dropped for 3.0 (SS15 Keep/Drop: "duplicates Alt, off by default, marked under construction"),
- * so its number stays reserved and unused. The GIF page (6) and the user's own pages (7 to 9) are
- * 3.0's own (SS4.5, SS4.6).
+ * so its number stays reserved and unused. The GIF page (6), the user's own pages (7 to 9) and the
+ * Fill page (10) are 3.0's own (SS4.5, SS4.6, SS4.7).
  */
 enum class SymPageId(val pageNumber: Int) {
-    EMOJI(1), SYMBOLS(2), CLIPBOARD(3), EMOJI_PICKER(4), GIF(6), CUSTOM_1(7), CUSTOM_2(8), CUSTOM_3(9);
+    EMOJI(1), SYMBOLS(2), CLIPBOARD(3), EMOJI_PICKER(4), GIF(6), CUSTOM_1(7), CUSTOM_2(8), CUSTOM_3(9),
+
+    /** One-time codes and a password manager's suggestions (SS4.7); in the cycle only while it has something. */
+    FILL(10);
 
     /** The pages that remap the 26 letter keys (Emoji, Symbols and the user's own), as opposed to the content panels. */
     val isKeyLayer: Boolean get() = this == EMOJI || this == SYMBOLS || isCustom
@@ -80,12 +83,41 @@ enum class SymPageId(val pageNumber: Int) {
 
     companion object {
         /** spec: layers-sym-alt.md SS4.1 default `symPageOrder`, minus the dropped Device page, plus the GIF page and the user's own pages last. */
-        val DEFAULT_ORDER: List<SymPageId> = listOf(EMOJI, SYMBOLS, CLIPBOARD, EMOJI_PICKER, GIF, CUSTOM_1, CUSTOM_2, CUSTOM_3)
+        val DEFAULT_ORDER: List<SymPageId> = listOf(EMOJI, SYMBOLS, CLIPBOARD, EMOJI_PICKER, GIF, CUSTOM_1, CUSTOM_2, CUSTOM_3, FILL)
 
         /** The user's own pages in their fixed numbering. */
         val CUSTOM: List<SymPageId> = listOf(CUSTOM_1, CUSTOM_2, CUSTOM_3)
 
         fun forPageNumber(pageNumber: Int): SymPageId? = entries.firstOrNull { it.pageNumber == pageNumber }
+    }
+}
+
+/**
+ * What the Fill page has for the field being typed in. spec: layers-sym-alt.md SS4.7. Unlike every
+ * other page, the Fill page is in the cycle only while it has something, and it is first when
+ * what it has is for this field.
+ */
+enum class FillPresence {
+    /** Nothing to offer: the page is not in the cycle (the chooser still opens it). */
+    NONE,
+
+    /** Recent codes, in a field that is not a code's: the page is in the cycle at its own place. */
+    LISTED,
+
+    /** A code in a code's field, or a password manager's suggestions: the page is the first Sym opens. */
+    FIRST;
+
+    companion object {
+        /**
+         * [codesWaiting]: at least one code is held. [codeField]: the field is one a code goes
+         * into (text-input.md SS3.1). [inlineSuggestions]: a password manager offered suggestions
+         * for this field.
+         */
+        fun of(codesWaiting: Boolean, codeField: Boolean, inlineSuggestions: Boolean): FillPresence = when {
+            inlineSuggestions || (codesWaiting && codeField) -> FIRST
+            codesWaiting -> LISTED
+            else -> NONE
+        }
     }
 }
 
@@ -108,6 +140,10 @@ data class SymPagesConfig(
     val custom1Enabled: Boolean = false,
     val custom2Enabled: Boolean = false,
     val custom3Enabled: Boolean = false,
+    /** spec: layers-sym-alt.md SS4.7: the user's switch for the Fill page; on, it still joins the cycle only while [fillPresence] says it has something. */
+    val fillEnabled: Boolean = true,
+    /** spec SS4.7: what the Fill page has right now. Not a setting: the keyboard sets it for the field. */
+    val fillPresence: FillPresence = FillPresence.NONE,
     val order: List<SymPageId> = SymPageId.DEFAULT_ORDER,
 ) {
     /** spec: layers-sym-alt.md SS4.1 ("duplicates collapse to the first occurrence, every known id missing... is appended"). */
@@ -125,11 +161,17 @@ data class SymPagesConfig(
         SymPageId.CUSTOM_1 -> custom1Enabled
         SymPageId.CUSTOM_2 -> custom2Enabled
         SymPageId.CUSTOM_3 -> custom3Enabled
+        SymPageId.FILL -> fillEnabled && fillPresence != FillPresence.NONE
     }
 
-    /** spec: layers-sym-alt.md SS4.2 ("the ordered list of enabled pages with 'no page' (0) prepended"). */
+    /**
+     * spec: layers-sym-alt.md SS4.2 ("the ordered list of enabled pages with 'no page' (0)
+     * prepended"); SS4.7: the Fill page moves to the front when what it has is for this field.
+     */
     val cycle: List<Int> by lazy {
-        listOf(0) + normalizedOrder.filter { isEnabled(it) }.map { it.pageNumber }
+        val enabled = normalizedOrder.filter { isEnabled(it) }
+        val ordered = if (fillPresence == FillPresence.FIRST && SymPageId.FILL in enabled) listOf(SymPageId.FILL) + (enabled - SymPageId.FILL) else enabled
+        listOf(0) + ordered.map { it.pageNumber }
     }
 
     /** spec: layers-sym-alt.md SS4.2 ("tapping Sym moves one step forward and wraps"). */

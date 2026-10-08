@@ -166,10 +166,10 @@ class LegacyImportTest {
     @Test
     fun `the sym pages config keeps its contract and loses the device page and emojiFirst, spec SS12 test 20`() {
         val r = import("sym_pages_config" to """{"deviceEnabled":true,"emojiEnabled":true,"symbolsEnabled":true,"clipboardEnabled":false,"emojiPickerEnabled":true,"emojiFirst":false,"symPageOrder":["emoji_picker","symbols","clipboard","emoji"]}""")
-        assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), r.settings.symPages.pages.order)
+        assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL), r.settings.symPages.pages.order)
         assertTrue(r.settings.symPages.pages.emojiEnabled)
         val legacyShape = import("sym_pages_config" to """{"emojiFirst": true}""")
-        assertEquals(listOf(SymPage.EMOJI, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), legacyShape.settings.symPages.pages.order)
+        assertEquals(listOf(SymPage.EMOJI, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI_PICKER, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL), legacyShape.settings.symPages.pages.order)
     }
 
     @Test
@@ -372,7 +372,7 @@ class LegacyImportTest {
             symPages = SymPagePrefs(
                 pages = SymPagesConfig(
                     gifEnabled = false,
-                    order = listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3),
+                    order = listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.GIF, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL),
                 ),
             ),
         )

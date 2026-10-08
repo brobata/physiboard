@@ -27,6 +27,7 @@ import brobata.physiboard.core.keys.ControlKey
 import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.FieldLoss
 import brobata.physiboard.core.keys.FilterVerdict
+import brobata.physiboard.core.keys.FillPresence
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
@@ -40,6 +41,7 @@ import brobata.physiboard.core.keys.ModifierSettings
 import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
 import brobata.physiboard.core.keys.SymFieldBounce
+import brobata.physiboard.core.keys.SymPagesConfig
 import brobata.physiboard.core.keys.TypingSessionState
 import brobata.physiboard.core.keys.VariationChooser
 import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
@@ -373,6 +375,27 @@ internal class KeyboardPipeline(
     val currentSymPage: Int get() = modifierState.sym.currentPageNumber
 
     /**
+     * layers-sym-alt.md SS4.7: what the Fill page has for this field. `:ime` sets it before every
+     * Sym press (codes come and go with the clock and the notifications) and at every field start.
+     */
+    var fillPresence: FillPresence = FillPresence.NONE
+
+    /**
+     * SS4.7: a Fill page pick key is taken only as a plain press (Alt allowed): not with Sym held
+     * (that is a Sym chord) and not with Ctrl active in any form (a Ctrl shortcut).
+     */
+    fun fillPickAllowed(metaCtrl: Boolean): Boolean = !modifierState.sym.togglePending && !modifierState.isCtrlActive(metaCtrl) && !modifierState.isCtrlPhysicalCombo(metaCtrl)
+
+    /** SS4.7: a pick spends Alt's one-shot, as the character Alt was armed for would have. */
+    fun consumeAltOneShotForPick() {
+        if (modifierState.alt.oneShot) modifierState = modifierState.copy(alt = modifierState.alt.copy(oneShot = false))
+    }
+
+    /** The configured pages with the Fill page placed for this field (SS4.2, SS4.7). */
+    val symPagesNow: SymPagesConfig
+        get() = if (layout.symPagesConfig.fillPresence == fillPresence) layout.symPagesConfig else layout.symPagesConfig.copy(fillPresence = fillPresence)
+
+    /**
      * spec: layers-sym-alt.md SS5.8: "the page is reopened if it is in the enabled cycle,
      * otherwise the first enabled page is opened, otherwise none." [requestedPageNumber] is
      * `restore_sym_page` as read at field start (0 when nothing was pending); [KeyboardSession]
@@ -380,7 +403,7 @@ internal class KeyboardPipeline(
      */
     fun restoreSymPage(requestedPageNumber: Int) {
         if (requestedPageNumber <= 0) return
-        val resolved = layout.symPagesConfig.restorePage(requestedPageNumber)
+        val resolved = symPagesNow.restorePage(requestedPageNumber)
         modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = resolved))
     }
 
@@ -1314,7 +1337,7 @@ internal class KeyboardPipeline(
             ModifierKey.SYM -> if (down) {
                 ModifierMachine.symDown(modifierState, stroke, settings.modifier, hasEditableField = symSessionLive)
             } else {
-                ModifierMachine.symUp(modifierState, stroke, hasEditableField = symSessionLive, pages = layout.symPagesConfig)
+                ModifierMachine.symUp(modifierState, stroke, hasEditableField = symSessionLive, pages = symPagesNow)
             }
             ModifierKey.FN -> if (down) ModifierMachine.fnKeyDown(modifierState, stroke, settings.modifier) else ModifierMachine.fnKeyUp(modifierState, stroke, settings.modifier)
         }

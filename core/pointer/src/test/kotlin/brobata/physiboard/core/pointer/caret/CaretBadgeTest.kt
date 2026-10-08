@@ -126,4 +126,13 @@ class CaretBadgeTest {
             CaretBadge.items(ModifierGlyphInput(capsLockOn = true, privateMode = true)).map { it.modifier },
         )
     }
+
+    @Test
+    fun `layers-sym-alt SS4_7 - the Fill cue is faint and comes after everything else`() {
+        assertEquals(listOf(BadgeItem(ModifierGlyph.FILL, GlyphStyle.ARMED_FAINT)), CaretBadge.items(ModifierGlyphInput(fillAvailable = true)))
+        assertEquals(
+            listOf(ModifierGlyph.SHIFT, ModifierGlyph.PRIVATE, ModifierGlyph.FILL),
+            CaretBadge.items(ModifierGlyphInput(capsLockOn = true, privateMode = true, fillAvailable = true)).map { it.modifier },
+        )
+    }
 }

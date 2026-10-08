@@ -136,11 +136,12 @@ class SymPageChooserTest {
         assertEquals(
             listOf(
                 SymChooserTarget.EMOJI_PICKER, SymChooserTarget.KAOMOJI, SymChooserTarget.UNICODE_SYMBOLS,
-                SymChooserTarget.SYMBOLS, SymChooserTarget.CLIPBOARD, SymChooserTarget.EMOJI, SymChooserTarget.GIF,
+                SymChooserTarget.SYMBOLS, SymChooserTarget.CLIPBOARD, SymChooserTarget.EMOJI, SymChooserTarget.GIF, SymChooserTarget.FILL,
             ),
             rows.map { it.target },
         )
-        assertEquals(listOf(true, true, true, true, false, false, false), rows.map { it.inCycle })
+        // The Fill page is listed even with nothing to offer (SS4.7), dimmed like a page that is off.
+        assertEquals(listOf(true, true, true, true, false, false, false, false), rows.map { it.inCycle })
     }
 
     @Test
@@ -179,7 +180,7 @@ class SymPageChooserTest {
     @Test
     fun `the GIF page is page 6, a panel, last in the default order and off by default`() {
         assertEquals(6, SymPageId.GIF.pageNumber)
-        assertEquals(SymPageId.GIF, SymPageId.DEFAULT_ORDER.last { !it.isCustom }, "last of the shipped pages, before the user's own")
+        assertEquals(SymPageId.GIF, SymPageId.DEFAULT_ORDER.last { !it.isCustom && it != SymPageId.FILL }, "last of the shipped pages, before the user's own")
         assertEquals(listOf(0, 1, 2), SymPagesConfig().cycle)
         assertEquals(listOf(0, 1, 2, 6), SymPagesConfig(gifEnabled = true).cycle)
         assertEquals(SymPageId.GIF, SymPageId.forPageNumber(6))

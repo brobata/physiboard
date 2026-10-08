@@ -91,6 +91,25 @@
             android:launchMode="singleInstance"
             android:noHistory="true" />
 
+        <!-- layers-sym-alt.md SS4.7, app-shell.md SS31.6: one-time codes for the Fill page. The
+             system binds it only after the user gives this entry notification access in Android's
+             settings (BIND_NOTIFICATION_LISTENER_SERVICE means only the system can bind it). It
+             reads a notification's text to find a code, keeps the code in memory for 10 minutes
+             and nothing else; nothing is stored, logged or sent. Its own entry, apart from the
+             notification ring's, so each is its own choice. -->
+        <service
+            android:name="brobata.physiboard.ime.fill.OneTimeCodeListenerService"
+            android:label="@string/otp_listener_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.notification.default_filter_types"
+                android:value="conversations|alerting|silent" />
+        </service>
+
         <!-- layers-sym-alt.md SS4.5: a GIF sent from the GIF page reaches the app as a content URI
              (InputConnection.commitContent) with a one-off read grant; only the cache path
              `gif-share/` is exposed, and it holds at most the last few GIFs sent. -->

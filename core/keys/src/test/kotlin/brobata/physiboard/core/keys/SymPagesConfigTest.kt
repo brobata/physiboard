@@ -58,7 +58,7 @@ class SymPagesConfigTest {
             order = listOf(SymPageId.SYMBOLS, SymPageId.EMOJI),
         )
         assertEquals(
-            listOf(SymPageId.SYMBOLS, SymPageId.EMOJI, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF, SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3),
+            listOf(SymPageId.SYMBOLS, SymPageId.EMOJI, SymPageId.CLIPBOARD, SymPageId.EMOJI_PICKER, SymPageId.GIF, SymPageId.CUSTOM_1, SymPageId.CUSTOM_2, SymPageId.CUSTOM_3, SymPageId.FILL),
             config.normalizedOrder,
         )
         assertEquals(listOf(2, 1, 0), tapSequence(config, 3))
@@ -84,5 +84,25 @@ class SymPagesConfigTest {
     fun `no page is enabled - Sym never opens anything`() {
         val allOff = SymPagesConfig(emojiEnabled = false, symbolsEnabled = false, clipboardEnabled = false, emojiPickerEnabled = false)
         assertEquals(listOf(0, 0, 0), tapSequence(allOff, 3))
+    }
+
+    @Test
+    fun `the Fill page is in the cycle only while it has something, and first when it is for this field`() {
+        val base = SymPagesConfig(emojiEnabled = false, symbolsEnabled = true, emojiPickerEnabled = true, gifEnabled = true,
+            order = listOf(SymPageId.EMOJI_PICKER, SymPageId.SYMBOLS, SymPageId.GIF, SymPageId.FILL))
+        assertEquals(listOf(0, 4, 2, 6), base.cycle, "nothing to offer: not in the cycle")
+        assertEquals(listOf(0, 4, 2, 6, 10), base.copy(fillPresence = FillPresence.LISTED).cycle, "codes for another field: at its own place")
+        assertEquals(listOf(0, 10, 4, 2, 6), base.copy(fillPresence = FillPresence.FIRST).cycle, "for this field: first")
+        assertEquals(listOf(0, 4, 2, 6), base.copy(fillPresence = FillPresence.FIRST, fillEnabled = false).cycle, "switched off: never")
+        assertEquals(10, base.copy(fillPresence = FillPresence.FIRST).nextPage(0))
+        assertEquals(4, base.copy(fillPresence = FillPresence.FIRST).nextPage(10))
+    }
+
+    @Test
+    fun `what the Fill page has follows codes, the field and a password manager`() {
+        assertEquals(FillPresence.NONE, FillPresence.of(codesWaiting = false, codeField = true, inlineSuggestions = false))
+        assertEquals(FillPresence.LISTED, FillPresence.of(codesWaiting = true, codeField = false, inlineSuggestions = false))
+        assertEquals(FillPresence.FIRST, FillPresence.of(codesWaiting = true, codeField = true, inlineSuggestions = false))
+        assertEquals(FillPresence.FIRST, FillPresence.of(codesWaiting = false, codeField = false, inlineSuggestions = true))
     }
 }

@@ -76,7 +76,7 @@ class SettingsDefaultsTest {
 
     @Test
     fun `sym pages default to Emoji, Symbols, GIFs on, in that order, and the rest off`() {
-        assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3), d.symPages.pages.order)
+        assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF, SymPage.CLIPBOARD, SymPage.EMOJI, SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3, SymPage.FILL), d.symPages.pages.order)
         assertTrue(d.symPages.pages.emojiPickerEnabled && d.symPages.pages.symbolsEnabled && d.symPages.pages.gifEnabled)
         assertFalse(d.symPages.pages.emojiEnabled || d.symPages.pages.clipboardEnabled || d.symPages.pages.custom1Enabled)
         assertFalse(d.symPages.kaomojiEnabled, "kaomoji is opt-in")

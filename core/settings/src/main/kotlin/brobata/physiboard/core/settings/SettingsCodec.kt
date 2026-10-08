@@ -105,6 +105,8 @@ object SettingsKeys {
     const val SYM_DOUBLE_TAP_CHOOSER = "sym_double_tap_chooser"
     const val EMOJI_PICKER_EXPANDED = "emoji_picker_expanded_height"
     const val EMOJI_PICKER_KAOMOJI = "emoji_picker_kaomoji"
+    const val OTP_FROM_NOTIFICATIONS = "otp_from_notifications"
+    const val FILL_INLINE_SUGGESTIONS = "fill_inline_suggestions"
     const val EMOJI_DEFAULT_SKIN_TONE = "emoji_default_skin_tone"
 
     // SS2.6 status bar
@@ -477,6 +479,8 @@ object SettingsCodec {
         put(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, s.doubleTapChooser.toString())
         put(SettingsKeys.EMOJI_PICKER_EXPANDED, s.emojiPickerExpandedHeight.toString())
         put(SettingsKeys.EMOJI_PICKER_KAOMOJI, s.kaomojiEnabled.toString())
+        put(SettingsKeys.OTP_FROM_NOTIFICATIONS, s.otpFromNotifications.toString())
+        put(SettingsKeys.FILL_INLINE_SUGGESTIONS, s.inlineSuggestions.toString())
         put(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE, s.defaultSkinTone.storedValue)
         put(SettingsKeys.RESTORE_SYM_PAGE, s.restoreSymPage.toString())
         put(SettingsKeys.PENDING_RESTORE_SYM_PAGE, s.pendingRestoreSymPage.toString())
@@ -494,6 +498,8 @@ object SettingsCodec {
             doubleTapChooser = r.bool(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, d.doubleTapChooser),
             emojiPickerExpandedHeight = r.bool(SettingsKeys.EMOJI_PICKER_EXPANDED, d.emojiPickerExpandedHeight),
             kaomojiEnabled = r.bool(SettingsKeys.EMOJI_PICKER_KAOMOJI, d.kaomojiEnabled),
+            otpFromNotifications = r.bool(SettingsKeys.OTP_FROM_NOTIFICATIONS, d.otpFromNotifications),
+            inlineSuggestions = r.bool(SettingsKeys.FILL_INLINE_SUGGESTIONS, d.inlineSuggestions),
             defaultSkinTone = SkinTone.fromStored(r.string(SettingsKeys.EMOJI_DEFAULT_SKIN_TONE)),
             restoreSymPage = r.int(SettingsKeys.RESTORE_SYM_PAGE, d.restoreSymPage),
             pendingRestoreSymPage = r.int(SettingsKeys.PENDING_RESTORE_SYM_PAGE, d.pendingRestoreSymPage),
@@ -1011,6 +1017,7 @@ internal object StoredValues {
             "custom1Enabled" to JsonPrimitive(c.custom1Enabled),
             "custom2Enabled" to JsonPrimitive(c.custom2Enabled),
             "custom3Enabled" to JsonPrimitive(c.custom3Enabled),
+            "fillEnabled" to JsonPrimitive(c.fillEnabled),
             "symPageOrder" to JsonRows.stringListOf(c.order.map { it.id }),
         ),
     )
@@ -1021,7 +1028,7 @@ internal object StoredValues {
      * page ids (including the dropped `device`) are skipped and missing pages appended last, so
      * a config written before the GIF page existed reads with `gif` last and `gifEnabled` false,
      * and one written before the user's own pages existed reads with `custom1` to `custom3` last
-     * and switched off (SS4.6).
+     * and switched off (SS4.6); one from before the Fill page reads with `fill` last and on (SS4.7).
      */
     fun symPagesConfig(obj: JsonObject?): SymPagesConfig? {
         obj ?: return null
@@ -1045,6 +1052,9 @@ internal object StoredValues {
             custom1Enabled = obj.boolean("custom1Enabled") ?: d.custom1Enabled,
             custom2Enabled = obj.boolean("custom2Enabled") ?: d.custom2Enabled,
             custom3Enabled = obj.boolean("custom3Enabled") ?: d.custom3Enabled,
+            // layers-sym-alt.md SS4.7: unlike the GIF page, a config from before the Fill page reads
+            // it on: it sends nothing anywhere and shows only when it has something for the field.
+            fillEnabled = obj.boolean("fillEnabled") ?: d.fillEnabled,
             order = complete,
         )
     }
