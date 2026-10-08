@@ -31,5 +31,7 @@ tasks.test {
     providers.gradleProperty("physiboard.eval.sweep").orNull?.let { systemProperty("physiboard.eval.sweep", it) }
     providers.gradleProperty("physiboard.eval.grid").orNull?.let { systemProperty("physiboard.eval.grid", it) }
     providers.gradleProperty("physiboard.eval.split").orNull?.let { systemProperty("physiboard.eval.split", it) }
+    // Opt-in wall-clock ratchet: -Pphysiboard.eval.timing=true (a loaded build machine fails it).
+    providers.gradleProperty("physiboard.eval.timing").orNull?.let { systemProperty("physiboard.eval.timing", it) }
     maxHeapSize = "6g"
 }
