@@ -280,17 +280,47 @@ class ContinuousSessionTest {
     }
 
     @Test
-    fun `the 15 s default survives a count to ten and ends a session left in silence`() {
+    fun `the 5 s default survives a breath and ends a session left in silence`() {
         val h = started()
         h.send(DictationEvent.FinalResult("one."), now = 2_000L)
-        h.send(DictationEvent.BeginningOfSpeech, now = 2_100L)
+        h.send(DictationEvent.BeginningOfSpeech, now = 2_100L) // the engine is alive: no re-listen probe
         h.drainEffects()
-        assertTrue(h.runClockTo(14_000L).all { it.effects.isEmpty() }, "a 12 s pause is not the end")
-        h.send(DictationEvent.PartialResult("two"), now = 14_000L)
-        h.send(DictationEvent.FinalResult("two."), now = 15_000L)
-        h.send(DictationEvent.BeginningOfSpeech, now = 15_050L)
+        assertTrue(h.runClockTo(6_000L).all { it.effects.isEmpty() }, "a 4 s pause is not the end")
+        h.send(DictationEvent.PartialResult("two"), now = 6_000L)
+        h.send(DictationEvent.FinalResult("two."), now = 7_000L)
+        h.send(DictationEvent.BeginningOfSpeech, now = 7_050L)
         h.drainEffects()
-        val stop = h.runClockTo(30_050L).single()
+        assertTrue(h.runClockTo(11_999L).all { it.effects.isEmpty() })
+        val stop = h.runClockTo(12_000L).single()
+        assertEquals(listOf(DictationEffect.StopListening), stop.effects)
+    }
+
+    @Test
+    fun `the voice detector firing on background noise does not keep the session open`() {
+        // Titan, 2026-10-07: the engine reported beginning and end of speech every half second
+        // with nobody talking, and the silence limit, reset by each one, never ran out.
+        val h = started()
+        h.send(DictationEvent.FinalResult("one."), now = 2_000L)
+        h.drainEffects()
+        var t = 2_100L
+        while (t < 6_900L) {
+            h.send(DictationEvent.BeginningOfSpeech, now = t)
+            h.send(DictationEvent.EndOfSpeech, now = t + 300L)
+            t += 500L
+        }
+        h.drainEffects()
+        val stop = h.runClockTo(7_000L).single()
+        assertEquals(listOf(DictationEffect.StopListening), stop.effects)
+    }
+
+    @Test
+    fun `an unchanged partial repeated by the engine is not new speech`() {
+        val h = started()
+        h.send(DictationEvent.PartialResult("hello there"), now = 1_000L)
+        h.send(DictationEvent.PartialResult("hello there"), now = 3_000L)
+        h.send(DictationEvent.PartialResult("hello there"), now = 5_500L)
+        h.drainEffects()
+        val stop = h.runClockTo(6_000L).single()
         assertEquals(listOf(DictationEffect.StopListening), stop.effects)
     }
 }

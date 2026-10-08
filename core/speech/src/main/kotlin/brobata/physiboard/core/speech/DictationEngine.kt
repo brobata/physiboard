@@ -42,7 +42,10 @@ object DictationEngine {
             is DictationEvent.Trigger -> throw IllegalStateException("Trigger is handled before a session is required")
             DictationEvent.ReadyForSpeech -> handleReady(session, now)
             DictationEvent.FirstAudio -> handleFirstAudio(session)
-            DictationEvent.BeginningOfSpeech -> DictationOutcome(alive(session).copy(lastSpeechMs = now, consecutiveFailures = 0))
+            // The engine's voice detector fires on any sound (music, a room, breathing: the Titan log of
+            // 2026-10-07 shows it every half second), so it proves the engine is alive but not that
+            // anything was said; only new words restart the silence limit (spec SS6.4).
+            DictationEvent.BeginningOfSpeech -> DictationOutcome(alive(session).copy(consecutiveFailures = 0))
             DictationEvent.EngineActivity -> DictationOutcome(alive(session))
             DictationEvent.FieldClearedByApp -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
             DictationEvent.EndOfSpeech -> DictationOutcome(session)
@@ -166,9 +169,11 @@ object DictationEngine {
         val text = SessionEcho.strip(rawText.trim(), session.utterance.finishedThisSession).trim()
         if (text.isBlank()) return DictationOutcome(alive(session)) // "Empty partials are ignored."
         val invalidated = session.utterance.pending is PendingUtterance.Invalidated
+        // The engine repeats an unchanged partial while it waits; only new words count as speech.
+        val newWords = (session.utterance.pending as? PendingUtterance.Live)?.text != text
         val next = alive(session).copy(
             heardSpeech = true,
-            lastSpeechMs = now,
+            lastSpeechMs = if (newWords) now else session.lastSpeechMs,
             consecutiveFailures = 0,
             utterance = if (invalidated) session.utterance else session.utterance.copy(pending = PendingUtterance.Live(text)),
         )

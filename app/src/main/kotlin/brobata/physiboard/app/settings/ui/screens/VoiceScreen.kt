@@ -172,13 +172,13 @@ fun VoiceScreen(onBack: () -> Unit) {
 }
 
 /** dictation.md SS12.1: the five choices; 0 is never. */
-private val STOP_AFTER_SILENCE_CHOICES: List<Int> = listOf(5000, 10000, 15000, 30000, 0)
+private val STOP_AFTER_SILENCE_CHOICES: List<Int> = listOf(3000, 5000, 8000, 15000, 0)
 
 private fun stopAfterSilenceLabel(ms: Int): String = if (ms == 0) "Never" else "${ms / 1000} s"
 
 /** Only 0 is Never; any other stored value (an import, a hand edit) shows as the nearest timed choice. */
 private fun nearestStopAfterSilenceChoice(ms: Int): Int =
-    if (ms == 0) 0 else STOP_AFTER_SILENCE_CHOICES.filter { it > 0 }.minByOrNull { kotlin.math.abs(it - ms) } ?: 15000
+    if (ms == 0) 0 else STOP_AFTER_SILENCE_CHOICES.filter { it > 0 }.minByOrNull { kotlin.math.abs(it - ms) } ?: 5000
 
 private fun assistantActionLabel(action: AssistantAction): String = when (action) {
     AssistantAction.AUTO -> "Auto"

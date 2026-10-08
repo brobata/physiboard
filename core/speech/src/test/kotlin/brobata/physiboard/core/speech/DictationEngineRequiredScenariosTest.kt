@@ -38,8 +38,8 @@ class DictationEngineRequiredScenariosTest {
 
     @Test
     fun `a long pause mid-sentence never cuts me off`() {
-        // A count to ten at the 15 s default; twenty seconds of thinking with the limit off.
-        for ((settings, pauseMs) in listOf(DictationSettings(androidApiLevel = 36) to 12_000L, DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 0L) to 20_000L)) {
+        // A breath at the 5 s default, a count to ten at 15 s, twenty seconds of thinking with the limit off.
+        for ((settings, pauseMs) in listOf(DictationSettings(androidApiLevel = 36) to 4_000L, DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 15_000L) to 12_000L, DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 0L) to 20_000L)) {
             val h = started(settings)
             h.send(DictationEvent.PartialResult("the thing is"), now = 1_000L)
             h.send(DictationEvent.SegmentResult("the thing is"), now = 2_500L)

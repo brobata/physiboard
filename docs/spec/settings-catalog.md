@@ -253,7 +253,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `fn_long_press_speech` | boolean | false | true | Holding Fn dictates | Keyboard > Voice > Triggers > "Long-press Fn for speech input" |
 | `dictation_haptics` | boolean | true | same | Vibrate on start and stop (also gated on the system haptic setting) | Keyboard > Sound & Haptics > "Vibrate on dictation start/stop" |
 | `dictation_haptic_strength` | string `light`, `standard`, `strong` | `strong` | | Pulse length | Sound & Haptics > "Vibration strength" (only while the row above is on) |
-| `dictation_stop_after_silence_ms` | int 0 to 60000; 0 = runs until stopped (60 s safety) | 15000 | | Silence limit (dictation.md 6.4) | Voice > Transcription > "Stop after silence" (5 s, 10 s, 15 s, 30 s, Never) |
+| `dictation_stop_after_silence_ms` | int 0 to 60000; 0 = runs until stopped (60 s safety) | 5000 | | Silence limit (dictation.md 6.4) | Voice > Transcription > "Stop after silence" (3 s, 5 s, 8 s, 15 s, Never) |
 | `dictation_stop_on_typing` | boolean | true | | Any key other than a modifier ends the session before doing its work | Voice > "Typing stops dictation" |
 | `dictation_prefer_offline` | boolean | true | | The engine's on-device recognizer first; one online fallback when the pack is missing | Voice > "Keep speech on the phone" |
 | `dictation_pause_media` | boolean | true | | Exclusive transient audio focus for the session | Voice > "Pause music while dictating" |
@@ -954,7 +954,7 @@ control; ">" means the row navigates.
     - intro; header "Triggers": "Long-press Fn for speech input"
     - header "Transcription": "Speech engine" picker (system default, on-device, each installed
       service); "Automatic punctuation"; "Block offensive words"; "Stop after silence" chips
-      (5 s, 10 s, 15 s, 30 s, Never); "Typing stops dictation";
+      (3 s, 5 s, 8 s, 15 s, Never); "Typing stops dictation";
       "Keep speech on the phone"; "Pause music while dictating"
     - header "Voice assistant": "Orange key opens the assistant"; "Hold Sym for the assistant";
       "How the assistant opens" (Auto / Voice command / Hands free / Assist)

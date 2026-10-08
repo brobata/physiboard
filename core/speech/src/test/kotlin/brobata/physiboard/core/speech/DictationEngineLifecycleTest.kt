@@ -108,10 +108,13 @@ class DictationEngineLifecycleTest {
     fun `T9 speech refreshes the silence limit`() {
         val h = started(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 5_000L))
         assertEquals(5_000L, h.session?.silenceDeadlineMs)
+        // The voice detector alone is not speech (it fires on any sound); new words are.
         h.send(DictationEvent.BeginningOfSpeech, now = 3_000L)
-        assertEquals(8_000L, h.session?.silenceDeadlineMs)
+        assertEquals(5_000L, h.session?.silenceDeadlineMs)
         h.send(DictationEvent.PartialResult("a"), now = 4_000L)
         assertEquals(9_000L, h.session?.silenceDeadlineMs)
+        h.send(DictationEvent.PartialResult("a"), now = 4_500L)
+        assertEquals(9_000L, h.session?.silenceDeadlineMs, "an unchanged partial is not new speech")
     }
 
     @Test

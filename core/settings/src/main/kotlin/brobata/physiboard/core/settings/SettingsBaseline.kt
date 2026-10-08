@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 5 hides the suggestion row again. */
-    const val CURRENT_VERSION: Int = 5
+    /** The baseline version this build ships with; version 6 sets dictation's silence limit to 5 s. */
+    const val CURRENT_VERSION: Int = 6
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -59,6 +59,10 @@ object SettingsBaseline {
         // rather than a bug: apps keep the whole screen while typing, autocorrect does the
         // work, and Sym brings up emoji, symbols and the clipboard. Switching it back on stands.
         5 to mapOf(SettingsKeys.STATUS_BAR_VISIBILITY to StatusBarVisibility.NEVER.storedValue),
+        // Version 6, 2026-10-07: dictation stops after 5 s without new words instead of 15 s
+        // ("15 seconds of silence sounds like forever"). The 15 s default shipped only to the
+        // maintainer's dev build, where it was written to the store, so it is replaced once.
+        6 to mapOf(SettingsKeys.DICTATION_STOP_AFTER_SILENCE to "5000"),
     )
 
     /** The baseline version already applied to [flatMap], or 0 when the marker was never written. Mirrors [SettingsCodec.schemaVersionOf]'s style. */
