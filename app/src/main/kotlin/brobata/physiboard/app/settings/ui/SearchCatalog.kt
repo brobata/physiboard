@@ -97,6 +97,11 @@ object SearchCatalog {
         SearchEntry("Double-tap Sym for the page chooser", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "sym double tap chooser page letter open kaomoji gif"),
         SearchEntry("GIFs", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "gif gifs klipy tenor animated sym page search"),
         SearchEntry("My Sym pages", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "my page own custom sym layer extra symbols characters keys personal"),
+        // layers-sym-alt.md SS4.7: the Fill page and what it needs.
+        SearchEntry("Fill page", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "fill autofill one-time code otp sms verification 2fa login password sym page"),
+        SearchEntry("One-time codes from notifications", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "otp one-time code verification sms text message email 2fa two-factor notifications fill"),
+        SearchEntry("Notification access", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "notification access listener permission one-time codes otp allow"),
+        SearchEntry("Password manager suggestions", "Customize SYM Keyboard", Routes.CUSTOMIZE_SYM_KEYBOARD, "password manager autofill inline suggestions logins bitwarden google fill experimental"),
         // keys-and-modifiers.md SS8, layers-sym-alt.md SS8: long press and the accent lists.
         SearchEntry("Long press", "Long press", Routes.LONG_PRESS, "long press hold held key alt symbol capital uppercase accents diacritics variations sym emoji"),
         SearchEntry("Long press types", "Long press", Routes.LONG_PRESS, "long press mode accent variation capital alt symbol sym emoji diacritics"),

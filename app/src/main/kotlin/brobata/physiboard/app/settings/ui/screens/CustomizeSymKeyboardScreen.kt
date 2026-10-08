@@ -20,7 +20,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.app.NotificationManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings as AndroidSettings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import brobata.physiboard.ime.fill.OneTimeCodeListenerService
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +52,7 @@ import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.app.settings.ui.TextFieldRow
+import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
 import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.emoji.SkinTones
@@ -74,6 +86,18 @@ fun CustomizeSymKeyboardScreen(
     val controller = LocalSettingsController.current
     val symPages = controller.current.value.symPages
     val keys = controller.current.value.keys
+    val context = LocalContext.current
+
+    // layers-sym-alt.md SS4.7: notification access changes behind the screen; re-read on every resume.
+    var notificationAccess by remember { mutableStateOf(oneTimeCodeAccessGranted(context)) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) notificationAccess = oneTimeCodeAccessGranted(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     var editingPage by remember { mutableStateOf(symPageForNumber(initialPage)) }
     var showResetConfirm by remember { mutableStateOf(false) }
@@ -139,6 +163,38 @@ fun CustomizeSymKeyboardScreen(
                         onMoveDown = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index + 1)))) } },
                         onToggleEnabled = { checked -> controller.update { it.copy(symPages = it.symPages.copy(pages = withEnabled(it.symPages.pages, entry, checked))) } },
                         onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS || customIndex(entry) != null) ({ editingPage = entry }) else null,
+                    )
+                }
+                item { SectionHeader("Fill page: one-time codes") }
+                item {
+                    // layers-sym-alt.md SS4.7, app-shell.md SS31.6.
+                    SwitchRow(
+                        label = "One-time codes from notifications",
+                        description = "When a sign-in code arrives by text message, e-mail or a banking app, the Fill page offers it for 10 minutes: press Sym in the code box and then the key shown beside the code. " +
+                            "PhysiBoard reads each notification's text on the phone to find the code, keeps only the code, in memory, and forgets it after 10 minutes, when it is typed, or when the screen turns off. Nothing is saved, logged or sent anywhere. Not while private mode is on.",
+                        note = if (symPages.otpFromNotifications && !notificationAccess) "Needs notification access (below) before it does anything." else null,
+                        checked = symPages.otpFromNotifications,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(otpFromNotifications = checked)) } },
+                    )
+                }
+                item {
+                    ButtonRow(
+                        label = "Notification access",
+                        description = if (notificationAccess) {
+                            "Allowed for \"PhysiBoard one-time codes\". Turn it off in Android's settings at any time; the codes go with it."
+                        } else {
+                            "Android asks you to allow \"PhysiBoard one-time codes\" to read notifications. That is how it sees a code arrive. It is separate from the notification ring's access."
+                        },
+                        buttonText = if (notificationAccess) "Open" else "Allow",
+                        onClick = { openNotificationAccess(context) },
+                    )
+                }
+                item {
+                    SwitchRow(
+                        label = "Password manager suggestions (experimental)",
+                        description = "Shows your password manager's saved logins on the Fill page, first when you press Sym in a login box. Off by default: Android only hands these to a keyboard that shows an on-screen keyboard, so PhysiBoard has to raise an empty one while you are in a login box, and while this is on the password manager's own drop-down list does not appear.",
+                        checked = symPages.inlineSuggestions,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(inlineSuggestions = checked)) } },
                     )
                 }
                 item {
@@ -385,6 +441,24 @@ private fun chooserLetter(page: SymPage): Char = when (page) {
 
 private fun List<CustomSymPage>.withPage(index: Int, change: (CustomSymPage) -> CustomSymPage): List<CustomSymPage> =
     List(CustomSymPage.COUNT) { i -> getOrElse(i) { CustomSymPage() }.let { if (i == index) change(it) else it } }
+
+/** Whether "PhysiBoard one-time codes" has notification access (layers-sym-alt.md SS4.7). */
+private fun oneTimeCodeAccessGranted(context: Context): Boolean = runCatching {
+    context.getSystemService(NotificationManager::class.java)?.isNotificationListenerAccessGranted(ComponentName(context, OneTimeCodeListenerService::class.java)) ?: false
+}.getOrDefault(false)
+
+/**
+ * Android's own page for this one listener (Android 11 and later), else the list of every app
+ * with notification access. app-shell.md SS31.6.
+ */
+private fun openNotificationAccess(context: Context) {
+    val component = ComponentName(context, OneTimeCodeListenerService::class.java).flattenToString()
+    val detail = Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+        .putExtra(AndroidSettings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, component)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    val opened = runCatching { context.startActivity(detail) }.isSuccess
+    if (!opened) runCatching { context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+}
 
 /** spec SS5.8's `INITIAL_SYM_KEY_CODE`: an Android `KeyEvent.KEYCODE_A`..`KEYCODE_Z` value (29..54). */
 private fun letterForKeyCode(keyCode: Int): Char? {
