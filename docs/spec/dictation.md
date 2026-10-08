@@ -386,7 +386,9 @@ last words still land:
 
 - **Silence limit**: the session stops once nothing has been heard for the silence limit
   (`dictation_stop_after_silence_ms`, 5 s by default; or 60 s when it is 0). "Heard" means new
-  words: a partial whose text differs from the last one, a segment or a final with text; the
+  words: a partial whose text differs from the last one, or a segment or final that adds words
+  the partials had not shown (its tidied copy of words already shown arrives seconds later and
+  does not count; Titan 2026-10-07: it pushed the stop 2.6 s late); the
   limit is measured from the last of those, or from the session start. The engine's beginning of
   speech does NOT count: its voice detector fires on any sound (music, a room, breathing; the
   Titan log of 2026-10-07 shows it every half second), and counting it meant the limit never

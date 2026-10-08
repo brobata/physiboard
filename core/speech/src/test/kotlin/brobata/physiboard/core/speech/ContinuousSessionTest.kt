@@ -290,8 +290,9 @@ class ContinuousSessionTest {
         h.send(DictationEvent.FinalResult("two."), now = 7_000L)
         h.send(DictationEvent.BeginningOfSpeech, now = 7_050L)
         h.drainEffects()
-        assertTrue(h.runClockTo(11_999L).all { it.effects.isEmpty() })
-        val stop = h.runClockTo(12_000L).single()
+        // Five seconds from the last new words (the partial at 6 s), not from their final.
+        assertTrue(h.runClockTo(10_999L).all { it.effects.isEmpty() })
+        val stop = h.runClockTo(11_000L).single()
         assertEquals(listOf(DictationEffect.StopListening), stop.effects)
     }
 
@@ -321,6 +322,19 @@ class ContinuousSessionTest {
         h.send(DictationEvent.PartialResult("hello there"), now = 5_500L)
         h.drainEffects()
         val stop = h.runClockTo(6_000L).single()
+        assertEquals(listOf(DictationEffect.StopListening), stop.effects)
+    }
+
+    @Test
+    fun `the tidied final of words already shown does not push the silence stop back`() {
+        // Titan, 2026-10-07: last partial at 31.0 s, the same words' final at 34.1 s, and the
+        // stop came 5 s after the final, 7.7 s after the user went quiet.
+        val h = started()
+        h.send(DictationEvent.PartialResult("I'm heading to the store"), now = 1_000L)
+        h.send(DictationEvent.SegmentResult("I'm heading to the store."), now = 3_600L)
+        h.send(DictationEvent.BeginningOfSpeech, now = 3_700L)
+        h.drainEffects()
+        val stop = h.runClockTo(6_000L).single { it.effects.isNotEmpty() }
         assertEquals(listOf(DictationEffect.StopListening), stop.effects)
     }
 }

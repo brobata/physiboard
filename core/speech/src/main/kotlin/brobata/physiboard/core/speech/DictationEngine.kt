@@ -200,7 +200,7 @@ object DictationEngine {
         }
         val next = session.copy(
             heardSpeech = heard,
-            lastSpeechMs = if (finished.plainText != null) now else session.lastSpeechMs,
+            lastSpeechMs = if (addsWords(session.utterance.pending, text)) now else session.lastSpeechMs,
         )
         if (session.request.segmented) {
             // spec SS6.3, D24: Google's continuous session delivers each utterance's final as an
@@ -251,13 +251,29 @@ object DictationEngine {
         }
     }
 
+    /**
+     * spec SS6.4: whether a final or segment brings words the user had not already seen as a
+     * partial. Google sends the tidied final of an utterance seconds after the last word (2.6 s on
+     * the Titan, 2026-10-07); counting it as speech pushed the silence stop that far past the
+     * moment the user went quiet. Case, punctuation and spacing are ignored in the comparison.
+     */
+    private fun addsWords(pending: PendingUtterance, finalText: String?): Boolean {
+        val heard = wordKey(finalText ?: return false)
+        if (heard.isEmpty()) return false
+        val live = (pending as? PendingUtterance.Live)?.text ?: return true
+        return heard != wordKey(live)
+    }
+
+    private fun wordKey(text: String): String =
+        text.lowercase().filter { it.isLetterOrDigit() || it.isWhitespace() }.split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ")
+
     /** spec SS6.2: one utterance inside a segmented session; committed like a final, and the session simply goes on. */
     private fun handleSegmentResult(session: DictationSession, text: String, now: Long, textSettings: DictationTextSettings): DictationOutcome {
         val finished = finishFromResult(text, session.utterance, textSettings)
         val next = alive(session).copy(
             engineContinues = true,
             heardSpeech = session.heardSpeech || finished.plainText != null,
-            lastSpeechMs = if (finished.plainText != null) now else session.lastSpeechMs,
+            lastSpeechMs = if (addsWords(session.utterance.pending, text)) now else session.lastSpeechMs,
             consecutiveFailures = 0,
             utterance = afterFinish(session.utterance, finished),
         )
