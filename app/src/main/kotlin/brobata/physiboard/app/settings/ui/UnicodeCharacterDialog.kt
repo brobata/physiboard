@@ -28,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import brobata.physiboard.core.actions.picker.UnicodeCharacterCatalog
 
 /**
@@ -77,7 +76,7 @@ fun UnicodeCharacterDialog(letter: Char? = null, resetLabel: String = "Reset to 
                     items(glyphs) { glyph ->
                         Card(modifier = Modifier.padding(1.dp).size(44.dp).clickable { onChoose(glyph) }) {
                             Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                                Text(glyph, fontSize = 22.sp)
+                                Text(glyph, style = PhysiBoardType.glyph)
                             }
                         }
                     }

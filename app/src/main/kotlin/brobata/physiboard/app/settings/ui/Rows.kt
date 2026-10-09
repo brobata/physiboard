@@ -1,34 +1,43 @@
 package brobata.physiboard.app.settings.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,22 +46,27 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 
@@ -63,11 +77,15 @@ import androidx.compose.ui.window.DialogProperties
  */
 val MinTouchTarget = 48.dp
 
+/** The height a settings row reaches at the least: a 48 dp target plus room to breathe. */
+val RowMinHeight = 56.dp
+
 /**
  * The screen chrome every hub and sub-screen shares (app-shell.md SS22.1, "the settings screens
- * share one top bar"): inset below the status bar and out of the cutout, 1 dp tonal elevation, a
- * back arrow with content description "Back", the title as a heading in headline-small
- * semi-bold, and trailing actions. Content scrolls in a [LazyColumn] so a screen with more rows
+ * share one top bar"): inset below the status bar and out of the cutout, the page's own
+ * background so the cards below are the only raised surfaces, a back arrow with content
+ * description "Back", the title in the mono headline style, and trailing actions in the same
+ * full-contrast colour as the arrow. Content scrolls in a [LazyColumn] so a screen with more rows
  * than the Titan's 1200 px tall panel can hold is still fully reachable by DPAD.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,13 +97,15 @@ fun SettingsScreenScaffold(
     content: @Composable () -> Unit,
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         title,
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
@@ -97,7 +117,7 @@ fun SettingsScreenScaffold(
                 },
                 actions = { trailingAction?.invoke() },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+                    containerColor = MaterialTheme.colorScheme.background,
                     // The default muted tint made "Add", "Import" and "Reset" look disabled next
                     // to the full-contrast back arrow.
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface,
@@ -119,40 +139,250 @@ val WideDialogProperties = DialogProperties(usePlatformDefaultWidth = false)
 /** The width [WideDialogProperties] dialogs take: the screen less a 16 dp margin each side. */
 fun Modifier.wideDialog(): Modifier = this.fillMaxWidth().padding(horizontal = 16.dp)
 
-/** A list of rows with the 48 dp floor and enough bottom padding to clear the last row's target. */
+/**
+ * A list of settings, drawn as rounded cards on the page background (app-shell.md SS22.1). Every
+ * [LazyListScope.item] is a row inside a card; [SettingsListScope.header] ends the card above,
+ * prints a section label and starts the next; [SettingsListScope.plainItem] is drawn full width
+ * between cards (a preview, a horizontal carousel, a card of its own). Screens keep writing plain
+ * `item {}` / `items()` calls: the scope records them and lays the cards out afterwards, once it
+ * knows which row is the first and last of each group.
+ */
 @Composable
-fun RowList(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+fun RowList(content: SettingsListScope.() -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        content = content,
+        contentPadding = PaddingValues(top = Spacing.s, bottom = Spacing.xl),
+    ) {
+        GroupingListScope().apply(content).emitInto(this)
+    }
+}
+
+/** The receiver of [RowList]: a [LazyListScope] that also knows about section headers and full-width items. */
+interface SettingsListScope : LazyListScope {
+    /** A section label between two cards (settings-catalog.md SS9.2's bold labels: "Capitalization", "Advanced", ...). */
+    fun header(text: String)
+
+    /** An item drawn full width, outside any card. */
+    fun plainItem(key: Any? = null, content: @Composable LazyItemScope.() -> Unit)
+}
+
+private class GroupingListScope : SettingsListScope {
+    private sealed interface Entry
+
+    private class Row(val key: Any?, val contentType: Any?, val content: @Composable LazyItemScope.() -> Unit) : Entry
+
+    private class Rows(
+        val count: Int,
+        val key: ((Int) -> Any)?,
+        val contentType: (Int) -> Any?,
+        val content: @Composable LazyItemScope.(Int) -> Unit,
+    ) : Entry
+
+    private class Header(val text: String) : Entry
+
+    private class Plain(val key: Any?, val content: @Composable LazyItemScope.() -> Unit) : Entry
+
+    private val entries = mutableListOf<Entry>()
+
+    override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
+        entries += Row(key, contentType, content)
+    }
+
+    override fun items(
+        count: Int,
+        key: ((index: Int) -> Any)?,
+        contentType: (index: Int) -> Any?,
+        itemContent: @Composable LazyItemScope.(index: Int) -> Unit,
+    ) {
+        if (count > 0) entries += Rows(count, key, contentType, itemContent)
+    }
+
+    @ExperimentalFoundationApi
+    override fun stickyHeader(key: Any?, contentType: Any?, content: @Composable LazyItemScope.(Int) -> Unit) {
+        entries += Plain(key) { content(0) }
+    }
+
+    override fun header(text: String) {
+        entries += Header(text)
+    }
+
+    override fun plainItem(key: Any?, content: @Composable LazyItemScope.() -> Unit) {
+        entries += Plain(key, content)
+    }
+
+    private fun isRow(entry: Entry?) = entry is Row || entry is Rows
+
+    fun emitInto(scope: LazyListScope) {
+        entries.forEachIndexed { index, entry ->
+            val prev = entries.getOrNull(index - 1)
+            val next = entries.getOrNull(index + 1)
+            // A run of rows is one card: rounded where the run starts and ends. A header or a
+            // full-width item on either side is what starts or ends the run.
+            val startsCard = !isRow(prev)
+            val endsCard = !isRow(next)
+            // Below a header the label's own padding is the gap; elsewhere the card keeps its distance.
+            val marginTop = if (prev is Header || prev == null) 0.dp else Spacing.m
+            when (entry) {
+                is Row -> scope.item(entry.key, entry.contentType) {
+                    CardSegment(top = startsCard, bottom = endsCard, marginTop = marginTop) { entry.content(this@item) }
+                }
+                is Rows -> scope.items(entry.count, entry.key, entry.contentType) { i ->
+                    CardSegment(top = startsCard && i == 0, bottom = endsCard && i == entry.count - 1, marginTop = marginTop) { entry.content(this@items, i) }
+                }
+                is Header -> scope.item(contentType = "header") { CardBreak(text = entry.text, first = prev == null) }
+                is Plain -> scope.item(entry.key) { entry.content(this@item) }
+            }
+        }
+    }
+}
+
+private val CardRadius = 16.dp
+
+/** One row's slice of a card: square where it joins its neighbours, rounded (and padded) where the card starts or ends. */
+@Composable
+private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(
+        topStart = if (top) CardRadius else 0.dp,
+        topEnd = if (top) CardRadius else 0.dp,
+        bottomStart = if (bottom) CardRadius else 0.dp,
+        bottomEnd = if (bottom) CardRadius else 0.dp,
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.l)
+            .padding(top = if (top) marginTop else 0.dp, bottom = if (bottom) Spacing.xs else 0.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(top = if (top) Spacing.xs else 0.dp, bottom = if (bottom) Spacing.xs else 0.dp),
+    ) {
+        // A header inside an "About" expander in this row is not a card break.
+        CompositionLocalProvider(LocalInsideCard provides true) { content() }
+    }
+}
+
+/** A section label between two cards. */
+@Composable
+private fun CardBreak(text: String, first: Boolean) {
+    SectionLabel(text, modifier = Modifier.padding(start = Spacing.l + Spacing.xs, end = Spacing.l, top = if (first) Spacing.s else Spacing.xl, bottom = Spacing.s))
+}
+
+private val LocalInsideCard = staticCompositionLocalOf { false }
+
+/**
+ * A standalone rounded card for screens that lay out a plain [Column] rather than a [RowList]
+ * (About, What's new, the setup pages). Same surface and corners as a [RowList] card; the caller's
+ * column supplies the side margin.
+ */
+@Composable
+fun SettingsCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = Spacing.s)
+            .clip(RoundedCornerShape(CardRadius))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(vertical = Spacing.xs),
+    ) {
+        CompositionLocalProvider(LocalInsideCard provides true) { content() }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = PhysiBoardType.sectionLabel,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.fillMaxWidth().semantics { heading() },
     )
 }
 
-/** spec: settings-catalog.md SS9.2, the bold section labels inside a hub screen ("Capitalization", "Advanced", ...). */
+/**
+ * spec: settings-catalog.md SS9.2, the section labels inside a hub screen. In a [RowList] use
+ * [SettingsListScope.header] instead, which also splits the cards; this one is for a plain column
+ * and for a sub-heading inside a card.
+ */
 @Composable
-fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 4.dp),
-    )
+fun SectionHeader(text: String, inset: Boolean = true) {
+    if (LocalInsideCard.current) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth().padding(start = Spacing.l, top = Spacing.m, end = Spacing.l, bottom = Spacing.xs).semantics { heading() },
+        )
+    } else {
+        // [inset] false: the caller's column already keeps the 16 dp side margin.
+        val side = if (inset) Spacing.l else 0.dp
+        SectionLabel(text, modifier = Modifier.padding(start = side + Spacing.xs, top = Spacing.l, end = side, bottom = Spacing.xs))
+    }
 }
 
 @Composable
 fun DividerLabel(text: String) = SectionHeader(text)
 
+/** A short explanatory paragraph inside a card, in the description colour. */
+@Composable
+fun InfoText(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
+    )
+}
+
+/**
+ * What a list shows when it has nothing in it yet: an icon and one line that says how to fill it
+ * (app-shell.md SS22.1).
+ */
+@Composable
+fun EmptyState(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.xl, vertical = Spacing.xl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        KeycapIcon(icon, size = 56.dp, iconSize = 28.dp)
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = Spacing.m),
+        )
+    }
+}
+
+/**
+ * The leading icon of a navigable row: a small rounded tile in the raised surface tone with the
+ * glyph in the accent colour, so a column of them reads like a row of keycaps.
+ */
+@Composable
+fun KeycapIcon(icon: ImageVector, modifier: Modifier = Modifier, size: Dp = 36.dp, iconSize: Dp = 20.dp, tint: Color = MaterialTheme.colorScheme.primary) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(iconSize))
+    }
+}
+
 /** The label plus description block every row type shares, left of its control. */
 @Composable
 private fun RowLabel(label: String, description: String?, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
         if (description != null) {
-            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
         }
     }
 }
@@ -175,36 +405,50 @@ fun SwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = MinTouchTarget)
+            .defaultMinSize(minHeight = RowMinHeight)
             .clickableRow(enabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.l, vertical = Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // The end gap keeps a long description from running up against the switch.
-        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+        Column(modifier = Modifier.weight(1f).padding(end = Spacing.l)) {
             RowLabel(label, description)
             if (note != null) {
                 val color = if (noteIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                Text(note, style = MaterialTheme.typography.bodySmall, color = color)
+                Text(note, style = MaterialTheme.typography.bodySmall, color = color, modifier = Modifier.padding(top = Spacing.xs))
             }
         }
         Switch(checked = checked, onCheckedChange = if (enabled) onCheckedChange else null, enabled = enabled)
     }
 }
 
-/** A row that only navigates to another screen (the catalogue's "send to another screen" row, drawn with a ">"). */
+/**
+ * A row that only navigates to another screen (the catalogue's "send to another screen" row):
+ * a keycap icon, the label and description, and a chevron. [icon] is required in spirit: every
+ * navigable row carries one (app-shell.md SS22.1); it is nullable only for rows whose label is
+ * itself a glyph (a letter in Customize Variations).
+ */
 @Composable
-fun NavigateRow(label: String, description: String? = null, onClick: () -> Unit) {
+fun NavigateRow(label: String, description: String? = null, icon: ImageVector? = null, enabled: Boolean = true, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = MinTouchTarget)
-            .clickableRow(true, onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .defaultMinSize(minHeight = RowMinHeight)
+            .clickableRow(enabled, onClick)
+            .padding(horizontal = Spacing.l, vertical = Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) {
+            KeycapIcon(icon)
+            Spacer(modifier = Modifier.width(Spacing.l))
+        }
         RowLabel(label, description, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Filled.NavigateNext, contentDescription = null)
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = Spacing.s),
+        )
     }
 }
 
@@ -222,12 +466,12 @@ fun <T> SingleChoiceChipsRow(
     selected: T,
     onSelect: (T) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         // Wraps onto a second line rather than running off a narrow screen.
         FlowRow(
-            modifier = Modifier.padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = Spacing.s),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
             options.forEach { option ->
                 FilterChip(
@@ -253,9 +497,9 @@ fun <T> SingleChoiceDropdownRow(
     onSelect: (T) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
-        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = Modifier.padding(top = 8.dp)) {
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = Modifier.padding(top = Spacing.s)) {
             OutlinedTextField(
                 value = optionLabel(selected),
                 onValueChange = {},
@@ -288,7 +532,7 @@ fun <T> MultiChoiceRow(
     selected: Set<T>,
     onToggle: (T, Boolean) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         options.forEach { option ->
             Row(
@@ -299,7 +543,7 @@ fun <T> MultiChoiceRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(checked = option in selected, onCheckedChange = { onToggle(option, it) })
-                Text(optionLabel(option))
+                Text(optionLabel(option), style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
@@ -319,11 +563,11 @@ fun IntRangeRow(
     commitOnRelease: Boolean = false,
     onValueChange: (Int) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         var dragValue by remember(value) { mutableStateOf(value) }
         val shown = if (commitOnRelease) dragValue else value
-        Text(valueLabel(shown), style = MaterialTheme.typography.bodyMedium)
+        Text(valueLabel(shown), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = Spacing.xs))
         val steps = if (step <= 1) 0 else ((range.last - range.first) / step) - 1
         Slider(
             value = shown.toFloat(),
@@ -360,7 +604,7 @@ fun TextFieldRow(
     leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     val error = validate?.invoke(value)
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -406,11 +650,11 @@ fun ColorFieldRow(label: String, value: Int, onValueChange: (Int) -> Unit) {
 @Composable
 fun ButtonRow(label: String, description: String? = null, buttonText: String, onClick: () -> Unit, enabled: Boolean = true) {
     Row(
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = MinTouchTarget).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = RowMinHeight).padding(horizontal = Spacing.l, vertical = Spacing.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RowLabel(label, description, modifier = Modifier.weight(1f))
-        TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.defaultMinSize(minHeight = MinTouchTarget)) { Text(buttonText) }
+        RowLabel(label, description, modifier = Modifier.weight(1f).padding(end = Spacing.m))
+        FilledTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.defaultMinSize(minHeight = MinTouchTarget)) { Text(buttonText) }
     }
 }
 
@@ -426,18 +670,35 @@ fun ExpandableSection(title: String, initiallyExpanded: Boolean = false, content
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = MinTouchTarget)
+                .defaultMinSize(minHeight = RowMinHeight)
                 .clickableRow(true) { expanded = !expanded }
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = Spacing.l, vertical = Spacing.s),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
             Icon(
                 if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                 contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         if (expanded) content()
+    }
+}
+
+/**
+ * The "About ..." pattern (Terminal mode's, commit 3940db42): a short line stays on screen and
+ * the longer explanation waits behind a collapsed row, so the controls are near the top.
+ */
+@Composable
+fun AboutExpander(title: String, text: String) {
+    ExpandableSection(title = title) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth().padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.m),
+        )
     }
 }
 
@@ -471,35 +732,24 @@ fun AppPickerBody(
     // toggle". sortedBy is stable, so each group keeps [apps]'s own (alphabetical) order.
     val sorted = filtered.sortedBy { it.packageName !in selected }
     RowList {
-        if (summary != null) {
+        if (summary != null || details != null) {
             item(key = "summary") {
-                Text(
-                    summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
-                )
+                if (summary != null) InfoText(summary)
+                if (details != null) AboutExpander(title = detailsTitle, text = details)
             }
         }
-        if (details != null) {
-            item(key = "details") {
-                ExpandableSection(title = detailsTitle) {
-                    Text(
-                        details,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-            }
-        }
-        item(key = "search") {
-            OutlinedTextField(
+        plainItem(key = "search") {
+            SearchPill(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Search apps") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).defaultMinSize(minHeight = MinTouchTarget),
+                placeholder = "Search apps",
+                modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.s),
             )
+        }
+        if (sorted.isEmpty()) {
+            plainItem(key = "empty") {
+                EmptyState(Icons.Filled.SearchOff, if (query.isBlank()) "No apps to show." else "No apps match “$query”.")
+            }
         }
         items(sorted, key = { it.packageName }) { app ->
             SwitchRow(
@@ -531,7 +781,7 @@ fun <T> ReorderableMultiChoiceRow(
     selected: List<T>,
     onChange: (List<T>) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         selected.forEachIndexed { index, option ->
             Row(

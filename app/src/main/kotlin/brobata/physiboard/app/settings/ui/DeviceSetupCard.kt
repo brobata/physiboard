@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.device.privileged.broker.BrokerVerdict
@@ -92,8 +93,12 @@ fun DeviceSetupCard() {
 
     LaunchedEffect(keyStored) { if (keyStored) privileged.broker.verify() }
 
-    Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Column(modifier = Modifier.padding(Spacing.l)) {
             HeaderLine(keyStored, checking, verdict)
             if (keyStored) {
                 PairedBody(verdict, context, privileged)
@@ -119,7 +124,7 @@ private fun HeaderLine(keyStored: Boolean, checking: Boolean, verdict: BrokerVer
         Icon(if (isVerifiedOk) Icons.Filled.Check else Icons.Filled.Warning, contentDescription = null, tint = color)
         Text(
             title,
-            style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
+            style = PhysiBoardType.sectionLabel,
             color = color,
             modifier = Modifier.padding(start = 8.dp),
         )

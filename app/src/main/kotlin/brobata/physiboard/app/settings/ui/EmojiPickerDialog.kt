@@ -35,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import brobata.physiboard.core.actions.emoji.EmojiAvailability
@@ -130,7 +129,7 @@ fun EmojiPickerDialog(letter: Char? = null, onDismiss: () -> Unit, onChoose: (St
                                             ),
                                     ) {
                                         Box(modifier = Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
-                                            Text(entry.base, fontSize = 22.sp)
+                                            Text(entry.base, style = PhysiBoardType.glyph)
                                         }
                                     }
                                 }
@@ -155,7 +154,7 @@ fun EmojiPickerDialog(letter: Char? = null, onDismiss: () -> Unit, onChoose: (St
                                 .size(40.dp)
                                 .clickable { onChoose(glyph); variantsFor = null },
                             contentAlignment = Alignment.Center,
-                        ) { Text(glyph, fontSize = 20.sp) }
+                        ) { Text(glyph, style = PhysiBoardType.glyph) }
                     }
                 }
             }
