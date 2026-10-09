@@ -8,16 +8,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,7 +37,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.PhysiBoardColors
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.settings.ui.TerminalPromptStyle
 import brobata.physiboard.app.shell.ImeComponent
 import brobata.physiboard.app.shell.ImeProbeAndroid
@@ -110,11 +115,15 @@ fun SetupScreen(onComplete: () -> Unit) {
                 }
                 if (!essentialsExpanded) {
                     Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { essentialsExpanded = true }) { Text("Show me the essentials") }
-                        OutlinedButton(onClick = { completeSetup(controller, onComplete) }) { Text("Skip") }
+                        Button(onClick = { essentialsExpanded = true }, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text("Show me the essentials") }
+                        OutlinedButton(onClick = { completeSetup(controller, onComplete) }, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text("Skip") }
                     }
                 } else {
-                    Card(modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.padding(top = Spacing.l).fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Hold Fn to talk (dictation)", modifier = Modifier.padding(vertical = 4.dp))
                             Text("Backlight can light the dark (one-time setup)", modifier = Modifier.padding(vertical = 4.dp))
@@ -180,19 +189,21 @@ private fun StepCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 12.dp)
+            .padding(top = Spacing.m)
             .alpha(if (dimmed) 0.45f else 1f),
-        border = if (done) androidx.compose.foundation.BorderStroke(1.dp, PhysiBoardColors.SignalAmber) else null,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = if (done) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("$number. $title", style = MaterialTheme.typography.titleMedium)
-                if (done) Text("done", style = MaterialTheme.typography.bodySmall, color = PhysiBoardColors.SignalAmber)
+                if (done) Text("done", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
             }
             if (done) {
-                Icon(Icons.Filled.Check, contentDescription = null, tint = PhysiBoardColors.SignalAmber)
+                Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             } else {
-                Button(onClick = onClick, enabled = enabled) { Text(buttonLabel) }
+                Button(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text(buttonLabel) }
             }
         }
     }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -24,12 +25,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.PhysiBoardType
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
@@ -120,7 +120,7 @@ fun CustomizeVariationsScreen(onBack: () -> Unit) {
                 for (character in listOf(letter, letter.uppercaseChar())) {
                     val list = table.listFor(character)
                     val customised = stored.containsKey(character.toString())
-                    item { SectionHeader(if (customised) "$character (changed)" else character.toString()) }
+                    header(if (customised) "$character (changed)" else character.toString())
                     if (list.isEmpty()) {
                         item {
                             Text("No accents: holding $character types $character.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
@@ -195,7 +195,7 @@ private fun EntryRow(
             modifier = Modifier.width(24.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(entry, fontSize = 24.sp)
+            Text(entry, style = PhysiBoardType.glyph)
             if (position == 0) Text("Typed by a long press", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
         IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {

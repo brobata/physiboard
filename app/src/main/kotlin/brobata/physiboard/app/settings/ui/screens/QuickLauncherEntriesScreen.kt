@@ -1,9 +1,9 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.runtime.Composable
+import brobata.physiboard.app.settings.ui.InfoText
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.actions.commands.CommandSource
@@ -21,7 +21,7 @@ fun QuickLauncherEntriesScreen(onBack: () -> Unit) {
 
     SettingsScreenScaffold(title = "QuickLauncher entries", onBack = onBack) {
         RowList {
-            item { SectionHeader("Choose which sources appear in PhysiBoard search.") }
+            item { InfoText("Choose which sources appear in PhysiBoard search.") }
             items(CommandSource.entries.size) { index ->
                 val source = CommandSource.entries[index]
                 SwitchRow(

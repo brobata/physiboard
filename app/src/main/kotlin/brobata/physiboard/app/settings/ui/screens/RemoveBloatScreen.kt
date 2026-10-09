@@ -2,11 +2,11 @@ package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,13 +21,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import brobata.physiboard.app.settings.ui.CheckingSystemRow
-import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.ButtonRow
+import brobata.physiboard.app.settings.ui.CheckingSystemRow
+import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
+import brobata.physiboard.app.settings.ui.Spacing
+import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.core.toolbox.BloatCatalog
 import brobata.physiboard.core.toolbox.BloatEntry
 import brobata.physiboard.core.toolbox.BloatPresetInfo
@@ -106,7 +107,7 @@ fun RemoveBloatScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
                         )
                     }
                 }
-                item { SectionHeader("Presets") }
+                header("Presets")
                 BloatCatalog.presets.forEach { preset ->
                     val active = BloatCatalog.entriesForPreset(preset.tag).filter { states[it.packageName] == BloatState.ACTIVE }
                     if (active.isNotEmpty()) {
@@ -123,7 +124,7 @@ fun RemoveBloatScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
                 BloatTier.entries.forEach { tier ->
                     val entries = BloatCatalog.entries.filter { it.tier == tier && states[it.packageName] != BloatState.ABSENT }
                     if (entries.isNotEmpty()) {
-                        item { SectionHeader(tier.header) }
+                        header(tier.header)
                         item { Text(tier.description, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) }
                         entries.forEach { entry ->
                             item {
@@ -152,7 +153,7 @@ fun RemoveBloatScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
                     }
                 }
                 if (unrecognized.isNotEmpty()) {
-                    item { SectionHeader("${unrecognized.size} vendor apps not in this list") }
+                    header("${unrecognized.size} vendor apps not in this list")
                     item {
                         Text(
                             "They came from a later firmware, or this is not a Titan 2 Elite. Shown but never touched.",
@@ -200,7 +201,7 @@ private fun PresetCard(preset: BloatPresetInfo, count: Int, busy: Boolean, onDis
                 preset.badge?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
             }
             Text(preset.description, style = MaterialTheme.typography.bodySmall)
-            Button(onClick = onDisableAll, enabled = !busy, modifier = Modifier.padding(top = 8.dp)) { Text("Disable all $count") }
+            Button(onClick = onDisableAll, enabled = !busy, modifier = Modifier.padding(top = Spacing.s).heightIn(min = MinTouchTarget)) { Text("Disable all $count") }
         }
     }
 }

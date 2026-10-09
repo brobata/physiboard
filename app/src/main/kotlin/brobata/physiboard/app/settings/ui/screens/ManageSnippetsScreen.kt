@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TextSnippet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
@@ -58,7 +60,7 @@ fun ManageSnippetsScreen(onBack: () -> Unit) {
         },
     ) {
         if (snippets.isEmpty()) {
-            Text("No snippets yet.", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            EmptyState(Icons.AutoMirrored.Outlined.TextSnippet, "No snippets yet. Tap + to add one.")
         }
         RowList {
             items(snippets.keys.sorted().size) { index ->

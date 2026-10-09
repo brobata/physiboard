@@ -5,11 +5,14 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,12 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
-import brobata.physiboard.app.settings.ui.MinTouchTarget
-import brobata.physiboard.app.settings.ui.WideDialogProperties
-import brobata.physiboard.app.settings.ui.wideDialog
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.defaultMinSize
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.AppCatalog
 import brobata.physiboard.app.settings.ui.ButtonRow
@@ -51,11 +48,14 @@ import brobata.physiboard.app.settings.ui.ColorWheelPicker
 import brobata.physiboard.app.settings.ui.IntClosedRange
 import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
+import brobata.physiboard.app.settings.ui.WideDialogProperties
+import brobata.physiboard.app.settings.ui.wideDialog
 import brobata.physiboard.core.settings.RingBrightness
 import brobata.physiboard.device.privileged.broker.BrokerVerdict
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +127,7 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     },
                 )
             }
-            item { SectionHeader("Permissions") }
+            header("Permissions")
             if (!listenerGranted || !fullScreenGranted || !notificationsGranted) {
                 item {
                     if (verdict == BrokerVerdict.OK) {
@@ -177,7 +177,7 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     context.startActivity(Intent(AndroidSettings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(AndroidSettings.EXTRA_APP_PACKAGE, context.packageName))
                 }
             }
-            item { SectionHeader("Behaviour") }
+            header("Behaviour")
             item {
                 IntRangeRow(
                     label = "Keep the screen on for",
@@ -225,7 +225,7 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     onCheckedChange = { checked -> controller.update { it.copy(device = it.device.copy(ringKeyboardDark = checked)) } },
                 )
             }
-            item { SectionHeader("Colour") }
+            header("Colour")
             item {
                 ColorRow(label = "Default colour", color = device.ringDefaultColor ?: DEFAULT_GREEN) { editingColorFor = DEFAULT_COLOR_KEY }
             }
@@ -244,7 +244,7 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     }
                 }
             item { ButtonRow(label = "Add an app", buttonText = "Choose", onClick = { showAddApp = true }) }
-            item { SectionHeader("Fit") }
+            header("Fit")
             item {
                 ButtonRow(
                     label = "Fit the ring to the lens",
@@ -253,7 +253,7 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     onClick = onNavigateFit,
                 )
             }
-            item { SectionHeader("Try it") }
+            header("Try it")
             item {
                 ButtonRow(
                     label = "Try it",

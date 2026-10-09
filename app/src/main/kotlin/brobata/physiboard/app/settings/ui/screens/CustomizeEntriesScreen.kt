@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -34,17 +36,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
+import brobata.physiboard.app.settings.ui.SearchPill
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.core.actions.commands.Command
 import brobata.physiboard.core.actions.commands.SourceVisibility
 import brobata.physiboard.core.actions.launcher.CommandCustomizations
@@ -80,13 +85,13 @@ fun CustomizeEntriesScreen(onBack: () -> Unit) {
         .sortedWith(compareBy<Command> { customizations[it.id].favoriteOrder }.thenBy { it.label.lowercase() })
 
     SettingsScreenScaffold(title = "Customize entries", onBack = onBack) {
-        OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("Search entries") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
+        SearchPill(value = query, onValueChange = { query = it }, placeholder = "Search entries", modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.s))
         Row(modifier = Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = !favoritesOnly, onClick = { favoritesOnly = false }, label = { Text("All") })
             FilterChip(selected = favoritesOnly, onClick = { favoritesOnly = true }, label = { Text("Favorites") })
         }
-        if (commands.isEmpty()) Text("No commands available for the selected sources.", modifier = Modifier.padding(16.dp))
-        else if (shown.isEmpty()) Text("No entries match \"$query\"", modifier = Modifier.padding(16.dp))
+        if (commands.isEmpty()) EmptyState(Icons.Outlined.Inbox, "No commands available for the selected sources.")
+        else if (shown.isEmpty()) EmptyState(Icons.Outlined.SearchOff, "No entries match \"$query\"")
         RowList {
             items(shown.size) { index ->
                 val command = shown[index]

@@ -1,5 +1,10 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.FindReplace
+import androidx.compose.material.icons.outlined.Spellcheck
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -51,10 +56,10 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
                 SwitchRow("Text replacements", checked = correction.textReplacementsEnabled, onCheckedChange = { set { p -> p.copy(textReplacementsEnabled = it) } })
             }
             item {
-                NavigateRow("Manage text replacements", "Custom substitutions per language") { onNavigate(Routes.CUSTOM_SUBSTITUTIONS) }
+                NavigateRow("Manage text replacements", "Custom substitutions per language", icon = Icons.Outlined.FindReplace) { onNavigate(Routes.CUSTOM_SUBSTITUTIONS) }
             }
             item {
-                NavigateRow("Personal dictionary", "Words you've added, plus the built-in favourites") { onNavigate(Routes.PERSONAL_DICTIONARY) }
+                NavigateRow("Personal dictionary", "Words you've added, plus the built-in favourites", icon = Icons.AutoMirrored.Outlined.MenuBook) { onNavigate(Routes.PERSONAL_DICTIONARY) }
             }
             item {
                 SwitchRow("Automatic correction", checked = correction.autoReplaceOnSpaceEnter, onCheckedChange = { set { p -> p.copy(autoReplaceOnSpaceEnter = it) } })
@@ -88,7 +93,7 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
                 )
             }
             item {
-                NavigateRow("System spell checker", SpellCheckerSettings.description(spellChecker)) { SpellCheckerSettings.open(context) }
+                NavigateRow("System spell checker", SpellCheckerSettings.description(spellChecker), icon = Icons.Outlined.Spellcheck) { SpellCheckerSettings.open(context) }
             }
             item {
                 SwitchRow(

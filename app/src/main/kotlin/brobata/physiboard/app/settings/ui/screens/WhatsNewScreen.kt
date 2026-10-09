@@ -1,9 +1,13 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -20,11 +24,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.PhysiBoardColors
+import brobata.physiboard.app.settings.ui.PhysiBoardType
+import brobata.physiboard.app.settings.ui.SettingsCard
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.settings.ui.TerminalPromptStyle
 import brobata.physiboard.core.shell.WhatsNewNotes
 
@@ -50,7 +56,7 @@ fun WhatsNewScreen(onDone: () -> Unit) {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal))
-            .padding(16.dp),
+            .padding(Spacing.l),
     ) {
         Text("physiboard:~$ whatsnew", style = TerminalPromptStyle, color = PhysiBoardColors.SignalAmber)
         androidx.compose.foundation.layout.Row(
@@ -58,7 +64,7 @@ fun WhatsNewScreen(onDone: () -> Unit) {
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = PhysiBoardColors.SignalAmber)
-            Text("Updated to v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 8.dp))
+            Text("Updated to v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = Spacing.s))
         }
 
         if (notes.isEmpty()) {
@@ -68,13 +74,20 @@ fun WhatsNewScreen(onDone: () -> Unit) {
                 style = MaterialTheme.typography.bodyLarge,
             )
         } else {
-            notes.forEach { note ->
-                Column(modifier = Modifier.padding(top = 16.dp)) {
-                    if (note.title.isNotBlank()) {
-                        Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    }
-                    if (note.body.isNotBlank()) {
-                        Text(note.body, style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(Spacing.s))
+            // One card, one line per change, each marked "+" the way a diff marks an added line.
+            SettingsCard {
+                notes.forEach { note ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s)) {
+                        Text("+", style = PhysiBoardType.prompt, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = Spacing.m))
+                        Column(modifier = Modifier.weight(1f)) {
+                            if (note.title.isNotBlank()) {
+                                Text(note.title, style = if (note.body.isBlank()) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium)
+                            }
+                            if (note.body.isNotBlank()) {
+                                Text(note.body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
             }
@@ -90,7 +103,7 @@ fun WhatsNewScreen(onDone: () -> Unit) {
                 }
                 onDone()
             },
-            modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = Spacing.l).heightIn(min = 52.dp),
         ) { Text("Done") }
     }
 }

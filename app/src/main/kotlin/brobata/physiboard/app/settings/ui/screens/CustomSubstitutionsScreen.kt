@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.FindReplace
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.NavigateRow
@@ -55,13 +58,13 @@ fun CustomSubstitutionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             }
         },
     ) {
-        if (codes.isEmpty()) Text("No custom substitutions yet. Tap + to add a language, then its replacements.", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (codes.isEmpty()) EmptyState(Icons.Outlined.FindReplace, "No custom substitutions yet. Tap + to add a language, then its replacements.")
         RowList {
             items(codes.size) { index ->
                 val code = codes[index]
                 val set = correction.customSubstitutions[code]
                 val name = set?.displayName?.takeIf { it.isNotBlank() } ?: code
-                NavigateRow(name, "${set?.rules?.size ?: 0} custom substitutions") { onOpen(code) }
+                NavigateRow(name, "${set?.rules?.size ?: 0} custom substitutions", icon = Icons.Outlined.Language) { onOpen(code) }
             }
         }
     }
@@ -112,7 +115,7 @@ fun CustomSubstitutionsEditScreen(code: String, onBack: () -> Unit) {
             }
         },
     ) {
-        if (set.rules.isEmpty()) Text("No custom substitutions yet.", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (set.rules.isEmpty()) EmptyState(Icons.Outlined.FindReplace, "No custom substitutions yet. Tap + to add one.")
         RowList {
             val triggers = set.rules.keys.sorted()
             items(triggers.size) { index ->

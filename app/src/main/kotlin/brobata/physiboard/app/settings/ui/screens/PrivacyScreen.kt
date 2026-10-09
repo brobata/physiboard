@@ -1,9 +1,9 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.runtime.Composable
+import brobata.physiboard.app.settings.ui.AboutExpander
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SwitchRow
 
@@ -22,17 +22,21 @@ fun PrivacyScreen(onBack: () -> Unit) {
             item {
                 SwitchRow(
                     "Private mode",
-                    description = "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, " +
-                        "no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no " +
-                        "network requests: no update checks and no dictionary downloads. Dictation is done by your phone's speech " +
-                        "service, which may still go online; it is not part of PhysiBoard. To switch it from the keyboard, give \"Private mode\" a key " +
-                        "under Assigned launcher keys (Sym + that key), or put the command physiboard.toggle_private_mode on the Fn layer.",
+                    description = "PhysiBoard remembers nothing you type and makes no network requests.",
                     note = if (privacy.privateMode) "On. The caret badge shows PRIVATE while you type." else null,
                     checked = privacy.privateMode,
                     onCheckedChange = { checked -> controller.update { it.copy(privacy = it.privacy.copy(privateMode = checked)) } },
                 )
+                AboutExpander(
+                    title = "About private mode",
+                    text = "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, " +
+                        "no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no " +
+                        "network requests: no update checks and no dictionary downloads. Dictation is done by your phone's speech " +
+                        "service, which may still go online; it is not part of PhysiBoard. To switch it from the keyboard, give \"Private mode\" a key " +
+                        "under Assigned launcher keys (Sym + that key), or put the command physiboard.toggle_private_mode on the Fn layer.",
+                )
             }
-            item { SectionHeader("Automatically private") }
+            header("Automatically private")
             item {
                 SwitchRow(
                     "Fields that ask for privacy",
@@ -43,15 +47,19 @@ fun PrivacyScreen(onBack: () -> Unit) {
                     enabled = false,
                 )
             }
-            item { SectionHeader("Links") }
+            header("Links")
             item {
                 SwitchRow(
                     "Clean links",
-                    description = "Remove tracking from links you copy and paste from the clipboard panel, such as utm_source, fbclid " +
-                        "or a YouTube share code, and open up Google and Facebook redirect links to the real address. The rest of " +
-                        "the link is kept exactly. Pasting with Ctrl+V is done by the app, so it pastes the link as it was copied.",
+                    description = "Remove tracking from links you paste from the clipboard panel.",
                     checked = privacy.cleanLinks,
                     onCheckedChange = { checked -> controller.update { it.copy(privacy = it.privacy.copy(cleanLinks = checked)) } },
+                )
+                AboutExpander(
+                    title = "About clean links",
+                    text = "Remove tracking from links you copy and paste from the clipboard panel, such as utm_source, fbclid " +
+                        "or a YouTube share code, and open up Google and Facebook redirect links to the real address. The rest of " +
+                        "the link is kept exactly. Pasting with Ctrl+V is done by the app, so it pastes the link as it was copied.",
                 )
             }
         }

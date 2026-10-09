@@ -1,17 +1,25 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import android.app.NotificationManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -20,18 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import android.app.NotificationManager
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.provider.Settings as AndroidSettings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import brobata.physiboard.ime.fill.OneTimeCodeListenerService
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,18 +38,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import brobata.physiboard.app.settings.ui.AboutExpander
+import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.EmojiPickerDialog
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.app.settings.ui.TextFieldRow
-import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
 import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.emoji.SkinTones
@@ -60,6 +62,7 @@ import brobata.physiboard.core.settings.CustomSymPage
 import brobata.physiboard.core.settings.SymPage
 import brobata.physiboard.core.settings.SymPagesConfig
 import brobata.physiboard.device.titan.TitanLayouts
+import brobata.physiboard.ime.fill.OneTimeCodeListenerService
 
 /**
  * "Customize SYM Keyboard" (layers-sym-alt.md SS5.9): reorder and enable the Sym pages, the "Alt
@@ -131,21 +134,19 @@ fun CustomizeSymKeyboardScreen(
     if (page == null) {
         SettingsScreenScaffold(title = "Customize SYM Keyboard", onBack = { leaveNormally(onBack) }) {
             RowList {
-                item { SectionHeader("Sym pages") }
-                item {
-                    Text(
-                        "Each Sym press opens the next page that is switched on, in this order; after the last one Sym closes. Use the arrows to reorder and the switch to add or remove a page. A page that is off still opens from the chooser (Sym twice, then its letter). My page 1 to 3 are your own key layers: tap ✏ to fill one, then switch it on.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
+                header("Sym pages")
                 item {
                     // layers-sym-alt.md SS4.7: Fill joins the cycle only when it has something, so it is not a fixed step.
                     val steps = symPages.pages.order.filter { it != SymPage.FILL && enabledFor(symPages.pages, it) }.map { displayName(it, symPages.customPages) }
                     Text(
                         "Sym: " + (steps + "closed").joinToString(" → "),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = Spacing.l, end = Spacing.l, top = Spacing.m),
+                    )
+                    AboutExpander(
+                        title = "About the Sym pages",
+                        text = "Each Sym press opens the next page that is switched on, in this order; after the last one Sym closes. Use the arrows to reorder and the switch to add or remove a page. A page that is off still opens from the chooser (Sym twice, then its letter). My page 1 to 3 are your own key layers: tap ✏ to fill one, then switch it on.",
                     )
                 }
                 items(symPages.pages.order.size) { index ->
@@ -164,16 +165,20 @@ fun CustomizeSymKeyboardScreen(
                         onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS || customIndex(entry) != null) ({ editingPage = entry }) else null,
                     )
                 }
-                item { SectionHeader("Fill page: one-time codes") }
+                header("Fill page: one-time codes")
                 item {
                     // layers-sym-alt.md SS4.7, app-shell.md SS31.6.
                     SwitchRow(
                         label = "One-time codes from notifications",
-                        description = "When a sign-in code arrives by text message, e-mail or a banking app, the Fill page offers it for 10 minutes: press Sym in the code box and then the key shown beside the code. " +
-                            "PhysiBoard reads each notification's text on the phone to find the code, keeps only the code, in memory, and forgets it after 10 minutes, when it is typed, or when the screen turns off. Nothing is saved, logged or sent anywhere. Not while private mode is on.",
+                        description = "A sign-in code from a text, e-mail or bank app waits on the Fill page for 10 minutes.",
                         note = if (symPages.otpFromNotifications && !notificationAccess) "Needs notification access (below) before it does anything." else null,
                         checked = symPages.otpFromNotifications,
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(otpFromNotifications = checked)) } },
+                    )
+                    AboutExpander(
+                        title = "About one-time codes",
+                        text = "When a sign-in code arrives by text message, e-mail or a banking app, the Fill page offers it for 10 minutes: press Sym in the code box and then the key shown beside the code. " +
+                            "PhysiBoard reads each notification's text on the phone to find the code, keeps only the code, in memory, and forgets it after 10 minutes, when it is typed, or when the screen turns off. Nothing is saved, logged or sent anywhere. Not while private mode is on.",
                     )
                 }
                 item {
@@ -191,9 +196,13 @@ fun CustomizeSymKeyboardScreen(
                 item {
                     SwitchRow(
                         label = "Password manager suggestions (experimental)",
-                        description = "Shows your password manager's saved logins on the Fill page, first when you press Sym in a login box. Off by default: Android only hands these to a keyboard that shows an on-screen keyboard, so PhysiBoard has to raise an empty one while you are in a login box, and while this is on the password manager's own drop-down list does not appear.",
+                        description = "Your password manager's saved logins on the Fill page. While on, its own drop-down list does not appear.",
                         checked = symPages.inlineSuggestions,
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(inlineSuggestions = checked)) } },
+                    )
+                    AboutExpander(
+                        title = "Why it is off by default",
+                        text = "The logins show first when you press Sym in a login box. Android only hands these to a keyboard that shows an on-screen keyboard, so PhysiBoard has to raise an empty one while you are in a login box, and while this is on the password manager's own drop-down list does not appear.",
                     )
                 }
                 item {
@@ -214,7 +223,7 @@ fun CustomizeSymKeyboardScreen(
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(doubleTapChooser = checked)) } },
                     )
                 }
-                item { SectionHeader("SYM behaviour and display") }
+                header("SYM behaviour and display")
                 item {
                     SwitchRow(
                         label = "Sym+C/V/X/A: copy, paste, cut, select all",
@@ -237,7 +246,7 @@ fun CustomizeSymKeyboardScreen(
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoCloseOnTouch = checked)) } },
                     )
                 }
-                item { SectionHeader("Larger emoji picker") }
+                header("Larger emoji picker")
                 item {
                     SwitchRow(
                         label = "Larger emoji picker",
@@ -246,7 +255,7 @@ fun CustomizeSymKeyboardScreen(
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(emojiPickerExpandedHeight = checked)) } },
                     )
                 }
-                item { SectionHeader("Emoji skin tone") }
+                header("Emoji skin tone")
                 item {
                     // spec: expansion-clipboard-pickers-launcher.md SS4.7.
                     SingleChoiceDropdownRow(
@@ -536,7 +545,7 @@ private fun SymPageOrderRow(
             Text(kindLabel(page), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (onEdit != null) {
-            IconButton(onClick = onEdit, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) { Text("✏") }
+            IconButton(onClick = onEdit, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) { Icon(Icons.Outlined.Edit, contentDescription = "Edit $name", tint = MaterialTheme.colorScheme.primary) }
         }
         IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {
             Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move up")
@@ -561,7 +570,7 @@ private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
  * custom map have no character on that page)" once any custom entry exists; otherwise the shipped
  * Titan 2 Elite table (`:device:titan`'s `TitanLayouts`) shows.
  */
-private fun effectiveCharacters(isEmoji: Boolean, customEmoji: Map<String, String>, customSymbols: Map<String, String>): Map<Char, String> {
+internal fun effectiveCharacters(isEmoji: Boolean, customEmoji: Map<String, String>, customSymbols: Map<String, String>): Map<Char, String> {
     val custom = if (isEmoji) customEmoji else customSymbols
     if (custom.isNotEmpty()) {
         return ('A'..'Z').associateWith { letter -> custom["KEYCODE_$letter"].orEmpty() }
@@ -590,7 +599,7 @@ private fun SymEditGrid(characters: Map<Char, String>, onKeyTapped: (Char) -> Un
                     ) {
                         Column(modifier = Modifier.padding(4.dp)) {
                             Text(letter.toString(), style = MaterialTheme.typography.labelSmall)
-                            Text(characters[letter].orEmpty(), fontSize = 18.sp)
+                            Text(characters[letter].orEmpty(), style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }

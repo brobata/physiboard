@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
@@ -44,7 +45,7 @@ fun SavedThemesScreen(onBack: () -> Unit) {
     SettingsScreenScaffold(title = "Saved themes", onBack = onBack) {
         RowList {
             if (statusBar.savedThemes.isEmpty()) {
-                item { Text("No saved themes yet. Use \"Save theme\" on Customize colors.", modifier = Modifier.padding(16.dp)) }
+                plainItem { EmptyState(Icons.Outlined.Bookmarks, "No saved themes yet. Use \"Save theme\" on Customize colors.") }
             }
             items(statusBar.savedThemes, key = { it.name.lowercase() }) { named ->
                 Row(

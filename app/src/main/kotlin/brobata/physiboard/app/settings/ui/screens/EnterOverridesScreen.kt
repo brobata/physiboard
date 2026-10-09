@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,8 +39,8 @@ import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
-import brobata.physiboard.app.settings.ui.toEnterOverride
 import brobata.physiboard.app.settings.ui.WideDialogProperties
+import brobata.physiboard.app.settings.ui.toEnterOverride
 import brobata.physiboard.app.settings.ui.wideDialog
 import brobata.physiboard.core.settings.EnterOverrideRow
 import brobata.physiboard.core.text.EnterBehavior
@@ -133,7 +134,7 @@ fun EnterOverridesScreen(onBack: () -> Unit) {
             }
             // spec SS3.11 point 5: the same dialog as the "+", for anyone who does not spot it.
             item(key = "add-app") {
-                NavigateRow("Add app", "Any app on your phone - Messenger, Slack, a fork of one of these") { showAddDialog = true }
+                NavigateRow("Add app", "Any app on your phone - Messenger, Slack, a fork of one of these", icon = Icons.Outlined.Add) { showAddDialog = true }
             }
         }
     }

@@ -1,11 +1,14 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.runtime.Composable
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.SwitchRow
@@ -47,18 +50,18 @@ fun InputLanguagesScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
     SettingsScreenScaffold(title = "Input Languages", onBack = onBack) {
         RowList {
             item {
-                NavigateRow("Installed dictionaries", "Download, import or remove per-language dictionaries") { onNavigate(Routes.INSTALLED_DICTIONARIES) }
+                NavigateRow("Installed dictionaries", "Download, import or remove per-language dictionaries", icon = Icons.Outlined.Download) { onNavigate(Routes.INSTALLED_DICTIONARIES) }
             }
             item {
-                NavigateRow("Manage input styles", "Add, edit or hide the languages and layouts you type in") { onNavigate(Routes.INPUT_STYLES) }
+                NavigateRow("Manage input styles", "Add, edit or hide the languages and layouts you type in", icon = Icons.Outlined.Translate) { onNavigate(Routes.INPUT_STYLES) }
             }
             item {
-                NavigateRow("Keyboard Layout", "Standard, QWERTZ, AZERTY and other bundled or imported layouts") { onNavigate(Routes.KEYBOARD_LAYOUT) }
+                NavigateRow("Keyboard Layout", "Standard, QWERTZ, AZERTY and other bundled or imported layouts", icon = Icons.Outlined.Keyboard) { onNavigate(Routes.KEYBOARD_LAYOUT) }
             }
             item {
                 SwitchRow("Automatic Layout Mapping", checked = languages.layoutAutoByLocale, onCheckedChange = { set { p -> p.copy(layoutAutoByLocale = it) } })
             }
-            item { SectionHeader("Layout Switch Shortcuts") }
+            header("Layout Switch Shortcuts")
             item {
                 SwitchRow("Alt+Shift Layout Switch", checked = languages.altShiftLayoutSwitch, onCheckedChange = { set { p -> p.copy(altShiftLayoutSwitch = it) } })
             }

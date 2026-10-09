@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Abc
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -21,7 +23,6 @@ import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.keys.LongPressMode
@@ -37,7 +38,7 @@ fun LongPressScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val keys = controller.current.value.keys
     SettingsScreenScaffold(title = "Long press", onBack = onBack) {
         RowList {
-            item { SectionHeader("Long press types") }
+            header("Long press types")
             item {
                 Text(
                     "Hold a letter key to type something else in place of the letter.",
@@ -66,7 +67,7 @@ fun LongPressScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     onValueChange = { ms -> controller.update { it.copy(keys = it.keys.copy(longPressThresholdMs = ms.toLong())) } },
                 )
             }
-            item { SectionHeader("Accents") }
+            header("Accents")
             item {
                 // layers-sym-alt.md SS8.4.
                 SwitchRow(
@@ -78,7 +79,7 @@ fun LongPressScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 )
             }
             item {
-                NavigateRow("Customize Variations", "Choose, order or add the accents each letter offers") { onNavigate(Routes.CUSTOMIZE_VARIATIONS) }
+                NavigateRow("Customize Variations", "Choose, order or add the accents each letter offers", icon = Icons.Outlined.Abc) { onNavigate(Routes.CUSTOMIZE_VARIATIONS) }
             }
         }
     }

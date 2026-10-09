@@ -1,28 +1,31 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.KeyboardAlt
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import brobata.physiboard.app.settings.ui.LocalSettingsController
-import brobata.physiboard.app.settings.ui.NavigateRow
-import brobata.physiboard.app.settings.ui.Routes
-import brobata.physiboard.core.actions.launcher.LauncherShortcuts
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.ColorFieldRow
+import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.core.actions.launcher.LauncherShortcuts
 import brobata.physiboard.core.settings.LauncherBehavior
 import brobata.physiboard.core.settings.LauncherPrefs
 
@@ -77,9 +80,10 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
                     "Assigned launcher keys",
                     "Tap a key to assign or replace a command. Assigned keys are shared by both trigger modes." +
                         (shortcuts.shortcuts.quickLauncherKeycode?.let { " Quick launcher is currently assigned to ${brobata.physiboard.core.actions.launcher.AssignableKeys.label(it)}." } ?: ""),
+                    icon = Icons.Outlined.KeyboardAlt,
                 ) { onNavigate(Routes.ASSIGNED_LAUNCHER_KEYS) }
             }
-            item { SectionHeader("Behaviour") }
+            header("Behaviour")
             item {
                 SingleChoiceChipsRow(
                     label = "QuickLauncher behaviour",
@@ -109,9 +113,9 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
                     onClick = { showRankingHelp = true },
                 )
             }
-            item { SectionHeader("Appearance") }
-            item { NavigateRow("QuickLauncher entries", "Choose which sources appear in PhysiBoard search.") { onNavigate(Routes.QUICK_LAUNCHER_ENTRIES) } }
-            item { NavigateRow("Customize entries", "Favorites, hidden entries, and search aliases") { onNavigate(Routes.CUSTOMIZE_ENTRIES) } }
+            header("Appearance")
+            item { NavigateRow("QuickLauncher entries", "Choose which sources appear in PhysiBoard search.", icon = Icons.Outlined.Checklist) { onNavigate(Routes.QUICK_LAUNCHER_ENTRIES) } }
+            item { NavigateRow("Customize entries", "Favorites, hidden entries, and search aliases", icon = Icons.Outlined.Edit) { onNavigate(Routes.CUSTOMIZE_ENTRIES) } }
             item {
                 SwitchRow(
                     "Use static top-match highlight color",

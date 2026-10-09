@@ -35,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -45,6 +44,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.PhysiBoardType
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.shell.AppDebugCaptureStore
 import brobata.physiboard.app.shell.ImeComponent
@@ -273,13 +273,11 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
 
             Text(
                 "Recorder: ${if (recording) "recording" else "stopped"} · Events: ${recordedEvents.size}",
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
+                style = PhysiBoardType.code,
             )
             Text(
                 "Started at: ${startedAt?.let { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(it)) } ?: "n/a"}",
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
+                style = PhysiBoardType.code,
             )
 
             // A plain Row squeezed the third chip into the width that was left, which on the
@@ -309,7 +307,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { viewerText = null },
             title = { Text("Debug Report Viewer") },
-            text = { Column(modifier = Modifier.verticalScroll(rememberScrollState())) { Text(report, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) } },
+            text = { Column(modifier = Modifier.verticalScroll(rememberScrollState())) { Text(report, style = PhysiBoardType.code) } },
             confirmButton = {
                 TextButton(onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -339,11 +337,11 @@ private fun LastKeyboardEventPanel(
             Row(modifier = Modifier.padding(top = 8.dp)) {
                 Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     val left = event?.let { KeyboardEventExport.leftColumn(it) } ?: listOf("n/a")
-                    for (line in left) Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                    for (line in left) Text(line, style = PhysiBoardType.code)
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     val right = event?.let { KeyboardEventExport.rightColumn(it) } ?: listOf("n/a")
-                    for (line in right) Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                    for (line in right) Text(line, style = PhysiBoardType.code)
                 }
             }
             val chips = event?.let { KeyboardEventExport.modifierChips(it) } ?: emptyList()

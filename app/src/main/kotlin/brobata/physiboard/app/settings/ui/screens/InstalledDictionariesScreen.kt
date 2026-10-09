@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.DictionaryDownloader
 import brobata.physiboard.app.settings.DictionaryFileStore
 import brobata.physiboard.app.settings.UninstallOutcome
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -42,8 +44,8 @@ import brobata.physiboard.core.dict.DictionaryCatalog
 import brobata.physiboard.core.dict.DictionaryManifestItem
 import brobata.physiboard.core.dict.DictionaryRow
 import brobata.physiboard.core.dict.LanguageCode
-import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 /** SS6: "the language's own name in its own language with the first letter capitalized (`Italiano`, `Русский`)". */
 private fun ownLanguageName(code: String): String {
@@ -193,7 +195,7 @@ fun InstalledDictionariesScreen(onBack: () -> Unit) {
                 item { Text(snackbar!!, modifier = Modifier.padding(horizontal = 16.dp)) }
             }
             if (rows.isEmpty() && !loading && errorMessage == null) {
-                item { Text("No serialized dictionaries found.", modifier = Modifier.padding(16.dp)) }
+                plainItem { EmptyState(Icons.Outlined.Download, "No serialized dictionaries found.") }
             }
             items(rows, key = { it.fileName }) { row ->
                 val downloading = row.languageCode in downloadingCodes

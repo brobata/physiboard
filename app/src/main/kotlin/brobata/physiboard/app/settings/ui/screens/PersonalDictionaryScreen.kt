@@ -31,7 +31,9 @@ import brobata.physiboard.app.settings.UserWordFileStore
 import brobata.physiboard.app.settings.mergedRows
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
+import brobata.physiboard.app.settings.ui.SearchPill
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordFrequency
 import brobata.physiboard.core.dict.isValidNewDictionaryWord
@@ -83,13 +85,12 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
         },
     ) {
         RowList {
-            item {
-                OutlinedTextField(
+            plainItem {
+                SearchPill(
                     value = query,
                     onValueChange = { query = it },
-                    label = { Text("Search words") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = "Search words",
+                    modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.s),
                 )
             }
             items(rows, key = { "${it.isPersonal}:${it.word}" }) { row ->

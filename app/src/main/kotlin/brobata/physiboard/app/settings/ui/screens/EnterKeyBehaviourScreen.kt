@@ -1,13 +1,15 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import brobata.physiboard.app.settings.ui.AppCatalog
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.PerAppListKind
-import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SwitchRow
@@ -66,6 +68,7 @@ fun EnterKeyBehaviourScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 NavigateRow(
                     "App overrides",
                     description = "Per-app behaviour, send method and extra shortcut, no matter the preset above",
+                    icon = Icons.Outlined.Apps,
                     onClick = { onNavigate(Routes.appPicker(PerAppListKind.ENTER_OVERRIDES)) },
                 )
             }

@@ -3,7 +3,20 @@ package brobata.physiboard.app.settings.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.Handyman
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.PhonelinkSetup
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -16,10 +29,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.PhysiBoardApplication
+import brobata.physiboard.app.settings.BackupArchive
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
-import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.RowList
+import brobata.physiboard.app.settings.ui.SettingsListScope
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SettingsSearchField
 import brobata.physiboard.app.shell.AutoUpdateCheckOnCreate
@@ -27,13 +42,12 @@ import brobata.physiboard.app.shell.UpdateFoundDialog
 import brobata.physiboard.app.shell.rememberUpdateCheckState
 import brobata.physiboard.app.shell.runUpdateCheck
 import brobata.physiboard.app.shell.toast
-import brobata.physiboard.app.settings.BackupArchive
 import brobata.physiboard.core.shell.BackupMeta
 import brobata.physiboard.core.shell.GithubChecks
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * The "Settings" screen (settings-catalog.md SS9.2): the search box, the maintenance rows this
@@ -195,7 +209,7 @@ fun SettingsRootScreen(onNavigate: (String) -> Unit) {
     }
 }
 
-private fun LazyListScope.rootRows(
+private fun SettingsListScope.rootRows(
     onNavigate: (String) -> Unit,
     onResetClick: () -> Unit,
     onResetDeviceClick: () -> Unit,
@@ -214,16 +228,18 @@ private fun LazyListScope.rootRows(
             label = "Test field",
             description = "A place to type, to try the keyboard",
             onClick = { onNavigate(Routes.TEST_FIELD) },
+            icon = Icons.Outlined.EditNote,
         )
     }
+    header("Keyboard")
     item {
-        NavigateRow(label = "T2E Tools", description = "Titan-specific tools", onClick = { onNavigate(Routes.T2E_TOOLS) })
+        NavigateRow(label = "T2E Tools", description = "Titan-specific tools", onClick = { onNavigate(Routes.T2E_TOOLS) }, icon = Icons.Outlined.Handyman)
     }
     item {
-        NavigateRow(label = "Keyboard", description = "Everything about how the keyboard behaves when you type", onClick = { onNavigate(Routes.KEYBOARD) })
+        NavigateRow(label = "Keyboard", description = "Everything about how the keyboard behaves when you type", onClick = { onNavigate(Routes.KEYBOARD) }, icon = Icons.Outlined.Keyboard)
     }
     item {
-        NavigateRow(label = "Extras", description = "The quick launcher, languages and text expansion", onClick = { onNavigate(Routes.EXTRAS) })
+        NavigateRow(label = "Extras", description = "The quick launcher, languages and text expansion", onClick = { onNavigate(Routes.EXTRAS) }, icon = Icons.Outlined.Extension)
     }
     item {
         // app-shell.md SS31: private mode and clean links.
@@ -231,16 +247,19 @@ private fun LazyListScope.rootRows(
             label = "Privacy",
             description = if (privateMode) "Private mode is on: nothing is learned, no network requests" else "Private mode and clean links",
             onClick = { onNavigate(Routes.PRIVACY) },
+            icon = Icons.Outlined.Shield,
         )
     }
+    header("Help")
     item {
-        NavigateRow(label = "Status", description = "Check PhysiBoard is set up correctly", onClick = { onNavigate(Routes.STATUS) })
+        NavigateRow(label = "Status", description = "Check PhysiBoard is set up correctly", onClick = { onNavigate(Routes.STATUS) }, icon = Icons.Outlined.CheckCircle)
     }
     item {
         NavigateRow(
             label = "Diagnostics",
             description = "Physical key-event logger and debug export",
             onClick = onDiagnosticsClick,
+            icon = Icons.Outlined.BugReport,
         )
     }
     if (githubChecksAllowed) {
@@ -249,30 +268,34 @@ private fun LazyListScope.rootRows(
                 label = if (updatesChecking) "Checking for updates…" else "Updates",
                 description = "Check the latest release on GitHub.",
                 onClick = onUpdatesClick,
+                icon = Icons.Outlined.SystemUpdate,
             )
         }
     }
     item {
-        NavigateRow(label = "Backup now", description = "Export all settings to a file", onClick = onBackupClick)
+        NavigateRow(label = "About", description = "Version, licence, and credits", onClick = onAboutClick, icon = Icons.Outlined.Info)
+    }
+    header("Your settings")
+    item {
+        NavigateRow(label = "Backup now", description = "Export all settings to a file", onClick = onBackupClick, icon = Icons.Outlined.Save)
     }
     item {
-        NavigateRow(label = "Restore from file", description = "Import a PhysiBoard backup", onClick = onRestoreClick)
+        NavigateRow(label = "Restore from file", description = "Import a PhysiBoard backup", onClick = onRestoreClick, icon = Icons.Outlined.Restore)
     }
     item {
         NavigateRow(
             label = if (resettingDevice) "Resetting…" else "Reset device settings to stock",
-            description = "Undo the system-wide changes PhysiBoard made — the Fn key mapping and keyboard backlight — restoring your device to stock. Do this BEFORE uninstalling; uninstalling alone won't undo them.",
+            description = "Undo the Fn key mapping and backlight changes. Do this before you uninstall.",
             onClick = if (resettingDevice) ({}) else onResetDeviceClick,
+            icon = Icons.Outlined.PhonelinkSetup,
         )
-    }
-    item {
-        NavigateRow(label = "About", description = "Version, licence, and credits", onClick = onAboutClick)
     }
     item {
         NavigateRow(
             label = "Reset to defaults",
             description = "Restore every PhysiBoard setting to its factory baseline",
             onClick = onResetClick,
+            icon = Icons.Outlined.RestartAlt,
         )
     }
 }

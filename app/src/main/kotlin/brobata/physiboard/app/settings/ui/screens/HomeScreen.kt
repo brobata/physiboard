@@ -1,8 +1,8 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings as AndroidSettings
 import android.view.inputmethod.InputMethodManager
@@ -11,43 +11,53 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.Handyman
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.ToggleOn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,22 +65,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.PhysiBoardApplication
+import brobata.physiboard.app.settings.ui.KeycapIcon
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.PhysiBoardColors
+import brobata.physiboard.app.settings.ui.PhysiBoardType
 import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.settings.ui.rememberReducedMotion
 import brobata.physiboard.app.shell.AutoUpdateCheckOnCreate
+import brobata.physiboard.app.shell.DeviceDetectionAndroid
 import brobata.physiboard.app.shell.ImeComponent
 import brobata.physiboard.app.shell.ImeProbeAndroid
 import brobata.physiboard.app.shell.UpdateFoundDialog
 import brobata.physiboard.app.shell.rememberUpdateCheckState
-import brobata.physiboard.app.shell.DeviceDetectionAndroid
+import brobata.physiboard.core.settings.StripThemePresets
 import brobata.physiboard.core.shell.GithubChecks
 import brobata.physiboard.core.shell.ImeProbeResult
 import brobata.physiboard.core.shell.TitanModel
@@ -132,26 +149,24 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                 .padding(16.dp),
         ) {
             HomeActionCard(probe, updateState, onNavigate)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                HomeTile("T2E Tools", subLabel = brokerTileLabel(brokerVerdict), showDot = brokerTileLabel(brokerVerdict) != null, modifier = Modifier.weight(1f)) { onNavigate(Routes.T2E_TOOLS) }
-                HomeTile("Keyboard", modifier = Modifier.weight(1f)) { onNavigate(Routes.KEYBOARD) }
-            }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HomeTile("Theme", modifier = Modifier.weight(1f)) { onNavigate(Routes.STATUS_BAR_THEME) }
-                HomeTile(
-                    "Status",
-                    subLabel = if (probe.enabled && probe.selected) "all good" else "needs setup",
-                    showDot = !(probe.enabled && probe.selected),
-                    modifier = Modifier.weight(1f),
-                ) { onNavigate(Routes.STATUS) }
-            }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HomeTile("Extras", modifier = Modifier.weight(1f)) { onNavigate(Routes.EXTRAS) }
-                HomeTile("Settings", modifier = Modifier.weight(1f)) { onNavigate(Routes.SETTINGS) }
-            }
+            val brokerLabel = brokerTileLabel(brokerVerdict)
+            val ready = probe.enabled && probe.selected
+            val activeTheme = settings.statusBar.theme
+            val themeName = StripThemePresets.ALL.firstOrNull { it.theme == activeTheme }?.name
+                ?: settings.statusBar.savedThemes.firstOrNull { it.theme == activeTheme }?.name
+                ?: "Custom colours"
+            HomeTileRow(
+                { HomeTile("T2E Tools", Icons.Outlined.Handyman, status = brokerLabel ?: "Backlight, ring, keys", attention = brokerLabel != null, modifier = it) { onNavigate(Routes.T2E_TOOLS) } },
+                { HomeTile("Keyboard", Icons.Outlined.Keyboard, status = "Typing, correction, Sym", modifier = it) { onNavigate(Routes.KEYBOARD) } },
+            )
+            HomeTileRow(
+                { HomeTile("Theme", Icons.Outlined.Palette, status = themeName, modifier = it) { onNavigate(Routes.STATUS_BAR_THEME) } },
+                { HomeTile("Status", Icons.Outlined.CheckCircle, status = if (ready) "all good" else "needs setup", attention = !ready, modifier = it) { onNavigate(Routes.STATUS) } },
+            )
+            HomeTileRow(
+                { HomeTile("Extras", Icons.Outlined.Extension, status = "Launcher, languages", modifier = it) { onNavigate(Routes.EXTRAS) } },
+                { HomeTile("Settings", Icons.Outlined.Settings, status = "Backup, privacy, about", modifier = it) { onNavigate(Routes.SETTINGS) } },
+            )
         }
     }
 
@@ -203,7 +218,7 @@ private fun HomeHeader() {
                 .padding(vertical = 20.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("physiboard:~$", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 18.sp, color = PhysiBoardColors.SignalAmber)
+            Text("physiboard:~$", style = PhysiBoardType.prompt, color = PhysiBoardColors.SignalAmber)
             TerminalCursor(modifier = Modifier.padding(start = 6.dp))
         }
         // spec: SS6.1, "a translucent overlay ... covers the status-bar area."
@@ -241,82 +256,97 @@ fun TerminalCursor(modifier: Modifier = Modifier, periodMillis: Int = 600) {
 private fun HomeActionCard(probe: ImeProbeResult, updateState: brobata.physiboard.app.shell.UpdateCheckState, onNavigate: (String) -> Unit) {
     val context = LocalContext.current
     when {
-        !probe.enabled -> ActionCard("Enable PhysiBoard", "Turn it on in system keyboard settings") {
+        !probe.enabled -> ActionCard("Enable PhysiBoard", "Turn it on in system keyboard settings", Icons.Outlined.ToggleOn) {
             context.startActivity(Intent(AndroidSettings.ACTION_INPUT_METHOD_SETTINGS))
         }
-        !probe.selected -> ActionCard("Set as keyboard", "Pick PhysiBoard from the input switcher") {
+        !probe.selected -> ActionCard("Set as keyboard", "Pick PhysiBoard from the input switcher", Icons.Outlined.Keyboard) {
             (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showInputMethodPicker()
         }
         updateState.foundRelease != null -> {
             val release = updateState.foundRelease!!
-            ActionCard("Update available", "Version ${release.tag} is ready to install") { updateState.reopenDialog() }
+            ActionCard("Update available", "Version ${release.tag} is ready to install", Icons.Outlined.SystemUpdate) { updateState.reopenDialog() }
         }
         else -> Text(
             "✓ all set",
-            color = brobata.physiboard.app.settings.ui.PhysiBoardColors.SignalAmber,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(bottom = 16.dp),
+            color = MaterialTheme.colorScheme.primary,
+            style = PhysiBoardType.prompt,
+            modifier = Modifier.padding(start = Spacing.xs, top = Spacing.xs, bottom = Spacing.l),
         )
     }
 }
 
+/** The one thing that needs doing, in the accent's container colour so it stands apart from the tiles. */
 @Composable
-private fun ActionCard(title: String, subtitle: String, onClick: () -> Unit) {
+private fun ActionCard(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp)
-            .clickable(onClick = onClick),
-        // A visible border rather than a soft elevation shadow: the "terminal panel" reading
-        // item 6 asked for, on the screen the maintainer named first.
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+        modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.l),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(modifier = Modifier.padding(Spacing.l), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp)) }
+            Column(modifier = Modifier.weight(1f).padding(horizontal = Spacing.l)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium)
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
 
+/** Two tiles side by side, stretched to the taller one's height. */
 @Composable
-private fun HomeTile(label: String, subLabel: String? = null, showDot: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(modifier = modifier.aspectRatio(2.6f)) {
-        Card(
-            modifier = Modifier.fillMaxSize().clickable(onClick = onClick),
-            shape = RoundedCornerShape(6.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        ) {
-            // Read as a terminal listing rather than a card: the prompt marker, then the name,
-            // anchored top-left the way a line of output is.
-            Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.Top) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "$",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = brobata.physiboard.app.settings.ui.PhysiBoardColors.SignalAmber,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(label, style = MaterialTheme.typography.titleSmall)
-                }
-                if (subLabel != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        subLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 18.dp),
-                    )
-                }
+private fun HomeTileRow(left: @Composable (Modifier) -> Unit, right: @Composable (Modifier) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(bottom = Spacing.m),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        left(Modifier.weight(1f).fillMaxHeight())
+        right(Modifier.weight(1f).fillMaxHeight())
+    }
+}
+
+/**
+ * A home tile (app-shell.md SS6.4): a keycap icon, the name, and one line of status. A tile that
+ * needs attention shows its status in the accent colour with the amber dot.
+ */
+@Composable
+private fun HomeTile(label: String, icon: ImageVector, status: String, attention: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        modifier = modifier,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.padding(Spacing.l)) {
+                KeycapIcon(icon, size = 40.dp, iconSize = 22.dp)
+                Spacer(modifier = Modifier.height(Spacing.m))
+                Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    status,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (attention) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-        }
-        if (showDot) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp)
-                    .size(9.dp)
-                    .background(color = brobata.physiboard.app.settings.ui.PhysiBoardColors.SignalAmber, shape = CircleShape),
-            )
+            if (attention) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(Spacing.m)
+                        .size(9.dp)
+                        .background(color = PhysiBoardColors.SignalAmber, shape = CircleShape),
+                )
+            }
         }
     }
 }

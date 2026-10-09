@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.CustomLayoutStore
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.core.keys.KeyId
@@ -99,8 +103,8 @@ fun LayoutViewerScreen(layoutId: String, onBack: () -> Unit) {
             }
             when (val s = state) {
                 ViewerState.Loading -> {}
-                ViewerState.Failed -> item { Text("Unable to load this layout mapping.", modifier = Modifier.padding(16.dp)) }
-                ViewerState.Empty -> item { Text("No key mappings found for this layout.", modifier = Modifier.padding(16.dp)) }
+                ViewerState.Failed -> plainItem { EmptyState(Icons.Outlined.ErrorOutline, "Unable to load this layout mapping.") }
+                ViewerState.Empty -> plainItem { EmptyState(Icons.Outlined.Keyboard, "No key mappings found for this layout.") }
                 is ViewerState.Loaded -> items(s.rows, key = { keyName(it.keyId) }) { row -> ViewerKeyRow(row) }
             }
         }

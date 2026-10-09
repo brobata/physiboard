@@ -1,6 +1,9 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Functions
+import androidx.compose.material.icons.outlined.SpaceBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -10,10 +13,10 @@ import brobata.physiboard.app.settings.ui.ExpandableSection
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.settings.TypingPrefs
 import brobata.physiboard.core.text.DashStyle
@@ -34,22 +37,22 @@ fun SmartFeaturesScreen(onBack: () -> Unit, onNavigateFnLayer: () -> Unit, onNav
 
     SettingsScreenScaffold(title = "Smart Features", onBack = onBack) {
         RowList {
-            item { SectionHeader("Capitalization") }
+            header("Capitalization")
             item {
                 SwitchRow("Capitalize at text start", checked = typing.capitalizeAtTextStart, onCheckedChange = { set { p -> p.copy(capitalizeAtTextStart = it) } })
             }
             item {
                 SwitchRow("Capitalize after sentence end", checked = typing.capitalizeAfterSentenceEnd, onCheckedChange = { set { p -> p.copy(capitalizeAfterSentenceEnd = it) } })
             }
-            item { SectionHeader("Spacing & punctuation") }
+            header("Spacing & punctuation")
             item {
                 SwitchRow("Double Space inserts period", checked = typing.doubleSpaceToPeriod, onCheckedChange = { set { p -> p.copy(doubleSpaceToPeriod = it) } })
             }
-            item { SectionHeader("Keyboard behavior") }
+            header("Keyboard behavior")
             item {
                 SwitchRow("Release Alt with Space", checked = typing.clearAltOnSpace, onCheckedChange = { set { p -> p.copy(clearAltOnSpace = it) } })
             }
-            item { SectionHeader("Delete") }
+            header("Delete")
             item {
                 Text(
                     "Backspace normally deletes the character before the cursor. These make it delete forward instead while the modifier is held.",
@@ -64,7 +67,7 @@ fun SmartFeaturesScreen(onBack: () -> Unit, onNavigateFnLayer: () -> Unit, onNav
                 SwitchRow("Alt + Backspace", checked = typing.altBackspaceDeletesForward, onCheckedChange = { set { p -> p.copy(altBackspaceDeletesForward = it) } })
             }
             item {
-                NavigateRow("Open Fn Layer settings", onClick = onNavigateFnLayer)
+                NavigateRow("Open Fn Layer settings", onClick = onNavigateFnLayer, icon = Icons.Outlined.Functions)
             }
             item {
                 ExpandableSection("Advanced") {
@@ -74,7 +77,7 @@ fun SmartFeaturesScreen(onBack: () -> Unit, onNavigateFnLayer: () -> Unit, onNav
                         checked = typing.capitalizeRestrictedFields,
                         onCheckedChange = { set { p -> p.copy(capitalizeRestrictedFields = it) } },
                     )
-                    NavigateRow("Punctuation spacing", onClick = onNavigatePunctuationSpacing)
+                    NavigateRow("Punctuation spacing", onClick = onNavigatePunctuationSpacing, icon = Icons.Outlined.SpaceBar)
                     SwitchRow("Space after comma", checked = typing.commaSpace, onCheckedChange = { set { p -> p.copy(commaSpace = it) } })
                     SwitchRow("Hyphen to dash", checked = typing.spacedHyphenToDash, onCheckedChange = { set { p -> p.copy(spacedHyphenToDash = it) } })
                     if (typing.spacedHyphenToDash) {

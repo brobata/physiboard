@@ -1,5 +1,8 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TextSnippet
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
@@ -79,7 +82,7 @@ fun TextExpansionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
                 )
             }
             item {
-                NavigateRow("Manage snippets", "Add global shortcuts and multiline replacement text.") { onNavigate(Routes.MANAGE_SNIPPETS) }
+                NavigateRow("Manage snippets", "Add global shortcuts and multiline replacement text.", icon = Icons.AutoMirrored.Outlined.TextSnippet) { onNavigate(Routes.MANAGE_SNIPPETS) }
             }
             item {
                 SwitchRow(

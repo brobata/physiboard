@@ -1,8 +1,8 @@
 package brobata.physiboard.app.settings.ui.screens
 
-import brobata.physiboard.core.settings.SilenceSeconds
-import brobata.physiboard.app.settings.ui.TextFieldRow
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,14 +19,15 @@ import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
-import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SpeechEnginePickerDialog
 import brobata.physiboard.app.settings.ui.SpeechEngines
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.app.settings.ui.TextFieldRow
 import brobata.physiboard.core.settings.AssistantAction
 import brobata.physiboard.core.settings.DictationPrefs
+import brobata.physiboard.core.settings.SilenceSeconds
 import brobata.physiboard.device.privileged.setup.RevertOutcome
 import brobata.physiboard.ime.AssistantTriggerActivity
 import kotlinx.coroutines.Dispatchers
@@ -64,16 +65,16 @@ fun VoiceScreen(onBack: () -> Unit) {
 
     SettingsScreenScaffold(title = "Voice", onBack = onBack) {
         RowList {
-            item { SectionHeader("Triggers") }
+            header("Triggers")
             item {
                 SwitchRow("Long-press Fn for speech input", checked = dictation.fnLongPressSpeech, onCheckedChange = { set { p -> p.copy(fnLongPressSpeech = it) } })
             }
-            item { SectionHeader("Transcription") }
+            header("Transcription")
             item {
                 // spec: dictation.md SS4.2, SS12.1: "the current engine's label", or "System
                 // default" when the stored id no longer matches any row.
                 val selectedLabel = engineOptions.firstOrNull { it.storedValue == dictation.engine }?.label ?: "System default"
-                NavigateRow(label = "Speech engine", description = selectedLabel, onClick = { showEnginePicker = true })
+                NavigateRow(label = "Speech engine", description = selectedLabel, onClick = { showEnginePicker = true }, icon = Icons.Outlined.RecordVoiceOver)
             }
             item {
                 SwitchRow("Automatic punctuation", checked = dictation.autoPunctuation, onCheckedChange = { set { p -> p.copy(autoPunctuation = it) } })
@@ -130,7 +131,7 @@ fun VoiceScreen(onBack: () -> Unit) {
                     onCheckedChange = { set { p -> p.copy(pauseMedia = it) } },
                 )
             }
-            item { SectionHeader("Voice assistant") }
+            header("Voice assistant")
             item {
                 SwitchRow(
                     "Orange key opens the assistant",

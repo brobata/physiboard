@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
@@ -44,7 +46,7 @@ fun ThemeLayoutOverridesScreen(onBack: () -> Unit, onOpen: (Int) -> Unit) {
     ) {
         RowList {
             if (overrides.isEmpty()) {
-                item { Text("No overrides yet. Add one for a locale or layout that should use a different theme.", modifier = Modifier.padding(16.dp)) }
+                plainItem { EmptyState(Icons.Outlined.Translate, "No overrides yet. Add one for a locale or layout that should use a different theme.") }
             }
             items(overrides.withIndex().toList(), key = { it.index }) { (index, override) ->
                 Row(
