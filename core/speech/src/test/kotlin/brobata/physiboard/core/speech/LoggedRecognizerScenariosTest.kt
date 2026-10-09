@@ -189,11 +189,11 @@ class LoggedRecognizerScenariosTest {
         val started = h.send(DictationEvent.Trigger("app", ""), now = 0L)
         assertEquals(listOf(DictationEffect.HoldImeVisible, DictationEffect.AcquireAudioFocus, DictationEffect.StartListening(started.session!!.request)), started.effects)
 
-        // Another app taking the audio for good stops dictation at once.
+        // A phone call taking the audio stops dictation at once (a media app does not: CarAudioScenariosTest).
         h.send(DictationEvent.ReadyForSpeech, now = 10L)
         h.send(DictationEvent.FirstAudio, now = 40L)
         h.send(DictationEvent.PartialResult("keep this"), now = 500L)
-        val lost = h.send(DictationEvent.AudioFocusLost, now = 600L)
+        val lost = h.send(DictationEvent.AudioFocusChanged(AudioFocusChange.LOSS, callActive = true), now = 600L)
         assertNull(lost.session)
         assertTrue(DictationEffect.ReleaseAudioFocus in lost.effects)
         assertEquals("Keep this ", h.field.text)

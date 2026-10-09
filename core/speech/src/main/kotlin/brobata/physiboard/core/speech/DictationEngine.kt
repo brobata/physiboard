@@ -41,7 +41,7 @@ object DictationEngine {
         return when (event) {
             is DictationEvent.Trigger -> throw IllegalStateException("Trigger is handled before a session is required")
             DictationEvent.ReadyForSpeech -> handleReady(session, now)
-            DictationEvent.FirstAudio -> handleFirstAudio(session)
+            DictationEvent.FirstAudio -> handleFirstAudio(session, now)
             // The engine's voice detector fires on any sound (music, a room, breathing: the Titan log of
             // 2026-10-07 shows it every half second), so it proves the engine is alive but not that
             // anything was said; only new words restart the silence limit (spec SS6.4).
@@ -55,7 +55,10 @@ object DictationEngine {
             DictationEvent.SegmentedSessionEnded -> handleSegmentedSessionEnded(session, now, textSettings)
             is DictationEvent.Error -> handleError(session, event.code, now, settings, textSettings)
             DictationEvent.KeyDown -> if (settings.stopOnTyping) endNow(session, textSettings) else DictationOutcome(session)
-            DictationEvent.AudioFocusLost -> endNow(session, textSettings)
+            is DictationEvent.AudioFocusChanged -> handleFocusChange(session, event, textSettings)
+            DictationEvent.CallStarted -> endNow(session, textSettings)
+            DictationEvent.InputRouteSettling -> handleRouteSettling(session, now)
+            DictationEvent.InputRouteSettled -> handleRouteSettled(session, now, timedOut = false)
             DictationEvent.PrivateModeTurnedOn ->
                 if (!session.request.preferOffline && session.phase != DictationPhase.STOPPING) requestStop(session, now) else DictationOutcome(session)
             DictationEvent.EditorFieldClosed -> DictationOutcome(session.copy(editorGoneDeadlineMs = now + DictationTiming.EDITOR_GONE_GRACE_MS))
@@ -92,7 +95,7 @@ object DictationEngine {
             return if (state.phase == DictationPhase.LISTENING) requestStop(state, now) else endNow(state, textSettings)
         }
         val request = RecognizerRequestPlanner.plan(settings, segmentedRefusalLatch)
-        val fresh = DictationSession.fresh(event.ownerPackage, now, request, settings, event.textBeforeSession)
+        val fresh = DictationSession.fresh(event.ownerPackage, now, request, settings, event.textBeforeSession, event.audioRoute)
         val effects = buildList {
             // spec SS6.8: the keyboard must count as shown before the microphone opens, or the
             // recording is silenced (D22); `:ime` waits for that grant before issuing the request.
@@ -118,6 +121,7 @@ object DictationEngine {
             relistenDeadlineMs = null,
             cueFallbackDeadlineMs = null,
             continuationProbeDeadlineMs = null,
+            routeSettleDeadlineMs = null,
             stopWatchdogDeadlineMs = now + DictationTiming.STOP_WATCHDOG_MS,
         )
         return DictationOutcome(next, listOf(DictationEffect.StopListening))
@@ -144,15 +148,72 @@ object DictationEngine {
         )
     }
 
-    /** spec SS8.1: the start cue plays at the first audio level report, once per session. */
-    private fun handleFirstAudio(session: DictationSession): DictationOutcome {
+    /**
+     * spec SS8.1: the start cue plays at the first audio level report, once per session; spec
+     * SS6.10: unless the input route is still coming up, when the report is only remembered and
+     * the cue waits for the route.
+     */
+    private fun handleFirstAudio(session: DictationSession, now: Long): DictationOutcome {
         if (session.cuePlayed || session.phase == DictationPhase.STOPPING) return DictationOutcome(session)
+        val listening = session.copy(phase = if (session.phase == DictationPhase.STARTING) DictationPhase.LISTENING else session.phase)
+        if (session.routeSettleDeadlineMs != null) return DictationOutcome(listening.copy(firstAudioSeen = true))
+        return cue(listening, now)
+    }
+
+    /**
+     * spec SS8.1, SS6.4: the start cue. Users start talking at it, so until they have said
+     * something the silence limit counts from here, not from the trigger: a cue that waited for
+     * the route (SS6.10) must not have spent the user's silence allowance before it played.
+     */
+    private fun cue(session: DictationSession, now: Long, vararg extra: DictationEffect): DictationOutcome {
         val next = session.copy(
-            phase = if (session.phase == DictationPhase.STARTING) DictationPhase.LISTENING else session.phase,
             cuePlayed = true,
             cueFallbackDeadlineMs = null,
+            routeSettleDeadlineMs = null,
+            lastSpeechMs = if (session.heardSpeech) session.lastSpeechMs else maxOf(session.lastSpeechMs, now),
         )
-        return DictationOutcome(next, listOf(DictationEffect.PlayStartCue))
+        return DictationOutcome(next, extra.toList() + DictationEffect.PlayStartCue)
+    }
+
+    /** spec SS6.10: the input route may be a Bluetooth microphone still coming up; the cue waits for it, within a bound. */
+    private fun handleRouteSettling(session: DictationSession, now: Long): DictationOutcome {
+        if (session.cuePlayed || session.phase == DictationPhase.STOPPING) return DictationOutcome(session)
+        return DictationOutcome(session.copy(routeSettleDeadlineMs = now + DictationTiming.ROUTE_SETTLE_MAX_MS))
+    }
+
+    /** spec SS6.10: the route is up (or the wait ran out): the cue plays if the microphone has already reported itself open. */
+    private fun handleRouteSettled(session: DictationSession, now: Long, timedOut: Boolean): DictationOutcome {
+        if (session.routeSettleDeadlineMs == null) return DictationOutcome(session)
+        val settled = session.copy(routeSettleDeadlineMs = null)
+        if (session.cuePlayed || session.phase == DictationPhase.STOPPING) return DictationOutcome(settled)
+        // The microphone has opened (an audio report, or "ready" from an engine that reports no
+        // levels): cue now. Otherwise the first audio report cues as usual.
+        if (session.firstAudioSeen || session.phase == DictationPhase.LISTENING) {
+            return if (timedOut) cue(settled, now, DictationEffect.LogMessage(DictationMessage.ROUTE_SETTLE_TIMED_OUT)) else cue(settled, now)
+        }
+        return DictationOutcome(settled)
+    }
+
+    /**
+     * spec SS6.7: the session's own focus changed. A loss during a phone call ends the session (the
+     * call has the microphone and the user). Any other permanent loss is a media app taking the
+     * audio back mid-session (Spotify asks again; a head unit sends "play" when its hands-free
+     * link drops): the session goes on, takes the focus back once so the music pauses again, and
+     * the second time lets the music play and listens on. Transient losses are the recognizer's
+     * own per-request focus or a short sound, and gains need nothing.
+     */
+    private fun handleFocusChange(session: DictationSession, event: DictationEvent.AudioFocusChanged, textSettings: DictationTextSettings): DictationOutcome {
+        val loss = event.change != AudioFocusChange.GAIN
+        if (loss && event.callActive) return endNow(session, textSettings)
+        if (event.change != AudioFocusChange.LOSS) return DictationOutcome(session)
+        if (session.phase == DictationPhase.STOPPING) return DictationOutcome(session.copy(audioFocusHeld = false))
+        if (!session.focusRetaken) {
+            return DictationOutcome(
+                session.copy(focusRetaken = true, audioFocusHeld = true),
+                listOf(DictationEffect.LogMessage(DictationMessage.FOCUS_RETAKEN), DictationEffect.AcquireAudioFocus),
+            )
+        }
+        return DictationOutcome(session.copy(audioFocusHeld = false), listOf(DictationEffect.LogMessage(DictationMessage.FOCUS_LEFT_TO_MEDIA)))
     }
 
     // ---------------------------------------------------------------------------------------
@@ -173,6 +234,11 @@ object DictationEngine {
         val newWords = (session.utterance.pending as? PendingUtterance.Live)?.text != text
         val next = alive(session).copy(
             heardSpeech = true,
+            // spec SS6.10: words prove the microphone is live; the wait for the route is over, and
+            // a cue now would buzz in the middle of the sentence, so it is counted as given.
+            routeSettleDeadlineMs = null,
+            cuePlayed = session.cuePlayed || session.routeSettleDeadlineMs != null,
+            cueFallbackDeadlineMs = if (session.routeSettleDeadlineMs != null) null else session.cueFallbackDeadlineMs,
             lastSpeechMs = if (newWords) now else session.lastSpeechMs,
             consecutiveFailures = 0,
             utterance = if (invalidated) session.utterance else session.utterance.copy(pending = PendingUtterance.Live(text)),
@@ -386,6 +452,25 @@ object DictationEngine {
             return DictationOutcome(session.copy(consecutiveFailures = failures, busyRetryDeadlineMs = now + DictationTiming.BUSY_RETRY_DELAY_MS))
         }
 
+        // Rule 4b: an audio error (SS6.6, SS6.10). On a phone the recording fails when its input
+        // route changes under it (a Bluetooth microphone coming or going in a car); the words on
+        // screen are kept and the keyboard listens again shortly, counted like a fast failure so
+        // a microphone that is really broken still ends the session after five tries.
+        if (DictationErrorClassifier.isAudio(code)) {
+            val finished = finishPendingIfAny(session.utterance, textSettings)
+            val failures = session.consecutiveFailures + 1
+            if (failures >= DictationTiming.MAX_CONSECUTIVE_FAILURES) {
+                return DictationOutcome(null, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR), finished.ops)
+            }
+            val next = session.copy(
+                consecutiveFailures = failures,
+                continuationProbeDeadlineMs = null,
+                utterance = afterFinish(session.utterance, finished),
+                relistenDeadlineMs = now + DictationTiming.AUDIO_ERROR_BACKOFF_MS,
+            )
+            return DictationOutcome(next, textOps = finished.ops)
+        }
+
         // Rule 5: the on-device recognizer has no pack for this language (SS4.3). Outside private
         // mode the same session goes online, silently; in private mode that is not an option.
         if (DictationErrorClassifier.isLanguage(code)) {
@@ -463,10 +548,15 @@ object DictationEngine {
                 )
             }
         }
+        session.routeSettleDeadlineMs?.let { deadline ->
+            if (now >= deadline) return handleRouteSettled(session, now, timedOut = true)
+        }
         session.cueFallbackDeadlineMs?.let { deadline ->
             if (now >= deadline) {
+                // spec SS6.10: while the route settles, its own deadline cues instead.
+                if (session.routeSettleDeadlineMs != null) return DictationOutcome(session.copy(cueFallbackDeadlineMs = null))
                 // spec SS8.1: an engine that reports no audio levels still gets its cue, after "ready".
-                return DictationOutcome(session.copy(cueFallbackDeadlineMs = null, cuePlayed = true), listOf(DictationEffect.PlayStartCue))
+                return cue(session, now)
             }
         }
         session.stopWatchdogDeadlineMs?.let { deadline ->

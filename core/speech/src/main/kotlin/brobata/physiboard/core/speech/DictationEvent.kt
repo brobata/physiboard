@@ -13,7 +13,12 @@ sealed class DictationEvent {
      * editor read this whole module ever consumes (see [UtteranceContext]'s KDoc); it is ignored
      * when this trigger turns out to be a stop.
      */
-    data class Trigger(val ownerPackage: String?, val textBeforeSession: String?) : DictationEvent()
+    data class Trigger(
+        val ownerPackage: String?,
+        val textBeforeSession: String?,
+        /** spec SS6.10: the audio route at the start; a car or Bluetooth route gets a longer wait for the first words. */
+        val audioRoute: SessionAudioRoute = SessionAudioRoute.LOCAL,
+    ) : DictationEvent()
 
     /** spec SS6.1: the engine is ready for speech. */
     object ReadyForSpeech : DictationEvent()
@@ -58,8 +63,25 @@ sealed class DictationEvent {
     /** spec SS4.3: private mode was turned on; a session whose request is online stops, since its audio must not keep leaving the phone. */
     object PrivateModeTurnedOn : DictationEvent()
 
-    /** spec SS6.7: another app took audio focus for good (not the engine's own transient request); the session stops at once. */
-    object AudioFocusLost : DictationEvent()
+    /**
+     * spec SS6.7: the session's own audio focus changed. [callActive] is whether a phone call was
+     * ringing or running at that moment (the audio mode), which is the one loss that ends the
+     * session; a media app taking the audio back does not.
+     */
+    data class AudioFocusChanged(val change: AudioFocusChange, val callActive: Boolean) : DictationEvent()
+
+    /** spec SS6.7: a phone call started ringing or was answered (the audio mode changed); the session ends at once. */
+    object CallStarted : DictationEvent()
+
+    /**
+     * spec SS6.10: the recognizer's microphone may be a Bluetooth one that is still coming up (a
+     * head unit's hands-free link takes about a second, all of it silence). The start cue waits
+     * for [InputRouteSettled], at most [DictationTiming.ROUTE_SETTLE_MAX_MS].
+     */
+    object InputRouteSettling : DictationEvent()
+
+    /** spec SS6.10: the input route is up, or was never going to be Bluetooth. */
+    object InputRouteSettled : DictationEvent()
 
     /** spec SS3: the field the session was dictating into has closed. */
     object EditorFieldClosed : DictationEvent()
@@ -87,4 +109,23 @@ sealed class DictationEvent {
 
     /** The clock reaching [DictationSession.nextDeadlineMs]; see that property's KDoc. */
     object ClockTick : DictationEvent()
+}
+
+/** spec SS6.7: the platform's audio focus changes, as [DictationEvent.AudioFocusChanged] carries them. */
+enum class AudioFocusChange { GAIN, LOSS, LOSS_TRANSIENT, LOSS_TRANSIENT_CAN_DUCK }
+
+/** spec SS6.10: where the session's audio goes, as far as the keyboard can tell at the start. */
+enum class SessionAudioRoute {
+    /** The phone's own microphone and speaker, or a wired headset. */
+    LOCAL,
+
+    /** A Bluetooth audio device is connected (a head unit's hands-free and media links, headphones). */
+    BLUETOOTH,
+
+    /** The phone is in car mode (Android Auto). */
+    CAR,
+    ;
+
+    /** A route whose microphone, or whose first seconds, are slower than the phone's own. */
+    val isRemote: Boolean get() = this != LOCAL
 }

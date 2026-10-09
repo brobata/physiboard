@@ -95,7 +95,8 @@ class DictationEngineRequiredScenariosTest {
     fun `an engine that fails outright ends the session with a toast and keeps what was heard`() {
         val h = started()
         h.send(DictationEvent.PartialResult("keep"), now = 500L)
-        val failed = h.send(DictationEvent.Error(DictationErrorCode.AUDIO), now = 600L)
+        // A client error after words were heard (an audio error is retried instead: CarAudioScenariosTest).
+        val failed = h.send(DictationEvent.Error(DictationErrorCode.CLIENT), now = 600L)
         assertNull(failed.session)
         assertEquals("Keep ", h.field.text)
         assertEquals(listOf(DictationEffect.PlayStopCue, DictationEffect.ReleaseAudioFocus, DictationEffect.ReleaseImeVisible, DictationEffect.ShowMessage(DictationMessage.SPEECH_RECOGNITION_ERROR)), failed.effects)

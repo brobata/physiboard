@@ -51,10 +51,18 @@ data class DictationSession(
     val relistenDeadlineMs: Long? = null,
     val cueFallbackDeadlineMs: Long? = null,
     val editorGoneDeadlineMs: Long? = null,
+    /** spec SS6.10: before the first words, the silence limit is at least this long (0 = no floor); set for a car or Bluetooth route. */
+    val firstWordsGraceMs: Long = 0L,
+    /** spec SS6.10: the start cue waits for the input route until this moment; null when it is not waiting. */
+    val routeSettleDeadlineMs: Long? = null,
+    /** spec SS6.10: the engine's first audio report arrived while the cue was waiting for the route. */
+    val firstAudioSeen: Boolean = false,
+    /** spec SS6.7: the session has already taken its focus back once after a media app took it; it does not fight a second time. */
+    val focusRetaken: Boolean = false,
 ) {
-    /** spec SS6.4: the silence limit, only while the session is still open to speech. */
+    /** spec SS6.4, SS6.10: the silence limit, only while the session is still open to speech; before the first words it is at least [firstWordsGraceMs]. */
     val silenceDeadlineMs: Long?
-        get() = if (phase == DictationPhase.STOPPING) null else lastSpeechMs + silenceLimitMs
+        get() = if (phase == DictationPhase.STOPPING) null else lastSpeechMs + if (heardSpeech) silenceLimitMs else maxOf(silenceLimitMs, firstWordsGraceMs)
 
     /** spec SS6.4: the hard cap on one session. */
     val sessionCapDeadlineMs: Long?
@@ -63,7 +71,7 @@ data class DictationSession(
     val nextDeadlineMs: Long?
         get() = listOfNotNull(
             stopWatchdogDeadlineMs, busyRetryDeadlineMs, relistenDeadlineMs, cueFallbackDeadlineMs,
-            continuationProbeDeadlineMs, editorGoneDeadlineMs, silenceDeadlineMs, sessionCapDeadlineMs,
+            continuationProbeDeadlineMs, editorGoneDeadlineMs, routeSettleDeadlineMs, silenceDeadlineMs, sessionCapDeadlineMs,
         ).minOrNull()
 
     companion object {
@@ -74,6 +82,7 @@ data class DictationSession(
             request: RecognizerRequest,
             settings: DictationSettings,
             textBeforeSession: String?,
+            audioRoute: SessionAudioRoute = SessionAudioRoute.LOCAL,
         ): DictationSession = DictationSession(
             ownerPackage = ownerPackage,
             sessionStartMs = now,
@@ -87,6 +96,7 @@ data class DictationSession(
             silenceLimitMs = DictationTiming.silenceLimitMs(settings.stopAfterSilenceMs),
             consecutiveFailures = 0,
             utterance = UtteranceState(UtteranceContext(textBeforeSession), PendingUtterance.None),
+            firstWordsGraceMs = if (audioRoute.isRemote) DictationTiming.REMOTE_ROUTE_FIRST_WORDS_GRACE_MS else 0L,
         )
     }
 }

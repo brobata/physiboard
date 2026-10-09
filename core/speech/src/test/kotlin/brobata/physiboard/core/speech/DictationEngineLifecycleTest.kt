@@ -107,10 +107,10 @@ class DictationEngineLifecycleTest {
     @Test
     fun `T9 speech refreshes the silence limit`() {
         val h = started(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 5_000L))
-        assertEquals(5_000L, h.session?.silenceDeadlineMs)
+        assertEquals(5_040L, h.session?.silenceDeadlineMs, "before any words the limit counts from the start cue at 40 ms")
         // The voice detector alone is not speech (it fires on any sound); new words are.
         h.send(DictationEvent.BeginningOfSpeech, now = 3_000L)
-        assertEquals(5_000L, h.session?.silenceDeadlineMs)
+        assertEquals(5_040L, h.session?.silenceDeadlineMs)
         h.send(DictationEvent.PartialResult("a"), now = 4_000L)
         assertEquals(9_000L, h.session?.silenceDeadlineMs)
         h.send(DictationEvent.PartialResult("a"), now = 4_500L)
@@ -148,7 +148,7 @@ class DictationEngineLifecycleTest {
         assertEquals(DictationEffect.HoldImeVisible, started.effects.first(), "held before anything else, so the microphone grant is in place for the request")
         val endings = listOf<(DictationHarness) -> DictationOutcome>(
             { it.send(DictationEvent.KeyDown, 100L) },
-            { it.send(DictationEvent.Error(DictationErrorCode.AUDIO), 100L) },
+            { it.send(DictationEvent.Error(DictationErrorCode.INSUFFICIENT_PERMISSIONS), 100L) },
             { it.send(DictationEvent.StartFailed(DictationStartFailureReason.OTHER_FAILURE), 100L) },
             { it.send(DictationEvent.EditorFieldOpened("other"), 100L) },
             { it.send(DictationEvent.Trigger("app", null), 100L) },

@@ -65,6 +65,24 @@ object DictationTiming {
      */
     const val CONTINUATION_PROBE_MS = 1_500L
 
+    /**
+     * spec SS6.10: the longest the start cue waits for a Bluetooth microphone to come up. A
+     * hands-free link takes about a second; one that never comes up must not leave the user
+     * without a cue.
+     */
+    const val ROUTE_SETTLE_MAX_MS = 2_500L
+
+    /**
+     * spec SS6.10: on a car or Bluetooth route, the silence limit before the first words is at
+     * least this long, counted from the start cue: the microphone, the engine and the person
+     * driving are all slower to begin there, and the 2.5 s default ended sessions before the
+     * first partial arrived.
+     */
+    const val REMOTE_ROUTE_FIRST_WORDS_GRACE_MS = 6_000L
+
+    /** spec SS6.6: the wait before listening again after an audio error (the input route changing under the recording). */
+    const val AUDIO_ERROR_BACKOFF_MS = 300L
+
     /** spec SS3: "the app closes its text field and no new field replaces it within 500 ms." */
     const val EDITOR_GONE_GRACE_MS = 500L
 

@@ -34,6 +34,9 @@ object DictationErrorClassifier {
     /** spec SS6.6: a busy engine ("recognizer busy") gets its own 300 ms retry, not an immediate re-listen. */
     fun isBusy(code: Int): Boolean = code == DictationErrorCode.RECOGNIZER_BUSY
 
+    /** spec SS6.6: the recording itself failed; on a phone that is the input route changing under it (a Bluetooth microphone coming or going), so it is retried. */
+    fun isAudio(code: Int): Boolean = code == DictationErrorCode.AUDIO
+
     /** spec SS4.3: the language is not installed for the recognizer asked for (12) or not downloaded yet (13). */
     fun isLanguage(code: Int): Boolean = code == DictationErrorCode.LANGUAGE_NOT_SUPPORTED || code == DictationErrorCode.LANGUAGE_UNAVAILABLE
 
@@ -83,6 +86,12 @@ enum class DictationMessage(val text: String) {
     FELL_BACK_TO_ONLINE("offline recognizer has no pack for this language; this session goes online"),
     /** spec SS6.3: the log line for the other silent fallback, segmented to plain. */
     SEGMENTED_REFUSED("segmented session refused by the engine; falling back to one request per utterance"),
+    /** spec SS6.7: the log line when a media app took the audio and the session took it back, once. */
+    FOCUS_RETAKEN("another app took the audio mid-session; taking it back once"),
+    /** spec SS6.7: the log line when a media app took the audio a second time; the session listens on with it playing. */
+    FOCUS_LEFT_TO_MEDIA("another app took the audio again; listening on without it"),
+    /** spec SS6.10: the start cue stopped waiting for the input route. */
+    ROUTE_SETTLE_TIMED_OUT("the input route did not settle in time; cueing anyway"),
 }
 
 /**

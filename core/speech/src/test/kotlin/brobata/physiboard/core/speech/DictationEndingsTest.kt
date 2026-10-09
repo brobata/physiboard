@@ -78,9 +78,10 @@ class DictationEndingsTest {
     }
 
     @Test
-    fun `a typed key, lost focus and the stop watchdog all commit it`() {
+    fun `a typed key, a call and the stop watchdog all commit it`() {
         assertEquals(commit, composing().send(DictationEvent.KeyDown, now = 300L).textOps)
-        assertEquals(commit, composing().send(DictationEvent.AudioFocusLost, now = 300L).textOps)
+        assertEquals(commit, composing().send(DictationEvent.AudioFocusChanged(AudioFocusChange.LOSS_TRANSIENT, callActive = true), now = 300L).textOps)
+        assertEquals(commit, composing().send(DictationEvent.CallStarted, now = 300L).textOps)
         val h = composing()
         h.send(DictationEvent.Trigger("app", null), now = 300L)
         val fired = h.runClockTo(1_800L).single()
