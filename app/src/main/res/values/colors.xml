@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The page colour (docs/design/design-system.md, "Colour"): Cloud in light mode, Ink in dark.
+         The splash screen and the window background before Compose draws. -->
+    <color name="pb_page">#FFF1F5F9</color>
+    <!-- The navy disc behind the mark on the splash, in both modes. -->
+    <color name="pb_ink">#FF0F172A</color>
+</resources>

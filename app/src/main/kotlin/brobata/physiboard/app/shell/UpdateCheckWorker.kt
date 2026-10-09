@@ -82,7 +82,7 @@ private fun postUpdateNotification(context: Context, release: ResolvedRelease) {
     val pendingIntent = PendingIntent.getActivity(context, NOTIFICATION_ID, tapIntent, PendingIntent.FLAG_IMMUTABLE)
 
     val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_notification_keycap)
+        .setSmallIcon(brobata.physiboard.design.R.drawable.pb_ic_mark)
         .setContentTitle("PhysiBoard - New update available")
         .setContentText("A new version of PhysiBoard is available (${release.tag})")
         .setPriority(NotificationCompat.PRIORITY_DEFAULT)

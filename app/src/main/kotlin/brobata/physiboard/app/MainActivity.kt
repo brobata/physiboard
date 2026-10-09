@@ -10,12 +10,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.PhysiBoardColors
 import brobata.physiboard.app.settings.ui.PhysiBoardTheme
@@ -41,7 +43,17 @@ import kotlinx.coroutines.flow.first
  * arrives.
  */
 class MainActivity : ComponentActivity() {
+    /** Set once launch routing has picked the first screen; the splash holds until then (SS22.4). */
+    @Volatile
+    private var firstScreenReady = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // app-shell.md SS22.4: the keycap mark on the page colour while the settings load, held
+        // until launch routing has a destination, and never longer than SPLASH_HOLD_MAX_MS.
+        val splashStart = android.os.SystemClock.uptimeMillis()
+        installSplashScreen().setKeepOnScreenCondition {
+            !firstScreenReady && android.os.SystemClock.uptimeMillis() - splashStart < SPLASH_HOLD_MAX_MS
+        }
         super.onCreate(savedInstanceState)
         // spec: app-shell.md SS22.1, "no-action-bar Material window with status and navigation
         // bars in the splash colours (dark or light variant), and edge-to-edge is enabled on
@@ -79,10 +91,18 @@ class MainActivity : ComponentActivity() {
             PhysiBoardTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     CompositionLocalProvider(LocalSettingsController provides controller) {
-                        startDestination?.let { SettingsApp(startDestination = it) }
+                        startDestination?.let {
+                            SideEffect { firstScreenReady = true }
+                            SettingsApp(startDestination = it)
+                        }
                     }
                 }
             }
         }
+    }
+
+    private companion object {
+        /** The longest the splash waits for the settings; after that the page draws as it always did. */
+        const val SPLASH_HOLD_MAX_MS = 1_500L
     }
 }

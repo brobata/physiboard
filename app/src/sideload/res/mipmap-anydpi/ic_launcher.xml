@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The sideload ("dev") build's launcher icon: the same mark over a Sky DEV pill, so it is never
+     mistaken for the release app on the home screen (app-shell.md SS23.2). The themed (monochrome)
+     layer stays the plain mark; the label "PhysiBoard Dev" tells them apart there. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/pb_launcher_background" />
+    <foreground android:drawable="@drawable/pb_launcher_foreground_dev" />
+    <monochrome android:drawable="@drawable/pb_launcher_monochrome" />
+</adaptive-icon>

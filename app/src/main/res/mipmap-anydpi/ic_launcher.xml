@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon (docs/design/design-system.md, "Identity"): the keycap mark on navy, with a
+     monochrome layer for Android 13 themed icons. The round icon is the same layers; the launcher's
+     own mask does the rest. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/pb_launcher_background" />
+    <foreground android:drawable="@drawable/pb_launcher_foreground" />
+    <monochrome android:drawable="@drawable/pb_launcher_monochrome" />
+</adaptive-icon>

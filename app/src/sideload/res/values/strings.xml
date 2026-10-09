@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- app-shell.md SS23.2: the sideload build (brobata.physiboard.dev3) installs beside the release
+     app, so its launcher entry and its keyboard in the input-method picker say which one it is. -->
+<resources>
+    <string name="app_name" translatable="false">PhysiBoard Dev</string>
+    <string name="ime_name" translatable="false">PhysiBoard Dev</string>
+</resources>

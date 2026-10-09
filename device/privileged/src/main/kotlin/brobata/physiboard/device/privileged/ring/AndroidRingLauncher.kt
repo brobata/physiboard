@@ -36,7 +36,7 @@ class AndroidRingLauncher(private val context: Context, private val permissions:
         ensureChannel()
         val pending = PendingIntent.getActivity(context, REQUEST_RING, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val announcement = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_ring_bulb)
+            .setSmallIcon(brobata.physiboard.design.R.drawable.pb_ic_ring)
             .setContentTitle("Notification ring")
             .setContentText("Turning the screen on for a notification")
             .setPriority(NotificationCompat.PRIORITY_HIGH)

@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.PhysiBoard" parent="Theme.AppCompat.DayNight.NoActionBar" />
+    <style name="Theme.PhysiBoard" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/pb_page</item>
+    </style>
+
+    <!-- app-shell.md SS22.4: the launch screen. The keycap mark on its navy disc, on the page
+         colour of the current mode, until the first screen is ready to draw. -->
+    <style name="Theme.PhysiBoard.Starting" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/pb_page</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/pb_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/pb_ink</item>
+        <item name="postSplashScreenTheme">@style/Theme.PhysiBoard</item>
+    </style>
 </resources>

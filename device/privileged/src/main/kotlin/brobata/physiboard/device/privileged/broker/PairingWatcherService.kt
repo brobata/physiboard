@@ -150,7 +150,7 @@ class PairingWatcherService : Service() {
     }
 
     private fun searchingNotification(): Notification = plain("Searching for pairing service…", "Turn on Wireless debugging and tap \"Pair device with pairing code\".")
-        .addAction(NotificationCompat.Action.Builder(R.drawable.ic_ring_bulb, "Stop", servicePendingIntent(ACTION_STOP, PendingIntent.FLAG_IMMUTABLE)).build())
+        .addAction(NotificationCompat.Action.Builder(brobata.physiboard.design.R.drawable.pb_ic_mark, "Stop", servicePendingIntent(ACTION_STOP, PendingIntent.FLAG_IMMUTABLE)).build())
         .setOngoing(true)
         .build()
 
@@ -158,10 +158,10 @@ class PairingWatcherService : Service() {
         val remoteInput = RemoteInput.Builder(REMOTE_INPUT_KEY).setLabel("Pairing code").build()
         val reply = Intent(this, PairingWatcherService::class.java).setAction(ACTION_REPLY).putExtra(EXTRA_PORT, port)
         val pending = PendingIntent.getService(this, REQUEST_REPLY, reply, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
-        val action = NotificationCompat.Action.Builder(R.drawable.ic_ring_bulb, "Enter pairing code", pending).addRemoteInput(remoteInput).build()
+        val action = NotificationCompat.Action.Builder(brobata.physiboard.design.R.drawable.pb_ic_mark, "Enter pairing code", pending).addRemoteInput(remoteInput).build()
         return plain("Pairing service found", "Type the six-digit code Android is showing.")
             .addAction(action)
-            .addAction(NotificationCompat.Action.Builder(R.drawable.ic_ring_bulb, "Stop", servicePendingIntent(ACTION_STOP, PendingIntent.FLAG_IMMUTABLE)).build())
+            .addAction(NotificationCompat.Action.Builder(brobata.physiboard.design.R.drawable.pb_ic_mark, "Stop", servicePendingIntent(ACTION_STOP, PendingIntent.FLAG_IMMUTABLE)).build())
             .setOngoing(true)
             .build()
     }
@@ -169,7 +169,7 @@ class PairingWatcherService : Service() {
     private fun pairingNotification(): Notification = plain("Pairing…", "Talking to the phone.").setOngoing(true).build()
 
     private fun plain(title: String, text: String): NotificationCompat.Builder = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_ring_bulb)
+        .setSmallIcon(brobata.physiboard.design.R.drawable.pb_ic_mark)
         .setContentTitle(title)
         .setContentText(text)
         .setStyle(NotificationCompat.BigTextStyle().bigText(text))

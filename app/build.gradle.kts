@@ -112,6 +112,8 @@ dependencies {
     implementation(project(":core:strip"))
     // The design system shared with the keyboard: fonts, icons, tokens (docs/design/design-system.md).
     implementation(project(":design"))
+    // The Android 12+ splash screen, backported API (app-shell.md SS22.4).
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     // The settings store (settings-catalog.md SS1, SS13 "one preference file with typed rows") and
