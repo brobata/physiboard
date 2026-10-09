@@ -1042,6 +1042,11 @@ With no editable field the keyboard is mostly transparent. On key-down, in order
    On the Titan this means a double tap of a real Ctrl key. Fn produces no down or up, so nav
    mode cannot be toggled from Fn on the Titan; it can only be entered from a text field or
    through commands.
+3a. (3.2) Without a nav-mode latch, a letter that arrives carrying the Ctrl bit (a held-Fn
+    chord, D4) with `nav_mode_ctrl_hold_enabled` on runs its Fn layer mapping, the same "nav
+    grid" rule a text field uses (section 7.3, `LayerResolver`). A keycode, edit or native-Ctrl
+    mapping needs an input connection; with none (15.1) it declines the key, which goes on to the
+    app; a command always runs. With the option off the chord passes, as in a text field.
 4. Without a Ctrl latch, a key with Sym meta that is assigned to the quick launcher: run it as
    a power shortcut if that mode is on, else as a launcher shortcut.
 5. Without a Ctrl latch, with power shortcut mode on, a letter, Enter, Backspace or Space runs
@@ -1051,6 +1056,54 @@ With no editable field the keyboard is mostly transparent. On key-down, in order
 7. Otherwise pass to app.
 
 Key-up: Back passes; nav mode keys as above; otherwise pass.
+
+### 15.1 Where Android sends the keyboard nothing: the accessibility service (3.2)
+
+Android sends an input method keys only while a window that takes text has focus. In a camera
+viewfinder, a video player, the lock screen or most of Settings the keyboard is never asked, so
+everything above silently did nothing there: Sym-armed and Sym-held launcher keys (the quick
+launcher on Sym+Space, Home, an app), the Fn layer, home screen keys. On the home screen it
+depends on the launcher (one with a connected search box sends the keyboard its keys).
+
+With PhysiBoard's optional accessibility service on (per-app-behavior.md section 16) and
+`accessibility_fn_shortcuts` on (default on), the service sees every hardware key before any
+window does (`FLAG_REQUEST_FILTER_KEY_EVENTS`; the flag is dropped at run time while the
+switch is off, so keys stop being routed through it at all). For each key (`:core:keys`
+`AccessibilityKeyRelay`):
+
+- PhysiBoard's keyboard is not the one bound (its service does not exist), or the switch is off:
+  pass (return false), untouched.
+- The keyboard has a really editable field: pass. Android sends the keyboard the key itself,
+  which handles it as always.
+- Fn's own events (scancode 251): pass. The Titan sends no press or release for Fn, only a burst
+  of repeats, and a chord arrives as the other key carrying the Ctrl bit (D4), which is all this
+  section reads. Feeding the repeats in would latch a Ctrl that is never released. (So hold-Fn
+  dictation still needs a text box, as it always did: dictation has nowhere to type without one.)
+- Otherwise the key runs through the keyboard's own key handler, exactly as if Android had sent
+  it: the same steps 1 to 7 above, the same code, nothing decided twice. With no input
+  connection at all, only the no-field decisions run: the overlays that type into a box (the
+  trackpad's held Space, the Fill page, picker searches, the firmware swipe) are skipped, since
+  they would swallow the key with nothing to type into.
+- What the service answers: Alt, Shift and Ctrl update the keyboard's state but always go on to
+  the app (with no text box they are the app's keys); a key-up is consumed exactly when its
+  down was, so an app never sees a press without its release (nav mode's "every key-up is
+  consumed" would otherwise eat the release of a press the app saw); a key-down is consumed
+  when the keyboard's path consumed it. Everything unconsumed goes on to the app untouched.
+
+Where Android does also send the keyboard the key (a launcher with a connected box), the service
+saw it first: the keyboard remembers the last few events the service ran (by down time, event
+time, action, keycode, scancode and repeat count) and lets exactly those through unhandled, so
+no key is handled twice. When the window gave the keyboard no input connection at all, the
+no-field decisions run with "no connection": the Fn layer's keycode, edit and native-Ctrl
+mappings decline the key (it goes to the app), media mappings go out through the audio service,
+commands and launcher keys still run, and the
+quick launcher still opens (it is an overlay window, needing only "Display over other apps").
+
+The Home command (`device.home`) uses the service's `GLOBAL_ACTION_HOME`, the Home key's own
+action, while the service is on, and the HOME intent otherwise.
+
+Untested on the phone at the time of writing: every path here needs the maintainer to turn the
+service on.
 
 ## 16. Diagnostics
 

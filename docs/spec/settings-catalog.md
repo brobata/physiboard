@@ -170,6 +170,8 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `overlapping_keys_enabled` | boolean | false | | Overlapping-press handling | No screen |
 | `nav_mode_enabled` | boolean | true | | The Fn layer | Keys & shortcuts > Fn layer > "Fn layer" |
 | `nav_mode_ctrl_hold_enabled` | boolean | false | | Holding Ctrl uses the Fn layer in text fields | Keys & shortcuts > Fn layer > "Holding Ctrl works like Fn" |
+| `accessibility_fn_shortcuts` (3.2) | boolean | true | | With PhysiBoard's accessibility service on, the keys the keyboard answers with no text box (Sym shortcuts, quick launcher, Fn layer, home screen keys) also work where Android sends the keyboard nothing (camera, video, Settings); off also drops the service's key filtering (keys-and-modifiers.md 15.1). Inert until the user turns the service on | Keys & shortcuts > Accessibility service > "Fn shortcuts everywhere" |
+| `accessibility_focus_field` (3.2) | boolean | true | | With PhysiBoard's accessibility service on, the first key typed into a box that is connected but not focused focuses it and keeps the cursor where it was (per-app-behavior.md 16.2). Inert until the user turns the service on | Keys & shortcuts > Accessibility service > "Focus the text box when I start typing" |
 | `nav_mode_default_mappings_version` | int marker | absent reads as 1; current is 3 | | Which default-mapping upgrade of `ctrl_key_mappings.json` has run | |
 | `nav_mode_mappings_updated` | long, epoch ms | none | | Reload trigger after the mappings file changes | Written by Fn Layer saves, resets and upgrades |
 | `fn_ctrl_prev_captured` | boolean marker | false | | The two rows below are valid | Keys & shortcuts > Fn layer > "Set Fn key to Ctrl" |
@@ -871,7 +873,7 @@ current state and a chevron. A category with one screen opens it; the others ope
 | Long press & accents | "Alt symbol · 500 ms" | Long press & accents |
 | Sym pages | "Emoji → Symbols" | Sym pages (formerly Customize SYM Keyboard): Pages; Emoji; Fill page; Sym key; Clipboard > Clipboard history |
 | Voice | "Hold Fn · stops after 2.5 s" | Voice |
-| Keys & shortcuts | "Fn layer on · trackpad off" | Keys & shortcuts: Key mapping; Moving the cursor (Fn layer, Screen trackpad); Opening apps (Quick launcher) |
+| Keys & shortcuts | "Fn layer on · trackpad off" | Keys & shortcuts: Key mapping; Moving the cursor (Fn layer, Screen trackpad); Where there is no text box (Accessibility service, 3.2); Opening apps (Quick launcher) |
 | Apps | "No terminal apps · Enter sends" | Apps: Terminal mode, Enter key |
 | Look & feel | "Slate Light · silent keys" | Look & feel: Theme, Sound & haptics, Modifier badge (switch and two colours), App Language |
 | Privacy | "Private mode off · clean links on" | Privacy: Private mode, Clean links, Notification access for codes |
@@ -1143,6 +1145,36 @@ on again"). See keys-and-modifiers.md 13.5.
 4. "Vibrate on dictation start/stop" switch.
 5. "Vibration strength" chips Light / Standard / Strong, shown only while row 4 is on; picking a
    chip plays that cue immediately.
+
+### 9.4a Accessibility service (3.2)
+
+Keys & shortcuts > "Accessibility service" ("Shortcuts everywhere, and the cursor in apps that
+forget it", value On/Off, re-read each time the screen shows). The screen (per-app-behavior.md
+section 16):
+
+- An intro: "Android sends a keyboard keys only while a text box is open. This optional service
+  lets PhysiBoard's shortcuts work everywhere else too, and selects the box you are typing into
+  when an app forgot to."
+- "PhysiBoard accessibility service", value On/Off, re-read on every return to the screen; the
+  description is "On. Tap to see it in Android's settings." or "Off. Turn it on in Android's
+  settings. If Android says the setting is restricted, open App info, tap ⋮ and choose Allow
+  restricted settings, then try again." Tapping opens the service's own page in Android's
+  settings (Android 13+), else the Accessibility list.
+- While off: "App info" (opens Android's App info for PhysiBoard), and, unless the broker reports
+  no pairing, "Turn on with pairing" ("Uses the wireless-debugging pairing to turn the service
+  on for you. Other apps' services are left as they are."), button "Turn on" / "Working…"; its
+  outcome replaces the description: "The service is on.", "Pair wireless debugging first (Titan
+  tools), then try again.", "Another app's accessibility entry looks unusual, so nothing was
+  changed. Turn it on in Android's settings instead." or "That did not work. Check that Wireless
+  debugging is on, or turn it on in Android's settings." (broker-privileged-toolbox.md section 9).
+- "What it does": the two switches of section 2.4, each with the note "Waiting for the service to
+  be turned on." while the service is off and the switch on; and the expander "What the service
+  can see" stating what it reads, that it stores, logs and sends nothing, and that Reset device
+  settings to stock turns it off.
+
+Search entries: "Accessibility service", "Fn shortcuts everywhere", "Focus the text box when I
+start typing", all opening this screen; "Reset device settings to stock" also matches
+"accessibility".
 
 ### 9.5 Reset device settings to stock
 

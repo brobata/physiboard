@@ -71,8 +71,10 @@ screen's cursor fade and delayed scroll, and the rest.
 ## Still open after the 2026-09-26 build-out
 
 - Home and the app chooser across every app. An input method is only sent keys while a text
-  field has focus, so this needs an accessibility service. Building one was refused by a
-  permission guard in the working environment and needs the maintainer to allow it.
+  field has focus, so this needs an accessibility service. Built in 3.2 after the maintainer's
+  decision of 2026-10-09 (not going to the Play Store): an optional service, off until turned on
+  in Android's settings (keys-and-modifiers.md 15.1, per-app-behavior.md section 16). Awaiting a
+  try on the phone with the service turned on.
 - The hosted dictionary repository still publishes the old file format, so downloading a
   dictionary for a language other than English cannot succeed until it publishes the new one.
   Nothing else blocks it; the app side is finished.

@@ -505,6 +505,12 @@ leaves its release there. With no editable field (the launcher, a list), in a te
 goes through the connection (per-app-behavior.md 3.4); Tab and the arrow keys stay on the
 window's path because they also move focus between views, which a key sent to one editor cannot.
 
+What this cannot fix is the missing cursor, and a box that dispatches even a connection's key
+events through view focus (Google Messages does: hence 98f8b9b3, which makes an unclaimed
+Backspace a text edit rather than a key event). With the optional accessibility service on, the
+first key typed into such a field also asks the service to focus the box, as a tap would, and to
+put the cursor back where it was (`accessibility_focus_field`, per-app-behavior.md 16.2).
+
 ## 9. Auto-capitalization
 
 Auto-cap never types an uppercase letter by itself. It requests a Shift one-shot; the next

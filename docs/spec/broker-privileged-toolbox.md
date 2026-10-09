@@ -373,6 +373,7 @@ for `system`, `WRITE_SECURE_SETTINGS` for `global`/`secure` once granted); "brok
 | window manager | display density override | any value in the safe range, or reset | Screen density | broker (`wm density N` / `wm density reset`) | the revert is always "reset", never a number |
 | package manager | per-user enabled/installed state of catalog packages | disabled / uninstalled for user 0 | Remove bloat | broker | yes: the removal journal (section 12.6) |
 | secure | `selected_spell_checker`, `selected_spell_checker_subtype`, `spell_checker_enabled` | this build's spell checker, 0, 1 | `auto_select_spell_checker`: PhysiBoard as the phone's spell checker, once (section 7 step 5) | broker | yes: `spell_checker_prev_captured`, `spell_checker_prev_selected`, `_enabled`, `_subtype` (null = unset) |
+| secure | `enabled_accessibility_services`, `accessibility_enabled` | this build's accessibility service appended to the list (every other entry kept, in place), 1 | "Turn on with pairing" on the Accessibility service screen (per-app-behavior.md section 16): offered only when the service is off and a pairing is stored, run only on the user's tap, never by the setup pass. The list is read first (`settings get secure enabled_accessibility_services; settings get secure accessibility_enabled`); an entry that is not a plain `package/class` refuses the write ("Another app's accessibility entry looks unusual"), so another app's service can never be lost. Outcome is the re-read of both rows | broker | no: the revert removes only PhysiBoard's entry (section 10 step 7) |
 | app ops and grants | `SYSTEM_ALERT_WINDOW`, `USE_FULL_SCREEN_INTENT`, `POST_NOTIFICATION` for the app; notification listener allow-list; `WRITE_SECURE_SETTINGS` runtime grant | allow / granted | trackpad overlay, notification ring, ring backlight | broker | no |
 
 Side-key values are validated before they are written or restored: only strings up to 256
@@ -392,7 +393,7 @@ this before you uninstall." Tapping opens a dialog "Reset device settings to sto
 PhysiBoard preferences are kept. You can re-apply these features anytime." with "Reset to
 stock" and "Cancel". While running, the row shows a spinner and is not tappable.
 
-Six reverts run independently (one failing never skips the others), off the main thread, each
+Seven reverts run independently (one failing never skips the others), off the main thread, each
 never throwing:
 
 1. **Fn to Ctrl**: write the captured originals to `fn_programmable_key_enable` and
@@ -423,8 +424,18 @@ never throwing:
    the user picked since is left alone. The read failing or the write failing is FAILED with the
    record kept; otherwise the record and the done marker are cleared, so switching the setting
    back on makes the setup pass decide afresh.
+7. **Accessibility service** (3.2): if PhysiBoard's entry is not in
+   `enabled_accessibility_services`: SUCCESS without the broker (an entry left listed while
+   `accessibility_enabled` is 0 still counts: the next service to switch accessibility on would
+   bring it back). Else, with no key stored: NEEDS_PERMISSION. Otherwise read both rows and write the
+   list back without PhysiBoard's entry (full or short component form), every other entry kept
+   in its place; with no entry left the row is deleted and `accessibility_enabled` set to 0, as
+   on a phone where nothing was ever turned on. Whoever turned it on (the user in Android's
+   settings, or "Turn on with pairing") it comes off. Another build's entry (release vs `.dev3`)
+   is never touched. An unreadable list, an entry that is not a plain component, a failed write
+   or a re-read that still lists it is FAILED.
 
-Result snackbar: all six SUCCESS gives "Device settings restored to stock."; any
+Result snackbar: all seven SUCCESS gives "Device settings restored to stock."; any
 NEEDS_PERMISSION gives "Grant PhysiBoard "Modify system settings", or pair wireless debugging,
 then try again."; otherwise "Some settings were restored. A reboot may be needed for changes to
 fully apply."

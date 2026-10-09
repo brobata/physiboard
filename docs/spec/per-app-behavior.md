@@ -661,7 +661,7 @@ Internal state, not settings: `app_list_cache_prefs` / `package_change_sequence`
 | D6 | On the Titan the built-in keyboard never disappears, so the device-transition refresh never changes the auto answer and a temporary virtual override survives until the next configured-mode write or toggle | inference from D1 and section 9.3; not observed |
 | D7 | Chrome records every hardware key down before the keyboard sees it, and when the keyboard then commits a single character equal to what the device key map gives one of the downs recorded in the last second, Chrome drops the commit and replays that recorded key, meta state included. The Titan key map gives Alt+M as "." just as the Alt layer does, so a held Alt+M committed as "." reached a terminal page as M with Alt down (Meta-m, nothing typed). A character produced with Alt active in any form (held, one-shot, latched), or by a long press in Alt mode, is therefore typed as the plain key presses Android's virtual key map gives for it (no Alt), which Chrome passes on unchanged; a character no key produces is still committed. Composing text would dodge the swap too, but this terminal is on record dropping composed text (dictation, 2026-09-26). Letters keep the plain commit, which Chrome turns into the real key press web pages expect | Chromium `ImeKeyEventReplayer` (Chrome 148 and 154, on by default for Android up to API 38); `/system/usr/keychars/TitanKey.kcm`; PersaLink, 2026-10-06 |
 | D8 | A one-character commit Chrome cannot match to a recorded key down reaches the page as a key down with key code 229, an insert into the page's text box, and a key up with key code 229. xterm.js ignores the insert itself (a key down is "seen") and instead reads its hidden text box on a zero-delay timer after the 229 key down; PersaLink empties that box after every piece of input. When the next key reached the page before the timer ran, the box was already empty and the character was lost: a fast "Shift tap, M, a" typed "a". Only characters the physical key does not type itself take this path: a tapped Shift's or caps lock's capital, a Sym chord symbol (lower-case letters and Shift-held capitals are replayed as their own keys; Alt-layer characters already went as key presses, D7). The keyboard spent 30 to 44 ms on every Shift press, which bunched the keys behind it. In a terminal-mode app such a character is therefore typed as the key presses that produce it (section 4.6); in other apps it stays a commit, which ordinary editors apply at once | Chromium `ImeAdapterImpl.sendCompositionToNative` and `ImeKeyEventReplayer`; xterm.js 5.5 `CoreBrowserTerminal`, `CompositionHelper`; PersaLink `TerminalPane.tsx`; phone log 2026-10-06 |
-| D9 | A messaging app that opens straight into its compose box connects the box to the keyboard before any view has key focus. Letters, committed through the connection, land; a key the keyboard hands back to the window (a plain Backspace) reaches no view and is lost until the box is tapped and takes focus. Reported on Reddit for every keyboard except SwiftKey, and by the maintainer in Messages. A key sent through the input connection is dispatched from the connected editor's side (`BaseInputConnection.sendKeyEvent` hands it to that editor's own view root; Compose's connection hands it to its text field), not to whichever window and view the system's key routing picks, so since 3.2 a falling-through Backspace or forward delete is sent that way (text-input.md 8.1); a terminal-mode app (4.6) and Chrome's key replayer (D7, which acts on commits, not on key events) see no change | maintainer report and Reddit thread, 2026-10-09; Android `BaseInputConnection.sendKeyEvent`; the fix awaits confirmation on the phone in Messages |
+| D9 | A messaging app that opens straight into its compose box connects the box to the keyboard before any view has key focus. Letters, committed through the connection, land; a key the keyboard hands back to the window (a plain Backspace) reaches no view and is lost until the box is tapped and takes focus. Reported on Reddit for every keyboard except SwiftKey, and by the maintainer in Messages. A key sent through the input connection is dispatched from the connected editor's side (`BaseInputConnection.sendKeyEvent` hands it to that editor's own view root; Compose's connection hands it to its text field), not to whichever window and view the system's key routing picks, so since 3.2 a falling-through Backspace or forward delete is sent that way (text-input.md 8.1); a terminal-mode app (4.6) and Chrome's key replayer (D7, which acts on commits, not on key events) see no change. Messages dispatches even those through view focus, so Backspace there is a text edit (98f8b9b3); the missing cursor needs the box focused, which only the optional accessibility service can do (section 16.2) | maintainer report and Reddit thread, 2026-10-09; Android `BaseInputConnection.sendKeyEvent`; the fix awaits confirmation on the phone in Messages |
 
 ## 12. Edge cases, quirks, known bugs
 
@@ -821,3 +821,74 @@ on unless stated.
 - PHYSIBOARD_CHANGES.md (1.0.0, 1.0.3, 1.2.1, 2.0.2, 2.0.3, 2.0.4, 2.0.7)
 - README.md, docs/plans/rebuild-from-scratch.md, docs/plans/physiboard-roadmap.md, docs/spec/README.md, docs/spec/text-input.md, docs/spec/layers-sym-alt.md
 - git log (commits 4a4ecab, ba5cc90, b161a4e, 67333a7, 863f2f4, ae92ece, 8b03e80, 266c1a5, 9f3c232, 45ac5fc, a2836f0, 110c58e)
+
+## 16. The accessibility service (3.2)
+
+The maintainer decided (2026-10-09) that PhysiBoard, which is not distributed through the Play
+Store, may ship an optional accessibility service. It is off until the user turns it on in
+Android's settings and does exactly two things, each behind its own switch on Keys & shortcuts >
+Accessibility service (settings-catalog.md). Its code is `:ime`
+`access/PhysiBoardAccessibilityService` and `access/AccessibilityBridge`; its decisions are
+`:core:text` `FieldFocusRescue` and `:core:keys` `AccessibilityKeyRelay`.
+
+### 16.1 What it may do, and what it never does
+
+- It subscribes to no accessibility events (`accessibilityEventTypes` unset). It never watches
+  the screen; it reads a window only when the keyboard asks it to focus a box (16.2), at most
+  once per field. Its node cache is switched off (Android 13+), because with no events nothing
+  would tell it a cached node is stale.
+- `canRetrieveWindowContent` only because finding and focusing the box needs the node.
+- `canRequestFilterKeyEvents` only for 16.3; the flag is set in the XML and dropped at run time
+  while "Fn shortcuts everywhere" is off, so keys stop passing through it.
+- It logs outcomes only ("focus: by focus, focused=true, cursor kept"), never a node's text or
+  hint, never a key. It stores nothing and has no network access of its own (the app's one
+  network permission is the update check's).
+- `isAccessibilityTool` false: it serves no disability need, so Android shows its full warning
+  before it can be turned on. The description Android shows says plainly what it does.
+- It runs in the app's process and talks to the keyboard directly; with the keyboard not bound
+  (another keyboard in use) it does nothing at all.
+- Turning it on: the Accessibility service screen deep-links to the service's own page in
+  Android's settings (`android.settings.ACCESSIBILITY_DETAILS_SETTINGS` with the component, on
+  Android 13+, else the Accessibility list). A sideloaded app on Android 13+ may first need App
+  info > ⋮ > Allow restricted settings; the screen says so and links App info. With a pairing
+  stored it also offers "Turn on with pairing" (broker-privileged-toolbox.md section 9), never
+  done without the tap. "Reset device settings to stock" turns it off (section 10 step 7).
+
+### 16.2 Focus the text box when you start typing (`accessibility_focus_field`, default on)
+
+D9's box: connected to the keyboard, no view focused, no cursor shown, and keys the app
+dispatches through view focus lost (text-input.md 8.1). On the first key-down of a
+non-modifier key (repeat 0) in a really editable field, once per field (a restart of the same
+field keeps its one try), with the switch on and the service running, the keyboard posts a
+request after the keystroke is applied, so the keystroke never waits for it:
+
+1. The request carries only the field's package; the service works on its own thread. The
+   active window must belong to that package (another app's window: nothing). If any view holds
+   input focus, editable or not, nothing is done: D9's box is the one where no view has focus,
+   and a focused terminal or code editor (not editable in accessibility terms) is the user's box.
+2. Only then does the service ask the keyboard, on the main thread (waiting at most 1 s), for
+   what it knows: the field's text and selection (`getExtractedText`, up to 4000 characters; a
+   longer text is not compared), hint and package. In a password field, or a field that may hold
+   a one-time code, the text is not read; in a password field the cursor is not known either. A
+   field that changed since the request answers nothing, and nothing is done.
+3. The window's editable nodes are read (breadth first, at most 2000 nodes visited). Only those
+   of the field's package that are visible and enabled count. One: that one. Several: the one
+   whose text equals the keyboard's (an empty field matches a node showing nothing, or its hint),
+   then the one whose hint equals the field's; still not exactly one: nothing, never a guess. A
+   password node's text is never compared.
+4. `ACTION_FOCUS`; if the node still is not focused, `ACTION_CLICK` (what a tap does).
+5. The cursor is put back only if focusing visibly reset it (to the start, or a whole-text
+   selection) and the text length did not change meanwhile (if the user typed while the box was
+   being focused, the cursor they typed with is the right one): to the node's own selection from
+   just before focusing, or, if it reported none, the keyboard's. Never in a password box.
+
+Unverified on the phone at the time of writing (needs the maintainer to turn the service on):
+whether Messages' compose box takes `ACTION_FOCUS` alone, and whether the cursor needs
+restoring there.
+
+### 16.3 Fn shortcuts everywhere (`accessibility_fn_shortcuts`, default on)
+
+keys-and-modifiers.md 15.1: while the keyboard has no text box, the keys it answers with no text
+box (Sym shortcuts, the quick launcher, the Fn layer, home screen keys) also work in windows
+Android sends the keyboard nothing for, by the keyboard's own code; every other key goes on to
+the app untouched, and no key is ever handled twice.
