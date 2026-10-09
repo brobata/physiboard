@@ -206,7 +206,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `status_bar_visibility` | string `ALWAYS`, `NEVER`, `APPS` | absent reads through `show_status_bar`: true or absent gives `ALWAYS`, false gives `NEVER` | `APPS` (but a fresh install ends at `ALWAYS`, section 1.1) | Where the strip appears | Keyboard > Status Bar Theme > "Show status bar": Always / Never / Only in these apps |
 | `show_status_bar` | boolean | true | same | Legacy mirror; every write of the row above also writes this as (visibility is not NEVER) | Same control |
 | `status_bar_apps` | string set of package names | seeded on first read with the 20-app messaging, mail and social list (D8) | same 20 | Apps where the strip shows in `APPS` mode | "Only in these apps" list |
-| `status_bar_height_dp` | int, offered 36, 48, 56, 64 | 56 | same | Strip height | Status Bar Theme > "Bar height" |
+| `status_bar_height_dp` | int, offered 36, 48, 56, 64 | 56 | same | Strip height | Theme > Status strip > "Strip height" (status-bar.md SS9.4, 3.x) |
 | `status_bar_slots_left` | string, JSON array of button ids | `["hamburger"]` | `["clipboard"]` | Buttons on the left | Status Bar Theme > Buttons > "Left buttons" |
 | `status_bar_slots_right` | string, JSON array | `["emoji","microphone"]` | `["microphone","none"]` | Buttons on the right | "Right buttons" |
 | `status_bar_slot_left` | string button id | `hamburger` | `clipboard` | Legacy mirror of element 0 of the left array; the array read falls back to it when the array is absent | Same control |
@@ -406,8 +406,8 @@ and restore like every other row.
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `private_mode` | boolean; anything else reads as false | false | | Private mode: the keyboard learns nothing (no personal words, no next-word pairs, no clipboard history capture, no recent emoji, no debug capture of typed text) and PhysiBoard makes no network request at all, until it is switched off. Also flipped by the "Private mode" command (`physiboard.toggle_private_mode`) from a key | Settings > Privacy > "Private mode": "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no network requests: no update checks and no dictionary downloads. Dictation is done by your phone's speech service, which may still go online …" |
-| `clean_links` | boolean; anything else reads as true | true | | Clean links: tracking parameters and redirect wrappers are removed from links in clipboard text the keyboard stores or pastes itself | Settings > Privacy > "Clean links": "Remove tracking from links you copy and paste from the clipboard panel, such as utm_source, fbclid or a YouTube share code, and open up Google and Facebook redirect links to the real address. …" |
+| `private_mode` | boolean; anything else reads as false | false | | Private mode: the keyboard learns nothing (no personal words, no next-word pairs, no clipboard history capture, no recent emoji, no debug capture of typed text) and PhysiBoard makes no network request at all, until it is switched off. Also flipped by the "Private mode" command (`physiboard.toggle_private_mode`) from a key | Settings > Privacy > "Private mode": "PhysiBoard remembers nothing you type and makes no network requests.", with the full text under "About private mode": "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no network requests: no update checks and no dictionary downloads. Dictation is done by your phone's speech service, which may still go online …" |
+| `clean_links` | boolean; anything else reads as true | true | | Clean links: tracking parameters and redirect wrappers are removed from links in clipboard text the keyboard stores or pastes itself | Settings > Privacy > "Clean links": "Remove tracking from links you paste from the clipboard panel.", with the full text under "About clean links": "Remove tracking from links you copy and paste from the clipboard panel, such as utm_source, fbclid or a YouTube share code, and open up Google and Facebook redirect links to the real address. …" |
 
 `clean_links` defaults on although it is new behaviour: it never intercepts Space, Enter, Shift or
 Backspace, it only rewrites clipboard text the keyboard itself keeps or pastes, and what it removes
@@ -876,20 +876,22 @@ already on top is a no-op. Opening Settings runs the GitHub update check once (a
 Labels are the English resource strings. "switch", "chips", "slider", "picker" describe the
 control; ">" means the row navigates.
 
-- **Settings** (title "Settings")
+- **Settings** (title "Settings"; rows on cards, app-shell.md SS22.1)
   - search field "Search settings…"
-  - "Privacy" > Privacy (3.0): "Private mode and clean links", or "Private mode is on: nothing is
-    learned, no network requests" while it is on
-  - "Status" > Status: "Check PhysiBoard is set up correctly"
-  - "Backup now": "Export all settings and custom layouts to a ZIP" (section 7.1)
-  - "Restore from file": "Import a PhysiBoard backup ZIP" (section 7.2)
-  - "Diagnostics" > Diagnostics: "Physical key-event logger and debug export" (app-shell.md)
-  - "Reset device settings to stock" (section 9.5)
-  - divider "About"
-  - "About" > About: "Version, licence, and credits"
-  - "Updates" ("Checking for updates…" while busy): "Check the latest release on GitHub."; shown
-    only when GitHub update checks apply to this build; results are toasts "Unable to reach
-    GitHub." / "App is up to date." or the update dialog
+  - "Test field" > Test field: "A place to type, to try the keyboard"
+  - header "Keyboard": "T2E Tools" > "Titan-specific tools"; "Keyboard" > "Everything about how
+    the keyboard behaves when you type"; "Extras" > "The quick launcher, languages and text
+    expansion"; "Privacy" > Privacy (3.0): "Private mode and clean links", or "Private mode is
+    on: nothing is learned, no network requests" while it is on
+  - header "Help": "Status" > Status: "Check PhysiBoard is set up correctly"; "Diagnostics" >
+    Diagnostics: "Physical key-event logger and debug export" (app-shell.md); "Updates"
+    ("Checking for updates…" while busy): "Check the latest release on GitHub."; shown only when
+    GitHub update checks apply to this build; results are toasts "Unable to reach GitHub." /
+    "App is up to date." or the update dialog; "About" > About: "Version, licence, and credits"
+  - header "Your settings": "Backup now": "Export all settings to a file" (section 7.1);
+    "Restore from file": "Import a PhysiBoard backup" (section 7.2); "Reset device settings to
+    stock" (section 9.5); "Reset to defaults": "Restore every PhysiBoard setting to its factory
+    baseline"
 - **Privacy** (title "Privacy", 3.0; section 2.17)
   - switch "Private mode" (`private_mode`), with the note "On. The caret badge shows PRIVATE while
     you type." while on
@@ -965,7 +967,9 @@ control; ">" means the row navigates.
       "Keep speech on the phone"; "Pause music while dictating"
     - header "Voice assistant": "Orange key opens the assistant"; "Hold Sym for the assistant";
       "How the assistant opens" (Auto / Voice command / Hands free / Assist)
-  - "Status Bar Theme" > "Colours, LEDs, and which buttons sit on the bar"
+  - "Theme" > "Colours, LEDs, and the buttons on the Sym pages". 3.x: the page as built is
+    status-bar.md SS9.4's "3.x Theme page" (Sym page preview, colour rows labelled by what they
+    paint, the hidden strip's rows collapsed under "Status strip"); the 2.x list below is history.
     - "Choose a preset" (presets incl. Synthwave, Vapourwave, Hazard, Blueprint, Forest Floor,
       Rose Gold, Ink and Paper); "Keyboard UI Preview" (zoomable, "Editing draft" badge);
       "Customize colors" ("N required values missing", "Create a custom theme", colour rows
@@ -1078,9 +1082,8 @@ Title "Sound & Haptics". Rows in order:
 
 ### 9.5 Reset device settings to stock
 
-The row on Settings reads "Reset device settings to stock" with the description "Undo the
-system-wide changes PhysiBoard made (the Fn key mapping and keyboard backlight), restoring your
-device to stock. Do this BEFORE uninstalling; uninstalling alone won't undo them." Tapping it
+The row on Settings reads "Reset device settings to stock" with the description "Undo the Fn
+key mapping and backlight changes. Do this before you uninstall." (the dialog carries the rest). Tapping it
 shows a dialog "Reset device settings to stock?" with the text "This restores the Fn key mapping
 and keyboard backlight to your device's stock settings. Your PhysiBoard preferences are kept. You
 can re-apply these features anytime." and buttons "Reset to stock" / "Cancel". While running the

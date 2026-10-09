@@ -713,9 +713,10 @@ routes to the Device SYM Layer Editor instead (section 6.5).
 
 Title "Customize SYM Keyboard". Sections, top to bottom:
 
-3.0: the first section is **Sym pages** ("Each Sym press opens the next page that is switched
-on, in this order; after the last one Sym closes. ..."), a line reading the result back ("Sym:
-Emoji → Symbols → GIFs → closed"), then one row per page: its name numbered with the press
+3.0: the first section is **Sym pages**: a line reading the result back in the primary colour
+("Sym: Emoji → Symbols → GIFs → closed"), the explanation collapsed under "About the Sym pages"
+("Each Sym press opens the next page that is switched on, in this order; after the last one Sym
+closes. ..."), then one row per page: its name numbered with the press
 that reaches it while on ("1. Emoji"), what it holds and its chooser letter, a pencil where the
 page can be edited, up and down arrows, and its switch. The picker is called "Emoji" and the
 letter-key layer "Emoji keys". The Fill page (4.7) has a row like the others ("One-time codes

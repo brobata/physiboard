@@ -616,6 +616,41 @@ Top to bottom:
    `show_leds`, with a reset-to-preset affordance), then "Reset", which restores the slot
    defaults only.
 
+**The 3.x Theme page (2026-10-08).** With the strip hidden for good, the page is titled "Theme"
+and is laid out for what the theme still colours, the Sym pages and the panels beside them:
+
+1. "Choose a preset": the carousel above, 112 dp cards, each showing its background, key,
+   button and accent colours; the active one outlined and tagged "Active".
+2. "Keyboard UI Preview": the Symbols Sym page drawn in the active theme, following the live
+   grid (layers-sym-alt.md SS5.7): the Titan's three left-aligned rows with their blanks, letter
+   keys in `suggestion` with a 1 dp `divider` outline and 6 dp corners, each key's letter small
+   at its top-left and its character centred in `text_and_icons`, the pencil and globe and the
+   close button in `status_bar_button`, all on `background`. The characters are the user's own
+   Symbols page when they edited it, else the shipped one. There is no suggestion row, Shift
+   chip, LED row or viewport slider any more.
+3. Rows "Customize colors", "Saved themes", "Layout overrides".
+4. "Modifiers": the cursor badge switch and its two colours.
+5. "Status strip": a line saying the strip is switched off so these change nothing visible,
+   then a collapsed "Strip buttons, LEDs and height" holding "Show LEDs", "Left buttons",
+   "Right buttons", "Strip height" (the `status_bar_height_dp` chips) and the slot "Reset".
+   They stay so a backup restores them.
+
+"Customize colors" labels each colour by what it paints now; the stored keys are unchanged:
+
+| Stored key | Label | Description | Paints (ime) |
+|---|---|---|---|
+| `background` | Background | Behind the Sym pages, emoji picker and clipboard | page and panel backgrounds |
+| `suggestion` | Keys | Sym page keys, search fields, clips and GIF cards | Sym grid keys, emoji picker search field and skin-tone cells, clipboard items, GIF cards |
+| `status_bar_button` | Buttons | Pencil, globe, close and the panels' tool buttons | Sym grid pencil/globe, close buttons, emoji picker mode and tab buttons, clipboard and page-chooser buttons |
+| `divider` | Key outlines | The edge around keys, cards and the selected tab | 1 dp key and card strokes |
+| `text_and_icons` | Text and icons | Characters, labels and icons | all panel text and glyphs |
+| `accent` | Accent | The selected emoji tab, pinned clips and Clear all | emoji picker selected tab, pinned clip fill, clipboard "Clear all" |
+
+Under a "Status strip" header, collapsed in "Strip LEDs, corners and height": "LED inactive",
+"LED active", "LED locked", "Strip key corners" (`key_corner_radius_ratio`), "Strip button
+corners" (`chrome_corner_radius_ratio`) and "Strip text size" (`suggestions_height_scale`),
+which only the hidden strip reads.
+
 ### 9.5 The color dialog
 
 Shared by everything that picks a color. A title, an optional subtitle ("Pick a colour, or

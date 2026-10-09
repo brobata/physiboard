@@ -193,7 +193,7 @@ you saved."). The screen is titled "Text expansion" with a "Snippets" section:
 
 The "Manage snippets" list shows each shortcut in medium weight with its replacement below
 (newlines rendered as ` ↵ `, at most two lines) and a delete icon; tapping a row edits it; a plus
-icon adds one; empty state "No snippets yet.". The editor dialog ("Add snippet" / "Edit snippet")
+icon adds one; empty state "No snippets yet. Tap + to add one." under an icon (app-shell.md SS22.1). The editor dialog ("Add snippet" / "Edit snippet")
 has a single-line "Shortcut" field with the help "Use 1–40 letters, numbers, or underscores."
 (error state when non-empty and invalid) and a "Replacement text" field of 4 to 10 lines. "Save"
 is enabled only when the shortcut is valid and the replacement is not blank; Cancel discards.

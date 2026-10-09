@@ -226,10 +226,14 @@ version, a preview would still suppress the note for that version.
 
 ### 6.1 Layout
 
-Top to bottom: the terminal header (section 22.1), then a 16 dp-padded column: zero or one
-setup action card, zero or one update action card, the all-clear line, and the six tiles in
-rows of two (an odd last row keeps tile width by leaving the second slot empty). The whole
-page scrolls. A translucent overlay (black at 30 % in dark theme, white at 20 % in light)
+Top to bottom: the terminal header (section 22.1), then a 16 dp-padded column on the page
+background: zero or one setup action card, zero or one update action card, the all-clear line,
+and the six tiles in rows of two with 12 dp gaps, each row as tall as its taller tile (an odd
+last row keeps tile width by leaving the second slot empty). On the Titan's 1080 × 1200 panel
+the header, an action card and all six tiles fit without scrolling; the page still scrolls when
+the font scale makes it taller. The action card is filled with the primary container colour
+(dark amber on dark, pale amber on light): a 44 dp icon tile, the title and subtitle, and a
+chevron. The all-clear line is "✓ all set" in the prompt style in the primary colour. A translucent overlay (black at 30 % in dark theme, white at 20 % in light)
 covers the status-bar area.
 
 ### 6.2 What the home probes, and how often
@@ -252,16 +256,19 @@ the monospace amber line "✓ all set" is shown instead.
 
 ### 6.4 Tiles
 
-| Order | Label | Sublabel | Attention dot | Opens |
-|---|---|---|---|---|
-| 1 | "T2E Tools" | "needs pairing" when the verified broker status is known and not `OK` | same condition | settings, destination `toolbox_destination` |
-| 2 | "Keyboard" | none | no | settings, `keyboard_hub_destination` |
-| 3 | "Status Bar Theme" | none | no | settings, `keyboard_theme_destination` |
-| 4 | "Status" | "all good" when enabled and selected, else "needs setup" | when not (enabled and selected) | settings, `status_destination` |
-| 5 | "Extras" | none | no | settings, `extras_destination` |
-| 6 | "Settings" | none | no | settings, top level |
+| Order | Label | Icon | Status line | Attention dot | Opens |
+|---|---|---|---|---|---|
+| 1 | "T2E Tools" | handyman | the broker problem ("needs pairing", "debugging off", "unreachable", "pairing refused") when the verified broker status is known and not `OK`, else "Backlight, ring, keys" | when a broker problem shows | settings, destination `toolbox_destination` |
+| 2 | "Keyboard" | keyboard | "Typing, correction, Sym" | no | settings, `keyboard_hub_destination` |
+| 3 | "Theme" | palette | the active preset's name, else the name of a saved theme it equals, else "Custom colours" | no | settings, `keyboard_theme_destination` |
+| 4 | "Status" | check circle | "all good" when enabled and selected, else "needs setup" | when not (enabled and selected) | settings, `status_destination` |
+| 5 | "Extras" | extension | "Launcher, languages" | no | settings, `extras_destination` |
+| 6 | "Settings" | settings gear | "Backup, privacy, about" | no | settings, top level |
 
-The attention dot is a 9 dp amber circle at the tile's top-right. The broker badge deliberately
+A tile is a 20 dp-rounded card in the surface container colour: a 40 dp keycap icon tile, then
+the label (title medium) and the status line (body medium, one line, ellipsised), muted, or in
+the primary colour when the tile needs attention. The attention dot is a 9 dp amber circle at
+the tile's top-right. The broker badge deliberately
 stays off while the status is unknown: flashing "needs attention" at every launch would train
 the user to ignore it. Settings is opened with a slide-in-from-right animation and closes with
 a slide-out-to-right; the destination travels in the string extra
@@ -788,20 +795,72 @@ that exist in the source but have no path from any screen:
 ### 22.1 Visual identity
 
 Every activity uses one theme: Material 3 with dynamic colour disabled, dark or light following
-the system. Palette: Ink `#0F172A` (dark background), Slate `#1E293B` (dark surfaces), Signal
-Amber `#F59E0B` (primary and tertiary in both modes, `onPrimary` Ink), Sky `#38BDF8`
-(secondary), Cloud `#F1F5F9` (light background, dark text), Slate500 `#64748B` (outline, and
-muted text on light), Slate400 `#94A3B8` (muted text on dark: Slate500 is under 4:1 on Ink and
-under 3:1 on a dialog), error `#EF4444` dark / `#DC2626` light. Typography is JetBrains Mono throughout (regular,
-medium, bold). The window theme is no-action-bar Material with status and navigation bars in
-the splash colours (dark or light variant), and edge-to-edge is enabled on every activity.
+the system. Palette: Ink `#0F172A` (dark background), Slate `#1E293B` (dark surfaces and the
+settings cards), Signal Amber `#F59E0B` (primary and tertiary on dark, `onPrimary` Ink), Amber
+Deep `#B45309` (primary and tertiary on light, `onPrimary` white: Signal Amber is about 2:1 on
+white, too faint for text), Sky `#38BDF8` (secondary), Cloud `#F1F5F9` (light background, dark
+text), Slate500 `#64748B` (outline and muted text on light), Slate400 `#94A3B8` (muted text and
+outline on dark: Slate500 is under 4:1 on Ink and about 3:1 on a card), error `#EF4444` dark /
+`#DC2626` light. The tonal container (`secondaryContainer`: tonal buttons, selected chips) is amber, `#78350F` with `#FDE68A` on dark and `#FEF3C7` with `#78350F` on light, so amber is the one accent family. Every text colour meets WCAG AA (4.5:1) on the surface it sits on, in both
+themes. The window theme is no-action-bar Material with status and navigation bars in the splash
+colours (dark or light variant), and edge-to-edge is enabled on every activity.
 
-The home header is an Ink band with a 2 dp amber hairline on top and `physiboard:~$` in bold
-18 sp amber followed by a 10 × 20 dp amber block cursor that fades between opaque and
-transparent every 600 ms; the fade is held static when the system animator duration scale is
-0 (reduced motion). The settings screens share one top bar: status-bar inset, 1 dp tonal
-elevation, back arrow (content description "Back"), the title as a heading in headline-small
-semi-bold, trailing actions drawn in the same full-contrast colour as the back arrow.
+**Typography.** Two families, both vendored under `res/font` under the SIL Open Font License 1.1
+(LICENSING.md, credited on About under "Fonts"):
+
+- **JetBrains Mono** (regular, medium, bold) is the brand voice: screen titles in the top bar,
+  dialog titles, the section labels between cards, the `physiboard:~$` prompts (home header,
+  setup, what's new, About), and Diagnostics' log and report text.
+- **Inter** (regular, medium, semi-bold) is the reading face: row titles, descriptions, dialog
+  bodies, buttons, chips, fields and home tiles.
+
+One Material 3 type scale, defined in the theme; screens use its roles and never a font size of
+their own:
+
+| Role | Family | Size / line | Weight | Used for |
+|---|---|---|---|---|
+| display large/medium/small | Mono | 48/56, 40/48, 32/40 | bold | (reserved) |
+| headline large/medium | Mono | 28/36, 24/32 | bold | (reserved) |
+| headline small | Mono | 21/28 | bold | top-bar screen title, dialog title |
+| title large | Mono | 19/26 | bold | large in-page titles |
+| title medium | Inter | 16/22 | semi-bold | card and tile titles |
+| title small | Inter | 14/20 | semi-bold | sub-headings inside a card, expander rows |
+| body large | Inter | 16/23 | regular | row titles, field text |
+| body medium | Inter | 14/20 | regular | descriptions, dialog text |
+| body small | Inter | 13/18 | regular | notes and fine print |
+| label large/medium/small | Inter | 14/20, 12/16, 11/16 | semi-bold, medium, medium | buttons, badges, key letters |
+
+Three brand roles sit beside the scale: the prompt (Mono bold 18/24, amber), the section label
+(Mono bold 13/18, primary colour, sentence case) and code (Mono regular 12/17, Diagnostics).
+Glyph cells that show a character as itself (emoji and character pickers, accent tiles) use one
+glyph style (Inter 22/28).
+
+**Spacing and shape.** Spacing steps are 4, 8, 12, 16 and 24 dp; the side margin is 16 dp.
+Corners grow with the layer: 6 dp (extra small), 10 dp (small: chips, fields), 12 dp (medium),
+16 dp (large: settings cards, preset cards, leading icon tiles use 10 dp), 28 dp (extra large:
+dialogs and sheets). Home tiles and the action card use 20 dp.
+
+**Settings layout.** Every settings list draws its rows on rounded 16 dp cards in the surface
+container colour (Slate on dark, white on light) on the page background, 16 dp in from each side;
+a section label between two cards names the group. A full-width element (the theme preset
+carousel, the Sym page preview, the device setup card, search fields, empty states) sits between
+cards rather than inside one. A row is at least 56 dp tall (the 48 dp touch target plus room).
+Every row that opens another screen carries a leading icon in a 36 dp "keycap" tile (the raised
+surface tone with the icon in the primary colour; outlined Material icons) and a trailing chevron
+in the muted colour. A switch row's whole surface toggles it. Buttons inside rows are tonal and
+at least 48 dp tall. Long explanations sit behind a collapsed "About ..." row under a one-line
+summary (the Terminal-mode pattern), so the controls stay near the top. An empty list shows an
+icon in a 56 dp keycap tile and one line that says how to fill it. Search fields are filled,
+fully rounded and carry a clear button once something is typed. Screens that are a plain column
+rather than a list (About, What's new, setup) use the same card surface.
+
+The home header is an Ink band with a 2 dp amber hairline on top and `physiboard:~$` in the
+prompt style in Signal Amber followed by a 10 × 20 dp amber block cursor that fades between
+opaque and transparent every 600 ms; the fade is held static when the system animator duration
+scale is 0 (reduced motion). The settings screens share one top bar: status-bar inset, the page
+background colour (the cards are the only raised surfaces), back arrow (content description
+"Back"), the title in the headline-small mono style on one line, trailing actions drawn in the
+same full-contrast colour as the back arrow.
 
 ### 22.2 Transitions and sizing
 

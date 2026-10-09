@@ -357,9 +357,8 @@ additionally be in the catalog.
 ## 10. Reset device settings to stock
 
 Lives on the main settings list (the old Advanced screen is gone as of 2.0), row "Reset device
-settings to stock" with description "Undo the system-wide changes PhysiBoard made — the Fn key
-mapping and keyboard backlight — restoring your device to stock. Do this BEFORE uninstalling;
-uninstalling alone won't undo them." Tapping opens a dialog "Reset device settings to stock?" /
+settings to stock" with description (3.x) "Undo the Fn key mapping and backlight changes. Do
+this before you uninstall." Tapping opens a dialog "Reset device settings to stock?" /
 "This restores the Fn key mapping and keyboard backlight to your device's stock settings. Your
 PhysiBoard preferences are kept. You can re-apply these features anytime." with "Reset to
 stock" and "Cancel". While running, the row shows a spinner and is not tappable.
@@ -638,7 +637,7 @@ type; rows with an editor show an arrow and navigate:
 | Key | Hardware text | Binding text | Opens |
 |---|---|---|---|
 | Fn | "scancode 251 (FUNC3)" | "Acts as Ctrl" when `fn_programmable_key_enable` = 1 and `fn_programmable_key_function` = 1, else "Fn layer"; plus " · hold to dictate" if Fn long-press speech is on; plus " · long press opens <activity tail>" from `fn_long_press_activity` when not remapped | Fn layer (nav mode) screen |
-| Sym | "scancode 253 (AGUI_SYM)" | "Symbol and emoji pages"; " · hold for the assistant" if Sym long-press assistant is on; " · hold for the trackpad" if the trackpad is on with Sym as trigger | Voice screen |
+| Hold Sym: assistant (the Sym key; labelled for the Voice screen it opens) | "scancode 253 (AGUI_SYM)" | "Symbol and emoji pages"; " · hold for the assistant" if Sym long-press assistant is on; " · hold for the trackpad" if the trackpad is on with Sym as trigger | Voice screen |
 | Orange side key | "ff_key 249" | "tap: <tail of func1_short_press_activity>" · "double: <tail of func1_double_press_activity>" · "hold: the assistant, listening" when `func1_long_press_package` is `brobata.physiboard`, else "hold: <tail of func1_long_press_activity>", else "hold: nothing" | Voice screen |
 | Space | "keyboard matrix, also the fingerprint sensor" | "Space · hold for the trackpad" if the trackpad is on with Space as trigger, else "Space" | Screen trackpad screen |
 | Right Shift | "keyboard matrix" | "Vendor remapping enabled" if `shift_r_programmable_key_enable` = 1 else "Types Shift" | none |
