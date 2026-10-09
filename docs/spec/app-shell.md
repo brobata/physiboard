@@ -256,6 +256,15 @@ The first matching row wins. The first three are action panes with the 1 dp ambe
 type" is a calm pane with the slate border and a green check, so on a phone that is set up the
 toolbox below is the one amber pane on the page.
 
+**Accessibility service is off** (3.2). Under whichever of the four is shown, after a 1 dp rule
+and above the spell-checking line, a warning line (the amber warning icon, "Accessibility service
+is off" / "Needed for Fn shortcuts everywhere and focusing the text box") opens Keys & shortcuts ›
+Accessibility service, which explains the service and how to turn it on (restricted settings, or
+"Turn on with pairing"). It shows while PhysiBoard's accessibility service is not enabled and at
+least one of `accessibility_focus_field` / `accessibility_fn_shortcuts` is on, re-checked every
+2 s with the rest of the card, so it disappears as soon as the service is on (maintainer,
+2026-10-09: "like a warning that something isn't set up right; other apps do this").
+
 **Turn on spell checking** (3.1). Under whichever of the four is shown, after a 1 dp rule, a
 second line "Turn on spell checking" / "Pick PhysiBoard so apps underline misspellings" opens
 Android's spell checker screen (the same route as Autocorrect & words > "System spell checker").

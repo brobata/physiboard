@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.EmojiSymbols
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.KeyboardCommandKey
 import androidx.compose.material.icons.outlined.Language
@@ -131,11 +132,17 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     var keyStored by remember { mutableStateOf(application.privileged.broker.isPaired()) }
     // spec: SS6.3, "Turn on spell checking": offered only while unpaired, since pairing does it.
     var offerSpellCheck by remember { mutableStateOf(false) }
+    // The accessibility service is off while one of its two features is wanted: a warning line on
+    // the status card, as other apps flag a permission they still need (maintainer, 2026-10-09).
+    var offerAccessibility by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (true) {
             probe = ImeProbeAndroid.evaluate(context, ImeComponent.SERVICE_CLASS_NAME)
             keyStored = application.privileged.broker.isPaired()
             offerSpellCheck = !keyStored && SpellCheckerSettings.shouldOfferTurnOn(context, controller.current.value.device.autoSelectSpellChecker)
+            val keys = controller.current.value.keys
+            offerAccessibility = (keys.accessibilityFocusField || keys.accessibilityFnShortcuts) &&
+                !brobata.physiboard.device.privileged.setup.AndroidPermissionProbe.accessibilityServiceEnabled(context)
             delay(2000)
         }
     }
@@ -174,7 +181,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         HomeHeader()
         Box(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
             RowList {
-                plainItem(key = "status") { HomeStatusCard(probe, updateState, brokerLabel, offerSpellCheck, onNavigate) }
+                plainItem(key = "status") { HomeStatusCard(probe, updateState, brokerLabel, offerSpellCheck, offerAccessibility, onNavigate) }
                 if (query.isBlank()) {
                     plainItem(key = "toolbox") { TitanToolboxCard(settings.device, brokerVerdict, keyStored, toolboxDensity, onNavigate) }
                 }
@@ -328,6 +335,7 @@ private fun HomeStatusCard(
     updateState: brobata.physiboard.app.shell.UpdateCheckState,
     brokerLabel: String?,
     offerSpellCheck: Boolean,
+    offerAccessibility: Boolean,
     onNavigate: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -370,6 +378,24 @@ private fun HomeStatusCard(
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (offerAccessibility) {
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onNavigate(Routes.ACCESSIBILITY_SERVICE) }
+                    .defaultMinSize(minHeight = MinTouchTarget)
+                    .padding(horizontal = Spacing.l, vertical = Spacing.s),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Column(modifier = Modifier.weight(1f).padding(horizontal = Spacing.m)) {
+                    Text("Accessibility service is off", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                    Text("Needed for Fn shortcuts everywhere and focusing the text box", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         if (offerSpellCheck) {
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
