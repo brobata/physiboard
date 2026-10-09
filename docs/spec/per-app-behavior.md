@@ -434,10 +434,12 @@ matched (D3).
 Settings > Keyboard hub row "Terminal mode" ("For terminals, SSH and code. Nothing corrected or
 capitalised; Ctrl, Esc and Alt symbols go straight to the app."), also reachable from settings
 search (keywords include "exact typing", "raw", "terminal", "ssh", "code"). It uses the shared
-toggle-list screen (section 6.1) with title "Terminal mode" and the long description starting
-"In the apps you pick here, PhysiBoard sends every keystroke as-is...", which also says that
-Ctrl stays Ctrl, Esc, Tab and the arrows go straight through, and Alt and Sym symbols arrive as
-real key presses. Toggling a row writes immediately.
+toggle-list screen (section 6.1) with title "Terminal mode", the one-line summary "No
+corrections or capitals in these apps; Ctrl, Esc, Tab and Alt symbols go straight through.",
+and, collapsed under "About terminal mode", the full explanation starting "In the apps you pick
+here, PhysiBoard sends every keystroke as-is...", which also says that Ctrl stays Ctrl, Esc, Tab
+and the arrows go straight through, and Alt and Sym symbols arrive as real key presses. Toggling
+a row writes immediately.
 
 ### 4.5 Storage
 
@@ -498,8 +500,11 @@ the picker dialog.
 
 ### 6.1 Toggle-list screen (Terminal mode, text box under the bar)
 
-- Top bar with back arrow and the title; a description paragraph (16 dp side padding, 12 dp
-  vertical) at the top of the list.
+- Top bar with back arrow and the title. Below it one scrolling list: an optional one-line
+  summary (16 dp side padding), an optional collapsed section holding the full explanation
+  (opens collapsed every time), the search field, then the app rows. They scroll as one, so the
+  explanation never squeezes the rows into a strip at the bottom of the Titan's short screen
+  (maintainer report, 2026-10-08).
 - While the app list loads, a centered spinner. The list is every app with a launcher activity,
   one entry per package, sorted by label case-insensitively; each entry carries its label, icon
   and, for a WebAPK, its host browser.
@@ -510,7 +515,8 @@ the picker dialog.
 - Enabled rows sort to the top (stable within each group), re-sorted after every toggle, so a
   row moves to the top the moment it is switched on and back to its alphabetical place when
   switched off.
-- No search field, no "add" button, no "remove": everything installed is listed with a switch.
+- A "Search apps" field filters by label or package name. No "add" button, no "remove":
+  everything installed is listed with a switch.
 - The screen re-reads the stored set after every toggle; it does not listen for changes made
   elsewhere while open.
 

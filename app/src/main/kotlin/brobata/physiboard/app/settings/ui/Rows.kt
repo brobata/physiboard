@@ -408,13 +408,24 @@ fun ExpandableSection(title: String, initiallyExpanded: Boolean = false, content
     }
 }
 
-/** A per-app switch list with a search field at the top (rebuild-from-scratch.md: "a searchable app picker over installed packages with a switch per app"). */
+/**
+ * A per-app switch list with a search field (rebuild-from-scratch.md: "a searchable app picker
+ * over installed packages with a switch per app").
+ *
+ * The summary, the search field and the rows are one [RowList], so they scroll together and
+ * the apps get the whole screen once the user scrolls: a long explanation pinned above the list
+ * used to leave room for a single row on the Titan's 1200 px panel. The full explanation, when
+ * the screen has one, sits collapsed behind [detailsTitle] instead of above the list.
+ */
 @Composable
 fun AppPickerBody(
     apps: List<InstalledApp>,
     selected: Set<String>,
-    // spec: per-app-behavior.md SS6.1, "a description paragraph ... at the top of the list".
-    description: String? = null,
+    // spec: per-app-behavior.md SS6.1, a one-line summary at the top of the list.
+    summary: String? = null,
+    // spec: SS6.1, the full explanation, collapsed under [detailsTitle] below the summary.
+    details: String? = null,
+    detailsTitle: String = "About this",
     // spec: SS6.1, "an optional web-app note ... when the screen supplies one" (SS4.3's WebAPK row text).
     noteFor: ((InstalledApp) -> String?)? = null,
     onToggle: (String, Boolean) -> Unit,
@@ -426,31 +437,45 @@ fun AppPickerBody(
     // spec: SS6.1, "Enabled rows sort to the top (stable within each group), re-sorted after every
     // toggle". sortedBy is stable, so each group keeps [apps]'s own (alphabetical) order.
     val sorted = filtered.sortedBy { it.packageName !in selected }
-    Column {
-        if (description != null) {
-            Text(
-                description,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-            )
-        }
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            label = { Text("Search apps") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).defaultMinSize(minHeight = MinTouchTarget),
-        )
-        RowList {
-            items(sorted, key = { it.packageName }) { app ->
-                SwitchRow(
-                    label = app.label,
-                    description = app.packageName,
-                    note = noteFor?.invoke(app),
-                    checked = app.packageName in selected,
-                    onCheckedChange = { onToggle(app.packageName, it) },
+    RowList {
+        if (summary != null) {
+            item(key = "summary") {
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
                 )
             }
+        }
+        if (details != null) {
+            item(key = "details") {
+                ExpandableSection(title = detailsTitle) {
+                    Text(
+                        details,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
+        item(key = "search") {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("Search apps") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).defaultMinSize(minHeight = MinTouchTarget),
+            )
+        }
+        items(sorted, key = { it.packageName }) { app ->
+            SwitchRow(
+                label = app.label,
+                description = app.packageName,
+                note = noteFor?.invoke(app),
+                checked = app.packageName in selected,
+                onCheckedChange = { onToggle(app.packageName, it) },
+            )
         }
     }
 }

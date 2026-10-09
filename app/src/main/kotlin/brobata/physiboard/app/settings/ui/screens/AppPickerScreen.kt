@@ -43,9 +43,15 @@ fun AppPickerScreen(kind: String, onBack: () -> Unit) {
 
     val apps = remember(kind) { AppCatalog.installedApps(context, alsoInclude = selected) }
 
-    // spec: per-app-behavior.md SS4.4 (the screen's own description) and SS4.3 ("The Terminal mode
-    // list screen tells the user about the expansion on web-app rows; no other screen does").
-    val description = if (kind == PerAppListKind.EXACT_TYPING) {
+    // spec: per-app-behavior.md SS4.4 (the screen's own summary and explanation) and SS4.3 ("The
+    // Terminal mode list screen tells the user about the expansion on web-app rows; no other
+    // screen does"). The summary is one line so the app list keeps the screen (SS6.1).
+    val summary = if (kind == PerAppListKind.EXACT_TYPING) {
+        "No corrections or capitals in these apps; Ctrl, Esc, Tab and Alt symbols go straight through."
+    } else {
+        null
+    }
+    val details = if (kind == PerAppListKind.EXACT_TYPING) {
         "In the apps you pick here, PhysiBoard sends every keystroke as-is, without correction or " +
             "capitalisation. Word suggestions, autocorrect, auto-capitalisation, double-space " +
             "periods and text expansion are all turned off in these apps. Ctrl stays Ctrl (Ctrl+C, " +
@@ -65,7 +71,9 @@ fun AppPickerScreen(kind: String, onBack: () -> Unit) {
         AppPickerBody(
             apps = apps,
             selected = selected,
-            description = description,
+            summary = summary,
+            details = details,
+            detailsTitle = "About terminal mode",
             noteFor = noteFor,
             onToggle = { packageName, checked -> toggle(controller, kind, packageName, checked) },
         )
