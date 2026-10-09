@@ -94,7 +94,8 @@ object SettingsBaseline {
      */
     private val SYM_PAGES_V8: SymPagesConfig
         get() = SymPagesConfig(
-            emojiEnabled = false, symbolsEnabled = true, clipboardEnabled = false, emojiPickerEnabled = true, gifEnabled = true,
+            // GIFs off for 3.0.0 (shared KLIPY test key); no released install ran version 8 before this.
+            emojiEnabled = false, symbolsEnabled = true, clipboardEnabled = false, emojiPickerEnabled = true, gifEnabled = false,
             custom1Enabled = false, custom2Enabled = false, custom3Enabled = false,
             order = listOf(
                 SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF, SymPage.CLIPBOARD, SymPage.EMOJI,
