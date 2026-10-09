@@ -361,10 +361,10 @@ class SettingsCodecTest {
     }
 
     @Test
-    fun `a stored config from before the GIF page reads it off, a fresh install has it on`() {
+    fun `a stored config from before the GIF page reads it off, and so does a fresh 3_0_0 install`() {
         val old = SettingsCodec.fromMap(mapOf(SettingsKeys.SYM_PAGES_CONFIG to """{"emojiPickerEnabled":true,"symbolsEnabled":true,"symPageOrder":["emoji_picker","symbols"]}""")).symPages.pages
         assertEquals(false, old.gifEnabled)
-        assertEquals(true, SettingsCodec.fromMap(emptyMap()).symPages.pages.gifEnabled)
+        assertEquals(false, SettingsCodec.fromMap(emptyMap()).symPages.pages.gifEnabled)
     }
 
     @Test

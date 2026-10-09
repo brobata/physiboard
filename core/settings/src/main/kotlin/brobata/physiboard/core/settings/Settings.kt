@@ -255,10 +255,12 @@ data class SymPagesConfig(
     /** `emojiPickerEnabled`: the searchable emoji page, called "Emoji" on screen. */
     val emojiPickerEnabled: Boolean = true,
     /**
-     * `gifEnabled`: on by the maintainer's choice; the page asks KLIPY for anything only while it
-     * is open. A stored config that predates the page reads it off (StoredValues.symPagesConfig).
+     * `gifEnabled`: off in 3.0.0: the KLIPY key it ships with is a shared test key (100 requests
+     * an hour across every install) until production access is granted. The user switches it on
+     * in Customize SYM Keyboard; the page asks KLIPY for anything only while it is open. A stored
+     * config that predates the page reads it off (StoredValues.symPagesConfig).
      */
-    val gifEnabled: Boolean = true,
+    val gifEnabled: Boolean = false,
     /** `custom1Enabled` to `custom3Enabled`: the user's own pages (layers-sym-alt.md SS4.6), off until switched on. */
     val custom1Enabled: Boolean = false,
     val custom2Enabled: Boolean = false,

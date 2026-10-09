@@ -129,7 +129,7 @@ class SettingsBaselineTest {
      * order, the rest off, and kaomoji back to opt-in; a fresh install reads the same.
      */
     @Test
-    fun `version 8 moves this install to Emoji, Symbols, GIFs and nothing else`() {
+    fun `version 8 moves this install to Emoji, Symbols, then GIFs switched off`() {
         val phone = mapOf(
             SettingsKeys.SYM_PAGES_CONFIG to """{"emojiEnabled":false,"symbolsEnabled":true,"clipboardEnabled":false,"emojiPickerEnabled":true,"gifEnabled":false,"custom1Enabled":false,"custom2Enabled":false,"custom3Enabled":false,"symPageOrder":["emoji_picker","symbols","clipboard","emoji","gif","custom1","custom2","custom3"]}""",
             SettingsKeys.BASELINE_VERSION to "7",
@@ -139,7 +139,7 @@ class SettingsBaselineTest {
         assertEquals(listOf(SymPage.EMOJI_PICKER, SymPage.SYMBOLS, SymPage.GIF), pages.order.take(3))
         assertEquals(true, pages.emojiPickerEnabled)
         assertEquals(true, pages.symbolsEnabled)
-        assertEquals(true, pages.gifEnabled)
+        assertEquals(false, pages.gifEnabled, "3.0.0 ships GIFs off: shared KLIPY test key")
         assertEquals(listOf(false, false, false, false, false), listOf(pages.emojiEnabled, pages.clipboardEnabled, pages.custom1Enabled, pages.custom2Enabled, pages.custom3Enabled))
         assertEquals(false, corrected.kaomojiEnabled)
         assertEquals(SettingsCodec.fromMap(emptyMap()).symPages.pages, pages, "a fresh install gets the same list")
