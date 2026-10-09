@@ -1,5 +1,6 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.material.icons.outlined.Adjust
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,6 @@ import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -130,7 +130,7 @@ fun TitanToolboxCard(
                 verticalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
                 ToolChip("backlight", Icons.Outlined.Lightbulb) { onNavigate(Routes.SMART_BACKLIGHT) }
-                ToolChip("ring", Icons.Outlined.NotificationsActive) { onNavigate(Routes.NOTIFICATION_RING) }
+                ToolChip("ring", Icons.Outlined.Adjust) { onNavigate(Routes.NOTIFICATION_RING) }
                 ToolChip("density", Icons.Outlined.AspectRatio) { onNavigate(Routes.SCREEN_DENSITY) }
             }
         }
@@ -151,7 +151,8 @@ private fun StatusLine(key: String, value: String, tone: Tone) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).clearAndSetSemantics { contentDescription = key; stateDescription = value },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(key, style = PhysiBoardType.value, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.widthIn(min = 96.dp))
+        // A gap after the key even when it is wider than the column ("backlight" ran into its value).
+        Text(key, style = PhysiBoardType.value, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.widthIn(min = 112.dp).padding(end = Spacing.m))
         Text(value, style = PhysiBoardType.value, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

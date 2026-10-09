@@ -1,5 +1,6 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.material.icons.outlined.Adjust
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
@@ -7,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -92,7 +92,8 @@ private fun LazyListScope.t2eToolsRows(device: DevicePrefs, onNavigate: (String)
             description = "A glow around the camera hole while the screen is off",
             onClick = { onNavigate(Routes.NOTIFICATION_RING) },
             value = Summaries.onOff(device.ringEnabled),
-            icon = Icons.Outlined.NotificationsActive,
+            // A dot inside a ring: the camera hole and the glow around it, not a notification bell.
+            icon = Icons.Outlined.Adjust,
         )
     }
 }
