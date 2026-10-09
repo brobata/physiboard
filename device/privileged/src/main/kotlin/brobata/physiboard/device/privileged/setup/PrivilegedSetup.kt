@@ -86,7 +86,7 @@ class PrivilegedSetup(
         return when (val plan = SpellCheckerSelection.decide(autoSelect = true, alreadyDecided = false, reading, owner, identity.spellCheckerComponent)) {
             is SpellCheckerPlan.Leave -> {
                 if (plan.markDone) store.updateCaptures { it.copy(spellCheckerDecided = true) }
-                record(step, ok = true, reason = plan.reason)
+                record(step, ok = plan.reason != SpellCheckerSelection.REASON_UNREADABLE, reason = plan.reason)
             }
             is SpellCheckerPlan.Select -> {
                 // Recorded before the write: a process death between the two must still leave
@@ -109,10 +109,14 @@ class PrivilegedSetup(
         }
     }
 
-    /** A package check through the broker; a package name that could not safely go into the line counts as not listed. */
-    private fun listsPackage(line: String, pkg: String): Boolean {
+    /**
+     * A package check through the broker: true or false when `pm` answered, null when the check
+     * itself failed, which the decision treats as "unknown" and retries next pass. A package name
+     * that could not safely go into the line is not listed (it cannot be a real package either).
+     */
+    private fun listsPackage(line: String, pkg: String): Boolean? {
         if (!SpellCheckerSelection.isSafePackage(pkg)) return false
-        val output = (shell.run(line) as? ShellResult.Ok)?.output ?: return false
+        val output = (shell.run(line) as? ShellResult.Ok)?.output ?: return null
         return SpellCheckerSelection.listsPackage(output, pkg)
     }
 

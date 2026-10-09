@@ -262,7 +262,7 @@ class ResetToStockTest {
         assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.SPELL_CHECKER])
         assertTrue(
             shell.lines.contains(
-                "settings put secure selected_spell_checker $vendorSpell; settings put secure selected_spell_checker_subtype 7; settings delete secure spell_checker_enabled",
+                "settings put secure selected_spell_checker '$vendorSpell'; settings put secure selected_spell_checker_subtype '7'; settings delete secure spell_checker_enabled",
             ),
         )
         val s = store.snapshot()
@@ -299,7 +299,7 @@ class ResetToStockTest {
     fun `spell checker revert whose write fails is FAILED and keeps the record`() {
         spellRecorded()
         shell.responses[readSpell] = ShellResult.Ok("$ourSpell\n1\n0\n")
-        shell.failWith("settings put secure selected_spell_checker $vendorSpell; settings put secure selected_spell_checker_subtype 7; settings delete secure spell_checker_enabled")
+        shell.failWith("settings put secure selected_spell_checker '$vendorSpell'; settings put secure selected_spell_checker_subtype '7'; settings delete secure spell_checker_enabled")
         assertEquals(RevertOutcome.FAILED, reset.run().outcomes[RevertStep.SPELL_CHECKER])
         assertTrue(store.snapshot().captures.spellCheckerPrevCaptured)
     }

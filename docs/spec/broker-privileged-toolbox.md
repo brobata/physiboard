@@ -302,7 +302,8 @@ Otherwise, in this order:
    step sends nothing and records `already_decided`, and with the setting off it records
    `skipped_feature_disabled`. Otherwise it reads the three rows in one line
    (`settings get secure selected_spell_checker; settings get secure spell_checker_enabled; settings get secure selected_spell_checker_subtype`;
-   fewer than three lines records `unreadable` and is retried next pass) and decides
+   read by position, an empty line or `null` meaning unset; fewer than three lines records
+   `unreadable` and is retried next pass) and decides
    (`SpellCheckerSelection`, core/toolbox, pure):
    - The selected component belongs to a package the user installed (`pm list packages -s <pkg>`
      does not list it but `pm list packages <pkg>` does), including the other PhysiBoard build:
@@ -320,7 +321,11 @@ Otherwise, in this order:
    `spell_checker_prev_selected`, `_enabled`, `_subtype`; null = unset) so a process death
    between the two still leaves the originals for the reset. The decision is marked done only
    when the write succeeds; a failed write records the broker's error and is retried next pass.
-   Package names go into the `pm` lines only when they match `[A-Za-z0-9_.]+`.
+   Package names go into the `pm` lines only when they match `[A-Za-z0-9_.]+`. A `pm` check that
+   fails (as opposed to answering "not listed") makes the owner unknown: nothing is written, the
+   step records `unreadable` and is retried, so a failed round trip can never take over a spell
+   checker the user installed. Every value written goes in single quotes, so the device shell
+   never expands a `$` in a class name.
 
 Steps 2 to 5 use "a key is stored" as their pre-flight, not the verified verdict; they are
 tolerant of failing. In 3.0 every step records its outcome (section 8).

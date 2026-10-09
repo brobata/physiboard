@@ -29,6 +29,7 @@ class SpellCheckerSelectionTest {
         assertEquals(SpellCheckerReading(vendor, "1", null), SpellCheckerSelection.parse("$vendor\n1\nnull\n"))
         assertEquals(SpellCheckerReading(null, null, null), SpellCheckerSelection.parse("null\nnull\nnull"))
         assertNull(SpellCheckerSelection.parse("null\n1"))
+        assertEquals(SpellCheckerReading(null, "1", "0"), SpellCheckerSelection.parse("\n1\n0\n"), "an empty row is unset, not a missing line")
         assertNull(SpellCheckerSelection.parse(""))
     }
 
@@ -37,6 +38,8 @@ class SpellCheckerSelectionTest {
         val pre = setOf("com.android.inputmethod.latin")
         val installed = setOf("com.android.inputmethod.latin", "brobata.physiboard", "com.grammarly.android.keyboard")
         fun owner(selected: String?) = SpellCheckerSelection.ownerOf(selected, "brobata.physiboard.dev3", { it in pre }, { it in installed })
+        assertNull(SpellCheckerSelection.ownerOf(vendor, "brobata.physiboard.dev3", { null }, { true }), "a failed check is unknown, never 'not installed'")
+        assertNull(SpellCheckerSelection.ownerOf(vendor, "brobata.physiboard.dev3", { false }, { null }))
         assertEquals(SpellCheckerOwner.NONE, owner(null))
         assertEquals(SpellCheckerOwner.NONE, owner(""))
         assertEquals(SpellCheckerOwner.OURS, owner(ours))
@@ -51,7 +54,7 @@ class SpellCheckerSelectionTest {
         val before = reading(enabled = "0", subtype = "123")
         val plan = assertIs<SpellCheckerPlan.Select>(decide(SpellCheckerOwner.PREINSTALLED, before))
         assertEquals(
-            "settings put secure selected_spell_checker $ours; settings put secure selected_spell_checker_subtype 0; settings put secure spell_checker_enabled 1",
+            "settings put secure selected_spell_checker '$ours'; settings put secure selected_spell_checker_subtype 0; settings put secure spell_checker_enabled 1",
             plan.line,
         )
         assertEquals(before, plan.previous)
@@ -84,15 +87,23 @@ class SpellCheckerSelectionTest {
         assertEquals(SpellCheckerPlan.Leave(SpellCheckerSelection.REASON_DISABLED, false), decide(SpellCheckerOwner.PREINSTALLED, autoSelect = false))
         assertEquals(SpellCheckerPlan.Leave(SpellCheckerSelection.REASON_DONE, false), decide(SpellCheckerOwner.PREINSTALLED, done = true))
         assertEquals(SpellCheckerPlan.Leave(SpellCheckerSelection.REASON_UNREADABLE, false), decide(SpellCheckerOwner.PREINSTALLED, reading = null))
+        assertEquals(SpellCheckerPlan.Leave(SpellCheckerSelection.REASON_UNREADABLE, false), SpellCheckerSelection.decide(true, false, reading(), null, ours))
     }
 
     @Test
     fun `the reset puts every row back, deleting the ones that were unset`() {
         val line = SpellCheckerSelection.revertLine(reading(selected = vendor, enabled = null, subtype = "42"), reading(selected = ours), ours)
         assertEquals(
-            "settings put secure selected_spell_checker $vendor; settings put secure selected_spell_checker_subtype 42; settings delete secure spell_checker_enabled",
+            "settings put secure selected_spell_checker '$vendor'; settings put secure selected_spell_checker_subtype '42'; settings delete secure spell_checker_enabled",
             line,
         )
+    }
+
+    @Test
+    fun `a class name with a dollar sign is quoted so the shell keeps it`() {
+        val inner = "com.foo/com.foo.Spell\$Service"
+        val line = SpellCheckerSelection.revertLine(reading(selected = inner), reading(selected = ours), ours)!!
+        assertTrue(line.startsWith("settings put secure selected_spell_checker 'com.foo/com.foo.Spell\$Service';"))
     }
 
     @Test

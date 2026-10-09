@@ -48,7 +48,8 @@ sealed interface SpellCheckerPlan {
  *   replaced, and spell checking is switched on.
  * - What was there before is recorded so the reset can put it back.
  *
- * Pure: the device layer runs [READ_LINE] and the package checks and executes the plan.
+ * Pure: the device layer runs [READ_LINE] and the package checks and executes the plan. Every
+ * value written goes in single quotes, so the device shell never expands a `$` in a class name.
  * spec: broker-privileged-toolbox.md SS7 step 5, SS10 step 6.
  */
 object SpellCheckerSelection {
@@ -94,23 +95,36 @@ object SpellCheckerSelection {
 
     fun installedLine(packageName: String): String = "pm list packages $packageName"
 
-    /** [READ_LINE]'s output, or null when it did not print three lines. */
+    /**
+     * [READ_LINE]'s output, or null when it did not print three lines. Read by position: a row set
+     * to the empty string prints an empty line, and both that and `null` mean unset.
+     */
     fun parse(output: String): SpellCheckerReading? {
-        val lines = output.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val lines = output.split('\n').map { it.trim() }.let { if (it.lastOrNull()?.isEmpty() == true) it.dropLast(1) else it }
         if (lines.size < 3) return null
-        fun value(line: String): String? = line.takeUnless { it == "null" }
+        fun value(line: String): String? = line.takeUnless { it == "null" || it.isEmpty() }
         return SpellCheckerReading(value(lines[0]), value(lines[1]), value(lines[2]))
     }
 
-    /** Who owns [selected], given what the package checks found; [preinstalled] and [installed] are only asked for another package. */
-    fun ownerOf(selected: String?, ourPackage: String, preinstalled: (String) -> Boolean, installed: (String) -> Boolean): SpellCheckerOwner {
+    /**
+     * Who owns [selected], given what the package checks found; [preinstalled] and [installed] are
+     * only asked for another package and answer null when the check itself failed. Null means the
+     * owner is unknown: a failed check must never read as "not installed", or a spell checker the
+     * user installed would be taken over.
+     */
+    fun ownerOf(selected: String?, ourPackage: String, preinstalled: (String) -> Boolean?, installed: (String) -> Boolean?): SpellCheckerOwner? {
         if (selected.isNullOrBlank()) return SpellCheckerOwner.NONE
         val pkg = packageOf(selected) ?: return SpellCheckerOwner.MISSING
-        return when {
-            pkg == ourPackage -> SpellCheckerOwner.OURS
-            preinstalled(pkg) -> SpellCheckerOwner.PREINSTALLED
-            installed(pkg) -> SpellCheckerOwner.USER_INSTALLED
-            else -> SpellCheckerOwner.MISSING
+        if (pkg == ourPackage) return SpellCheckerOwner.OURS
+        when (preinstalled(pkg)) {
+            true -> return SpellCheckerOwner.PREINSTALLED
+            null -> return null
+            false -> Unit
+        }
+        return when (installed(pkg)) {
+            true -> SpellCheckerOwner.USER_INSTALLED
+            false -> SpellCheckerOwner.MISSING
+            null -> null
         }
     }
 
@@ -122,12 +136,12 @@ object SpellCheckerSelection {
         autoSelect: Boolean,
         alreadyDecided: Boolean,
         reading: SpellCheckerReading?,
-        owner: SpellCheckerOwner,
+        owner: SpellCheckerOwner?,
         ourComponent: String,
     ): SpellCheckerPlan {
         if (!autoSelect) return SpellCheckerPlan.Leave(REASON_DISABLED, markDone = false)
         if (alreadyDecided) return SpellCheckerPlan.Leave(REASON_DONE, markDone = false)
-        if (reading == null) return SpellCheckerPlan.Leave(REASON_UNREADABLE, markDone = false)
+        if (reading == null || owner == null) return SpellCheckerPlan.Leave(REASON_UNREADABLE, markDone = false)
         return when (owner) {
             SpellCheckerOwner.USER_INSTALLED -> SpellCheckerPlan.Leave(REASON_OTHER_CHOSEN, markDone = true)
             SpellCheckerOwner.OURS ->
@@ -153,7 +167,7 @@ object SpellCheckerSelection {
     }
 
     fun selectLine(ourComponent: String): String =
-        "settings put secure $SELECTED_KEY $ourComponent; settings put secure $SUBTYPE_KEY $SUBTYPE_SYSTEM_LANGUAGES; settings put secure $ENABLED_KEY 1"
+        "settings put secure $SELECTED_KEY '$ourComponent'; settings put secure $SUBTYPE_KEY $SUBTYPE_SYSTEM_LANGUAGES; settings put secure $ENABLED_KEY 1"
 
     /**
      * The reset's line: each row goes back to what was recorded, a row that was unset is deleted,
@@ -166,7 +180,7 @@ object SpellCheckerSelection {
         if (current.selected?.trim() != ourComponent) return null
         fun row(key: String, value: String?, valid: Regex): String {
             val v = value?.trim()
-            return if (v != null && valid.matches(v)) "settings put secure $key $v" else "settings delete secure $key"
+            return if (v != null && valid.matches(v)) "settings put secure $key '$v'" else "settings delete secure $key"
         }
         return listOf(
             row(SELECTED_KEY, previous.selected, COMPONENT),

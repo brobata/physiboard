@@ -189,7 +189,7 @@ class PrivilegedSetupTest {
     private val ourSpell = "brobata.physiboard.dev3/brobata.physiboard.ime.PhysiBoardSpellCheckerService"
     private val vendorSpell = "com.android.inputmethod.latin/com.android.inputmethod.latin.spellcheck.AndroidSpellCheckerService"
     private val readSpell = "settings get secure selected_spell_checker; settings get secure spell_checker_enabled; settings get secure selected_spell_checker_subtype"
-    private val selectOurs = "settings put secure selected_spell_checker $ourSpell; settings put secure selected_spell_checker_subtype 0; settings put secure spell_checker_enabled 1"
+    private val selectOurs = "settings put secure selected_spell_checker '$ourSpell'; settings put secure selected_spell_checker_subtype 0; settings put secure spell_checker_enabled 1"
 
     @Test
     fun `step 5 selects this build's spell checker over the phone's own, records what was there, and is done`() {
@@ -221,6 +221,17 @@ class PrivilegedSetupTest {
         setup.run(SetupReasons.IME_START)
         assertFalse(shell.lines.contains(readSpell), "once decided, the step sends nothing")
         assertEquals("already_decided", diagnostics.step(PrivilegedStep.SPELL_CHECKER)?.reason)
+    }
+
+    @Test
+    fun `step 5 whose package checks fail writes nothing and tries again, never taking over`() {
+        shell.responses[readSpell] = ShellResult.Ok("com.grammarly.android.keyboard/com.grammarly.Spell\n1\n0\n")
+        shell.failWith("pm list packages -s com.grammarly.android.keyboard", "SocketTimeoutException")
+        shell.failWith("pm list packages com.grammarly.android.keyboard", "SocketTimeoutException")
+        setup.run(SetupReasons.IME_START)
+        assertFalse(shell.lines.any { it.startsWith("settings put secure") })
+        assertEquals("unreadable", diagnostics.step(PrivilegedStep.SPELL_CHECKER)?.reason)
+        assertFalse(store.snapshot().captures.spellCheckerDecided)
     }
 
     @Test
