@@ -12,6 +12,7 @@ import android.widget.Toast
 import brobata.physiboard.core.pointer.OverlayAvailability
 import brobata.physiboard.core.strip.RoundedCornerInsets
 import brobata.physiboard.core.strip.StripGeometry
+import brobata.physiboard.design.DesignMotion
 import brobata.physiboard.ime.pointer.OverlayPermission
 
 /**
@@ -31,6 +32,11 @@ import brobata.physiboard.ime.pointer.OverlayPermission
  * A full-width window that sits on the bottom edge pads its content away from the display's
  * rounded corners ([cornerInsets], status-bar.md SS4, layers-sym-alt.md SS5.7), in the content's
  * own background, and grows by the bottom padding so the content keeps its size.
+ *
+ * Panels open on the design system's spring and close on its short drop and fade
+ * (docs/design/design-system.md, "Motion"); with animations off they appear and go in place. A
+ * closing panel stops taking touches at once and its window goes when the fade ends, so [isShown]
+ * is false, and a new panel can open, the moment [hide] is called.
  */
 internal class BottomOverlay(private val service: InputMethodService, private val tag: String) {
 
@@ -48,7 +54,14 @@ internal class BottomOverlay(private val service: InputMethodService, private va
      * the keyboard window by [bottomMarginPx]. Returns false when the permission is missing or the
      * window manager refused the window, after a toast the user can act on.
      */
-    fun show(content: View, heightPx: Int?, bottomMarginPx: Int = 0, focusable: Boolean = false, widthPx: Int? = null): Boolean {
+    fun show(
+        content: View,
+        heightPx: Int?,
+        bottomMarginPx: Int = 0,
+        focusable: Boolean = false,
+        widthPx: Int? = null,
+        enter: DesignMotion.Enter = DesignMotion.Enter.SPRING,
+    ): Boolean {
         if (view != null) return true
         val corners = if (widthPx == null) cornerInsets(bottomMarginPx) else RoundedCornerInsets.NONE
         if (corners != RoundedCornerInsets.NONE) {
@@ -75,15 +88,38 @@ internal class BottomOverlay(private val service: InputMethodService, private va
         params.y = bottomMarginPx
         params.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
         val added = runCatching { windowManager.addView(content, params) }.onFailure { Log.e(tag, "overlay refused", it) }.isSuccess
-        if (added) view = content
+        if (added) {
+            view = content
+            DesignMotion.enter(content, enter)
+        }
         return added
     }
 
-    fun hide() {
+    /**
+     * Takes the panel away: with [animate], on the closing motion (the window ignores touches
+     * from now on and is removed when the motion ends); without, at once, as a panel replaced in
+     * place or a caller running its own motion needs.
+     */
+    fun hide(animate: Boolean = true) {
         val current = view ?: return
         view = null
         val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return
-        runCatching { windowManager.removeView(current) }.onFailure { Log.e(tag, "overlay removal crashed", it) }
+        // Always removed, attached or not: a window added this frame is not "attached" until its
+        // first layout, and skipping it then would leave it on screen with nothing holding it.
+        val remove = {
+            runCatching { windowManager.removeView(current) }.onFailure { Log.e(tag, "overlay removal crashed", it) }
+            Unit
+        }
+        if (!animate || teardown) {
+            current.animate().cancel()
+            remove()
+            return
+        }
+        (current.layoutParams as? WindowManager.LayoutParams)?.let { params ->
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            runCatching { windowManager.updateViewLayout(current, params) }
+        }
+        DesignMotion.exit(current, remove)
     }
 
     /**
@@ -115,5 +151,11 @@ internal class BottomOverlay(private val service: InputMethodService, private va
          */
         @Volatile
         var roundedCornersEnabled: Boolean = true
+
+        /**
+         * True while the keyboard service tears its panels down: every hide is immediate then, so
+         * no window outlives the service on a closing animation. Main thread only.
+         */
+        var teardown: Boolean = false
     }
 }

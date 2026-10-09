@@ -7,13 +7,15 @@ import android.view.View
 import brobata.physiboard.core.pointer.caret.BadgeItem
 import brobata.physiboard.core.pointer.caret.GlyphStyle
 import brobata.physiboard.core.pointer.caret.ModifierGlyph
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
 
 /**
  * Draws the caret badge's glyphs.
  *
- * spec: trackpad-caret-nav.md SS4.3. The exact geometry there (a hand-drawn arrow `Path`, a white
- * halo stroked outward before the fill, 0.02 em letter spacing) is approximated here with plain
- * text glyphs and no halo, since reproducing a vector arrow at 11 sp is a design pass this task
+ * spec: trackpad-caret-nav.md SS4.3. The words are JetBrains Mono bold with the white halo stroked
+ * outward before the fill; the rest of that geometry (a hand-drawn arrow `Path`, 0.02 em letter
+ * spacing) is approximated here with plain text glyphs, since reproducing a vector arrow at 11 sp is a design pass this task
  * did not ask for; NEEDS A REAL DEVICE to judge whether the approximation reads well enough on the
  * Elite's panel or whether the real arrow `Path` from SS4.3 is worth building. [ModifierGlyph.SHIFT]
  * uses the Unicode upward-arrow glyph rather than SS4.3's own path for the same reason; SS4.2's
@@ -39,11 +41,29 @@ internal class CaretBadgeOverlayView(context: Context) : View(context) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.LEFT
+        typeface = PhysiFonts.get(context, PhysiFonts.Face.MONO_BOLD)
+    }
+
+    /**
+     * spec SS4.3's halo: each glyph is first stroked outward in a light colour, so the badge
+     * reads over dark and light text fields alike.
+     */
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.LEFT
+        typeface = paint.typeface
+        style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
+        strokeWidth = 2f * 1.1f * resources.displayMetrics.density
+        color = 0xFFFFFFFF.toInt()
     }
 
     init {
-        paint.textSize = 11f * resources.displayMetrics.scaledDensity
+        paint.textSize = DesignTokens.Type.BADGE_SP * resources.displayMetrics.scaledDensity
+        halo.textSize = paint.textSize
     }
+
+    /** Room on every side for the halo, so it is never clipped by the view's own bounds. */
+    private val haloPad: Float get() = halo.strokeWidth / 2f
 
     private fun glyphText(modifier: ModifierGlyph, locked: Boolean): String = when (modifier) {
         ModifierGlyph.SHIFT -> if (locked) "⇪" else "⇧"
@@ -65,8 +85,8 @@ internal class CaretBadgeOverlayView(context: Context) : View(context) {
         }
         val ascent = -paint.ascent()
         val descent = paint.descent()
-        baselineOffsetPx = ascent
-        setMeasuredDimension(width.toInt().coerceAtLeast(1), (ascent + descent).toInt().coerceAtLeast(1))
+        baselineOffsetPx = ascent + haloPad
+        setMeasuredDimension((width + 2 * haloPad).toInt().coerceAtLeast(1), (ascent + descent + 2 * haloPad).toInt().coerceAtLeast(1))
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -78,7 +98,9 @@ internal class CaretBadgeOverlayView(context: Context) : View(context) {
             val text = glyphText(item.modifier, locked)
             paint.color = if (locked) lockedColorArgb else armedColorArgb
             paint.alpha = if (item.style == GlyphStyle.ARMED_FAINT) 140 else 245
-            canvas.drawText(text, x, baselineOffsetPx, paint)
+            halo.alpha = if (item.style == GlyphStyle.ARMED_FAINT) 128 else 225
+            canvas.drawText(text, x + haloPad, baselineOffsetPx, halo)
+            canvas.drawText(text, x + haloPad, baselineOffsetPx, paint)
             x += paint.measureText(text) + gapPx
         }
     }

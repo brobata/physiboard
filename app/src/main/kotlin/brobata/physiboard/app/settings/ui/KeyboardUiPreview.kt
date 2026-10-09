@@ -25,13 +25,21 @@ import androidx.compose.ui.unit.dp
 import brobata.physiboard.core.settings.StripTheme
 import brobata.physiboard.core.strip.SymGridLayout
 import brobata.physiboard.core.strip.SymGridSlot
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.R as DesignR
 
 /**
  * "Keyboard UI Preview" (status-bar.md SS9.4 item 2, 3.0 form): the Symbols Sym page drawn in the
  * chosen theme, because that page and the panels beside it are what the theme colours now that the
  * suggestion row is gone. It follows the live grid (layers-sym-alt.md SS5.7, `SymGridPanelController`):
  * the Titan's three left-aligned rows with their blanks, keys in [StripTheme.suggestion] with a
- * [StripTheme.divider] outline and 6 dp corners, the pencil and globe and the close button in
+ * [StripTheme.divider] outline and the design system's 4 dp keycap corners, each letter small in
+ * mono at the top left and the character in the glyph face, the pencil, globe and close drawn with
+ * the keyboard's own icons (docs/design/design-system.md, "Panels"), the chrome in
  * [StripTheme.statusBarButton], text in [StripTheme.textAndIcons], all on [StripTheme.background].
  * [characters] maps each letter to what the page types on it, the user's own page if they edited it.
  */
@@ -41,15 +49,15 @@ fun KeyboardUiPreview(theme: StripTheme, characters: Map<Char, String>) {
     val buttonFill = Color(theme.statusBarButton)
     val outline = Color(theme.divider)
     val ink = Color(theme.textAndIcons)
-    val keyShape = RoundedCornerShape(6.dp)
+    val keyShape = RoundedCornerShape(DesignTokens.Radius.KEY.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Spacing.l)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(DesignTokens.Radius.PANE.dp))
             .background(Color(theme.background))
             // A theme whose background is close to the page's would otherwise have no edge.
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(DesignTokens.Radius.PANE.dp))
             .padding(Spacing.s)
             .semantics { contentDescription = "Preview of the Symbols page in this theme" },
         verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -64,38 +72,35 @@ fun KeyboardUiPreview(theme: StripTheme, characters: Map<Char, String>) {
                         ) {
                             Text(
                                 slot.letter.letter.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = ink.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(start = 3.dp, top = 1.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 11.sp),
+                                color = ink.copy(alpha = DesignTokens.Alpha.MUTED_TEXT),
+                                modifier = Modifier.padding(start = 3.dp, top = 2.dp),
                             )
                             Text(
                                 characters[slot.letter.letter].orEmpty(),
-                                style = MaterialTheme.typography.titleMedium,
+                                style = PhysiBoardType.glyph.copy(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium),
                                 color = ink,
                                 maxLines = 1,
                                 modifier = Modifier.align(Alignment.Center),
                             )
                         }
                         SymGridSlot.Blank -> Spacer(modifier = cell)
-                        SymGridSlot.Pencil -> ChromeKey("✏", buttonFill, outline, ink, cell)
-                        SymGridSlot.Globe -> ChromeKey("🌐", buttonFill, outline, ink, cell)
+                        SymGridSlot.Pencil -> ChromeKey(DesignR.drawable.pb_ic_edit, buttonFill, outline, ink, cell)
+                        SymGridSlot.Globe -> ChromeKey(DesignR.drawable.pb_ic_globe, buttonFill, outline, ink, cell)
                     }
                 }
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Box(
-                modifier = Modifier.size(width = 36.dp, height = 28.dp).clip(keyShape).background(buttonFill),
-                contentAlignment = Alignment.Center,
-            ) { Text("✕", style = MaterialTheme.typography.labelLarge, color = ink) }
+            ChromeKey(DesignR.drawable.pb_ic_close, buttonFill, outline, ink, Modifier.size(width = 36.dp, height = 28.dp))
         }
     }
 }
 
 @Composable
-private fun ChromeKey(glyph: String, fill: Color, outline: Color, ink: Color, modifier: Modifier) {
-    val shape = RoundedCornerShape(6.dp)
+private fun ChromeKey(icon: Int, fill: Color, outline: Color, ink: Color, modifier: Modifier) {
+    val shape = RoundedCornerShape(DesignTokens.Radius.KEY.dp)
     Box(modifier = modifier.clip(shape).background(fill).border(1.dp, outline, shape), contentAlignment = Alignment.Center) {
-        Text(glyph, style = MaterialTheme.typography.titleSmall, color = ink)
+        Icon(painterResource(icon), contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
     }
 }

@@ -35,6 +35,11 @@ import brobata.physiboard.core.actions.kaomoji.KaomojiCatalog
 import brobata.physiboard.core.actions.picker.UnicodeSymbols
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.design.R as DesignR
+import brobata.physiboard.ime.skin.PanelSkin
 import org.json.JSONArray
 
 /**
@@ -88,6 +93,8 @@ internal class EmojiPickerController(
     private var progress: ProgressBar? = null
     private var searchPanel: View? = null
     private var searchField: EditText? = null
+    private var searchRow: View? = null
+    private var skin: PanelSkin = PanelSkin(service, StripTheme.SLATE_DARK)
     private var emojiColumns = G.MIN_COLUMNS
     private var lastOpenedPage4 = false
     private var searchState = SearchFieldState.EMPTY
@@ -169,6 +176,7 @@ internal class EmojiPickerController(
         progress = null
         searchPanel = null
         searchField = null
+        searchRow = null
         listener = null
         variantPopup?.dismiss()
         variantPopup = null
@@ -229,7 +237,8 @@ internal class EmojiPickerController(
 
     private fun build(): View {
         val context = panel.overlayContext
-        val root = FrameLayout(context).apply { setBackgroundColor(theme.background) }
+        val skin = PanelSkin(context, theme).also { skin = it }
+        val root = FrameLayout(context).apply { background = skin.panelBackground() }
         val column = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         grid = GridLayout(context).apply {
             val pad = panel.dp(G.GRID_PADDING_DP)
@@ -244,47 +253,49 @@ internal class EmojiPickerController(
         }
         val gridFrame = FrameLayout(context)
         gridFrame.addView(scroll, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        status = TextView(context).apply {
+        status = skin.label("", DesignTokens.Type.BODY_SP, color = skin.mutedText).apply {
             gravity = Gravity.CENTER
-            setTextColor(theme.textAndIcons)
             visibility = View.GONE
         }
         gridFrame.addView(status, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        progress = ProgressBar(context).apply { visibility = View.GONE }
-        gridFrame.addView(progress, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+        progress = ProgressBar(context).apply {
+            visibility = View.GONE
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(theme.accent)
+        }
+        gridFrame.addView(progress, FrameLayout.LayoutParams(panel.dp(32), panel.dp(32), Gravity.CENTER))
         searchPanel = buildSearchPanel().apply { visibility = View.GONE }
         gridFrame.addView(searchPanel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         column.addView(gridFrame, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        tabRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        tabRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            // The tab bar is its own strip of the pane: a hairline above it.
+            background = skin.panelBackground()
+            setPadding(panel.dp(2), panel.dp(1), panel.dp(2), 0)
+        }
         column.addView(tabRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, panel.dp(G.TAB_ROW_HEIGHT_DP)))
         root.addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         return root
     }
 
-    /** spec SS4.5: a single-line field (the mode's hint) inside a 6 dp padded panel over the bottom of the grid; it never asks for a system keyboard. */
+    /** spec SS4.5: a single-line field (the mode's hint) inside a 6 dp padded panel over the bottom of the grid; it never asks for a system keyboard. Drawn as the skin's prompt, `$ search emoji_`. */
     private fun buildSearchPanel(): View {
         val context = panel.overlayContext
         val box = FrameLayout(context).apply {
             setPadding(panel.dp(6), panel.dp(6), panel.dp(6), panel.dp(6))
-            setBackgroundColor(theme.background)
+            background = skin.panelBackground()
         }
-        searchField = EditText(context).apply {
-            hint = mode.searchHint
+        val field = EditText(context).apply {
             setSingleLine()
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            setTextColor(theme.textAndIcons)
-            setHintTextColor(withAlpha(theme.textAndIcons, 128))
-            setPadding(panel.dp(8), panel.dp(5), panel.dp(8), panel.dp(5))
-            background = GradientDrawable().apply {
-                setColor(theme.suggestion)
-                cornerRadius = panel.dp(7).toFloat()
-            }
             showSoftInputOnFocus = false
             isFocusable = true
             isFocusableInTouchMode = true
             setOnClickListener { setCapture(!captureOn) }
         }
-        box.addView(searchField, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+        searchField = field
+        val row = skin.promptField(field, mode.searchHint)
+        searchRow = row
+        box.addView(row, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
         return box
     }
 
@@ -300,7 +311,7 @@ internal class EmojiPickerController(
     /** Draws the current mode's sections (not search results), or its loading or failed state. */
     private fun renderMode() {
         if (grid == null) return
-        searchField?.hint = mode.searchHint
+        searchField?.hint = PanelSkin.promptHint(mode.searchHint)
         progress?.visibility = View.GONE
         when (mode) {
             PickerMode.EMOJI -> {
@@ -433,20 +444,24 @@ internal class EmojiPickerController(
         val view = TextView(panel.overlayContext).apply {
             text = cell.text
             gravity = Gravity.CENTER
+            background = skin.cellDrawable()
             when {
                 kaomoji -> {
                     setTextColor(theme.textAndIcons)
+                    typeface = skin.face(PhysiFonts.Face.SANS)
                     maxLines = 1
                     setAutoSizeTextTypeUniformWithConfiguration(M.KAOMOJI_MIN_SP, M.KAOMOJI_MAX_SP, 1, TypedValue.COMPLEX_UNIT_SP)
                 }
                 mode == PickerMode.SYMBOLS -> {
                     setTextColor(theme.textAndIcons)
+                    typeface = skin.face(PhysiFonts.Face.SANS)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, M.SYMBOL_GLYPH_SP.toFloat())
                 }
                 else -> setTextSize(TypedValue.COMPLEX_UNIT_SP, G.GLYPH_SP.toFloat())
             }
             setOnClickListener { cell.onTap() }
             cell.onLongPress?.let { action -> setOnLongClickListener { action(this); true } }
+            DesignMotion.pressable(this)
         }
         val gap = panel.dp(G.CELL_GAP_DP)
         val params = GridLayout.LayoutParams(GridLayout.spec(index / columns), GridLayout.spec(index % columns, 1f)).apply {
@@ -493,17 +508,18 @@ internal class EmojiPickerController(
     private fun renderTabRow(tabs: List<Pair<String, String>>) {
         val row = tabRow ?: return
         row.removeAllViews()
-        row.addView(tabButton("🔍", alwaysEnabled = true) { toggleSearch() }, LinearLayout.LayoutParams(panel.dp(G.SEARCH_TOGGLE_DP), LinearLayout.LayoutParams.MATCH_PARENT))
+        row.addView(
+            skin.iconButton(DesignR.drawable.pb_ic_search, "Search") { toggleSearch() }.apply { background = skin.cellDrawable() },
+            LinearLayout.LayoutParams(panel.dp(G.SEARCH_TOGGLE_DP), LinearLayout.LayoutParams.MATCH_PARENT),
+        )
         // spec SS4.3: no mode button while emoji is the only mode (kaomoji off, not in symbols).
         if (PickerModes.showsModeButton(mode, kaomojiEnabled)) {
             row.addView(
                 tabButton(mode.buttonLabel, alwaysEnabled = true) { switchMode() }.apply {
-                    background = GradientDrawable().apply {
-                        setColor(theme.button)
-                        cornerRadius = panel.dp(6).toFloat()
-                    }
+                    background = skin.buttonDrawable()
+                    typeface = skin.face(PhysiFonts.Face.MONO_MEDIUM)
                 },
-                LinearLayout.LayoutParams(panel.dp(M.MODE_BUTTON_DP), LinearLayout.LayoutParams.MATCH_PARENT),
+                LinearLayout.LayoutParams(panel.dp(M.MODE_BUTTON_DP), panel.dp(MODE_BUTTON_HEIGHT_DP)).apply { marginEnd = panel.dp(2) },
             )
         }
         for ((id, label) in tabs) {
@@ -512,22 +528,19 @@ internal class EmojiPickerController(
             row.addView(button, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
         }
         if (tabs.isEmpty()) row.addView(View(panel.overlayContext), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
-        row.addView(tabButton("✕", alwaysEnabled = true) { listener?.onClose() }.apply { background = closeBackground() }, LinearLayout.LayoutParams(panel.dp(36), panel.dp(32)))
+        row.addView(skin.closeButton { listener?.onClose() }, LinearLayout.LayoutParams(panel.dp(PanelSkin.CLOSE_WIDTH_DP), panel.dp(PanelSkin.CLOSE_HEIGHT_DP)))
     }
 
     private fun tabButton(label: String, alwaysEnabled: Boolean, onClick: () -> Unit): TextView = TextView(panel.overlayContext).apply {
         text = label
         gravity = Gravity.CENTER
         maxLines = 1
+        typeface = skin.face(PhysiFonts.Face.MONO_MEDIUM)
         setTextColor(theme.textAndIcons)
         setPadding(panel.dp(G.TAB_PADDING_DP), panel.dp(G.TAB_PADDING_DP), panel.dp(G.TAB_PADDING_DP), panel.dp(G.TAB_PADDING_DP))
         setAutoSizeTextTypeUniformWithConfiguration(TAB_MIN_SP, TAB_MAX_SP, 1, TypedValue.COMPLEX_UNIT_SP)
+        background = skin.cellDrawable()
         setOnClickListener { if (!searching || alwaysEnabled) onClick() }
-    }
-
-    private fun closeBackground() = GradientDrawable().apply {
-        setColor(theme.button)
-        cornerRadius = panel.dp(6).toFloat()
     }
 
     private fun highlightTab() {
@@ -535,15 +548,7 @@ internal class EmojiPickerController(
         for (i in 0 until row.childCount) {
             val child = row.getChildAt(i) as? TextView ?: continue
             val id = child.tag as? String ?: continue
-            child.background = if (id == selectedTab && !searching) {
-                GradientDrawable().apply {
-                    setColor(withAlpha(theme.accent, 100))
-                    cornerRadius = panel.dp(6).toFloat()
-                    setStroke(panel.dp(1), theme.divider)
-                }
-            } else {
-                null
-            }
+            child.background = if (id == selectedTab && !searching) skin.selectedDrawable() else skin.cellDrawable()
             child.alpha = if (searching) 0.55f else 1f
         }
     }
@@ -572,7 +577,7 @@ internal class EmojiPickerController(
         deferRedrawUntilTabChange = false
         variantPopup?.dismiss()
         if (searchState.text.isNotBlank()) {
-            searchField?.hint = mode.searchHint
+            searchField?.hint = PanelSkin.promptHint(mode.searchHint)
             runSearch()
         } else {
             renderMode()
@@ -715,10 +720,8 @@ internal class EmojiPickerController(
         val context = panel.overlayContext
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = GradientDrawable().apply {
-                setColor(Color.argb(0xEE, 255, 255, 255))
-                cornerRadius = panel.dp(6).toFloat()
-            }
+            // A pane of its own over the grid: Keys fill, a Key-outline hairline, 6 dp corners.
+            background = skin.rounded(theme.suggestion, theme.divider, DesignTokens.Radius.PANE)
             elevation = panel.dp(12).toFloat()
         }
         val untoned = SkinTones.apply(entry.base, SkinTone.NONE)
@@ -730,6 +733,7 @@ internal class EmojiPickerController(
                     text = emoji
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, G.VARIANT_POPUP_GLYPH_SP.toFloat())
                     setPadding(panel.dp(12), panel.dp(8), panel.dp(12), panel.dp(8))
+                    background = skin.cellDrawable()
                     setOnClickListener { popup.dismiss(); chooseEmoji(emoji, recentAs = emoji) }
                 },
             )
@@ -787,6 +791,7 @@ internal class EmojiPickerController(
         captureOn = on
         searchField?.alpha = if (on) 1f else 0.75f
         searchField?.isCursorVisible = on
+        skin.setPromptActive(searchRow, on)
         if (on) searchField?.requestFocus()
     }
 
@@ -887,5 +892,8 @@ internal class EmojiPickerController(
         const val SYMBOL_RECENTS_ID = "SYMBOL_RECENTS"
         const val TAB_MIN_SP = 8
         const val TAB_MAX_SP = 14
+
+        /** The mode button sits in the tab bar as a key, not a full-height block. */
+        const val MODE_BUTTON_HEIGHT_DP = 32
     }
 }

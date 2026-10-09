@@ -1,6 +1,5 @@
 package brobata.physiboard.ime.actions
 
-import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.util.TypedValue
@@ -13,6 +12,10 @@ import brobata.physiboard.core.keys.SymChooserEntry
 import brobata.physiboard.core.keys.SymChooserTarget
 import brobata.physiboard.core.keys.SymPageChooser
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.ime.skin.PanelSkin
 
 /**
  * The Sym page chooser: a small transient panel listing every Sym page with the key that opens
@@ -35,51 +38,46 @@ internal class SymPageChooserController(service: InputMethodService, private val
         onPick = pick
         listed = entries.map { it.target }.toSet()
         val context = panel.overlayContext
+        val skin = PanelSkin(context, theme)
         val column = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(theme.background)
-            val pad = panel.dp(6)
-            setPadding(pad, pad, pad, pad)
+            background = skin.panelBackground()
+            setPadding(panel.dp(8), panel.dp(6), panel.dp(6), panel.dp(8))
         }
         val header = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        header.addView(
-            TextView(context).apply {
-                text = TITLE
-                setTextColor(theme.textAndIcons)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
-        )
-        header.addView(
-            TextView(context).apply {
-                text = "✕"
-                gravity = Gravity.CENTER
-                setTextColor(theme.textAndIcons)
-                background = GradientDrawable().apply { setColor(theme.button); cornerRadius = panel.dp(6).toFloat() }
-                setOnClickListener { close() }
-            },
-            LinearLayout.LayoutParams(panel.dp(36), panel.dp(32)),
-        )
+        header.addView(skin.comment(TITLE), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        header.addView(skin.closeButton { close() }, LinearLayout.LayoutParams(panel.dp(PanelSkin.CLOSE_WIDTH_DP), panel.dp(PanelSkin.CLOSE_HEIGHT_DP)))
         column.addView(header)
-        val grid = GridLayout(context).apply { columnCount = COLUMNS }
+        val grid = GridLayout(context).apply { columnCount = COLUMNS; setPadding(0, panel.dp(3), 0, 0) }
         entries.forEachIndexed { index, entry ->
-            val cell = TextView(context).apply {
-                text = "${entry.target.letter}  ${entry.label}"
+            // The key that opens the page, as a keycap, then the page's name: a row of the settings
+            // app's key-and-label lists.
+            val cell = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                maxLines = 1
-                setTextColor(theme.textAndIcons)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                setPadding(panel.dp(10), 0, panel.dp(6), 0)
+                setPadding(panel.dp(6), 0, panel.dp(6), 0)
                 // A page that is off for the cycle still opens from here; it is drawn dimmer so
                 // the chooser also shows what the Sym taps will step through.
                 alpha = if (entry.inCycle) 1f else 0.6f
-                background = GradientDrawable().apply {
-                    setColor(theme.suggestion)
-                    setStroke(panel.dp(1), theme.divider)
-                    cornerRadius = panel.dp(6).toFloat()
-                }
+                background = skin.keyDrawable()
+                contentDescription = "${entry.label}, ${entry.target.letter}"
                 setOnClickListener { choose(entry.target) }
+                DesignMotion.pressable(this)
             }
+            cell.addView(
+                skin.label(entry.target.letter.toString(), DesignTokens.Type.LABEL_SP, PhysiFonts.Face.MONO_BOLD, theme.accent).apply {
+                    gravity = Gravity.CENTER
+                    background = skin.rounded(theme.button, theme.divider, DesignTokens.Radius.KEY)
+                },
+                LinearLayout.LayoutParams(panel.dp(26), panel.dp(26)).apply { marginEnd = panel.dp(10) },
+            )
+            cell.addView(
+                skin.label(entry.label, DesignTokens.Type.BODY_SP).apply {
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
             val params = GridLayout.LayoutParams(GridLayout.spec(index / COLUMNS), GridLayout.spec(index % COLUMNS, 1f)).apply {
                 width = 0
                 height = panel.dp(ROW_DP)

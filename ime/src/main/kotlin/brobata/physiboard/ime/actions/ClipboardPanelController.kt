@@ -1,7 +1,5 @@
 package brobata.physiboard.ime.actions
 
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.text.TextUtils
 import android.util.TypedValue
@@ -17,6 +15,9 @@ import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.clipboard.ClipboardHistory
 import brobata.physiboard.core.actions.clipboard.ClipboardPanelGeometry as G
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.ime.skin.PanelSkin
 
 /**
  * The clipboard panel, Sym page 3. spec: expansion-clipboard-pickers-launcher.md SS3.5: 177 dp
@@ -44,6 +45,7 @@ internal class ClipboardPanelController(service: InputMethodService) {
     private var empty: TextView? = null
     private var renderedCount = -1
     private var theme: StripTheme = StripTheme.SLATE_DARK
+    private var skin: PanelSkin? = null
 
     val isShown: Boolean get() = panel.isShown
 
@@ -73,22 +75,23 @@ internal class ClipboardPanelController(service: InputMethodService) {
         empty?.visibility = if (ordered.isEmpty()) View.VISIBLE else View.GONE
         clearAll?.isEnabled = ordered.isNotEmpty()
         clearAll?.alpha = if (ordered.isNotEmpty()) 1f else 0.4f
+        val skin = skin ?: PanelSkin(panel.overlayContext, theme)
         ordered.forEachIndexed { index, clip ->
-            val card = TextView(panel.overlayContext).apply {
-                text = clip.text
-                setTextColor(theme.textAndIcons)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, G.CARD_TEXT_SP.toFloat())
+            // A clip is text a person reads (Inter); a pinned one carries the accent's wash and outline.
+            val card = skin.reading(clip.text, G.CARD_TEXT_SP.toFloat()).apply {
                 maxLines = G.CARD_MAX_LINES
                 ellipsize = TextUtils.TruncateAt.END
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(panel.dp(G.CARD_PADDING_DP), panel.dp(G.CARD_PADDING_DP), panel.dp(G.CARD_PADDING_DP), panel.dp(G.CARD_PADDING_DP))
-                background = GradientDrawable().apply {
-                    setColor(if (clip.pinned) withAlpha(theme.accent, 95) else theme.suggestion)
-                    cornerRadius = panel.dp(G.CARD_CORNER_DP).toFloat()
-                    setStroke(panel.dp(1), theme.divider)
+                background = if (clip.pinned) {
+                    skin.keyDrawable(fill = PanelSkin.blend(theme.suggestion, theme.accent, DesignTokens.Alpha.SELECTED_WASH), stroke = theme.accent, radiusDp = G.CARD_CORNER_DP)
+                } else {
+                    skin.keyDrawable(radiusDp = G.CARD_CORNER_DP)
                 }
+                if (clip.pinned) contentDescription = "Pinned: ${clip.text}"
                 setOnClickListener { listener.onClipTapped(clip) }
                 setOnLongClickListener { showMenu(this, clip, listener); true }
+                DesignMotion.pressable(this)
             }
             val params = GridLayout.LayoutParams(GridLayout.spec(index / G.COLUMNS), GridLayout.spec(index % G.COLUMNS, 1f)).apply {
                 width = 0
@@ -103,7 +106,8 @@ internal class ClipboardPanelController(service: InputMethodService) {
 
     /** app-shell.md SS31.4: the header's private wording, changed in place while the page is open. */
     fun setNotSaving(notSaving: Boolean) {
-        title?.text = if (notSaving) G.TITLE_NOT_SAVING else G.TITLE
+        val title = title ?: return
+        skin?.setComment(title, if (notSaving) G.TITLE_NOT_SAVING else G.TITLE)
     }
 
     fun hide() {
@@ -113,30 +117,22 @@ internal class ClipboardPanelController(service: InputMethodService) {
         clearAll = null
         title = null
         empty = null
+        skin = null
         renderedCount = -1
     }
 
     private fun build(listener: Listener): View {
         val context = panel.overlayContext
-        val root = FrameLayout(context).apply { setBackgroundColor(theme.background) }
+        val skin = PanelSkin(context, theme).also { skin = it }
+        val root = FrameLayout(context).apply { background = skin.panelBackground() }
         val column = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(panel.dp(G.HEADER_SIDE_PADDING_DP), panel.dp(G.HEADER_TOP_PADDING_DP), panel.dp(G.HEADER_SIDE_PADDING_DP), panel.dp(G.HEADER_BOTTOM_PADDING_DP))
-            title = TextView(context).apply {
-                text = G.TITLE
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, G.HEADER_TEXT_SP.toFloat())
-                setTextColor(withAlpha(theme.textAndIcons, 180))
-                maxLines = 1
-                ellipsize = TextUtils.TruncateAt.END
-            }
+            title = skin.comment(G.TITLE)
             addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            clearAll = TextView(context).apply {
-                text = G.CLEAR_ALL
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, G.HEADER_TEXT_SP.toFloat())
-                setTextColor(theme.accent)
-                setOnClickListener { listener.onClearAll() }
-            }
+            clearAll = skin.textButton(G.CLEAR_ALL) { listener.onClearAll() }
             addView(clearAll)
         }
         column.addView(header)
@@ -148,28 +144,13 @@ internal class ClipboardPanelController(service: InputMethodService) {
         scroll = ScrollView(context).apply { addView(grid) }
         column.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         root.addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        empty = TextView(context).apply {
-            text = G.EMPTY
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, G.CARD_TEXT_SP.toFloat())
-            setTextColor(withAlpha(theme.textAndIcons, 128))
+        empty = skin.label(G.EMPTY, DesignTokens.Type.BODY_SP, color = skin.mutedText).apply {
             gravity = Gravity.CENTER
             visibility = View.GONE
         }
         root.addView(empty, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        root.addView(closeButton(listener::onClose), FrameLayout.LayoutParams(panel.dp(G.CLOSE_WIDTH_DP), panel.dp(G.CLOSE_HEIGHT_DP), Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, panel.dp(4), panel.dp(4)) })
+        root.addView(skin.closeButton(listener::onClose), FrameLayout.LayoutParams(panel.dp(G.CLOSE_WIDTH_DP), panel.dp(G.CLOSE_HEIGHT_DP), Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, panel.dp(4), panel.dp(4)) })
         return root
-    }
-
-    /** spec SS3.5: the close button, 36 by 32 dp, 6 dp corners, the status bar button colour (fallback red 220,38,38 at alpha 95). */
-    private fun closeButton(onClose: () -> Unit): View = TextView(panel.overlayContext).apply {
-        text = "✕"
-        gravity = Gravity.CENTER
-        setTextColor(theme.textAndIcons)
-        background = GradientDrawable().apply {
-            setColor(theme.button)
-            cornerRadius = panel.dp(6).toFloat()
-        }
-        setOnClickListener { onClose() }
     }
 
     private fun showMenu(anchor: View, clip: Clip, listener: Listener) {
@@ -178,8 +159,6 @@ internal class ClipboardPanelController(service: InputMethodService) {
         menu.menu.add(G.MENU_DELETE).setOnMenuItemClickListener { listener.onDelete(clip); true }
         menu.show()
     }
-
-    private fun withAlpha(color: Int, alpha: Int): Int = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
 
     private companion object {
         const val TAG = "PhysiBoardClipPanel"

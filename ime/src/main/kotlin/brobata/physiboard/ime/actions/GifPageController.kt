@@ -32,6 +32,9 @@ import brobata.physiboard.core.shell.FetchResult
 import brobata.physiboard.core.shell.GatedFetcher
 import brobata.physiboard.core.shell.NetworkPurpose
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.ime.skin.PanelSkin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -73,6 +76,8 @@ internal class GifPageController(
     private var status: TextView? = null
     private var progress: ProgressBar? = null
     private var searchField: EditText? = null
+    private var searchRow: View? = null
+    private var skin: PanelSkin = PanelSkin(service, StripTheme.SLATE_DARK)
     private var columns = 3
     private var cellWidthPx = 0
     private var searchState = SearchFieldState.EMPTY
@@ -132,6 +137,7 @@ internal class GifPageController(
         status = null
         progress = null
         searchField = null
+        searchRow = null
         listener = null
     }
 
@@ -194,39 +200,37 @@ internal class GifPageController(
 
     private fun build(): View {
         val context = panel.overlayContext
+        val skin = PanelSkin(context, theme).also { skin = it }
         val column = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(theme.background)
+            background = skin.panelBackground()
         }
         val top = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(panel.dp(6), panel.dp(6), panel.dp(6), panel.dp(2))
         }
-        searchField = EditText(context).apply {
-            hint = GifPage.SEARCH_HINT
+        val field = EditText(context).apply {
             setSingleLine()
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            setTextColor(theme.textAndIcons)
-            setHintTextColor(withAlpha(theme.textAndIcons, 128))
-            setPadding(panel.dp(8), panel.dp(5), panel.dp(8), panel.dp(5))
-            background = GradientDrawable().apply { setColor(theme.suggestion); cornerRadius = panel.dp(7).toFloat() }
             showSoftInputOnFocus = false
             isFocusable = true
             isFocusableInTouchMode = true
             setOnClickListener { setCapture(!captureOn) }
         }
-        top.addView(searchField, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        searchField = field
+        val row = skin.promptField(field, GifPage.SEARCH_HINT)
+        searchRow = row
+        top.addView(row, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         top.addView(
-            button("✕") { listener?.onClose() },
-            LinearLayout.LayoutParams(panel.dp(36), panel.dp(32)).apply { marginStart = panel.dp(6) },
+            skin.closeButton { listener?.onClose() },
+            LinearLayout.LayoutParams(panel.dp(PanelSkin.CLOSE_WIDTH_DP), panel.dp(PanelSkin.CLOSE_HEIGHT_DP)).apply { marginStart = panel.dp(6) },
         )
         column.addView(top)
 
-        val chips = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; setPadding(panel.dp(4), 0, panel.dp(4), 0) }
+        val chips = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; setPadding(panel.dp(4), panel.dp(2), panel.dp(4), 0) }
         for (quick in GifPage.QUICK_SEARCHES) {
             chips.addView(
-                button(quick) { runQuickSearch(quick) }.apply { setPadding(panel.dp(12), 0, panel.dp(12), 0) },
+                skin.chip(quick) { runQuickSearch(quick) },
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, panel.dp(28)).apply { setMargins(panel.dp(2), panel.dp(2), panel.dp(2), panel.dp(2)) },
             )
         }
@@ -242,38 +246,27 @@ internal class GifPageController(
             viewTreeObserver.addOnScrollChangedListener { maybeLoadMore() }
         }
         frame.addView(scroll, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        status = TextView(context).apply {
+        status = skin.reading("", DesignTokens.Type.BODY_SP, skin.mutedText).apply {
             gravity = Gravity.CENTER
-            setTextColor(theme.textAndIcons)
-            setPadding(panel.dp(16), 0, panel.dp(16), 0)
+            setPadding(panel.dp(16), 0, panel.dp(16), panel.dp(8))
             visibility = View.GONE
         }
         frame.addView(status, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
-        progress = ProgressBar(context).apply { visibility = View.GONE }
-        frame.addView(progress, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+        progress = ProgressBar(context).apply {
+            visibility = View.GONE
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(theme.accent)
+        }
+        frame.addView(progress, FrameLayout.LayoutParams(panel.dp(32), panel.dp(32), Gravity.CENTER))
         column.addView(frame, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         // KLIPY asks for its branding in the interface (docs.klipy.com, "Add Attribution").
         column.addView(
-            TextView(context).apply {
-                text = GifPage.ATTRIBUTION
+            skin.label(GifPage.ATTRIBUTION, 10f, color = skin.mutedText).apply {
                 gravity = Gravity.END
-                setTextColor(withAlpha(theme.textAndIcons, 170))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                setPadding(panel.dp(8), 0, panel.dp(8), panel.dp(2))
+                setPadding(panel.dp(8), 0, panel.dp(8), panel.dp(4))
             },
         )
         return column
-    }
-
-    private fun button(label: String, onClick: () -> Unit): TextView = TextView(panel.overlayContext).apply {
-        text = label
-        gravity = Gravity.CENTER
-        maxLines = 1
-        setTextColor(theme.textAndIcons)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-        background = GradientDrawable().apply { setColor(theme.button); cornerRadius = panel.dp(6).toFloat() }
-        setOnClickListener { onClick() }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -284,6 +277,7 @@ internal class GifPageController(
         captureOn = on
         searchField?.alpha = if (on) 1f else 0.75f
         searchField?.isCursorVisible = on
+        skin.setPromptActive(searchRow, on)
         if (on) searchField?.requestFocus()
     }
 
@@ -391,12 +385,7 @@ internal class GifPageController(
     private fun addHeader(title: String) {
         val grid = grid ?: return
         if (gridPosition % columns != 0) gridPosition += columns - gridPosition % columns
-        val header = TextView(panel.overlayContext).apply {
-            text = title
-            setTextColor(theme.textAndIcons)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            setPadding(panel.dp(2), panel.dp(6), 0, panel.dp(2))
-        }
+        val header = skin.comment(title).apply { setPadding(panel.dp(3), panel.dp(8), 0, panel.dp(4)) }
         val params = GridLayout.LayoutParams(GridLayout.spec(gridPosition / columns), GridLayout.spec(0, columns)).apply { width = GridLayout.LayoutParams.MATCH_PARENT }
         grid.addView(header, params)
         gridPosition += columns
@@ -406,7 +395,8 @@ internal class GifPageController(
         val grid = grid ?: return
         val context = panel.overlayContext
         val cell = FrameLayout(context).apply {
-            background = GradientDrawable().apply { setColor(theme.suggestion); cornerRadius = panel.dp(6).toFloat() }
+            background = skin.keyDrawable(radiusDp = DesignTokens.Radius.PANE)
+            foreground = skin.cellDrawable()
             clipToOutline = true
             contentDescription = item.title.ifBlank { "GIF" }
             setOnClickListener { listener?.onSend(item) }
@@ -415,13 +405,14 @@ internal class GifPageController(
         cell.addView(image, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         val star = TextView(context).apply {
             text = "★"
-            setTextColor(Color.rgb(0xFF, 0xC1, 0x07))
+            setTextColor(theme.accent)
             setShadowLayer(3f, 0f, 0f, Color.BLACK)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             visibility = if (item.slug in favouriteSlugs) View.VISIBLE else View.GONE
         }
         cell.addView(star, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END).apply { setMargins(0, panel.dp(2), panel.dp(4), 0) })
         cell.setOnLongClickListener { toggleFavourite(item, star); true }
+        DesignMotion.pressable(cell)
         val gap = panel.dp(3)
         val params = GridLayout.LayoutParams(GridLayout.spec(gridPosition / columns), GridLayout.spec(gridPosition % columns, 1f)).apply {
             width = 0
