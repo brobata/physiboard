@@ -779,7 +779,9 @@ navigation below."
 - The system status bar shows the nav mode icon (a small vector in the notification shade
   area) through the input method's status icon API while nav is on; it is hidden when nav
   ends, when a field finishes with nav off, and when the keyboard service is destroyed. The
-  same icon slot otherwise shows the modifier icon (status bar document); nav mode wins.
+  same icon slot otherwise shows the modifier icon (keys document 13.1, which also holds the
+  keyboard shown for the system while the nav icon is up); nav mode wins over every modifier,
+  dictation's microphone wins over nav.
 - A 70 ms haptic when nav mode turns on; none when it turns off.
 - The legacy "Fn Layer Activated / Nav mode activated" notification (channel "PhysiBoard Fn
   Layer") is never posted any more; it is only ever cancelled, at service start and at every

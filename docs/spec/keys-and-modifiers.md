@@ -846,11 +846,66 @@ current Sym page. Three surfaces read it.
 ### 13.1 System status bar icon
 
 Each of Shift, Ctrl, Alt is reduced to off / active / locked: locked = caps lock (Shift) or
-latched (Ctrl, Alt); active = physically pressed or one-shot. The 26 non-empty combinations
-select one of 26 icons drawn in the phone's status bar through the input method's status icon
-slot; all-off shows no icon, unless a Sym page is open, in which case a Sym icon is shown. The
-icon is hidden entirely while the keyboard is forced into on-screen mode. Icon changes are
-deduplicated (no re-show for the same icon).
+latched (Ctrl, Alt; a Ctrl latch made by nav mode is nav's, not Ctrl's); active = physically
+pressed or one-shot. One icon is drawn in the phone's status bar through the input method's
+status icon slot, chosen by this precedence, first match wins (`StatusBarModifierIcon` in
+`:core:keys`):
+
+| # | State | Icon (24 dp vector, white on transparent; the status bar tints it) |
+|---|---|---|
+| 1 | a dictation session exists (dictation document 9) | microphone |
+| 2 | nav mode latched (trackpad document 5.7) | arrows out in four directions |
+| 3 | Ctrl locked | the control caret with a lock bar under it |
+| 4 | Ctrl active | the control caret |
+| 5 | Alt locked | the ISO 9995-7 Alternate symbol with the lock bar |
+| 6 | Alt active | the Alternate symbol |
+| 7 | caps lock | the Shift arrow filled, with the lock bar |
+| 8 | Shift active | the hollow Shift arrow |
+| 9 | a Sym page open | a bold hash |
+| - | none of these | no icon |
+
+Ctrl before Alt before Shift is the order of surprise for the next key: Ctrl turns a letter into
+a command, Alt into a symbol, Shift only changes its case. Sym is last because an open Sym page
+is on screen anyway. Every locked state carries the same bar, so "locked" reads the same for all
+three. The 2.x idea of 26 combined pictures is dropped: a status-bar icon is about 17 px tall on
+this phone and a combination of three glyphs is not legible there.
+
+The icon is refreshed with every strip refresh, and also on a modifier key's release (a held
+Shift let go after a chord ends its state with no other key). Changes are deduplicated (no
+re-show for the same icon).
+
+**The keyboard is held shown while a state is on.** Since the suggestion bar went (status-bar
+document), the keyboard never shows a window of its own, and on the Titan the modifier and Sym
+icons stopped appearing while dictation's microphone, the one icon shown while the keyboard
+holds the system's "shown" binding (dictation document 6.8), still did. AOSP's own path does
+not hide an input method's icon with its window (`InputMethodManagerService.updateStatusIconLocked`
+shows it whatever the window's visibility; it is hidden only when the input method is unbound,
+`clearClientSessionsLocked`, and SystemUI's `CommandQueue.setImeWindowStatus` touches only the
+navigation bar), so the gate is taken to be the phone's own system UI; this is the fix that
+matches the one icon that still showed, to be confirmed on the phone. So while any of states 2
+to 9 is on, the keyboard holds itself shown for the system the same zero-footprint way a
+dictation session does: `requestShowSelf(0)`, which the keyboard answers by not drawing
+anything (the platform asks, the keyboard says no for a hardware keyboard), repeated at every
+field start while held. The hold is shared with dictation and counted per owner, so one
+releasing never drops the other's: a modifier clearing mid-session keeps the session's
+microphone, and a session ending with caps lock on keeps the caps-lock icon.
+
+- The hold is taken the moment a state shows.
+- When the states clear, it is let go 750 ms later, unless one comes back first, so typing a
+  capital (Shift, letter, Shift, letter) does not show and hide the keyboard for the system on
+  every letter. Letting go hides the keyboard for the system only when the last owner lets go,
+  under dictation document 6.8's three conditions (not during a field change, the app had not
+  itself asked for the keyboard in this field, and nothing of the keyboard is on screen).
+- **Back** lets the hold go at once and does not take it again while the same state shows; a
+  different state, or the next field, takes it again. Back itself is not consumed. Trade-off:
+  while the keyboard counts as shown the system may spend a Back on closing that invisible
+  keyboard before the app sees one (the side effect dictation already has). Not holding for a
+  Shift one-shot would avoid it but leave Shift, the indicator the maintainer asked for, dark;
+  releasing at the first Back limits the cost to at most one Back per state, and caps lock's
+  icon returns in the next field.
+
+The icon is hidden entirely while the keyboard is forced into on-screen mode, and when the
+keyboard service is destroyed (which also drops the hold).
 
 ### 13.2 Caret badge
 

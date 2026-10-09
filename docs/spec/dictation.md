@@ -501,8 +501,9 @@ and logs an error. A re-listen normally reads allowed at once; one that does not
 was hidden under the running session: an app's own hide, Back with stop-on-typing off) holds
 the keyboard visible again first and then waits.
 
-At every ending the hold is released. The service is told to hide (`requestHideSelf(0)`) only
-when all of these hold: the ending was not caused by a field change (the next field, or none,
+At every ending the session's share of the hold is released (the status icon may still hold
+it, keys document 13.1). The service is told to hide (`requestHideSelf(0)`) only when no other
+owner holds it and all of these hold: the ending was not caused by a field change (the next field, or none,
 is the system's to decide, and a hide sent now would land on it); the app had not itself asked
 for the keyboard during this field (then the system hides it when the app says so); and nothing
 of the keyboard is on screen anyway (a collapsed or hidden strip). A strip the user can see
@@ -665,7 +666,9 @@ Titan is not yet observed.
 
 - The **system status bar icon** (the keyboard's `showStatusIcon` slot) shows a microphone for
   the whole session, from the trigger to the end, and wins that slot over the nav-mode, modifier
-  and Sym icons (keys document 13.1). It needs no keyboard window on screen and no overlay
+  and Sym icons (keys document 13.1). The keyboard-shown hold of 6.8 is shared with those icons
+  and counted per owner: the session's ending never drops a hold a modifier still needs, and a
+  modifier clearing never drops the session's. It needs no keyboard window on screen and no overlay
   permission, so it is the indicator that is always there, including with the status bar hidden.
 - The strip's microphone button, when the status bar is visible, turns red for the session and
   is redrawn from the engine's level reports (status-bar document 6.1).
