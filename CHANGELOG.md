@@ -3,27 +3,49 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
-## 3.0.0 (unreleased)
+## 3.0.0 (2026-10-08)
 
-A from-scratch physical-keyboard IME for the Unihertz Titan 2 Elite, built from a written
-behavioral specification rather than the old code.
+PhysiBoard 3.0 is a ground-up rebuild for the Titan 2 Elite's keyboard. Autocorrect now reads the
+sentence, dictation keeps listening until you stop it, and apps keep the whole screen: there is no
+bar while you type. Press Sym for emoji and symbols.
 
-- Hardware key pipeline: Fn, Sym, Alt, Ctrl and Shift, including sticky and locked modifiers.
-- Sym and Alt layers with pages, and a nav mode for cursor and selection movement from the
-  keyboard.
-- Autocorrect and word suggestions, backed by 19 bundled dictionaries.
-- The candidates strip doubling as a status bar, with configurable buttons and a per-app dip.
-- Per-app Enter behavior, exact (uncorrected) typing, and WebAPK host expansion.
-- Text expansion (snippets), clipboard history, and emoji and Unicode pickers as overlays.
-- Dictation that runs until you stop it (Fn again, any key, or a silence limit you choose),
-  with the engine's on-device recognizer, music paused for the session, and a status bar icon
-  while it listens.
-- The screen trackpad and caret badge for cursor and selection control on the touchscreen.
-- Keyboard backlight, a smart backlight mode, and a notification ring, driven through an
-  embedded ADB broker paired over Wireless Debugging.
-- The T2E toolbox: a bloat remover, system tweaks and display density controls for the Titan.
-- Backup and restore, an update checker that reads GitHub releases, diagnostics, and first-run
-  onboarding with a one-shot importer from a 2.x install.
+<!-- /card -->
+
+**Typing**
+- Autocorrect reads the sentence and knows the Titan's key positions: in testing it fixed 75% of
+  typos (2.x: 30%) and changed a correctly spelled word about once in 4,500.
+- An optional fix for mixed-up words (its/it's, your/you're, their/there, then/than and more),
+  off until you switch it on. Backspace undoes any correction.
+- A system spell checker: apps underline misspellings and offer PhysiBoard's corrections.
+- Long press can type a capital, an accent, or a symbol. Accents come in your language's order;
+  hold a letter for the first, then press the key shown on the bar, or tap the letter again.
+  Every letter's accents can be edited.
+- Slurs are not in the word list. Profanity is.
+
+**No bar, Sym pages instead**
+- The suggestion bar is gone. Sym steps through Emoji, Symbols and GIFs, in an order you choose;
+  each can be switched off. Double-tap Sym for a list of every page.
+- Emoji search, skin tones (with a default tone), and three pages of your own.
+- GIF search (KLIPY), off by default in this release: switch it on in Customize SYM Keyboard.
+
+**Dictation**
+- Hold Fn to start. It runs until you press Fn again, press any key, or go quiet for the time
+  you choose (2.5 s by default). Music pauses while you talk. On-device recognition with
+  punctuation where the phone has it.
+
+**Terminals and the web**
+- Terminal mode (formerly Exact typing) for any app you pick: nothing corrected or capitalised,
+  and Ctrl, Esc, Tab, arrows and Alt symbols go straight to the app.
+- Alt symbols and Shift capitals now reach web pages and web apps that Chrome 148+ used to drop.
+
+**Privacy**
+- Private mode: the keyboard learns nothing and makes no network requests. Fields that ask not
+  to be learned from (incognito tabs, banking apps) get the no-learning part automatically.
+- Links you copy and paste through the keyboard lose their tracking parameters.
+
+**Also**
+- Keyboard backlight and notification ring through the built-in ADB pairing, the T2E toolbox,
+  backup and restore, an update checker, and a one-shot importer from 2.x settings.
 
 Not carried forward from the line this succeeds: the AOSP-derived soft keyboard view and its
 theming system, custom input styles, the multi-device layout tree, and anything that existed only
