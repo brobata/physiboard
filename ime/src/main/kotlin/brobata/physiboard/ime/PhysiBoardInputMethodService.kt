@@ -10,6 +10,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InlineSuggestionsRequest
 import android.view.inputmethod.InlineSuggestionsResponse
 import android.view.inputmethod.InputMethodSubtype
+import brobata.physiboard.design.PhysiFonts
 import brobata.physiboard.device.privileged.PrivilegedServices
 import brobata.physiboard.device.privileged.setup.SetupReasons
 
@@ -55,6 +56,9 @@ class PhysiBoardInputMethodService : InputMethodService() {
      */
     override fun onCreate() {
         super.onCreate()
+        // The panels' typefaces are read from disk once, here, off the main thread, so the first
+        // Sym page never waits on them (docs/design/design-system.md, "Type").
+        PhysiFonts.prewarm(this)
         runCatching { PrivilegedServices.from(this)?.runSetupAsync(SetupReasons.IME_START) }
             .onFailure { error -> Log.e(TAG, "privileged setup at IME start crashed", error) }
     }

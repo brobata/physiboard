@@ -44,7 +44,7 @@ class SymGridTest {
         val geometry = SymGridGeometry.forScreenWidth(1080, StripGeometry.TITAN_PX_PER_DP)
         assertEquals(105, geometry.keyHeightPx, "56 dp at 1.875 px per dp")
         assertEquals(7, geometry.spacingPx, "4 dp spacing")
-        assertEquals(11, geometry.cornerPx, "6 dp corners")
+        assertEquals(7, geometry.cornerPx, "4 dp corners")
         assertEquals(1, geometry.borderPx)
         // (1080 - 16*1.875 - 9*7) / 10 = (1080 - 30 - 63) / 10 = 98.7 -> 98
         assertEquals(98, geometry.keyWidthPx)

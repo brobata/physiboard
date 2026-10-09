@@ -1,12 +1,15 @@
 package brobata.physiboard.ime.actions
 
-import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.ime.skin.PanelSkin
 
 /**
  * The skin-tone chooser: one row of an emoji's six forms (no tone, then the five tones), each
@@ -40,25 +43,27 @@ internal class SkinTonePanelController(service: InputMethodService) {
         digitOf: (Int) -> Int = { it },
         glyphSp: Float = GLYPH_SP,
     ) {
-        if (panel.isShown) panel.hide()
+        // Opened again while up (the next long press): swapped in place, with a fade.
+        val replacing = panel.isShown
+        if (replacing) panel.hide(animate = false)
         val context = panel.overlayContext
+        val skin = PanelSkin(context, theme)
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(theme.background)
-            val pad = panel.dp(6)
-            setPadding(pad, pad, pad, pad)
+            background = skin.panelBackground()
+            setPadding(panel.dp(6), panel.dp(6), panel.dp(6), panel.dp(6))
         }
         forms.forEachIndexed { index, form ->
+            val digit = digitOf(index)
+            val keyLabel = keyLabels.getOrNull(index)
             val cell = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                background = GradientDrawable().apply {
-                    setColor(theme.suggestion)
-                    setStroke(panel.dp(1), theme.divider)
-                    cornerRadius = panel.dp(6).toFloat()
-                }
+                background = skin.keyDrawable()
+                contentDescription = if (keyLabel != null) "$form, $digit or $keyLabel" else "$form, $digit"
                 setOnClickListener { onPick(form) }
+                DesignMotion.pressable(this)
             }
             cell.addView(
                 TextView(context).apply {
@@ -66,35 +71,25 @@ internal class SkinTonePanelController(service: InputMethodService) {
                     gravity = Gravity.CENTER
                     maxLines = 1
                     setTextColor(theme.textAndIcons)
+                    typeface = skin.face(PhysiFonts.Face.SANS)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, glyphSp)
                 },
             )
-            val digit = digitOf(index)
-            val label = keyLabels.getOrNull(index)?.let { "$digit · $it" } ?: digit.toString()
+            // The digit and its key, as a Sym key prints its letter: mono, quiet.
+            val label = keyLabel?.let { "$digit · $it" } ?: digit.toString()
             cell.addView(
-                TextView(context).apply {
-                    text = label
+                skin.label(label, DesignTokens.Type.KEY_LETTER_SP + 1, PhysiFonts.Face.MONO_MEDIUM, skin.mutedText).apply {
                     gravity = Gravity.CENTER
-                    setTextColor(theme.textAndIcons)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, LABEL_SP)
+                    setPadding(0, panel.dp(2), 0, 0)
                 },
             )
             row.addView(cell, LinearLayout.LayoutParams(0, panel.dp(CELL_HEIGHT_DP), 1f).apply { if (index > 0) marginStart = panel.dp(4) })
         }
         row.addView(
-            TextView(context).apply {
-                text = "✕"
-                gravity = Gravity.CENTER
-                setTextColor(theme.textAndIcons)
-                background = GradientDrawable().apply {
-                    setColor(theme.button)
-                    cornerRadius = panel.dp(6).toFloat()
-                }
-                setOnClickListener { onClose() }
-            },
-            LinearLayout.LayoutParams(panel.dp(36), panel.dp(32)).apply { marginStart = panel.dp(6) },
+            skin.closeButton { onClose() },
+            LinearLayout.LayoutParams(panel.dp(PanelSkin.CLOSE_WIDTH_DP), panel.dp(PanelSkin.CLOSE_HEIGHT_DP)).apply { marginStart = panel.dp(6) },
         )
-        panel.show(row, heightPx = null, bottomMarginPx = aboveBottomPx)
+        panel.show(row, heightPx = null, bottomMarginPx = aboveBottomPx, enter = if (replacing) DesignMotion.Enter.FADE else DesignMotion.Enter.SPRING)
     }
 
     fun hide() {
@@ -104,7 +99,6 @@ internal class SkinTonePanelController(service: InputMethodService) {
     private companion object {
         const val TAG = "PhysiBoardSkinTones"
         const val GLYPH_SP = 28f
-        const val LABEL_SP = 11f
         const val CELL_HEIGHT_DP = 64
     }
 }

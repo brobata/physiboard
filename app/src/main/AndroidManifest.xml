@@ -36,6 +36,8 @@
     <application
         android:name="brobata.physiboard.app.PhysiBoardApplication"
         android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.PhysiBoard"
         android:fullBackupContent="@xml/backup_rules"
@@ -43,7 +45,8 @@
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name="brobata.physiboard.app.MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.PhysiBoard.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

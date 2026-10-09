@@ -44,8 +44,13 @@ internal class VariationChooserController(service: InputMethodService, private v
     /** spec SS8.4: the long press on [key] just typed [committed], the first of [choices]; the key is still held. */
     fun open(key: KeyId, choices: List<String>, committed: String) {
         val host = host ?: return
-        close()
-        if (!VariationChooser.opens(choices)) return
+        // A bar already up is swapped in place (the panel fades); only its state starts over.
+        handler.removeCallbacks(idleClose)
+        state = null
+        if (!VariationChooser.opens(choices)) {
+            panel.hide()
+            return
+        }
         state = VariationChooser.State(heldKey = key, choices = choices, committed = committed)
         trace("open held=$key choices=${choices.size}")
         panel.show(

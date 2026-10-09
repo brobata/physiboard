@@ -34,6 +34,11 @@ import brobata.physiboard.core.actions.launcher.SheetKeyEffect
 import brobata.physiboard.core.actions.launcher.SheetKeyState
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.device.titan.KeyNormalizer
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.design.R as DesignR
+import brobata.physiboard.ime.skin.PanelSkin
 
 /**
  * PhysiBoard's own quick launcher sheet. spec: expansion-clipboard-pickers-launcher.md SS7. In
@@ -73,6 +78,8 @@ internal class QuickLauncherController(
     private var keyState = SheetKeyState()
     private var list: LinearLayout? = null
     private var queryView: TextView? = null
+    private var sheet: View? = null
+    private var scheme: DesignTokens.Scheme = DesignTokens.DARK
     private var dismissing = false
     private var autoLaunched = false
 
@@ -122,26 +129,29 @@ internal class QuickLauncherController(
         rows = buildRows(catalog)
         val root = build()
         val height = (service.resources.displayMetrics.heightPixels * R.MAX_HEIGHT_PERCENT / 100)
-        if (!panel.show(root, heightPx = height, focusable = true)) return false
+        if (!panel.show(root, heightPx = height, focusable = true, enter = DesignMotion.Enter.NONE)) return false
         onOpened()
         root.requestFocus()
         refilter()
-        root.animate().translationY(0f).alpha(1f).setDuration(R.ANIMATION_MS).start()
+        // The sheet rises on the design system's spring over the dim (it used to be built
+        // transparent and the fade-in ran on the dim instead, so the sheet never appeared).
+        sheet?.let { DesignMotion.enter(it, DesignMotion.Enter.SPRING) }
         return true
     }
 
     fun dismiss() {
         if (!isOpen || dismissing) return
+        sheet = null
         dismissing = true
         val view = panel.view
         if (view == null) {
-            panel.hide()
+            panel.hide(animate = false)
             return
         }
-        view.animate().translationY(view.height.toFloat()).alpha(0f).setDuration(R.ANIMATION_MS).withEndAction { panel.hide() }.start()
+        view.animate().translationY(view.height.toFloat()).alpha(0f).setDuration(R.ANIMATION_MS).withEndAction { panel.hide(animate = false) }.start()
     }
 
-    fun onServiceDestroyed() = panel.hide()
+    fun onServiceDestroyed() = panel.hide(animate = false)
 
     private fun buildRows(catalog: CommandCatalog): List<LauncherRow> =
         catalog.forQuickLauncher(visibility).map { LauncherRow(it, customizations[it.id]) }
@@ -194,46 +204,73 @@ internal class QuickLauncherController(
 
     private fun build(): View {
         val context = panel.overlayContext
+        // The sheet has no keyboard theme: it wears the design system's scheme for the system's
+        // light or dark mode (docs/design/design-system.md, "Panels").
+        val scheme = PanelSkin.scheme(context).also { scheme = it }
+        val mono = PhysiFonts.get(context, PhysiFonts.Face.MONO_MEDIUM)
         val sheet = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             isFocusable = true
             isFocusableInTouchMode = true
             setPadding(panel.dp(R.PADDING_H_DP), panel.dp(R.PADDING_V_DP), panel.dp(R.PADDING_H_DP), panel.dp(R.PADDING_V_DP))
+            val corner = panel.dp(DesignTokens.Radius.DIALOG).toFloat()
             background = GradientDrawable().apply {
-                setColor(SHEET_BACKGROUND)
-                cornerRadii = floatArrayOf(panel.dp(16).toFloat(), panel.dp(16).toFloat(), panel.dp(16).toFloat(), panel.dp(16).toFloat(), 0f, 0f, 0f, 0f)
+                setColor(scheme.page)
+                setStroke(panel.dp(DesignTokens.BORDER_DP), scheme.border)
+                cornerRadii = floatArrayOf(corner, corner, corner, corner, 0f, 0f, 0f, 0f)
             }
-            alpha = 0f
-            translationY = panel.dp(48).toFloat()
             setOnKeyListener { _, _, event -> runCatching { onKey(event) }.getOrElse { error -> Log.e(TAG, "sheet key crashed", error); false } }
         }
+        this.sheet = sheet
         sheet.addView(
             TextView(context).apply {
-                text = R.TITLE
-                setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                setPadding(0, 0, 0, panel.dp(6))
+                typeface = mono
+                text = android.text.SpannableStringBuilder("# ").append(R.TITLE.lowercase()).apply {
+                    setSpan(android.text.style.ForegroundColorSpan(scheme.accent), 0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                contentDescription = R.TITLE
+                isAccessibilityHeading = true
+                setTextColor(scheme.comment)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, DesignTokens.Type.LABEL_SP)
+                setPadding(0, 0, 0, panel.dp(8))
             },
         )
         val searchBox = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(panel.dp(12), panel.dp(8), panel.dp(12), panel.dp(8))
+            setPadding(panel.dp(12), panel.dp(8), panel.dp(8), panel.dp(8))
             background = GradientDrawable().apply {
-                setColor(SEARCH_BACKGROUND)
-                cornerRadius = panel.dp(20).toFloat()
+                setColor(scheme.pane)
+                cornerRadius = panel.dp(DesignTokens.Radius.FIELD).toFloat()
+                setStroke(panel.dp(DesignTokens.BORDER_DP), scheme.accent)
             }
         }
-        searchBox.addView(TextView(context).apply { text = "🔍"; setPadding(0, 0, panel.dp(8), 0) })
+        searchBox.addView(TextView(context).apply {
+            text = "$"
+            typeface = PhysiFonts.get(context, PhysiFonts.Face.MONO_BOLD)
+            setTextColor(scheme.accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setPadding(0, 0, panel.dp(8), 0)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        })
         queryView = TextView(context).apply {
-            setTextColor(Color.WHITE)
+            typeface = mono
+            setTextColor(scheme.text)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             maxLines = 1
         }
         searchBox.addView(queryView, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        searchBox.addView(TextView(context).apply { text = "⌄"; setTextColor(Color.WHITE); setOnClickListener { dismiss() } })
+        searchBox.addView(
+            ImageView(context).apply {
+                setImageResource(DesignR.drawable.pb_ic_chevron_down)
+                imageTintList = android.content.res.ColorStateList.valueOf(scheme.text)
+                contentDescription = "Close"
+                setOnClickListener { dismiss() }
+            },
+            LinearLayout.LayoutParams(panel.dp(32), panel.dp(24)),
+        )
         sheet.addView(searchBox)
-        list = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        list = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(0, panel.dp(6), 0, 0) }
         sheet.addView(ScrollView(context).apply { addView(list) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         val dim = FrameLayout(context).apply {
             setBackgroundColor(Color.argb(120, 0, 0, 0))
@@ -248,8 +285,8 @@ internal class QuickLauncherController(
 
     private fun refilter() {
         val queryView = queryView ?: return
-        queryView.text = query.ifEmpty { R.HINT }
-        queryView.setTextColor(if (query.isEmpty()) MUTED else Color.WHITE)
+        queryView.text = query.ifEmpty { PanelSkin.promptHint(R.HINT) }
+        queryView.setTextColor(if (query.isEmpty()) scheme.muted else scheme.text)
         results = QuickLauncherRanking.rank(rows, query, settings)
         autoLaunched = false
         renderRows()
@@ -274,7 +311,7 @@ internal class QuickLauncherController(
                 query.isBlank() -> R.EMPTY_NO_ENTRIES
                 else -> R.emptyNoResults(query)
             }
-            list.addView(TextView(context).apply { text = message; setTextColor(MUTED); setPadding(0, panel.dp(16), 0, panel.dp(16)); gravity = Gravity.CENTER })
+            list.addView(TextView(context).apply { text = message; setTextColor(scheme.muted); setPadding(0, panel.dp(16), 0, panel.dp(16)); gravity = Gravity.CENTER })
             return
         }
         val headers = QuickLauncherRanking.showsSourceHeaders(query, results.size)
@@ -282,7 +319,7 @@ internal class QuickLauncherController(
         results.forEachIndexed { index, row ->
             if (headers && row.command.source.label != lastSource) {
                 lastSource = row.command.source.label
-                list.addView(TextView(context).apply { text = lastSource; setTextColor(MUTED); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f); setPadding(0, panel.dp(8), 0, panel.dp(4)) })
+                list.addView(TextView(context).apply { text = lastSource; setTextColor(scheme.muted); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f); setPadding(0, panel.dp(8), 0, panel.dp(4)) })
             }
             list.addView(rowView(row, index == 0))
         }
@@ -296,9 +333,9 @@ internal class QuickLauncherController(
             gravity = Gravity.CENTER_VERTICAL
             setPadding(panel.dp(10), panel.dp(8), panel.dp(10), panel.dp(8))
             background = GradientDrawable().apply {
-                cornerRadius = panel.dp(10).toFloat()
+                cornerRadius = panel.dp(DesignTokens.Radius.PANE).toFloat()
                 rowTintColor(row, top)?.let { setColor(it) }
-                if (row.isFavorite && settings.highlightFavorites) setStroke(panel.dp(R.FAVORITE_BORDER_DP), FAVORITE_BORDER)
+                if (row.isFavorite && settings.highlightFavorites) setStroke(panel.dp(R.FAVORITE_BORDER_DP), scheme.accent)
             }
             setOnClickListener { launch(row) }
         }
@@ -306,10 +343,10 @@ internal class QuickLauncherController(
         row.command.iconPackage?.let { pkg -> icon.setImageDrawable(catalogSource.appIcon(pkg)) }
         view.addView(icon, LinearLayout.LayoutParams(panel.dp(32), panel.dp(32)).apply { marginEnd = panel.dp(12) })
         val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(TextView(context).apply { text = row.displayLabel(settings.showAliasFirst); setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f); maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
-        texts.addView(TextView(context).apply { text = row.displaySubtitle; setTextColor(MUTED); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f); maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+        texts.addView(TextView(context).apply { text = row.displayLabel(settings.showAliasFirst); typeface = PhysiFonts.get(context, PhysiFonts.Face.MONO_MEDIUM); setTextColor(scheme.text); setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f); maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+        texts.addView(TextView(context).apply { text = row.displaySubtitle; setTextColor(scheme.muted); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f); maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
         view.addView(texts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        if (top) view.addView(TextView(context).apply { text = R.ENTER_HINT; setTextColor(MUTED); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f) })
+        if (top) view.addView(TextView(context).apply { text = R.ENTER_HINT; setTextColor(scheme.muted); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f) })
         return view
     }
 
@@ -350,9 +387,5 @@ internal class QuickLauncherController(
         const val TOP_TINT_ALPHA = 148
         const val ICON_SAMPLE_SIZE = 32
         const val TAG = "PhysiBoardQuickLauncher"
-        val SHEET_BACKGROUND: Int = Color.rgb(28, 28, 30)
-        val SEARCH_BACKGROUND: Int = Color.rgb(44, 44, 48)
-        val MUTED: Int = Color.argb(160, 255, 255, 255)
-        val FAVORITE_BORDER: Int = Color.rgb(64, 156, 255)
     }
 }

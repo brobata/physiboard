@@ -652,15 +652,21 @@ The key-layer surface (pages 1, 2, 5) is a three-row grid of the 26 letter keys 
 background in the theme's background colour:
 
 - Rows: Q W E R T Y U I O P; A S D F G H J K L; Z X C V B N M. Each key shows the letter as a
-  small label and the page character large: emoji at 0.75 of the key height, page 2 characters
-  at 0.5 of the key height, bold, in the theme text colour. Key corners 6 dp, 1 dp divider
-  stroke, background the theme's normal-key colour.
+  small label (JetBrains Mono medium, 10 sp, the theme text colour at 72 %, 4 dp from the
+  key's top-left corner) and the page character large: emoji at 0.75 of the key height, page 2
+  characters at 0.5 of the key height, in Inter medium, in the theme text colour. Key corners
+  4 dp (the design system's keycap, amended 2026-10-09 from 6 dp), 1 dp divider stroke,
+  background the theme's normal-key colour; a pressed key takes an accent wash and an accent
+  outline and dips to 94 % (app-shell.md SS22.7). The grid sits 4 dp in from the panel's top
+  and bottom edges, under a 1 dp divider-coloured rule along the top.
 - Key height 56 dp, spacing 4 dp, key width = (screen width in px minus 16 dp) minus 9 gaps of
   4 dp, divided by 10.
 - With `titan2_layout_enabled` (default: on for the Titan family, D6) the rows are
   left-aligned to mirror the physical ortholinear grid: row 2 gets one blank cell at the end;
   row 3 is Z X C V, a pencil button (opens the customisation screen for this page), a globe
-  button (opens the system input-method picker), B N M, and a blank cell. Without it, rows are
+  button (opens the system input-method picker), B N M, and a blank cell. The pencil, globe and
+  search keys are the shared line icons (edit, globe, search) in the button colour, read by
+  TalkBack as "Edit this page", "Switch keyboard" and "Search symbols". Without it, rows are
   centred, row 3 has on its left a button that switches to the other key page (symbols icon on
   the Emoji page, smiley on the Symbols page) and on its right a pencil.
 - Tapping a key commits its character through the current editor connection (section 5.5 for

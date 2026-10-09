@@ -50,6 +50,8 @@ dependencies {
     api(project(":core:toolbox"))
     // Third-party pairing and connect client, used and never modified (broker/NOTICE).
     implementation(project(":broker"))
+    // The icon family: the tile's backlight keycap and the notifications' small icons (docs/design/design-system.md).
+    implementation(project(":design"))
     // AdbMdns reports its port through a lifecycle Observer; nothing else of lifecycle is used.
     implementation(libs.androidx.lifecycle.livedata)
     implementation(libs.androidx.core.ktx)

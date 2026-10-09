@@ -136,6 +136,7 @@ import brobata.physiboard.device.titan.KeyNormalizer
 import brobata.physiboard.device.titan.TitanLayouts
 import brobata.physiboard.device.titan.VendorKeyCodes
 import brobata.physiboard.ime.actions.AndroidCommandCatalog
+import brobata.physiboard.ime.actions.BottomOverlay
 import brobata.physiboard.ime.actions.ClipboardHistoryController
 import brobata.physiboard.ime.actions.ClipboardPanelController
 import brobata.physiboard.ime.actions.CommandExecutor
@@ -571,6 +572,8 @@ internal class KeyboardSession(
     fun onServiceDestroyed() {
         shared.removeListener(sharedListener)
         OneTimeCodeHolder.removeListener(codesChanged)
+        // Panels close at once here, never on their closing motion (app-shell.md SS22.7).
+        BottomOverlay.teardown = true
         runCatching { fillPage.hide() }.onFailure { error -> Log.e(TAG, "fill page teardown crashed", error) }
         runCatching { service.unregisterReceiver(runCommandNowReceiver) }.onFailure { error -> Log.e(TAG, "run-command receiver teardown crashed", error) }
         settingsScope.cancel()
@@ -593,6 +596,7 @@ internal class KeyboardSession(
         handler.removeCallbacks(expansionRefreshRunnable)
         runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); variationChooser.reset(); symChooser.reset(); gifPage.onServiceDestroyed(); gifSender.onServiceDestroyed(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
+        BottomOverlay.teardown = false
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
         launcherKeys.onServiceDestroyed()

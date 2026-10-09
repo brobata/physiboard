@@ -13,6 +13,10 @@ import android.widget.TextView
 import brobata.physiboard.core.actions.fill.FillLabels
 import brobata.physiboard.core.actions.fill.OneTimeCode
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.ime.skin.PanelSkin
 import brobata.physiboard.ime.actions.BottomOverlay
 
 /**
@@ -48,6 +52,7 @@ internal class FillPageController(service: InputMethodService, private val handl
     private var listener: Listener? = null
     private var content: Content? = null
     private var theme: StripTheme = StripTheme.SLATE_DARK
+    private var skin: PanelSkin? = null
 
     /** The suggestions the open page drew chips for; a new response redraws the page. */
     private var shownSuggestions: List<Any> = emptyList()
@@ -71,13 +76,15 @@ internal class FillPageController(service: InputMethodService, private val handl
             renderCodes()
             return
         }
-        hide()
+        // A new response (or theme) while the page is up redraws it in place, with a fade.
+        val replacing = panel.isShown
+        hide(animate = false)
         this.listener = listener
         this.content = content
         this.theme = theme
         shownSuggestions = content.inline.suggestions
         val root = build(content)
-        if (!panel.show(root, heightPx = null, bottomMarginPx = aboveBottomPx)) {
+        if (!panel.show(root, heightPx = null, bottomMarginPx = aboveBottomPx, enter = if (replacing) DesignMotion.Enter.FADE else DesignMotion.Enter.SPRING)) {
             codesBox = null
             return
         }
@@ -91,9 +98,9 @@ internal class FillPageController(service: InputMethodService, private val handl
         if (panel.isShown) renderCodes()
     }
 
-    fun hide() {
+    fun hide(animate: Boolean = true) {
         handler.removeCallbacks(ageRefresh)
-        panel.hide()
+        panel.hide(animate)
         codesBox = null
         content = null
         listener = null
@@ -103,32 +110,15 @@ internal class FillPageController(service: InputMethodService, private val handl
 
     private fun build(content: Content): View {
         val context = panel.overlayContext
+        val skin = PanelSkin(context, theme).also { skin = it }
         val column = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(theme.background)
-            val pad = panel.dp(6)
-            setPadding(pad, pad, pad, pad)
+            background = skin.panelBackground()
+            setPadding(panel.dp(8), panel.dp(6), panel.dp(6), panel.dp(8))
         }
         val header = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        header.addView(
-            TextView(context).apply {
-                text = TITLE
-                setTextColor(theme.textAndIcons)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
-        )
-        header.addView(
-            TextView(context).apply {
-                text = "✕"
-                gravity = Gravity.CENTER
-                setTextColor(theme.textAndIcons)
-                background = GradientDrawable().apply { setColor(theme.button); cornerRadius = panel.dp(6).toFloat() }
-                setOnClickListener { listener?.onClose() }
-                contentDescription = "Close"
-            },
-            LinearLayout.LayoutParams(panel.dp(36), panel.dp(32)),
-        )
+        header.addView(skin.comment(TITLE), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        header.addView(skin.closeButton { listener?.onClose() }, LinearLayout.LayoutParams(panel.dp(PanelSkin.CLOSE_WIDTH_DP), panel.dp(PanelSkin.CLOSE_HEIGHT_DP)))
         column.addView(header)
         if (content.inline.hasSuggestions) column.addView(buildChips(content.inline), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
@@ -170,69 +160,49 @@ internal class FillPageController(service: InputMethodService, private val handl
     private fun renderCodes() {
         val box = codesBox ?: return
         val content = content ?: return
-        val context = panel.overlayContext
+        val skin = skin ?: return
         box.removeAllViews()
         val codes = content.codes
         renderedCodes = codes
         if (codes.isEmpty()) {
             if (content.inline.hasSuggestions) return
             box.addView(
-                TextView(context).apply {
-                    text = content.emptyNote
-                    setTextColor(theme.textAndIcons)
-                    alpha = 0.8f
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                    setPadding(panel.dp(8), panel.dp(10), panel.dp(8), panel.dp(12))
+                skin.reading(content.emptyNote, DesignTokens.Type.BODY_SP, skin.mutedText).apply {
+                    setPadding(panel.dp(2), panel.dp(10), panel.dp(8), panel.dp(8))
                 },
             )
             return
         }
         codes.forEachIndexed { index, code ->
-            val row = LinearLayout(context).apply {
+            val row = LinearLayout(skin.context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(panel.dp(8), panel.dp(6), panel.dp(8), panel.dp(6))
-                background = GradientDrawable().apply {
-                    setColor(theme.suggestion)
-                    setStroke(panel.dp(1), theme.divider)
-                    cornerRadius = panel.dp(6).toFloat()
-                }
+                setPadding(panel.dp(8), panel.dp(8), panel.dp(10), panel.dp(8))
+                background = skin.keyDrawable(radiusDp = DesignTokens.Radius.PANE)
                 setOnClickListener { listener?.onCode(code) }
                 contentDescription = "Type code ${code.code.toCharArray().joinToString(" ")}, ${FillLabels.codeLine(code, content.nowMs)}"
+                DesignMotion.pressable(this)
             }
             val key = content.keyLabel(index + 1)
+            // The key that types it, as a keycap: the same 4 dp cap and mono letter as a Sym key.
             row.addView(
-                TextView(context).apply {
-                    text = key ?: "${index + 1}"
+                skin.label(key ?: "${index + 1}", DesignTokens.Type.LABEL_SP, PhysiFonts.Face.MONO_BOLD).apply {
                     gravity = Gravity.CENTER
-                    setTextColor(theme.textAndIcons)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                    typeface = Typeface.DEFAULT_BOLD
-                    background = GradientDrawable().apply { setColor(theme.button); cornerRadius = panel.dp(5).toFloat() }
+                    background = skin.rounded(theme.button, theme.divider, DesignTokens.Radius.KEY)
                 },
-                LinearLayout.LayoutParams(panel.dp(28), panel.dp(28)).apply { marginEnd = panel.dp(10) },
+                LinearLayout.LayoutParams(panel.dp(28), panel.dp(28)).apply { marginEnd = panel.dp(12) },
             )
             row.addView(
-                TextView(context).apply {
-                    text = code.code
-                    setTextColor(theme.textAndIcons)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
-                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-                    letterSpacing = 0.08f
+                skin.label(code.code, DesignTokens.Type.CODE_SP, PhysiFonts.Face.MONO_BOLD).apply {
+                    letterSpacing = DesignTokens.Type.CODE_TRACKING_EM
                 },
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = panel.dp(12) },
             )
             row.addView(
-                TextView(context).apply {
-                    text = FillLabels.codeLine(code, content.nowMs)
-                    setTextColor(theme.textAndIcons)
-                    alpha = 0.75f
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                    maxLines = 2
-                },
+                skin.reading(FillLabels.codeLine(code, content.nowMs), 12f, skin.mutedText).apply { maxLines = 2 },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
             )
-            box.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = panel.dp(4) })
+            box.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = panel.dp(6) })
         }
     }
 

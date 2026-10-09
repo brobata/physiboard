@@ -118,12 +118,14 @@ the floating popup.
 Tab or Enter on an exact match (when those are enabled) still expand. Up/Down and Escape do
 nothing because nothing is visible.
 
-**Floating popup** (`floating_popup`, default): a dark rounded panel (background rgb 35,35,38,
-12 dp corners, 8 dp elevation) 300 dp wide, positioned at the top center of the keyboard's
+**Floating popup** (`floating_popup`, default): a pane in the design system's scheme for the
+system's light or dark mode (app-shell.md SS22.7; amended 2026-10-09 from a fixed dark panel:
+the pane colour, a 1 dp pane-border hairline, 6 dp corners, 8 dp elevation) 300 dp wide, positioned at the top center of the keyboard's
 window and offset upward by its own height, so it sits just above the keyboard chrome. It lists
-up to 10 rows of 44 dp each, white 14 sp text, single line with an ellipsis, 14 dp horizontal
+up to 10 rows of 44 dp each, 14 sp JetBrains Mono in the scheme's text colour, single line with an ellipsis, 14 dp horizontal
 and 10 dp vertical padding, and shows at most 5 rows at a time (the rest scroll, scrollbar always
-visible). The highlighted row has background rgb 65,83,125. A row tap commits that match with no
+visible). The highlighted row has an accent wash (the accent at 20 % over the pane) with 4 dp corners.
+It appears and goes without motion, since it is redrawn on every highlight move. A row tap commits that match with no
 trailing space. The popup does not take focus and is not dismissed by outside touches; it
 disappears when matches clear. Up and Down move the highlight and scroll it into view.
 
@@ -294,7 +296,14 @@ suggestion color for ordinary clips; the accent at alpha 95/255 for pinned clips
 theme: white at alpha 40 and rgb 7,7,212 at alpha 60 respectively), 1 dp divider-colored border
 when themed, 6 dp corners. Empty state: "No clipboard history" at 14 sp centered, text color at
 alpha 128. A close button (36 by 32 dp, 4 dp padding, 6 dp corners, the status bar button color,
-fallback red 220,38,38 at alpha 95) sits at the bottom end corner over the grid. In the software
+fallback red 220,38,38 at alpha 95) sits at the bottom end corner over the grid.
+
+Skin (app-shell.md SS22.7, amended 2026-10-09; the sizes above stand): the title is a shell
+comment, `# clipboard history`, in mono with the `#` in the accent; "Clear All" is a terminal
+button (the accent in a 1 dp accent outline, 4 dp corners); a clip's text is Inter (it is read,
+not scanned); a pinned clip is the accent at 20 % over the key colour with a 1 dp accent
+outline instead of the alpha-95 fill; the close button is the shared close icon on a 4 dp key
+with a 1 dp divider outline. A pressed card takes an accent wash and dips to 94 %. In the software
 keyboard mode the panel is given the software keyboard's height instead of 177 dp.
 
 Interactions:
@@ -528,7 +537,11 @@ screen width minus 16 dp, clamped to 4..10; on the Titan's 1080 px width that is
 (none at the outer edges), 8 dp padding around the grid plus 44 dp extra at the bottom. Category
 headers are 1 dp spacers, not titles; the tab row is the only category indication. Tabs get equal
 width, 4 dp padding, the theme's text color; the selected tab is the accent at alpha 100 with a 1
-dp divider border (white at alpha 100 without a theme), 6 dp corners.
+dp divider border (white at alpha 100 without a theme), 6 dp corners. Skin (amended 2026-10-09,
+app-shell.md SS22.7): tab labels and the mode button are JetBrains Mono; the selected tab is the
+accent at 20 % with a 1 dp accent outline and 4 dp corners; the search toggle is the shared
+search icon; the tab row sits under a 1 dp divider rule; a pressed cell or tab takes an accent
+wash; symbols and kaomoji cells draw in Inter.
 
 Tab row, left to right: a search toggle button (magnifier, 32 dp square), a keyboard-switcher
 button that is visible only in software keyboard mode (dropped in 3.0), the mode button (3.0:
@@ -566,8 +579,8 @@ takes one (section 4.7; the grid shows each emoji the way a tap inserts it). If 
 commit is posted right after, so the strip's redraw and the insert do not fight; otherwise the
 commit is immediate and the page stays open.
 
-Long press on an emoji that has variants: a light popup (the theme's key popup color, fallback
-white at alpha 0xEE, 12 dp elevation) above the cell, centered on it and clamped to the screen,
+Long press on an emoji that has variants: a popup pane (amended 2026-10-09: the theme's key
+colour with a 1 dp divider outline and 6 dp corners, 12 dp elevation) above the cell, centered on it and clamped to the screen,
 listing the untoned form, then the cell's own form, then each variant (duplicates once) at 24
 sp with 12 dp by 8 dp padding, scrolling sideways when it is wider than the screen (a pair such
 as 🧑‍🤝‍🧑 lists all 25 tone combinations); tapping one commits it the same way and dismisses
@@ -592,8 +605,10 @@ current scroll anchor.
 ### 4.5 Search and the search input
 
 The search toggle shows or hides a search panel over the bottom of the grid: a single-line
-field ("Search emoji..." hint, 14 sp, 8 dp by 5 dp padding, 7 dp corners, suggestion color
-background) inside a 6 dp padded panel. Showing the panel focuses the field and turns capture
+field inside a 6 dp padded panel, drawn as the skin's prompt (amended 2026-10-09, app-shell.md
+SS22.7): a `$` in the accent, then the field in 14 sp JetBrains Mono with the hint lower-cased
+and ending in `_` ("Search emoji..." reads `$ search emoji_`), on the suggestion colour with a
+1 dp divider outline and 2 dp corners; the outline turns the accent while capture is on. Showing the panel focuses the field and turns capture
 on; hiding it turns capture off. The field never asks for a system on-screen keyboard.
 
 Capture means hardware keys are typed into the search field instead of the app while page 4

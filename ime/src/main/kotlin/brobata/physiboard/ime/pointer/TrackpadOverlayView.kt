@@ -13,6 +13,9 @@ import brobata.physiboard.core.pointer.trackpad.TouchSample
 import brobata.physiboard.core.pointer.trackpad.TrackpadAccumulator
 import brobata.physiboard.core.pointer.trackpad.TrackpadGesture
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.ime.skin.PanelSkin
 
 /**
  * The full-screen touch surface of the screen trackpad overlay.
@@ -42,19 +45,30 @@ internal class TrackpadOverlayView(
     private var previousSample: TouchSample? = null
     private var pillBounds: RectF? = null
 
+    /**
+     * The hint pill wears the design system (docs/design/design-system.md, "Panels"): a pane in the
+     * system's light or dark scheme, a hairline in the accent, the words in mono.
+     */
+    private val scheme = PanelSkin.scheme(context)
     private val pillBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(200, 20, 20, 20)
+        color = Color.argb(235, Color.red(scheme.pane), Color.green(scheme.pane), Color.blue(scheme.pane))
+    }
+    private val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = scheme.accent
+        strokeWidth = DesignTokens.BORDER_DP * resources.displayMetrics.density
     }
     private val pillTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = scheme.text
         textAlign = Paint.Align.CENTER
+        typeface = PhysiFonts.get(context, PhysiFonts.Face.MONO_MEDIUM)
     }
 
     init {
         isFocusable = false
         isFocusableInTouchMode = false
         setWillNotDraw(false)
-        pillTextPaint.textSize = 13f * resources.displayMetrics.scaledDensity
+        pillTextPaint.textSize = DesignTokens.Type.LABEL_SP * resources.displayMetrics.scaledDensity
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -89,16 +103,18 @@ internal class TrackpadOverlayView(
         val density = resources.displayMetrics.density
         val cx = width / 2f
         val topMarginPx = 56f * density
-        val paddingH = 14f * density
-        val paddingV = 7f * density
+        val paddingH = DesignTokens.Space.M * density
+        val paddingV = DesignTokens.Space.S * density
         val textWidth = pillTextPaint.measureText(text)
         val textHeight = pillTextPaint.descent() - pillTextPaint.ascent()
         val left = cx - textWidth / 2f - paddingH
         val right = cx + textWidth / 2f + paddingH
         val top = topMarginPx
         val bottom = topMarginPx + textHeight + paddingV * 2
-        val corner = 20f * density
+        val corner = DesignTokens.Radius.PANE * density
         canvas.drawRoundRect(left, top, right, bottom, corner, corner, pillBackgroundPaint)
+        val inset = pillBorderPaint.strokeWidth / 2f
+        canvas.drawRoundRect(left + inset, top + inset, right - inset, bottom - inset, corner, corner, pillBorderPaint)
         canvas.drawText(text, cx, bottom - paddingV - pillTextPaint.descent(), pillTextPaint)
         pillBounds = RectF(left, top, right, bottom)
     }

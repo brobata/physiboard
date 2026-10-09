@@ -107,7 +107,8 @@ data class SymGridGeometry(
     companion object {
         const val KEY_HEIGHT_DP: Int = 56
         const val SPACING_DP: Int = 4
-        const val CORNER_DP: Int = 6
+        /** The design system's keycap corner (docs/design/design-system.md, "Shape"): 4 dp, as on every key and chip. */
+        const val CORNER_DP: Int = 4
         const val BORDER_DP: Int = 1
 
         /** spec SS5.7: "key width = (screen width in px minus 16 dp) minus 9 gaps of 4 dp, divided by 10". */

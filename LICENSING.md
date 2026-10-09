@@ -38,16 +38,16 @@ It is a separate Gradle module so the boundary is visible in the build rather th
 comment, and so it is plain that the clean-room rule governing the rest of 3.0 does not apply
 to it.
 
-`app/src/main/res/font/jetbrains_mono_*.ttf` vendors three static weights (Regular, Medium,
+`design/src/main/res/font/jetbrains_mono_*.ttf` vendors three static weights (Regular, Medium,
 Bold) of **[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)** by the JetBrains Mono
 Project Authors, under the **SIL Open Font License, version 1.1**. It is the app-shell's
-title and prompt typeface (app-shell.md SS22.1) and is not PhysiBoard's work; the full licence
+title and prompt typeface (app-shell.md SS22.1) and the keyboard panels' label face (SS22.7) and is not PhysiBoard's work; the full licence
 text is in `third_party/licenses/OFL-1.1.txt`.
 
-`app/src/main/res/font/inter_*.ttf` vendors three static weights (Regular, Medium, SemiBold) of
+`design/src/main/res/font/inter_*.ttf` vendors three static weights (Regular, Medium, SemiBold) of
 **[Inter](https://github.com/rsms/inter)** 4.1, Copyright 2016 The Inter Project Authors, under
-the **SIL Open Font License, version 1.1**, unmodified. It is the app-shell's reading typeface
-(app-shell.md SS22.1) and is not PhysiBoard's work; the full licence text, with Inter's own
+the **SIL Open Font License, version 1.1**, unmodified. It is the app-shell's and the keyboard panels' reading typeface
+(app-shell.md SS22.1, SS22.7) and is not PhysiBoard's work; the full licence text, with Inter's own
 copyright line, is in `third_party/licenses/OFL-1.1-Inter.txt`. The About screen credits both
 fonts under "Fonts".
 

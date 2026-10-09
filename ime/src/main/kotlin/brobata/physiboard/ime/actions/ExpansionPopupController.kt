@@ -1,6 +1,5 @@
 package brobata.physiboard.ime.actions
 
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.text.TextUtils
@@ -11,6 +10,10 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import brobata.physiboard.core.actions.snippets.SnippetMatch
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.ime.skin.PanelSkin
 
 /**
  * The floating popup presentation of text expansion. spec: expansion-clipboard-pickers-launcher.md
@@ -34,22 +37,34 @@ internal class ExpansionPopupController(service: InputMethodService) {
         }
         val labels = rows.map { it.label }
         if (labels == lastRows && highlight == lastHighlight && panel.isShown) return
+        // Re-drawn on every highlight move while typing: swapped at once, never animated.
         hide()
         lastRows = labels
         lastHighlight = highlight
         val context = panel.overlayContext
+        // The popup has no keyboard theme of its own: it wears the design system's scheme for the
+        // system's light or dark mode, a pane with a hairline and the accent on the highlight.
+        val scheme = PanelSkin.scheme(context)
+        val mono = PhysiFonts.get(context, PhysiFonts.Face.MONO_MEDIUM)
+        val density = context.resources.displayMetrics.density
         val column = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         rowViews = labels.mapIndexed { index, label ->
             TextView(context).apply {
                 text = label
-                setTextColor(Color.WHITE)
+                typeface = mono
+                setTextColor(scheme.text)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SP)
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(panel.dp(PADDING_H_DP), panel.dp(PADDING_V_DP), panel.dp(PADDING_H_DP), panel.dp(PADDING_V_DP))
                 minHeight = panel.dp(ROW_DP)
-                if (index == highlight) setBackgroundColor(HIGHLIGHT)
+                if (index == highlight) {
+                    background = GradientDrawable().apply {
+                        setColor(PanelSkin.blend(scheme.pane, scheme.accent, DesignTokens.Alpha.SELECTED_WASH))
+                        cornerRadius = DesignTokens.Radius.KEY * density
+                    }
+                }
                 setOnClickListener { onRowTapped(index) }
                 column.addView(this, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, panel.dp(ROW_DP)))
             }
@@ -58,20 +73,22 @@ internal class ExpansionPopupController(service: InputMethodService) {
             isVerticalScrollBarEnabled = true
             scrollBarDefaultDelayBeforeFade = Int.MAX_VALUE
             background = GradientDrawable().apply {
-                setColor(BACKGROUND)
-                cornerRadius = panel.dp(CORNER_DP).toFloat()
+                setColor(scheme.pane)
+                cornerRadius = panel.dp(DesignTokens.Radius.PANE).toFloat()
+                setStroke(panel.dp(DesignTokens.BORDER_DP), scheme.border)
             }
+            setPadding(panel.dp(2), panel.dp(2), panel.dp(2), panel.dp(2))
             elevation = panel.dp(ELEVATION_DP).toFloat()
             clipToOutline = true
             addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
         }
         val visibleRows = minOf(rows.size, MAX_VISIBLE_ROWS)
-        panel.show(scroll, heightPx = panel.dp(ROW_DP * visibleRows), bottomMarginPx = aboveBottomPx, focusable = false, widthPx = panel.dp(WIDTH_DP))
+        panel.show(scroll, heightPx = panel.dp(ROW_DP * visibleRows) + panel.dp(4), bottomMarginPx = aboveBottomPx, focusable = false, widthPx = panel.dp(WIDTH_DP), enter = DesignMotion.Enter.NONE)
         rowViews.getOrNull(highlight)?.let { row -> scroll.post { scroll.smoothScrollTo(0, row.top) } }
     }
 
     fun hide() {
-        panel.hide()
+        panel.hide(animate = false)
         rowViews = emptyList()
         lastRows = emptyList()
         lastHighlight = -1
@@ -87,9 +104,6 @@ internal class ExpansionPopupController(service: InputMethodService) {
         const val TEXT_SP = 14f
         const val PADDING_H_DP = 14
         const val PADDING_V_DP = 10
-        const val CORNER_DP = 12
         const val ELEVATION_DP = 8
-        val BACKGROUND: Int = Color.rgb(35, 35, 38)
-        val HIGHLIGHT: Int = Color.rgb(65, 83, 125)
     }
 }

@@ -1,6 +1,5 @@
 package brobata.physiboard.ime.actions
 
-import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.util.TypedValue
 import android.view.Gravity
@@ -15,6 +14,11 @@ import brobata.physiboard.core.strip.SymGridLetter
 import brobata.physiboard.core.strip.SymGridModel
 import brobata.physiboard.core.strip.SYM_PAGE_CUSTOM_1
 import brobata.physiboard.core.strip.SymGridPage
+import brobata.physiboard.design.DesignMotion
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.PhysiFonts
+import brobata.physiboard.design.R as DesignR
+import brobata.physiboard.ime.skin.PanelSkin
 
 /**
  * The on-screen surface for a key-layer Sym page (Emoji, page 1, or Symbols, page 2): the grid
@@ -65,12 +69,19 @@ internal class SymGridPanelController(service: InputMethodService) {
     fun show(page: SymGridPage, characters: Map<Char, String>, theme: StripTheme, aboveBottomPx: Int, listener: Listener) {
         this.theme = theme
         if (panel.isShown && shownPage == page) return
-        if (panel.isShown) panel.hide()
+        // The Sym key stepping straight to the next page swaps the panel in place, with a fade.
+        val replacing = panel.isShown
+        if (replacing) panel.hide(animate = false)
         shownPage = page
         val metrics = panel.overlayContext.resources.displayMetrics
         val geometry = SymGridGeometry.forScreenWidth(metrics.widthPixels, metrics.density, cornerSideInsetPx = panel.cornerInsets(aboveBottomPx).sidePx)
         val root = build(page, geometry, characters, listener)
-        panel.show(root, heightPx = geometry.contentHeightPx, bottomMarginPx = aboveBottomPx)
+        panel.show(
+            root,
+            heightPx = geometry.contentHeightPx + 2 * panel.dp(EDGE_DP),
+            bottomMarginPx = aboveBottomPx,
+            enter = if (replacing) DesignMotion.Enter.FADE else DesignMotion.Enter.SPRING,
+        )
     }
 
     fun hide() {
@@ -85,7 +96,11 @@ internal class SymGridPanelController(service: InputMethodService) {
 
     private fun build(page: SymGridPage, geometry: SymGridGeometry, characters: Map<Char, String>, listener: Listener): View {
         val context = panel.overlayContext
-        val root = FrameLayout(context).apply { setBackgroundColor(theme.background) }
+        val skin = PanelSkin(context, theme)
+        val root = FrameLayout(context).apply {
+            background = skin.panelBackground()
+            setPadding(0, panel.dp(EDGE_DP), 0, panel.dp(EDGE_DP))
+        }
         val column = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.START
@@ -98,7 +113,7 @@ internal class SymGridPanelController(service: InputMethodService) {
                     gravity = Gravity.START
                 }
                 row.forEachIndexed { cellIndex, cell ->
-                    val cellView = buildCell(context, page, geometry, cell, listener)
+                    val cellView = buildCell(skin, page, geometry, cell, listener)
                     val params = LinearLayout.LayoutParams(geometry.keyWidthPx, geometry.keyHeightPx)
                     if (cellIndex > 0) params.marginStart = geometry.spacingPx
                     rowView.addView(cellView, params)
@@ -109,7 +124,7 @@ internal class SymGridPanelController(service: InputMethodService) {
             }
         root.addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT))
         root.addView(
-            closeButton(listener::onClose),
+            skin.closeButton(listener::onClose),
             FrameLayout.LayoutParams(panel.dp(CLOSE_WIDTH_DP), panel.dp(CLOSE_HEIGHT_DP), Gravity.BOTTOM or Gravity.END).apply {
                 setMargins(0, 0, panel.dp(4), panel.dp(4))
             },
@@ -118,34 +133,28 @@ internal class SymGridPanelController(service: InputMethodService) {
     }
 
     /**
-     * spec SS5.7: "Key corners 6 dp, 1 dp divider stroke". The reduced [StripTheme] (status-bar.md
-     * SS9.1's Keep/Drop) has no `normal_key` field of its own; the Slate Dark default sets
-     * `normal_key` to the same value as `suggestion` (status-bar.md SS9.2: both 0xFF15191D), so
-     * [StripTheme.suggestion] stands in for it here.
+     * spec SS5.7: keycaps in Keys ([StripTheme.suggestion]) with a 1 dp Key-outline stroke and the
+     * design system's 4 dp corners; the chrome keys (pencil, globe, search) in Buttons, drawn with
+     * the shared icon family (docs/design/design-system.md, "Panels").
      */
-    private fun buildCell(context: android.content.Context, page: SymGridPage, geometry: SymGridGeometry, cell: SymGridCell, listener: Listener): View = when (cell) {
-        is SymGridCell.Key -> buildKeyCell(context, page, geometry, cell, listener)
-        SymGridCell.Blank -> View(context)
-        SymGridCell.Pencil -> chromeCell(context, geometry, "✏") { listener.onPencil() }
-        SymGridCell.Globe -> chromeCell(context, geometry, "🌐") { listener.onGlobe() }
-        SymGridCell.Search -> chromeCell(context, geometry, "🔍") { listener.onSearch() }.apply { contentDescription = "Search symbols" }
+    private fun buildCell(skin: PanelSkin, page: SymGridPage, geometry: SymGridGeometry, cell: SymGridCell, listener: Listener): View = when (cell) {
+        is SymGridCell.Key -> buildKeyCell(skin, page, geometry, cell, listener)
+        SymGridCell.Blank -> View(skin.context)
+        SymGridCell.Pencil -> skin.iconButton(DesignR.drawable.pb_ic_edit, "Edit this page") { listener.onPencil() }
+        SymGridCell.Globe -> skin.iconButton(DesignR.drawable.pb_ic_globe, "Switch keyboard") { listener.onGlobe() }
+        SymGridCell.Search -> skin.iconButton(DesignR.drawable.pb_ic_search, "Search symbols") { listener.onSearch() }
     }
 
-    private fun buildKeyCell(context: android.content.Context, page: SymGridPage, geometry: SymGridGeometry, cell: SymGridCell.Key, listener: Listener): View {
+    private fun buildKeyCell(skin: PanelSkin, page: SymGridPage, geometry: SymGridGeometry, cell: SymGridCell.Key, listener: Listener): View {
+        val context = skin.context
         val frame = FrameLayout(context).apply {
-            background = GradientDrawable().apply {
-                setColor(theme.suggestion)
-                setStroke(geometry.borderPx, theme.divider)
-                cornerRadius = geometry.cornerPx.toFloat()
-            }
+            background = skin.keyDrawable(radiusDp = SymGridGeometry.CORNER_DP)
         }
         frame.addView(
-            TextView(context).apply {
-                text = cell.label.toString()
+            skin.label(cell.label.toString(), DesignTokens.Type.KEY_LETTER_SP, PhysiFonts.Face.MONO_MEDIUM, skin.mutedText).apply {
                 gravity = Gravity.TOP or Gravity.START
-                setTextColor(theme.textAndIcons)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, LABEL_TEXT_SP)
-                setPadding(panel.dp(3), panel.dp(1), 0, 0)
+                setPadding(panel.dp(4), panel.dp(3), 0, 0)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             },
             FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT),
         )
@@ -155,7 +164,8 @@ internal class SymGridPanelController(service: InputMethodService) {
                     text = cell.character
                     gravity = Gravity.CENTER
                     setTextColor(theme.textAndIcons)
-                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    // A character shown as itself: the glyph face (Inter); an emoji draws in the system's emoji font either way.
+                    if (page != SymGridPage.EMOJI) typeface = skin.face(PhysiFonts.Face.SANS_MEDIUM)
                     setTextSize(TypedValue.COMPLEX_UNIT_PX, geometry.characterPx(page).toFloat())
                     if (page.pageNumber >= SYM_PAGE_CUSTOM_1) {
                         // layers-sym-alt.md SS4.6: a key of the user's own may hold a short word;
@@ -167,37 +177,16 @@ internal class SymGridPanelController(service: InputMethodService) {
                 },
                 FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
             )
+            frame.contentDescription = "${cell.character}, ${cell.label}"
             frame.isClickable = true
             frame.setOnClickListener { listener.onKeyTapped(cell.letter.letter) }
         }
+        // A key with nothing on it still says which key it is (a long press assigns it).
+        if (cell.character == null) frame.contentDescription = cell.label.toString()
         frame.isLongClickable = true
         frame.setOnLongClickListener { listener.onKeyLongPressed(cell.letter.letter); true }
+        DesignMotion.pressable(frame)
         return frame
-    }
-
-    private fun chromeCell(context: android.content.Context, geometry: SymGridGeometry, glyph: String, onTap: () -> Unit): View = TextView(context).apply {
-        text = glyph
-        gravity = Gravity.CENTER
-        setTextColor(theme.textAndIcons)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, GLYPH_TEXT_SP)
-        background = GradientDrawable().apply {
-            setColor(theme.button)
-            setStroke(geometry.borderPx, theme.divider)
-            cornerRadius = geometry.cornerPx.toFloat()
-        }
-        setOnClickListener { onTap() }
-    }
-
-    /** spec SS5.7: the close button, 36 by 32 dp, matching the clipboard and emoji picker panels' own (`ClipboardPanelController.closeButton`). */
-    private fun closeButton(onClose: () -> Unit): View = TextView(panel.overlayContext).apply {
-        text = "✕"
-        gravity = Gravity.CENTER
-        setTextColor(theme.textAndIcons)
-        background = GradientDrawable().apply {
-            setColor(theme.button)
-            cornerRadius = panel.dp(6).toFloat()
-        }
-        setOnClickListener { onClose() }
     }
 
     private companion object {
@@ -205,9 +194,8 @@ internal class SymGridPanelController(service: InputMethodService) {
         const val CLOSE_WIDTH_DP = 36
         const val CLOSE_HEIGHT_DP = 32
 
-        /** SPEC GAP: SS5.7 sizes only the big character (0.75 / 0.5 of the key height); the small letter label's size is unstated. 10 sp reads as "small" beside a 52-78 px character without crowding the 56 dp key. */
-        const val LABEL_TEXT_SP = 10f
-        const val GLYPH_TEXT_SP = 20f
+        /** The panel's own breathing room above and below the grid, in dp (one design-system step). */
+        const val EDGE_DP = 4
 
         /** The smallest a word on a page of the user's own shrinks to, in pixels. */
         const val MIN_CUSTOM_TEXT_PX = 14

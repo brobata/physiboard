@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Close: every panel's close button. Part of PhysiBoard's icon family (docs/design/design-system.md, "Iconography"): 24 dp,
+     1.75 dp round-capped strokes, drawn white and tinted where it is used. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.75" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" android:pathData="M6.5,6.5 L17.5,17.5 M17.5,6.5 L6.5,17.5" />
+</vector>

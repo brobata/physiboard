@@ -58,5 +58,9 @@ include(":device:privileged")
 // Third-party, Apache-2.0, kept at arm's length. See broker/NOTICE.
 include(":broker")
 
+// The design system the settings app and the keyboard share: fonts, icons and tokens
+// (docs/design/design-system.md).
+include(":design")
+
 include(":ime")
 include(":app")
