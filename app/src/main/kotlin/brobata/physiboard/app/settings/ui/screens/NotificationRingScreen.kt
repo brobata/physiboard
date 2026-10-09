@@ -30,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -284,7 +285,7 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
 
     if (showAddApp) {
         val apps = remember { AppCatalog.installedApps(context) }
-        var query by remember { mutableStateOf("") }
+        var query by rememberSaveable { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddApp = false },
             properties = WideDialogProperties,

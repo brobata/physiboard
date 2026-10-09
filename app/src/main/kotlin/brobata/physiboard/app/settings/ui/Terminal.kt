@@ -40,6 +40,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import brobata.physiboard.core.actions.feedback.HapticEvent
 import java.util.Locale
 
 /**
@@ -128,7 +129,7 @@ fun PromptTitle(title: String, slug: String, modifier: Modifier = Modifier, maxS
 
 /**
  * The switch: a rounded pill in the skin's colours (amber track and a light thumb when on, a
- * filled slate track when off), sliding with a short ease. The square terminal version read as
+ * filled slate track when off), the thumb thrown on a spring and the tap felt (TOGGLE_ON/OFF). The square terminal version read as
  * clunky and was hard to tell on from off at a glance (maintainer, 2026-10-09). Same contract as
  * Material's Switch: [onCheckedChange] null makes it display-only (the row around it takes the
  * tap), and it is at least 48 dp wide and tall as a target when it takes one.
@@ -139,9 +140,14 @@ fun TerminalSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modi
     val motion = tween<Color>(180, easing = FastOutSlowInEasing)
     val track by animateColorAsState(if (checked) colors.primary else colors.outline, motion, label = "switch_track")
     val thumb by animateColorAsState(if (checked) colors.onPrimary else colors.surface, motion, label = "switch_thumb")
-    val offset by animateDpAsState(if (checked) TrackWidth - ThumbSize - ThumbInset * 2 else 0.dp, tween(180, easing = FastOutSlowInEasing), label = "switch_offset")
+    // app-shell.md SS22.2: the thumb is thrown on a spring with a touch of bounce; the colours ease.
+    val offset by animateDpAsState(if (checked) TrackWidth - ThumbSize - ThumbInset * 2 else 0.dp, SettingsMotion.thumb, label = "switch_offset")
+    val haptic = rememberHaptic()
     val toggle = if (onCheckedChange != null) {
-        Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
+        Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch) { on ->
+            haptic(if (on) HapticEvent.TOGGLE_ON else HapticEvent.TOGGLE_OFF)
+            onCheckedChange(on)
+        }
     } else {
         Modifier
     }

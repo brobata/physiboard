@@ -1,5 +1,8 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.app.settings.ui.SettingsSection
+import brobata.physiboard.app.settings.ui.LocalUndo
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,6 +61,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun FnLayerScreen(onBack: () -> Unit) {
     val controller = LocalSettingsController.current
+    val undo = LocalUndo.current
     val keys = controller.current.value.keys
     val context = LocalContext.current
     val application = context.applicationContext as PhysiBoardApplication
@@ -166,9 +170,10 @@ fun FnLayerScreen(onBack: () -> Unit) {
                 ButtonRow(
                     label = "Reset these switches",
                     buttonText = "Reset",
+                    // app-shell.md SS22.4: reset at once; Undo puts the three switches back.
                     onClick = {
                         val defaults = KeyPrefs()
-                        controller.update {
+                        val transform: (Settings) -> Settings = {
                             it.copy(
                                 keys = it.keys.copy(
                                     navModeEnabled = defaults.navModeEnabled,
@@ -177,6 +182,7 @@ fun FnLayerScreen(onBack: () -> Unit) {
                                 ),
                             )
                         }
+                        if (undo != null) undo.updateSettings(controller, "fn-switches-reset", "Fn layer switches reset", SettingsSection.FN_LAYER_SWITCHES, transform = transform) else controller.update(transform)
                     },
                 )
             }

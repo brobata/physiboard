@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,6 +24,8 @@ import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.BackupArchive
 import brobata.physiboard.app.settings.ui.InfoText
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.rememberHaptic
+import brobata.physiboard.core.actions.feedback.HapticEvent
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -45,6 +48,7 @@ fun BackupScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val application = context.applicationContext as PhysiBoardApplication
     val controller = LocalSettingsController.current
+    val haptic = rememberHaptic()
     var showResetConfirm by remember { mutableStateOf(false) }
     var restoreMessage by remember { mutableStateOf<String?>(null) }
     var showResetDeviceConfirm by remember { mutableStateOf(false) }
@@ -134,10 +138,12 @@ fun BackupScreen(onBack: () -> Unit) {
             title = { Text("Reset to defaults?") },
             text = { Text("This restores every PhysiBoard setting to its factory baseline. It does not touch anything outside the app.") },
             confirmButton = {
+                // app-shell.md SS22.4: one of the two resets that keep their confirmation, felt as one.
                 TextButton(onClick = {
+                    haptic(HapticEvent.CONFIRM_DESTRUCTIVE)
                     controller.resetToDefaults()
                     showResetConfirm = false
-                }) { Text("Reset") }
+                }) { Text("Reset", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") } },
         )
@@ -164,6 +170,7 @@ fun BackupScreen(onBack: () -> Unit) {
             },
             confirmButton = {
                 TextButton(onClick = {
+                    haptic(HapticEvent.CONFIRM_DESTRUCTIVE)
                     showResetDeviceConfirm = false
                     resettingDevice = true
                     scope.launch(Dispatchers.IO) {
@@ -171,7 +178,7 @@ fun BackupScreen(onBack: () -> Unit) {
                         resetDeviceMessage = report.message
                         resettingDevice = false
                     }
-                }) { Text("Reset to stock") }
+                }) { Text("Reset to stock", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { showResetDeviceConfirm = false }) { Text("Cancel") } },
         )

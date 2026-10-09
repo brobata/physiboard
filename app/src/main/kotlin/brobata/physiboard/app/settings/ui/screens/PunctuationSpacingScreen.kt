@@ -1,5 +1,8 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.app.settings.ui.SettingsSection
+import brobata.physiboard.app.settings.ui.LocalUndo
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material.icons.Icons
@@ -64,6 +67,7 @@ fun PunctuationSpacingScreen(onBack: () -> Unit) {
     val controller = LocalSettingsController.current
     val typing = controller.current.value.typing
     var showHelp by remember { mutableStateOf(false) }
+    val undo = LocalUndo.current
 
     SettingsScreenScaffold(
         title = "Punctuation spacing",
@@ -74,8 +78,10 @@ fun PunctuationSpacingScreen(onBack: () -> Unit) {
                     Icon(Icons.Filled.HelpOutline, contentDescription = "How punctuation spacing works")
                 }
                 IconButton(
+                    // app-shell.md SS22.4: cleared at once; Undo puts both lists back.
                     onClick = {
-                        controller.update { it.copy(typing = it.typing.copy(removeSpaceBefore = "", spaceBeforeNextText = "")) }
+                        val transform: (Settings) -> Settings = { it.copy(typing = it.typing.copy(removeSpaceBefore = "", spaceBeforeNextText = "")) }
+                        if (undo != null) undo.updateSettings(controller, "punctuation-reset", "Punctuation spacing reset", SettingsSection.PUNCTUATION_SPACING, transform = transform) else controller.update(transform)
                     },
                     modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget),
                 ) {

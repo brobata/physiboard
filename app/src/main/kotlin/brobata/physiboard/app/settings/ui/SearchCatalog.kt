@@ -114,6 +114,8 @@ object SearchCatalog {
         SearchEntry("Saved themes", "Theme", Routes.SAVED_THEMES, "saved theme apply delete custom"),
         SearchEntry("Per-language themes", "Theme", Routes.THEME_LAYOUT_OVERRIDES, "theme layout override locale language per-language"),
         SearchEntry("Sound & haptics", LOOK, Routes.SOUND_HAPTICS, "sound click typewriter vibration haptic tap"),
+        SearchEntry("Vibrate on every key", "Sound & haptics", Routes.SOUND_HAPTICS, "vibrate vibration haptic key press tick typing strength"),
+        SearchEntry("Feedback vibrations", "Sound & haptics", Routes.SOUND_HAPTICS, "vibrate vibration haptic shift caps sym accent correction undo long press feel"),
         SearchEntry("Vibrate when dictation starts and stops", "Sound & haptics", Routes.SOUND_HAPTICS, "vibrate vibration haptic dictation voice"),
         SearchEntry("Vibration strength", "Sound & haptics", Routes.SOUND_HAPTICS, "vibration strength stronger firmer haptic dictation voice"),
         SearchEntry("Modifier badge", LOOK, Routes.LOOK, "caret cursor badge shift alt ctrl sym modifier indicator"),

@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +44,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import brobata.physiboard.app.settings.ui.AboutExpander
+import brobata.physiboard.app.settings.ui.InnerPages
+import brobata.physiboard.app.settings.ui.LocalUndo
+import brobata.physiboard.app.settings.ui.SettingsSection
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.EmojiPickerDialog
 import brobata.physiboard.app.settings.ui.LocalSettingsController
@@ -60,9 +63,11 @@ import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.app.settings.ui.TextFieldRow
 import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
 import brobata.physiboard.core.actions.emoji.SkinTone
+import brobata.physiboard.core.actions.feedback.HapticEvent
 import brobata.physiboard.core.actions.emoji.SkinTones
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.settings.CustomSymPage
+import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.settings.SymPage
 import brobata.physiboard.core.settings.SymPagesConfig
 import brobata.physiboard.device.titan.TitanLayouts
@@ -107,8 +112,9 @@ fun CustomizeSymKeyboardScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    var editingPage by remember { mutableStateOf(symPageForNumber(initialPage)) }
-    var showResetConfirm by remember { mutableStateOf(false) }
+    // app-shell.md SS22.5: which page is open survives a trip away and the process being reclaimed.
+    var editingPage by rememberSaveable { mutableStateOf(symPageForNumber(initialPage)) }
+    val undo = LocalUndo.current
     var pickerLetter by remember { mutableStateOf<Char?>(null) }
     var pendingReturn by remember { mutableStateOf(false) }
 
@@ -136,214 +142,253 @@ fun CustomizeSymKeyboardScreen(
         }
     }
 
-    val page = editingPage
-    if (page == null) {
-        SettingsScreenScaffold(title = "Sym pages", onBack = { leaveNormally(onBack) }) {
-            RowList {
-                header("Pages")
-                item {
-                    // layers-sym-alt.md SS4.7: Fill joins the cycle only when it has something, so it is not a fixed step.
-                    val steps = symPages.pages.order.filter { it != SymPage.FILL && enabledFor(symPages.pages, it) }.map { displayName(it, symPages.customPages) }
-                    Text(
-                        "Sym: " + (steps + "closed").joinToString(" → "),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(start = Spacing.l, end = Spacing.l, top = Spacing.m),
-                    )
-                    AboutExpander(
-                        title = "About the Sym pages",
-                        text = "Each Sym press opens the next page that is switched on, in this order; after the last one Sym closes. Use the arrows to reorder and the switch to add or remove a page. A page that is off still opens from the chooser (Sym twice, then its letter). My page 1 to 3 are your own key layers: tap ✏ to fill one, then switch it on.",
-                    )
-                }
-                items(symPages.pages.order.size) { index ->
-                    val entry = symPages.pages.order[index]
+    // app-shell.md SS22.2: the page editor is an inner page, pushed and popped like a screen,
+    // with predictive back; each side keeps its own scroll while the other shows.
+    InnerPages(
+        detail = editingPage,
+        onCloseDetail = { editingPage = null },
+        detailKey = { it.name },
+        list = {
+            SettingsScreenScaffold(title = "Sym pages", onBack = { leaveNormally(onBack) }) {
+                RowList {
+                    header("Pages")
+                    item {
+                        // layers-sym-alt.md SS4.7: Fill joins the cycle only when it has something, so it is not a fixed step.
+                        val steps = symPages.pages.order.filter { it != SymPage.FILL && enabledFor(symPages.pages, it) }.map { displayName(it, symPages.customPages) }
+                        Text(
+                            "Sym: " + (steps + "closed").joinToString(" → "),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = Spacing.l, end = Spacing.l, top = Spacing.m),
+                        )
+                        AboutExpander(
+                            title = "About the Sym pages",
+                            text = "Each Sym press opens the next page that is switched on, in this order; after the last one Sym closes. Use the arrows to reorder and the switch to add or remove a page. A page that is off still opens from the chooser (Sym twice, then its letter). My page 1 to 3 are your own key layers: tap ✏ to fill one, then switch it on.",
+                        )
+                    }
+                    // Keyed by page, so a moved page glides to its new place (app-shell.md SS22.2).
+                items(symPages.pages.order, key = { it.name }) { entry ->
+                    val index = symPages.pages.order.indexOf(entry)
                     val enabledEntry = enabledFor(symPages.pages, entry)
+                    val name = displayName(entry, symPages.customPages)
+                    // app-shell.md SS22.4: a move or a page switched off happens at once, and Undo
+                    // puts the whole list back as it was before this run of changes.
+                    fun changePages(message: String, feel: HapticEvent?, change: (SymPagesConfig) -> SymPagesConfig) {
+                        val transform: (Settings) -> Settings = { it.copy(symPages = it.symPages.copy(pages = change(it.symPages.pages))) }
+                        if (undo != null) undo.updateSettings(controller, "sym-pages", message, SettingsSection.SYM_PAGE_ORDER, feel, transform) else controller.update(transform)
+                    }
                     SymPageOrderRow(
                         page = entry,
-                        name = displayName(entry, symPages.customPages),
+                        name = name,
                         position = if (enabledEntry && entry != SymPage.FILL) symPages.pages.order.take(index + 1).count { it != SymPage.FILL && enabledFor(symPages.pages, it) } else null,
                         enabled = enabledEntry,
                         canMoveUp = index > 0,
                         canMoveDown = index < symPages.pages.order.lastIndex,
-                        onMoveUp = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index - 1)))) } },
-                        onMoveDown = { controller.update { it.copy(symPages = it.symPages.copy(pages = it.symPages.pages.copy(order = it.symPages.pages.order.moved(index, index + 1)))) } },
-                        onToggleEnabled = { checked -> controller.update { it.copy(symPages = it.symPages.copy(pages = withEnabled(it.symPages.pages, entry, checked))) } },
+                        onMoveUp = { changePages("Moved $name up", HapticEvent.REORDER) { p -> p.copy(order = p.order.moved(p.order.indexOf(entry), p.order.indexOf(entry) - 1)) } },
+                        onMoveDown = { changePages("Moved $name down", HapticEvent.REORDER) { p -> p.copy(order = p.order.moved(p.order.indexOf(entry), p.order.indexOf(entry) + 1)) } },
+                        onToggleEnabled = { checked ->
+                            if (checked) {
+                                controller.update { it.copy(symPages = it.symPages.copy(pages = withEnabled(it.symPages.pages, entry, true))) }
+                            } else {
+                                // The switch itself already gave the toggle's tick.
+                                changePages("$name is off", feel = null) { p -> withEnabled(p, entry, false) }
+                            }
+                        },
                         onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS || customIndex(entry) != null) ({ editingPage = entry }) else null,
                     )
                 }
                 header("Emoji")
-                item {
-                    // expansion-clipboard-pickers-launcher.md SS4.3: kaomoji only on request.
-                    SwitchRow(
-                        label = "Kaomoji on the Emoji page",
-                        description = "Adds a button on the Emoji page that switches to text faces like (^_^), and a K row in the chooser. Off: the Emoji page only ever shows emoji.",
-                        checked = symPages.kaomojiEnabled,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(kaomojiEnabled = checked)) } },
-                    )
-                }
-                item {
-                    SwitchRow(
-                        label = "Larger emoji picker",
-                        description = "About 1.5 times taller; the other pages keep their height.",
-                        checked = symPages.emojiPickerExpandedHeight,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(emojiPickerExpandedHeight = checked)) } },
-                    )
-                }
-                item {
-                    // spec: expansion-clipboard-pickers-launcher.md SS4.7.
-                    SingleChoiceDropdownRow(
-                        label = "Default skin tone",
-                        description = "Emoji that come in skin tones are typed in this one, from the Emoji page, Sym chords, the emoji picker and its recents. Hold an emoji to pick another tone.",
-                        options = SkinTone.entries,
-                        optionLabel = ::skinToneLabel,
-                        selected = symPages.defaultSkinTone,
-                        onSelect = { tone -> controller.update { it.copy(symPages = it.symPages.copy(defaultSkinTone = tone)) } },
-                    )
-                }
-                header("Fill page")
-                item {
-                    // layers-sym-alt.md SS4.7, app-shell.md SS31.6.
-                    SwitchRow(
-                        label = "One-time codes from notifications",
-                        description = "A sign-in code from a text, e-mail or bank app waits on the Fill page for 10 minutes.",
-                        note = if (symPages.otpFromNotifications && !notificationAccess) "Needs notification access (below) before it does anything." else null,
-                        checked = symPages.otpFromNotifications,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(otpFromNotifications = checked)) } },
-                    )
-                    AboutExpander(
-                        title = "About one-time codes",
-                        text = "When a sign-in code arrives by text message, e-mail or a banking app, the Fill page offers it for 10 minutes: press Sym in the code box and then the key shown beside the code. " +
-                            "PhysiBoard reads each notification's text on the phone to find the code, keeps only the code, in memory, and forgets it after 10 minutes, when it is typed, or when the screen turns off. Nothing is saved, logged or sent anywhere. Not while private mode is on.",
-                    )
-                }
-                item {
-                    ButtonRow(
-                        label = "Notification access",
-                        description = if (notificationAccess) {
-                            "Allowed for \"PhysiBoard one-time codes\". Turn it off in Android's settings at any time; the codes go with it."
-                        } else {
-                            "Android asks you to allow \"PhysiBoard one-time codes\" to read notifications. That is how it sees a code arrive. It is separate from the notification ring's access."
-                        },
-                        buttonText = if (notificationAccess) "Open" else "Allow",
-                        onClick = { openNotificationAccess(context) },
-                    )
-                }
-                item {
-                    SwitchRow(
-                        label = "Password manager suggestions (experimental)",
-                        description = "Your password manager's saved logins on the Fill page. While on, its own drop-down list does not appear.",
-                        checked = symPages.inlineSuggestions,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(inlineSuggestions = checked)) } },
-                    )
-                    AboutExpander(
-                        title = "Why it is off by default",
-                        text = "The logins show first when you press Sym in a login box. Android only hands these to a keyboard that shows an on-screen keyboard, so PhysiBoard has to raise an empty one while you are in a login box, and while this is on the password manager's own drop-down list does not appear.",
-                    )
-                }
-                header("Sym key")
-                item {
-                    // spec SS5.10: the chooser that opens any page, enabled or not.
-                    SwitchRow(
-                        label = "Double-tap Sym for the page chooser",
-                        description = "Two quick Sym taps show every page with a letter; press the letter to open it, even a page that is switched off above. Off: two quick taps step two pages.",
-                        checked = symPages.doubleTapChooser,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(doubleTapChooser = checked)) } },
-                    )
-                }
-                item {
-                    SwitchRow(
-                        label = "Sym+C/V/X/A: copy, paste, cut, select all",
-                        checked = keys.symEditShortcuts,
-                        onCheckedChange = { checked -> controller.update { it.copy(keys = it.keys.copy(symEditShortcuts = checked)) } },
-                    )
-                }
-                item {
-                    SwitchRow(
-                        label = "Close Sym after typing a character",
-                        checked = symPages.autoClose,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoClose = checked)) } },
-                    )
-                }
-                item {
-                    SwitchRow(
-                        label = "Also after tapping a key on screen",
-                        checked = symPages.autoCloseOnTouch,
-                        enabled = symPages.autoClose,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoCloseOnTouch = checked)) } },
-                    )
-                }
-                header("Clipboard")
-                item {
-                    NavigateRow(
-                        "Clipboard history",
-                        "Keep what you copy on the Clipboard page",
-                        icon = Icons.Outlined.ContentPaste,
-                        value = if (clipboardHistoryOn) "On" else "Off",
-                    ) { onNavigate(Routes.CLIPBOARD_HISTORY) }
-                }
-            }
-        }
-    } else if (customIndex(page) != null) {
-        // spec SS4.6: one of the user's own pages: a name, the grid, and a way to empty it.
-        val index = customIndex(page)!!
-        val custom = symPages.customPages.getOrElse(index) { CustomSymPage() }
-        // Typed into local state: the store trims a name on the way back, which would eat a
-        // space typed between two words, and its round trip lags fast typing.
-        var nameText by remember(index) { mutableStateOf(custom.name) }
-        SettingsScreenScaffold(title = "Edit ${displayName(page, symPages.customPages)}", onBack = { editingPage = null }) {
-            RowList {
-                item {
-                    TextFieldRow(
-                        label = "Page name",
-                        description = "Shown in the page chooser (Sym, Sym, then ${chooserLetter(page)}). Leave empty for \"${defaultCustomName(index)}\".",
-                        value = nameText,
-                        onValueChange = { typed ->
-                            val name = typed.take(CustomSymPage.MAX_NAME_LENGTH)
-                            nameText = name
-                            controller.update { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(index) { p -> p.copy(name = name) })) }
-                        },
-                    )
-                }
-                item {
-                    Text(
-                        "Tap a key to choose what it types on this page: any character, symbol, emoji or short text. Turn the page on in the list before this one to reach it with Sym.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-                item {
-                    SymEditGrid(
-                        characters = ('A'..'Z').associateWith { letter -> custom.mappings["KEYCODE_$letter"].orEmpty() },
-                        onKeyTapped = { letter -> pickerLetter = letter },
-                    )
-                }
-                item {
-                    TextButton(
-                        onClick = { showResetConfirm = true },
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    ) { Text("Clear page", color = MaterialTheme.colorScheme.error) }
+                    item {
+                        // expansion-clipboard-pickers-launcher.md SS4.3: kaomoji only on request.
+                        SwitchRow(
+                            label = "Kaomoji on the Emoji page",
+                            description = "Adds a button on the Emoji page that switches to text faces like (^_^), and a K row in the chooser. Off: the Emoji page only ever shows emoji.",
+                            checked = symPages.kaomojiEnabled,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(kaomojiEnabled = checked)) } },
+                        )
+                    }
+                    item {
+                        SwitchRow(
+                            label = "Larger emoji picker",
+                            description = "About 1.5 times taller; the other pages keep their height.",
+                            checked = symPages.emojiPickerExpandedHeight,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(emojiPickerExpandedHeight = checked)) } },
+                        )
+                    }
+                    item {
+                        // spec: expansion-clipboard-pickers-launcher.md SS4.7.
+                        SingleChoiceDropdownRow(
+                            label = "Default skin tone",
+                            description = "Emoji that come in skin tones are typed in this one, from the Emoji page, Sym chords, the emoji picker and its recents. Hold an emoji to pick another tone.",
+                            options = SkinTone.entries,
+                            optionLabel = ::skinToneLabel,
+                            selected = symPages.defaultSkinTone,
+                            onSelect = { tone -> controller.update { it.copy(symPages = it.symPages.copy(defaultSkinTone = tone)) } },
+                        )
+                    }
+                    header("Fill page")
+                    item {
+                        // layers-sym-alt.md SS4.7, app-shell.md SS31.6.
+                        SwitchRow(
+                            label = "One-time codes from notifications",
+                            description = "A sign-in code from a text, e-mail or bank app waits on the Fill page for 10 minutes.",
+                            note = if (symPages.otpFromNotifications && !notificationAccess) "Needs notification access (below) before it does anything." else null,
+                            checked = symPages.otpFromNotifications,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(otpFromNotifications = checked)) } },
+                        )
+                        AboutExpander(
+                            title = "About one-time codes",
+                            text = "When a sign-in code arrives by text message, e-mail or a banking app, the Fill page offers it for 10 minutes: press Sym in the code box and then the key shown beside the code. " +
+                                "PhysiBoard reads each notification's text on the phone to find the code, keeps only the code, in memory, and forgets it after 10 minutes, when it is typed, or when the screen turns off. Nothing is saved, logged or sent anywhere. Not while private mode is on.",
+                        )
+                    }
+                    item {
+                        ButtonRow(
+                            label = "Notification access",
+                            description = if (notificationAccess) {
+                                "Allowed for \"PhysiBoard one-time codes\". Turn it off in Android's settings at any time; the codes go with it."
+                            } else {
+                                "Android asks you to allow \"PhysiBoard one-time codes\" to read notifications. That is how it sees a code arrive. It is separate from the notification ring's access."
+                            },
+                            buttonText = if (notificationAccess) "Open" else "Allow",
+                            onClick = { openNotificationAccess(context) },
+                        )
+                    }
+                    item {
+                        SwitchRow(
+                            label = "Password manager suggestions (experimental)",
+                            description = "Your password manager's saved logins on the Fill page. While on, its own drop-down list does not appear.",
+                            checked = symPages.inlineSuggestions,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(inlineSuggestions = checked)) } },
+                        )
+                        AboutExpander(
+                            title = "Why it is off by default",
+                            text = "The logins show first when you press Sym in a login box. Android only hands these to a keyboard that shows an on-screen keyboard, so PhysiBoard has to raise an empty one while you are in a login box, and while this is on the password manager's own drop-down list does not appear.",
+                        )
+                    }
+                    header("Sym key")
+                    item {
+                        // spec SS5.10: the chooser that opens any page, enabled or not.
+                        SwitchRow(
+                            label = "Double-tap Sym for the page chooser",
+                            description = "Two quick Sym taps show every page with a letter; press the letter to open it, even a page that is switched off above. Off: two quick taps step two pages.",
+                            checked = symPages.doubleTapChooser,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(doubleTapChooser = checked)) } },
+                        )
+                    }
+                    item {
+                        SwitchRow(
+                            label = "Sym+C/V/X/A: copy, paste, cut, select all",
+                            checked = keys.symEditShortcuts,
+                            onCheckedChange = { checked -> controller.update { it.copy(keys = it.keys.copy(symEditShortcuts = checked)) } },
+                        )
+                    }
+                    item {
+                        SwitchRow(
+                            label = "Close Sym after typing a character",
+                            checked = symPages.autoClose,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoClose = checked)) } },
+                        )
+                    }
+                    item {
+                        SwitchRow(
+                            label = "Also after tapping a key on screen",
+                            checked = symPages.autoCloseOnTouch,
+                            enabled = symPages.autoClose,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoCloseOnTouch = checked)) } },
+                        )
+                    }
+                    header("Clipboard")
+                    item {
+                        NavigateRow(
+                            "Clipboard history",
+                            "Keep what you copy on the Clipboard page",
+                            icon = Icons.Outlined.ContentPaste,
+                            value = if (clipboardHistoryOn) "On" else "Off",
+                        ) { onNavigate(Routes.CLIPBOARD_HISTORY) }
+                    }
                 }
             }
-        }
-    } else {
-        val isEmoji = page == SymPage.EMOJI
-        SettingsScreenScaffold(title = if (isEmoji) "Edit Emoji Layer" else "Edit Symbols Layer", onBack = { editingPage = null }) {
-            RowList {
-                item {
-                    SymEditGrid(
-                        characters = effectiveCharacters(isEmoji, symPages.customEmojiPage, symPages.customSymbolsPage),
-                        onKeyTapped = { letter -> pickerLetter = letter },
-                    )
+        },
+        detailContent = { page ->
+            if (customIndex(page) != null) {
+                // spec SS4.6: one of the user's own pages: a name, the grid, and a way to empty it.
+                val index = customIndex(page)!!
+                val custom = symPages.customPages.getOrElse(index) { CustomSymPage() }
+                // Typed into local state: the store trims a name on the way back, which would eat a
+                // space typed between two words, and its round trip lags fast typing.
+                var nameText by remember(index) { mutableStateOf(custom.name) }
+                SettingsScreenScaffold(title = "Edit ${displayName(page, symPages.customPages)}", onBack = { editingPage = null }) {
+                    RowList {
+                        item {
+                            TextFieldRow(
+                                label = "Page name",
+                                description = "Shown in the page chooser (Sym, Sym, then ${chooserLetter(page)}). Leave empty for \"${defaultCustomName(index)}\".",
+                                value = nameText,
+                                onValueChange = { typed ->
+                                    val name = typed.take(CustomSymPage.MAX_NAME_LENGTH)
+                                    nameText = name
+                                    controller.update { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(index) { p -> p.copy(name = name) })) }
+                                },
+                            )
+                        }
+                        item {
+                            Text(
+                                "Tap a key to choose what it types on this page: any character, symbol, emoji or short text. Turn the page on in the list before this one to reach it with Sym.",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+                        item {
+                            SymEditGrid(
+                                characters = ('A'..'Z').associateWith { letter -> custom.mappings["KEYCODE_$letter"].orEmpty() },
+                                onKeyTapped = { letter -> pickerLetter = letter },
+                            )
+                        }
+                        item {
+                            // app-shell.md SS22.4: cleared at once; the snackbar's Undo puts every key back.
+                            TextButton(
+                                onClick = {
+                                    val pageName = displayName(page, symPages.customPages)
+                                    val transform: (Settings) -> Settings = { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(index) { p -> p.copy(mappings = emptyMap()) })) }
+                                    if (undo != null) undo.updateSettings(controller, "sym-clear-$index", "Cleared $pageName", SettingsSection.customPageKeys(index), transform = transform) else controller.update(transform)
+                                },
+                                enabled = custom.mappings.isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            ) { Text("Clear page", color = MaterialTheme.colorScheme.error) }
+                        }
+                    }
                 }
-                item {
-                    TextButton(
-                        onClick = { showResetConfirm = true },
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    ) { Text("Reset to Default", color = MaterialTheme.colorScheme.error) }
+            } else {
+                val isEmoji = page == SymPage.EMOJI
+                SettingsScreenScaffold(title = if (isEmoji) "Edit Emoji Layer" else "Edit Symbols Layer", onBack = { editingPage = null }) {
+                    RowList {
+                        item {
+                            SymEditGrid(
+                                characters = effectiveCharacters(isEmoji, symPages.customEmojiPage, symPages.customSymbolsPage),
+                                onKeyTapped = { letter -> pickerLetter = letter },
+                            )
+                        }
+                        item {
+                            TextButton(
+                                onClick = {
+                                    val section = if (isEmoji) SettingsSection.EMOJI_LAYER else SettingsSection.SYMBOLS_LAYER
+                                    val transform: (Settings) -> Settings = {
+                                        if (isEmoji) it.copy(symPages = it.symPages.copy(customEmojiPage = emptyMap()))
+                                        else it.copy(symPages = it.symPages.copy(customSymbolsPage = emptyMap()))
+                                    }
+                                    val message = if (isEmoji) "Emoji layer reset" else "Symbols layer reset"
+                                    if (undo != null) undo.updateSettings(controller, "sym-reset-${page.name}", message, section, transform = transform) else controller.update(transform)
+                                },
+                                enabled = (if (isEmoji) symPages.customEmojiPage else symPages.customSymbolsPage).isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            ) { Text("Reset to Default", color = MaterialTheme.colorScheme.error) }
+                        }
+                    }
                 }
             }
-        }
-    }
+        },
+    )
 
     pickerLetter?.let { letter ->
         fun close() {
@@ -393,39 +438,6 @@ fun CustomizeSymKeyboardScreen(
                 },
             )
         }
-    }
-
-    val clearingPage = editingPage?.let(::customIndex)
-    if (showResetConfirm && clearingPage != null) {
-        AlertDialog(
-            onDismissRequest = { showResetConfirm = false },
-            title = { Text("Clear page") },
-            text = { Text("Remove every key from this page? Its name stays. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showResetConfirm = false
-                    controller.update { it.copy(symPages = it.symPages.copy(customPages = it.symPages.customPages.withPage(clearingPage) { p -> p.copy(mappings = emptyMap()) })) }
-                }) { Text("Clear", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") } },
-        )
-    } else if (showResetConfirm) {
-        val isEmoji = editingPage == SymPage.EMOJI
-        AlertDialog(
-            onDismissRequest = { showResetConfirm = false },
-            title = { Text("Reset to Default") },
-            text = { Text("Are you sure you want to reset all SYM mappings to default? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showResetConfirm = false
-                    controller.update {
-                        if (isEmoji) it.copy(symPages = it.symPages.copy(customEmojiPage = emptyMap()))
-                        else it.copy(symPages = it.symPages.copy(customSymbolsPage = emptyMap()))
-                    }
-                }) { Text("Reset", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") } },
-        )
     }
 }
 

@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +59,7 @@ fun SetupScreen(onComplete: () -> Unit) {
     var steps by remember { mutableStateOf(currentSteps(context)) }
     LaunchedEffectPoll { steps = currentSteps(context) }
 
-    var essentialsExpanded by remember { mutableStateOf(false) }
+    var essentialsExpanded by rememberSaveable { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     // spec: SS4.2. "360 ms after both steps become done the page scrolls to its bottom... the

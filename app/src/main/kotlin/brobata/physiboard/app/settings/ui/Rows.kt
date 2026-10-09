@@ -2,7 +2,6 @@ package brobata.physiboard.app.settings.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -69,9 +68,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -107,6 +109,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import brobata.physiboard.core.actions.feedback.HapticEvent
 
 /**
  * The 48 dp floor every touch target on this screen keeps (rebuild-from-scratch.md: Titan 2
@@ -139,9 +142,26 @@ fun SettingsScreenScaffold(
 ) {
     val state = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state)
+    // app-shell.md SS22.5: the screen's open expanders, kept here rather than in each row, so a
+    // row scrolled out of the list (and disposed) still comes back open after a trip away.
+    val expanders = rememberSaveable(saver = ExpanderMemory.Saver) { ExpanderMemory() }
     val slug = path ?: TerminalPath.slug(title)
     val expandedPx = with(LocalDensity.current) { ExpandedTitleHeight.toPx() }
     SideEffect { if (state.heightOffsetLimit != -expandedPx) state.heightOffsetLimit = -expandedPx }
+    // keys-and-modifiers.md SS13.5, REVEAL: pulling a folded title all the way back into view
+    // lands with a soft tick, once per fold. Read in a flow, so scrolling never recomposes this.
+    val haptic = rememberHaptic()
+    LaunchedEffect(state) {
+        var folded = state.collapsedFraction > 0.5f
+        snapshotFlow { state.collapsedFraction }.collect { fraction ->
+            if (fraction > 0.5f) {
+                folded = true
+            } else if (folded && fraction == 0f) {
+                folded = false
+                haptic(HapticEvent.REVEAL)
+            }
+        }
+    }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -213,9 +233,36 @@ fun SettingsScreenScaffold(
             }
         },
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) { content() }
+        CompositionLocalProvider(LocalExpanderMemory provides expanders) {
+            Column(modifier = Modifier.padding(padding)) { content() }
+        }
     }
 }
+
+/**
+ * Which expanders on one screen are open, by title, saved with the screen's own state
+ * (app-shell.md SS22.5): it outlives the lazy list's rows, a trip to another screen and the
+ * process being reclaimed, and is forgotten when the screen leaves the back stack.
+ */
+class ExpanderMemory(initial: Map<String, Boolean> = emptyMap()) {
+    private val open = androidx.compose.runtime.mutableStateMapOf<String, Boolean>().apply { putAll(initial) }
+
+    fun isOpen(key: String, default: Boolean): Boolean = open[key] ?: default
+
+    fun set(key: String, value: Boolean) {
+        open[key] = value
+    }
+
+    companion object {
+        /** Flattened to alternating keys and values, both of which a saved-state bundle carries. */
+        val Saver: androidx.compose.runtime.saveable.Saver<ExpanderMemory, Any> = androidx.compose.runtime.saveable.listSaver(
+            save = { memory -> memory.open.flatMap { (k, v) -> listOf<Any>(k, v) } },
+            restore = { flat -> ExpanderMemory(flat.chunked(2).associate { (k, v) -> k as String to v as Boolean }) },
+        )
+    }
+}
+
+private val LocalExpanderMemory = staticCompositionLocalOf<ExpanderMemory?> { null }
 
 /** The room the large prompt takes below the bar before it folds away. */
 private val ExpandedTitleHeight = 52.dp
@@ -317,8 +364,11 @@ private class GroupingListScope : SettingsListScope {
                 is Row -> scope.item(entry.key, entry.contentType) {
                     CardSegment(top = startsCard, bottom = endsCard, marginTop = marginTop) { entry.content(this@item) }
                 }
+                // app-shell.md SS22.2: a keyed row glides to its new place when the list is
+                // reordered, and fades in or out when one is added, deleted or put back by Undo.
                 is Rows -> scope.items(entry.count, entry.key, entry.contentType) { i ->
-                    CardSegment(top = startsCard && i == 0, bottom = endsCard && i == entry.count - 1, marginTop = marginTop) { entry.content(this@items, i) }
+                    val placement = if (entry.key != null) Modifier.animateItem(fadeInSpec = SettingsMotion.expandFade, placementSpec = SettingsMotion.placement, fadeOutSpec = SettingsMotion.expandFade) else Modifier
+                    CardSegment(top = startsCard && i == 0, bottom = endsCard && i == entry.count - 1, marginTop = marginTop, modifier = placement) { entry.content(this@items, i) }
                 }
                 is Header -> scope.item(contentType = "header") { CardBreak(text = entry.text, first = prev == null) }
                 is Plain -> scope.item(entry.key) { entry.content(this@item) }
@@ -335,7 +385,7 @@ private val CardRadius = 6.dp
  * open edges and is clipped to it, so a run of slices shows one continuous outline with no seams.
  */
 @Composable
-private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, content: @Composable () -> Unit) {
+private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(
         topStart = if (top) CardRadius else 0.dp,
         topEnd = if (top) CardRadius else 0.dp,
@@ -344,7 +394,7 @@ private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, content: @
     )
     val border = paneBorderColor()
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = Spacing.l)
             .padding(top = if (top) marginTop else 0.dp, bottom = if (bottom) Spacing.xs else 0.dp)
@@ -564,11 +614,15 @@ fun SwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
 ) {
+    val haptic = rememberHaptic()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = RowMinHeight)
-            .clickableRow(enabled) { onCheckedChange(!checked) }
+            .clickableRow(enabled) {
+                haptic(if (checked) HapticEvent.TOGGLE_OFF else HapticEvent.TOGGLE_ON)
+                onCheckedChange(!checked)
+            }
             .padding(horizontal = Spacing.l, vertical = Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -715,6 +769,7 @@ fun <T> SingleChoiceChipsRow(
     selected: T,
     onSelect: (T) -> Unit,
 ) {
+    val haptic = rememberHaptic()
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         // Wraps onto a second line rather than running off a narrow screen.
@@ -727,7 +782,10 @@ fun <T> SingleChoiceChipsRow(
                 FilterChip(
                     colors = terminalChipColors(),
                     selected = option == selected,
-                    onClick = { onSelect(option) },
+                    onClick = {
+                        if (option != selected) haptic(HapticEvent.SELECT)
+                        onSelect(option)
+                    },
                     label = { Text(optionLabel(option)) },
                     modifier = Modifier.defaultMinSize(minHeight = MinTouchTarget),
                 )
@@ -748,6 +806,7 @@ fun <T> SingleChoiceDropdownRow(
     onSelect: (T) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val haptic = rememberHaptic()
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = Modifier.padding(top = Spacing.s)) {
@@ -765,7 +824,11 @@ fun <T> SingleChoiceDropdownRow(
                 options.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(optionLabel(option)) },
-                        onClick = { onSelect(option); expanded = false },
+                        onClick = {
+                            if (option != selected) haptic(HapticEvent.SELECT)
+                            onSelect(option)
+                            expanded = false
+                        },
                     )
                 }
             }
@@ -783,6 +846,11 @@ fun <T> MultiChoiceRow(
     selected: Set<T>,
     onToggle: (T, Boolean) -> Unit,
 ) {
+    val haptic = rememberHaptic()
+    fun toggle(option: T, on: Boolean) {
+        haptic(if (on) HapticEvent.TOGGLE_ON else HapticEvent.TOGGLE_OFF)
+        onToggle(option, on)
+    }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         options.forEach { option ->
@@ -790,10 +858,10 @@ fun <T> MultiChoiceRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = MinTouchTarget)
-                    .clickableRow(true) { onToggle(option, option !in selected) },
+                    .clickableRow(true) { toggle(option, option !in selected) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = option in selected, onCheckedChange = { onToggle(option, it) })
+                Checkbox(checked = option in selected, onCheckedChange = { toggle(option, it) })
                 Text(optionLabel(option), style = MaterialTheme.typography.bodyLarge)
             }
         }
@@ -814,16 +882,24 @@ fun IntRangeRow(
     commitOnRelease: Boolean = false,
     onValueChange: (Int) -> Unit,
 ) {
+    val haptic = rememberHaptic()
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         var dragValue by remember(value) { mutableStateOf(value) }
         val shown = if (commitOnRelease) dragValue else value
+        // The last detent felt; the stored value lags a drag by a store round trip.
+        var lastDetent by remember { mutableStateOf(value) }
         Text(valueLabel(shown), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = Spacing.xs))
         val steps = if (step <= 1) 0 else ((range.last - range.first) / step) - 1
         Slider(
             value = shown.toFloat(),
             onValueChange = { raw ->
                 val snapped = snapToStep(raw.toInt(), range, step)
+                // keys-and-modifiers.md SS13.5, STEP: one detent, felt; a fast drag is a texture (the player's repeat window).
+                if (snapped != lastDetent) {
+                    lastDetent = snapped
+                    haptic(HapticEvent.STEP)
+                }
                 if (commitOnRelease) dragValue = snapped else onValueChange(snapped)
             },
             onValueChangeFinished = { if (commitOnRelease) onValueChange(dragValue) },
@@ -918,20 +994,26 @@ fun ButtonRow(label: String, description: String? = null, buttonText: String, on
 }
 
 /**
- * The catalogue's collapsible "Advanced" section (settings-catalog.md SS9.2, SS9.5: "opens
- * collapsed and remembers its state only while the screen is alive"), so [remember] rather than
- * `rememberSaveable` is deliberate here.
+ * The catalogue's collapsible "Advanced" section (settings-catalog.md SS9.2, SS9.5). Since 3.2 it
+ * remembers whether it is open for as long as its screen is on the back stack, across a trip to
+ * another screen and the process being reclaimed (app-shell.md SS22.5), so coming back finds the
+ * screen as it was left; a fresh visit opens it collapsed again. It opens and closes on a spring.
  */
 @Composable
 fun ExpandableSection(title: String, initiallyExpanded: Boolean = false, content: @Composable () -> Unit) {
-    var expanded by remember { mutableStateOf(initiallyExpanded) }
-    val chevronTurn by animateFloatAsState(if (expanded) 180f else 0f, animationSpec = tween(200), label = "expander_chevron")
+    val memory = LocalExpanderMemory.current
+    var local by rememberSaveable { mutableStateOf(initiallyExpanded) }
+    val expanded = memory?.isOpen(title, initiallyExpanded) ?: local
+    fun toggle() {
+        if (memory != null) memory.set(title, !expanded) else local = !expanded
+    }
+    val chevronTurn by animateFloatAsState(if (expanded) 180f else 0f, animationSpec = SettingsMotion.chevron, label = "expander_chevron")
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = RowMinHeight)
-                .clickableRow(true) { expanded = !expanded }
+                .clickableRow(true) { toggle() }
                 .padding(horizontal = Spacing.l, vertical = Spacing.s),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -943,7 +1025,11 @@ fun ExpandableSection(title: String, initiallyExpanded: Boolean = false, content
                 modifier = Modifier.rotate(chevronTurn),
             )
         }
-        AnimatedVisibility(visible = expanded, enter = expandVertically(tween(220)) + fadeIn(tween(220)), exit = shrinkVertically(tween(180)) + fadeOut(tween(120))) {
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(SettingsMotion.expandSize) + fadeIn(SettingsMotion.expandFade),
+            exit = shrinkVertically(SettingsMotion.expandSize) + fadeOut(SettingsMotion.expandFade),
+        ) {
             Column { content() }
         }
     }
@@ -987,7 +1073,7 @@ fun AppPickerBody(
     noteFor: ((InstalledApp) -> String?)? = null,
     onToggle: (String, Boolean) -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(apps, query) {
         if (query.isBlank()) apps else apps.filter { it.label.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) }
     }
@@ -1044,6 +1130,7 @@ fun <T> ReorderableMultiChoiceRow(
     selected: List<T>,
     onChange: (List<T>) -> Unit,
 ) {
+    val haptic = rememberHaptic()
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
         RowLabel(label, description)
         selected.forEachIndexed { index, option ->
@@ -1051,15 +1138,15 @@ fun <T> ReorderableMultiChoiceRow(
                 modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = MinTouchTarget),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = true, onCheckedChange = { onChange(selected - option) })
+                Checkbox(checked = true, onCheckedChange = { haptic(HapticEvent.TOGGLE_OFF); onChange(selected - option) })
                 Text(optionLabel(option), modifier = Modifier.weight(1f))
                 IconButton(
-                    onClick = { onChange(selected.moved(index, index - 1)) },
+                    onClick = { haptic(HapticEvent.REORDER); onChange(selected.moved(index, index - 1)) },
                     enabled = index > 0,
                     modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget),
                 ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move up") }
                 IconButton(
-                    onClick = { onChange(selected.moved(index, index + 1)) },
+                    onClick = { haptic(HapticEvent.REORDER); onChange(selected.moved(index, index + 1)) },
                     enabled = index < selected.lastIndex,
                     modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget),
                 ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move down") }
@@ -1071,10 +1158,10 @@ fun <T> ReorderableMultiChoiceRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = MinTouchTarget)
-                    .clickableRow(true) { onChange(selected + option) },
+                    .clickableRow(true) { haptic(HapticEvent.TOGGLE_ON); onChange(selected + option) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = false, onCheckedChange = { onChange(selected + option) })
+                Checkbox(checked = false, onCheckedChange = { haptic(HapticEvent.TOGGLE_ON); onChange(selected + option) })
                 Text(optionLabel(option))
             }
         }

@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,8 +72,8 @@ fun CustomizeEntriesScreen(onBack: () -> Unit) {
     val customizations = CommandCustomizations.parse(launcher.commandCustomizationsJson)
     val catalog = remember { AndroidCommandCatalog(context) }
     val commands = remember { catalog.build().forQuickLauncher(SourceVisibility.parse(launcher.commandSurfaceSourcesJson)) }
-    var query by remember { mutableStateOf("") }
-    var favoritesOnly by remember { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var favoritesOnly by rememberSaveable { mutableStateOf(false) }
     var aliasFor by remember { mutableStateOf<Command?>(null) }
     var colorFor by remember { mutableStateOf<Command?>(null) }
 

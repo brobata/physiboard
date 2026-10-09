@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import brobata.physiboard.app.settings.ui.LocalHaptics
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.PhysiBoardColors
 import brobata.physiboard.app.settings.ui.PhysiBoardTheme
@@ -25,6 +28,7 @@ import brobata.physiboard.app.settings.ui.rememberSettingsController
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.shell.LaunchDestination
 import brobata.physiboard.core.shell.LaunchRouting
+import brobata.physiboard.ime.feedback.HapticPlayer
 import kotlinx.coroutines.flow.first
 
 /**
@@ -54,6 +58,16 @@ class MainActivity : ComponentActivity() {
         val application = application as PhysiBoardApplication
         setContent {
             val controller = rememberSettingsController(application.settingsSource.settings, application.settingsStore)
+            // keys-and-modifiers.md SS13.5: the app speaks the same haptic language as the
+            // keyboard, behind the same `event_haptics` switch and the system's touch feedback.
+            val haptics = remember { HapticPlayer(this) }
+            DisposableEffect(haptics) { onDispose { haptics.release() } }
+            val feedback = controller.current.value.feedback
+            SideEffect {
+                haptics.eventHaptics = feedback.eventHaptics
+                haptics.keyHaptics = feedback.keyHaptics
+                haptics.keyStrength = feedback.keyHapticStrength
+            }
             var startDestination by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(Unit) {
                 // spec: layers-sym-alt.md SS5.8: the Sym grid's pencil and a key long-press open
@@ -78,7 +92,7 @@ class MainActivity : ComponentActivity() {
             }
             PhysiBoardTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    CompositionLocalProvider(LocalSettingsController provides controller) {
+                    CompositionLocalProvider(LocalSettingsController provides controller, LocalHaptics provides haptics) {
                         startDestination?.let { SettingsApp(startDestination = it) }
                     }
                 }

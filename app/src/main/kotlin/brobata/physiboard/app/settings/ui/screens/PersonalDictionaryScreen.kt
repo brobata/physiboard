@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.DictionaryWordRow
 import brobata.physiboard.app.settings.UserWordFileStore
 import brobata.physiboard.app.settings.mergedRows
+import brobata.physiboard.app.settings.ui.DictionaryUndo
+import brobata.physiboard.app.settings.ui.LocalUndo
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SearchPill
@@ -54,7 +57,8 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     var store by remember { mutableStateOf(UserWordStore.empty()) }
-    var query by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
+    val undo = LocalUndo.current
     var showAddDialog by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<DictionaryWordRow?>(null) }
 
@@ -100,13 +104,33 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
                 ) {
                     Text(row.word, modifier = Modifier.weight(1f))
                     IconButton(onClick = { editing = row }) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
+                    // app-shell.md SS22.4: deleted at once; Undo puts the word back exactly (its
+                    // count and last use, or its place among the default words). The restore reads
+                    // the file again, so a word added in the meantime is kept.
                     IconButton(onClick = {
                         if (row.isPersonal) {
+                            val removed = store.personalWords().firstOrNull { it.word == row.word }
                             persist(store.withPersonalWordRemoved(row.word))
+                            if (removed != null) {
+                                undo?.offer("dictionary-${row.word}", "Deleted “${row.word}”") {
+                                    val restored = DictionaryUndo.restorePersonal(fileStore.load(), removed)
+                                    if (fileStore.savePersonal(restored)) store = restored
+                                }
+                            }
                         } else {
-                            persistDefaults(store.defaultWords().filterNot { it.word == row.word })
+                            val defaults = store.defaultWords()
+                            val index = defaults.indexOfFirst { it.word == row.word }
+                            persistDefaults(defaults.filterNot { it.word == row.word })
+                            if (index >= 0) {
+                                val removed = defaults[index]
+                                undo?.offer("dictionary-${row.word}", "Deleted “${row.word}”") {
+                                    val current = fileStore.load()
+                                    val words = DictionaryUndo.restoreDefault(current.defaultWords(), removed, index)
+                                    if (fileStore.saveDefaults(words)) store = UserWordStore.of(words, current.personalWords())
+                                }
+                            }
                         }
-                    }) { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
+                    }) { Icon(Icons.Filled.Delete, contentDescription = "Delete ${row.word}") }
                 }
             }
         }

@@ -21,11 +21,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.InnerPages
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.LocalUndo
+import brobata.physiboard.app.settings.ui.SettingsSection
+import brobata.physiboard.app.settings.ui.rememberHaptic
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.PhysiBoardType
@@ -33,8 +38,10 @@ import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.UnicodeCharacterDialog
+import brobata.physiboard.core.actions.feedback.HapticEvent
 import brobata.physiboard.core.keys.VariationChooser
 import brobata.physiboard.core.keys.Variations
+import brobata.physiboard.core.settings.Settings
 import java.util.Locale
 
 /**
@@ -50,8 +57,11 @@ import java.util.Locale
 fun CustomizeVariationsScreen(onBack: () -> Unit) {
     val controller = LocalSettingsController.current
     val stored = controller.current.value.keys.customVariations
-    var previewLanguage by remember { mutableStateOf(defaultPreviewLanguage()) }
-    var editing by remember { mutableStateOf<Char?>(null) }
+    var previewLanguage by rememberSaveable { mutableStateOf(defaultPreviewLanguage()) }
+    // app-shell.md SS22.5: the letter being edited survives a trip away and the process being reclaimed.
+    var editing by rememberSaveable { mutableStateOf<Char?>(null) }
+    val undo = LocalUndo.current
+    val haptic = rememberHaptic()
     var adding by remember { mutableStateOf<Char?>(null) }
     val table = Variations.effective(previewLanguage, Variations.overridesFromStored(stored))
 
@@ -74,92 +84,109 @@ fun CustomizeVariationsScreen(onBack: () -> Unit) {
         }
     }
 
-    val letter = editing
-    if (letter == null) {
-        SettingsScreenScaffold(title = "Customize Variations", onBack = onBack) {
-            RowList {
-                item {
-                    Text(
-                        "With Long press set to Accent / variation, holding a letter types the first accent in its list. Tap a letter to choose, order or add its accents. Your changes apply in every language.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-                item {
-                    SingleChoiceDropdownRow(
-                        label = "Order shown for",
-                        description = "Letters you have not changed put the keyboard language's own accents first. This only picks the language previewed here.",
-                        options = listOf("") + Variations.languagesWithOwnOrder,
-                        optionLabel = ::languageName,
-                        selected = previewLanguage,
-                        onSelect = { previewLanguage = it },
-                    )
-                }
-                ('a'..'z').forEach { base ->
+    // app-shell.md SS22.2: one letter is an inner page, pushed and popped like a screen, with predictive back.
+    InnerPages(
+        detail = editing,
+        onCloseDetail = { editing = null },
+        list = {
+            SettingsScreenScaffold(title = "Customize Variations", onBack = onBack) {
+                RowList {
                     item {
-                        val customised = stored.containsKey(base.toString()) || stored.containsKey(base.uppercaseChar().toString())
-                        val list = table.listFor(base)
-                        NavigateRow(
-                            label = if (customised) "$base  ·  changed" else base.toString(),
-                            description = list.joinToString("  ").ifEmpty { "No accents" },
-                        ) { editing = base }
+                        Text(
+                            "With Long press set to Accent / variation, holding a letter types the first accent in its list. Tap a letter to choose, order or add its accents. Your changes apply in every language.",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
                     }
-                }
-                item {
-                    TextButton(
-                        onClick = { controller.update { it.copy(keys = it.keys.copy(customVariations = emptyMap())) } },
-                        enabled = stored.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    ) { Text("Reset every letter to default", color = MaterialTheme.colorScheme.error) }
-                }
-            }
-        }
-    } else {
-        SettingsScreenScaffold(title = "Accents for $letter", onBack = { editing = null }) {
-            RowList {
-                for (character in listOf(letter, letter.uppercaseChar())) {
-                    val list = table.listFor(character)
-                    val customised = stored.containsKey(character.toString())
-                    header(if (customised) "$character (changed)" else character.toString())
-                    if (list.isEmpty()) {
-                        item {
-                            Text("No accents: holding $character types $character.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                        }
+                    item {
+                        SingleChoiceDropdownRow(
+                            label = "Order shown for",
+                            description = "Letters you have not changed put the keyboard language's own accents first. This only picks the language previewed here.",
+                            options = listOf("") + Variations.languagesWithOwnOrder,
+                            optionLabel = ::languageName,
+                            selected = previewLanguage,
+                            onSelect = { previewLanguage = it },
+                        )
                     }
-                    list.forEachIndexed { index, entry ->
+                    ('a'..'z').forEach { base ->
                         item {
-                            EntryRow(
-                                position = index,
-                                entry = entry,
-                                canMoveUp = index > 0,
-                                canMoveDown = index < list.lastIndex,
-                                onMoveUp = { save(character) { it.moved(index, index - 1) } },
-                                onMoveDown = { save(character) { it.moved(index, index + 1) } },
-                                onRemove = { save(character) { stored -> stored.filterIndexed { i, _ -> i != index } } },
-                            )
+                            val customised = stored.containsKey(base.toString()) || stored.containsKey(base.uppercaseChar().toString())
+                            val list = table.listFor(base)
+                            NavigateRow(
+                                label = if (customised) "$base  ·  changed" else base.toString(),
+                                description = list.joinToString("  ").ifEmpty { "No accents" },
+                            ) { editing = base }
                         }
                     }
                     item {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(shape = MaterialTheme.shapes.small, onClick = { adding = character }, enabled = list.size < Variations.MAX_PER_CHARACTER) {
-                                Text(if (list.size < Variations.MAX_PER_CHARACTER) "Add" else "Full (${Variations.MAX_PER_CHARACTER})")
+                        TextButton(
+                            // app-shell.md SS22.4: reset at once; Undo puts every letter's list back.
+                            onClick = {
+                                val transform: (Settings) -> Settings = { it.copy(keys = it.keys.copy(customVariations = emptyMap())) }
+                                if (undo != null) undo.updateSettings(controller, "variations-reset", "Every letter reset", SettingsSection.ALL_VARIATIONS, transform = transform) else controller.update(transform)
+                            },
+                            enabled = stored.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        ) { Text("Reset every letter to default", color = MaterialTheme.colorScheme.error) }
+                    }
+                }
+            }
+        },
+        detailContent = { letter ->
+            SettingsScreenScaffold(title = "Accents for $letter", onBack = { editing = null }) {
+                RowList {
+                    for (character in listOf(letter, letter.uppercaseChar())) {
+                        val list = table.listFor(character)
+                        val customised = stored.containsKey(character.toString())
+                        header(if (customised) "$character (changed)" else character.toString())
+                        if (list.isEmpty()) {
+                            item {
+                                Text("No accents: holding $character types $character.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                             }
-                            TextButton(onClick = { save(character, null) }, enabled = customised, modifier = Modifier.padding(start = 8.dp)) {
-                                Text("Reset to default")
+                        }
+                        list.forEachIndexed { index, entry ->
+                            item {
+                                EntryRow(
+                                    position = index,
+                                    entry = entry,
+                                    canMoveUp = index > 0,
+                                    canMoveDown = index < list.lastIndex,
+                                    onMoveUp = { haptic(HapticEvent.REORDER); save(character) { it.moved(index, index - 1) } },
+                                    onMoveDown = { haptic(HapticEvent.REORDER); save(character) { it.moved(index, index + 1) } },
+                                    onRemove = { save(character) { stored -> stored.filterIndexed { i, _ -> i != index } } },
+                                )
+                            }
+                        }
+                        item {
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedButton(shape = MaterialTheme.shapes.small, onClick = { adding = character }, enabled = list.size < Variations.MAX_PER_CHARACTER) {
+                                    Text(if (list.size < Variations.MAX_PER_CHARACTER) "Add" else "Full (${Variations.MAX_PER_CHARACTER})")
+                                }
+                                TextButton(
+                                onClick = {
+                                    val before = SettingsSection.variationsFor(character).restoreFrom(controller.current.value)
+                                    save(character, null)
+                                    undo?.offer("variations-$character", "$character reset") { controller.update(before) }
+                                },
+                                enabled = customised,
+                                modifier = Modifier.padding(start = 8.dp),
+                            ) {
+                                    Text("Reset to default")
+                                }
                             }
                         }
                     }
-                }
-                item {
-                    Text(
-                        "The first entry is what a long press types. With \"Show every accent\" on, the bar numbers them 1 to 9, then 0, the digits printed on the keys.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
+                    item {
+                        Text(
+                            "The first entry is what a long press types. With \"Show every accent\" on, the bar numbers them 1 to 9, then 0, the digits printed on the keys.",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
                 }
             }
-        }
-    }
+        },
+    )
 
     adding?.let { character ->
         UnicodeCharacterDialog(
