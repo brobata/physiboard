@@ -33,6 +33,13 @@ object PhysiBoardColors {
     val Sky = Color(0xFF38BDF8)
     val Cloud = Color(0xFFF1F5F9)
     val Slate500 = Color(0xFF64748B)
+
+    /**
+     * Muted text on the dark theme. Slate500 measured about 3.7:1 on Ink and 2.6:1 on a dialog's
+     * surface, below the 4.5:1 small text needs, so descriptions and dialog bodies read as
+     * disabled. Slate400 is about 7:1 on Ink and 5:1 on a dialog.
+     */
+    val Slate400 = Color(0xFF94A3B8)
     val ErrorDark = Color(0xFFEF4444)
     val ErrorLight = Color(0xFFDC2626)
 }
@@ -70,7 +77,7 @@ private val PhysiBoardDarkColors = darkColorScheme(
     surfaceContainerHigh = Color(0xFF263449),
     surfaceContainerHighest = Color(0xFF2E3D54),
     surfaceVariant = PhysiBoardColors.Slate,
-    onSurfaceVariant = PhysiBoardColors.Slate500,
+    onSurfaceVariant = PhysiBoardColors.Slate400,
     surfaceTint = PhysiBoardColors.SignalAmber,
     inverseSurface = PhysiBoardColors.Cloud,
     inverseOnSurface = PhysiBoardColors.Ink,

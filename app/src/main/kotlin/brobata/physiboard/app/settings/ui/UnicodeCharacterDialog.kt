@@ -46,6 +46,8 @@ fun UnicodeCharacterDialog(letter: Char? = null, resetLabel: String = "Reset to 
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = WideDialogProperties,
+        modifier = Modifier.wideDialog(),
         title = { Text(title) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp)) {

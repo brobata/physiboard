@@ -1,6 +1,10 @@
 package brobata.physiboard.app.settings.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,9 +49,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 
 /**
  * The 48 dp floor every touch target on this screen keeps (rebuild-from-scratch.md: Titan 2
@@ -91,6 +98,9 @@ fun SettingsScreenScaffold(
                 actions = { trailingAction?.invoke() },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+                    // The default muted tint made "Add", "Import" and "Reset" look disabled next
+                    // to the full-contrast back arrow.
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             )
         },
@@ -98,6 +108,16 @@ fun SettingsScreenScaffold(
         Column(modifier = Modifier.padding(padding)) { content() }
     }
 }
+
+/**
+ * For a dialog whose body is a list or a grid (an app list, the speech engines, the character
+ * picker): the platform's default dialog width is about 320 dp on the Titan, which wrapped every
+ * row and clipped chip rows. Pass as `properties` together with [wideDialog] as the `modifier`.
+ */
+val WideDialogProperties = DialogProperties(usePlatformDefaultWidth = false)
+
+/** The width [WideDialogProperties] dialogs take: the screen less a 16 dp margin each side. */
+fun Modifier.wideDialog(): Modifier = this.fillMaxWidth().padding(horizontal = 16.dp)
 
 /** A list of rows with the 48 dp floor and enough bottom padding to clear the last row's target. */
 @Composable
@@ -160,7 +180,8 @@ fun SwitchRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        // The end gap keeps a long description from running up against the switch.
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
             RowLabel(label, description)
             if (note != null) {
                 val color = if (noteIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
@@ -336,6 +357,7 @@ fun TextFieldRow(
     value: String,
     onValueChange: (String) -> Unit,
     validate: ((String) -> String?)? = null,
+    leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     val error = validate?.invoke(value)
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -349,6 +371,7 @@ fun TextFieldRow(
             },
             isError = error != null,
             singleLine = true,
+            leadingIcon = leadingIcon,
             modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = MinTouchTarget),
         )
     }
@@ -366,6 +389,16 @@ fun ColorFieldRow(label: String, value: Int, onValueChange: (Int) -> Unit) {
             ColorHex.parse(newText)?.let(onValueChange)
         },
         validate = { ColorHex.validate(it) },
+        // A swatch of the stored colour, so the row shows the colour and not only its hex code.
+        leadingIcon = {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(Color(value))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+            )
+        },
     )
 }
 

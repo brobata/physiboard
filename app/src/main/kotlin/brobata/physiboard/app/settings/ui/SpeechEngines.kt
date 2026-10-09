@@ -104,6 +104,8 @@ fun SpeechEnginePickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = WideDialogProperties,
+        modifier = Modifier.wideDialog(),
         title = { Text("Speech engine") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -119,7 +121,7 @@ fun SpeechEnginePickerDialog(
                         RadioButton(selected = option.storedValue == selected, onClick = { onSelect(option.storedValue) })
                         Column(modifier = Modifier.padding(start = 8.dp)) {
                             Row {
-                                Text(option.label, style = MaterialTheme.typography.bodyLarge)
+                                Text(option.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                                 if (option.isCurrentSystemDefault) {
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(

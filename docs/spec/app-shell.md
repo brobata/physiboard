@@ -790,8 +790,9 @@ that exist in the source but have no path from any screen:
 Every activity uses one theme: Material 3 with dynamic colour disabled, dark or light following
 the system. Palette: Ink `#0F172A` (dark background), Slate `#1E293B` (dark surfaces), Signal
 Amber `#F59E0B` (primary and tertiary in both modes, `onPrimary` Ink), Sky `#38BDF8`
-(secondary), Cloud `#F1F5F9` (light background, dark text), Slate500 `#64748B` (outline, muted
-text), error `#EF4444` dark / `#DC2626` light. Typography is JetBrains Mono throughout (regular,
+(secondary), Cloud `#F1F5F9` (light background, dark text), Slate500 `#64748B` (outline, and
+muted text on light), Slate400 `#94A3B8` (muted text on dark: Slate500 is under 4:1 on Ink and
+under 3:1 on a dialog), error `#EF4444` dark / `#DC2626` light. Typography is JetBrains Mono throughout (regular,
 medium, bold). The window theme is no-action-bar Material with status and navigation bars in
 the splash colours (dark or light variant), and edge-to-edge is enabled on every activity.
 
@@ -800,7 +801,7 @@ The home header is an Ink band with a 2 dp amber hairline on top and `physiboard
 transparent every 600 ms; the fade is held static when the system animator duration scale is
 0 (reduced motion). The settings screens share one top bar: status-bar inset, 1 dp tonal
 elevation, back arrow (content description "Back"), the title as a heading in headline-small
-semi-bold, trailing actions.
+semi-bold, trailing actions drawn in the same full-contrast colour as the back arrow.
 
 ### 22.2 Transitions and sizing
 

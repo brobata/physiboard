@@ -34,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -105,9 +107,17 @@ fun CustomizeEntriesScreen(onBack: () -> Unit) {
                         IconButton(onClick = { save { it.moveFavorite(command.id, up = true) } }) { Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up") }
                         IconButton(onClick = { save { it.moveFavorite(command.id, up = false) } }) { Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down") }
                     }
-                    Box(
-                        modifier = Modifier.size(24.dp).clip(CircleShape).background(c.color?.let { Color(it) } ?: MaterialTheme.colorScheme.outline).clickable { colorFor = command },
-                    )
+                    // A full 48 dp button around the swatch, named for TalkBack; the bare 24 dp dot
+                    // was under the touch floor and said nothing.
+                    IconButton(onClick = { colorFor = command }) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(c.color?.let { Color(it) } ?: MaterialTheme.colorScheme.outline)
+                                .semantics { contentDescription = "Highlight colour" },
+                        )
+                    }
                 }
             }
         }
