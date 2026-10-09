@@ -3,6 +3,12 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
+## 3.1.0 (unreleased)
+
+- A Fill page on Sym: one-time codes from your notifications, typed with one key, held in memory
+  for ten minutes and never stored or sent. Needs notification access.
+- Password manager suggestions on the Fill page, experimental and off.
+
 ## 3.0.0 (2026-10-08)
 
 PhysiBoard 3.0 is a ground-up rebuild for the Titan 2 Elite's keyboard. Autocorrect now reads the
