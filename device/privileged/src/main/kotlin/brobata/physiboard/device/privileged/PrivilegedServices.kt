@@ -21,6 +21,7 @@ import brobata.physiboard.device.privileged.ring.ProximityPocketCheck
 import brobata.physiboard.device.privileged.ring.RingBacklight
 import brobata.physiboard.device.privileged.ring.RingCoordinator
 import brobata.physiboard.device.privileged.ring.ScreenProbe
+import brobata.physiboard.device.privileged.setup.AccessibilityServiceSwitch
 import brobata.physiboard.device.privileged.setup.AndroidPermissionProbe
 import brobata.physiboard.device.privileged.setup.AndroidSystemSettingsAccess
 import brobata.physiboard.device.privileged.setup.AppIdentity
@@ -90,6 +91,9 @@ class PrivilegedServices(
     val backlight: KeyboardBacklightController = KeyboardBacklightController(broker, store, diagnostics)
     val setup: PrivilegedSetup = PrivilegedSetup(broker, permissions, store, diagnostics, backlight, identity)
     val reset: ResetToStock = ResetToStock(broker, permissions, masterSwitch, store, backlight, identity)
+
+    /** "Turn on with pairing" for the accessibility service, only ever on the user's tap. spec: SS9. */
+    val accessibilitySwitch: AccessibilityServiceSwitch = AccessibilityServiceSwitch(broker, permissions, identity.packageName)
     val ringBacklight: RingBacklight = RingBacklight(
         store = store,
         masterSwitch = masterSwitch,

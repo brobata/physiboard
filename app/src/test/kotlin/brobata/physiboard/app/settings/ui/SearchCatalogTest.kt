@@ -8,7 +8,7 @@ class SearchCatalogTest {
     /** Every route a search result may open: the static destinations SettingsNavHost registers. */
     private val registered: Set<String> = setOf(
         Routes.TYPING, Routes.KEYS, Routes.APPS, Routes.LOOK, Routes.BACKUP, Routes.HELP, Routes.T2E_TOOLS,
-        Routes.SCREEN_TRACKPAD, Routes.FN_LAYER, Routes.PUNCTUATION_SPACING, Routes.AUTO_CORRECTION, Routes.VOICE,
+        Routes.SCREEN_TRACKPAD, Routes.FN_LAYER, Routes.ACCESSIBILITY_SERVICE, Routes.PUNCTUATION_SPACING, Routes.AUTO_CORRECTION, Routes.VOICE,
         Routes.THEME, Routes.CUSTOMIZE_COLORS, Routes.SOUND_HAPTICS, Routes.ENTER_KEY_BEHAVIOUR, Routes.QUICK_LAUNCHER,
         Routes.INPUT_LANGUAGES, Routes.TEXT_EXPANSION, Routes.TEST_FIELD, Routes.LONG_PRESS, Routes.CUSTOMIZE_VARIATIONS,
         Routes.SMART_BACKLIGHT, Routes.REMOVE_BLOAT, Routes.SCREEN_DENSITY, Routes.SYSTEM_TWEAKS, Routes.NOTIFICATION_RING,
@@ -44,6 +44,8 @@ class SearchCatalogTest {
         assertTrue(SearchCatalog.search("caret").any { it.route == Routes.LOOK })
         assertTrue(SearchCatalog.search("trackpad").any { it.route == Routes.SCREEN_TRACKPAD && it.screenTitle == "Keys & shortcuts" })
         assertTrue(SearchCatalog.search("smart features").any { it.route == Routes.TYPING })
+        assertTrue(SearchCatalog.search("camera").any { it.route == Routes.ACCESSIBILITY_SERVICE })
+        assertTrue(SearchCatalog.search("cursor").any { it.title == "Focus the text box when I start typing" })
         assertEquals(emptyList(), SearchCatalog.search("   "))
     }
 }

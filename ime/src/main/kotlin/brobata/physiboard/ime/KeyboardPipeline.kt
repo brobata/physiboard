@@ -361,6 +361,13 @@ internal class KeyboardPipeline(
     var foregroundIsHome: Boolean = false
 
     /**
+     * Whether the keyboard is attached to a field it can really type into; keys-and-modifiers.md
+     * SS15 ("no text field focused") is everything else. The accessibility service reads it to
+     * decide which keys are its to hand over (SS15.1).
+     */
+    val fieldReallyEditable: Boolean get() = activeField.isReallyEditable
+
+    /**
      * spec: keys-and-modifiers.md SS7.5: the layout-switch chords fire "only when another input
      * subtype exists to switch to"; with one installed "the chord does not fire". `:ime` supplies
      * the fact from `:core:subtype`'s own catalog (`InputStyleCatalog.anotherStyleAvailable`, set
@@ -569,6 +576,10 @@ internal class KeyboardPipeline(
     /** spec: status-bar.md SS13, "field finishes": modifiers reset, nav mode preserved. */
     fun onFinishInput(nowMs: Long = 0L) {
         noteFieldLost(nowMs)
+        // No field until the next start: keys-and-modifiers.md SS15 is what applies to a key that
+        // arrives in between, which only the accessibility service delivers (SS15.1, a camera
+        // opened straight from a chat). Kept as the old field, its box would still be "open".
+        activeField = FieldContext(FieldKind.NOT_EDITABLE)
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
         expansion = ExpansionState.EMPTY
@@ -809,7 +820,12 @@ internal class KeyboardPipeline(
         return if (bounceVerdict is FilterVerdict.Reject) PipelineResult.CONSUMED_NO_OP else null
     }
 
-    fun onKeyStroke(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult {
+    /**
+     * [hasInputConnection] is false only for a key the accessibility service handed over from a
+     * window Android gave the keyboard no connection for (keys-and-modifiers.md SS15.1): the Fn
+     * layer's keycode and edit mappings, which need one, then do not claim the key.
+     */
+    fun onKeyStroke(stroke: KeyStroke, editor: EditorSnapshot, hasInputConnection: Boolean = true): PipelineResult {
         // spec: keys-and-modifiers.md SS1.3 steps 1-2: the accidental-press filter, then the
         // bounce filter, "on the raw event, before anything else" -- ahead of every other stage,
         // modifier keys included (SS10's own category table lists Shift/Ctrl/Alt/Sym).
@@ -846,7 +862,16 @@ internal class KeyboardPipeline(
         // nav mode active, the Fn Layer map owns the key ahead of the launcher paths below (which
         // all require "without a Ctrl latch"), so this runs first.
         if (!activeField.isReallyEditable && modifierState.ctrl.latchFromNavMode) {
-            onNavModeMappedKeyDown(stroke, editor)?.let { return it }
+            onNavModeMappedKeyDown(stroke, editor, hasInputConnection)?.let { return it }
+        }
+        // keys-and-modifiers.md SS15 point 3a: with no field, a held-Fn chord (the key arrives
+        // carrying the Ctrl bit, D4) uses the Fn layer exactly when it would in a field, that is
+        // with `nav_mode_ctrl_hold_enabled` on (LayerResolver's own "nav grid"). Letters only;
+        // a mapping that needs a connection the window does not have passes the key on.
+        if (!activeField.isReallyEditable && !modifierState.ctrl.latchFromNavMode && stroke.meta.ctrl &&
+            settings.modifier.navModeCtrlHoldEnabled && stroke.key is KeyId.Letter && stroke.repeatCount == 0
+        ) {
+            onNavModeMappedKeyDown(stroke, editor, hasInputConnection)?.let { return it }
         }
 
         // spec expansion-clipboard-pickers-launcher.md SS6.2 A/B: with no editable field the
@@ -949,11 +974,10 @@ internal class KeyboardPipeline(
      * on both surfaces (keys-and-modifiers.md SS12). Null means the map does not claim the key, so
      * the caller falls through to the launcher-shortcut steps SS15 lists next.
      *
-     * By the time a real stroke reaches here `:ime` has already required a live `InputConnection`
-     * to call this pipeline at all (see [brobata.physiboard.ime.KeyboardSession.processKeyStroke]),
-     * so [hasInputConnection] is always true; [NavModeMap]'s own "no connection" branches exist for
-     * its unit tests and for callers this milestone does not have (a command with no field and no
-     * connection at all).
+     * [hasInputConnection] is true for every key the keyboard is sent itself; it is false only for
+     * a key the accessibility service handed over from a window with no connection at all
+     * (keys-and-modifiers.md SS15.1), where [NavModeMap]'s "no connection" branches leave the
+     * keycode and edit mappings unclaimed and only commands run.
      *
      * A `native_ctrl` mapping resolves to [Action.ForwardAsCtrlCombo]; unlike the in-field
      * physical-combo case (where the real event already carries Ctrl's meta bit and
@@ -962,11 +986,11 @@ internal class KeyboardPipeline(
      * setting [PipelineResult.forwardAsCtrlCombo] instead of routing through [applyAction], so
      * `:ime` synthesizes the real combo rather than letting a bare letter through.
      */
-    private fun onNavModeMappedKeyDown(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult? {
+    private fun onNavModeMappedKeyDown(stroke: KeyStroke, editor: EditorSnapshot, hasInputConnection: Boolean): PipelineResult? {
         val decision = if (stroke.key == ENTER_KEY) {
-            NavModeMap.resolveEnter(hasInputConnection = true)
+            NavModeMap.resolveEnter(hasInputConnection)
         } else {
-            NavModeMap.resolveLetterKeyDown(stroke.key, layout.ctrlMappings, hasInputConnection = true)
+            NavModeMap.resolveLetterKeyDown(stroke.key, layout.ctrlMappings, hasInputConnection)
         }
         if (!decision.consumed) return null
         val action = decision.action

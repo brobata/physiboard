@@ -13,6 +13,7 @@ import android.view.inputmethod.InputMethodSubtype
 import brobata.physiboard.design.PhysiFonts
 import brobata.physiboard.device.privileged.PrivilegedServices
 import brobata.physiboard.device.privileged.setup.SetupReasons
+import brobata.physiboard.ime.access.AccessibilityBridge
 
 /**
  * The keyboard, as Android sees it.
@@ -61,7 +62,12 @@ class PhysiBoardInputMethodService : InputMethodService() {
         PhysiFonts.prewarm(this)
         runCatching { PrivilegedServices.from(this)?.runSetupAsync(SetupReasons.IME_START) }
             .onFailure { error -> Log.e(TAG, "privileged setup at IME start crashed", error) }
+        // per-app-behavior.md SS16, keys-and-modifiers.md SS15.1: the accessibility service, when
+        // the user has it on, hands this keyboard the keys Android does not send it.
+        AccessibilityBridge.keyboard = accessibilityHook
     }
+
+    private val accessibilityHook = AccessibilityBridge.KeyboardHook { event -> keyboard.onKeyEventFromAccessibility(event) }
 
     /**
      * No soft keyboard: the input view is an empty view of no height, and it is up only while
@@ -146,6 +152,7 @@ class PhysiBoardInputMethodService : InputMethodService() {
 
     /** spec: dictation.md SS3, "Keyboard service destroyed: ... no session-end bookkeeping." */
     override fun onDestroy() {
+        if (AccessibilityBridge.keyboard === accessibilityHook) AccessibilityBridge.keyboard = null
         keyboard.onServiceDestroyed()
         super.onDestroy()
     }
@@ -175,10 +182,10 @@ class PhysiBoardInputMethodService : InputMethodService() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
-        keyboard.onKeyEvent(event) || super.onKeyDown(keyCode, event)
+        keyboard.onKeyEventFromWindow(event) || super.onKeyDown(keyCode, event)
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
-        keyboard.onKeyEvent(event) || super.onKeyUp(keyCode, event)
+        keyboard.onKeyEventFromWindow(event) || super.onKeyUp(keyCode, event)
 
     private companion object {
         const val TAG = "PhysiBoardIme"

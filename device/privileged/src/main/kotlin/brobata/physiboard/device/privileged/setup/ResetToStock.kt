@@ -1,6 +1,7 @@
 package brobata.physiboard.device.privileged.setup
 
 import brobata.physiboard.core.settings.DeviceCaptures
+import brobata.physiboard.core.toolbox.AccessibilityServiceList
 import brobata.physiboard.core.toolbox.SpellCheckerReading
 import brobata.physiboard.core.toolbox.SpellCheckerSelection
 import brobata.physiboard.device.privileged.DeviceStateStore
@@ -15,8 +16,8 @@ import brobata.physiboard.device.titan.KeyboardBacklight
 /** How one revert ended. spec: broker-privileged-toolbox.md SS10. */
 enum class RevertOutcome { SUCCESS, FAILED, NEEDS_PERMISSION }
 
-/** The six reverts, in the spec's order. spec: SS10. */
-enum class RevertStep { FN_CTRL, BACKLIGHT, QS_BACKLIGHT, SIDE_KEY, NOTIFICATION_RING, SPELL_CHECKER }
+/** The seven reverts, in the spec's order. spec: SS10. */
+enum class RevertStep { FN_CTRL, BACKLIGHT, QS_BACKLIGHT, SIDE_KEY, NOTIFICATION_RING, SPELL_CHECKER, ACCESSIBILITY_SERVICE }
 
 /** The whole reset's result, plus the one snackbar line for it. spec: SS10 ("Result snackbar"); T44 to T46. */
 data class ResetReport(val outcomes: Map<RevertStep, RevertOutcome>) {
@@ -71,7 +72,7 @@ object RevertValues {
 
 /**
  * "Reset device settings to stock": reverts exactly what the app wrote at the OS or vendor
- * level, since Android gives an app no uninstall hook. Six reverts run independently (one
+ * level, since Android gives an app no uninstall hook. Seven reverts run independently (one
  * failing never skips the others), off the main thread, each never throwing.
  *
  * Differences from 2.x that the spec's Keep/Drop decides for 3.0: the backlight write is
@@ -102,6 +103,7 @@ class ResetToStock(
         outcomes[RevertStep.SIDE_KEY] = guarded(::revertSideKey)
         outcomes[RevertStep.NOTIFICATION_RING] = guarded(::revertNotificationRing)
         outcomes[RevertStep.SPELL_CHECKER] = guarded(::revertSpellChecker)
+        outcomes[RevertStep.ACCESSIBILITY_SERVICE] = guarded(::revertAccessibilityService)
         return ResetReport(outcomes)
     }
 
@@ -211,6 +213,23 @@ class ResetToStock(
             )
         }
         return RevertOutcome.SUCCESS
+    }
+
+    /**
+     * spec: SS10 step 7: PhysiBoard's accessibility service comes out of Android's list, however it
+     * was turned on (the user in Android's settings, or "Turn on with pairing"); every other app's
+     * service stays exactly as it was. Not on: nothing to do.
+     */
+    private fun revertAccessibilityService(): RevertOutcome {
+        // Listed with accessibility switched off still counts: the next service to switch it on
+        // would bring PhysiBoard's back with it.
+        if (!permissions.isAccessibilityServiceListed()) return RevertOutcome.SUCCESS
+        if (!shell.isPaired()) return RevertOutcome.NEEDS_PERMISSION
+        val reading = (shell.run(AccessibilityServiceList.READ_LINE) as? ShellResult.Ok)?.output?.let(AccessibilityServiceList::parse)
+            ?: return RevertOutcome.FAILED
+        val line = AccessibilityServiceList.disableLine(reading, identity.packageName) ?: return RevertOutcome.FAILED
+        if (!shell.run(line).isOk) return RevertOutcome.FAILED
+        return if (permissions.isAccessibilityServiceListed()) RevertOutcome.FAILED else RevertOutcome.SUCCESS
     }
 
     private fun guarded(body: () -> RevertOutcome): RevertOutcome = try {

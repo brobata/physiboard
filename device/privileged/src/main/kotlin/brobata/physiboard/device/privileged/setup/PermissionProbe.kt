@@ -1,7 +1,7 @@
 package brobata.physiboard.device.privileged.setup
 
 /**
- * The five grants the privileged features depend on, read live every time. Nothing here is
+ * The six grants the privileged features depend on, read live every time. Nothing here is
  * cached: each is re-checked after the shell line that should have granted it, because that
  * re-check IS the outcome (`pm grant` prints nothing on success, spec SS7 step 4).
  *
@@ -22,6 +22,12 @@ interface PermissionProbe {
 
     /** `WRITE_SECURE_SETTINGS` held. spec: ring SS5.9 row 4, SS2.2. */
     fun hasWriteSecureSettings(): Boolean
+
+    /** PhysiBoard's accessibility service is turned on (listed and accessibility enabled). spec: SS9, SS10 step 7. */
+    fun isAccessibilityServiceEnabled(): Boolean
+
+    /** PhysiBoard's entry is in `enabled_accessibility_services`, whatever the master switch says. spec: SS10 step 7. */
+    fun isAccessibilityServiceListed(): Boolean
 }
 
 /** A probe with every answer settable; the JVM tests' stand-in. */
@@ -31,10 +37,14 @@ class FakePermissionProbe(
     @Volatile var fullScreenIntent: Boolean = false,
     @Volatile var notifications: Boolean = false,
     @Volatile var writeSecureSettings: Boolean = false,
+    @Volatile var accessibilityService: Boolean = false,
+    @Volatile var accessibilityListed: Boolean = false,
 ) : PermissionProbe {
     override fun canDrawOverlays(): Boolean = overlays
     override fun isNotificationListenerGranted(): Boolean = listener
     override fun canUseFullScreenIntent(): Boolean = fullScreenIntent
     override fun areNotificationsEnabled(): Boolean = notifications
     override fun hasWriteSecureSettings(): Boolean = writeSecureSettings
+    override fun isAccessibilityServiceEnabled(): Boolean = accessibilityService
+    override fun isAccessibilityServiceListed(): Boolean = accessibilityListed || accessibilityService
 }

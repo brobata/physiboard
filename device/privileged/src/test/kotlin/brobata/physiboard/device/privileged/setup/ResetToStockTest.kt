@@ -241,7 +241,7 @@ class ResetToStockTest {
         val report = reset.run()
         assertEquals(RevertOutcome.FAILED, report.outcomes[RevertStep.FN_CTRL])
         assertEquals(RevertOutcome.SUCCESS, report.outcomes[RevertStep.BACKLIGHT])
-        assertEquals(6, report.outcomes.size)
+        assertEquals(RevertStep.entries.size, report.outcomes.size)
         assertEquals(ResetMessages.PARTIAL, report.message)
     }
 
@@ -302,5 +302,50 @@ class ResetToStockTest {
         shell.failWith("settings put secure selected_spell_checker '$vendorSpell'; settings put secure selected_spell_checker_subtype '7'; settings delete secure spell_checker_enabled")
         assertEquals(RevertOutcome.FAILED, reset.run().outcomes[RevertStep.SPELL_CHECKER])
         assertTrue(store.snapshot().captures.spellCheckerPrevCaptured)
+    }
+
+    // Step 7: the accessibility service. ------------------------------------------------------
+
+    private val ourService = brobata.physiboard.core.toolbox.AccessibilityServiceList.component("brobata.physiboard")
+    private val otherService = "cz.mobilesoft.appblock/cz.mobilesoft.appblock.service.LockAccessibilityService"
+    private val readServices = brobata.physiboard.core.toolbox.AccessibilityServiceList.READ_LINE
+
+    @Test
+    fun `accessibility revert takes out only ours, and is SUCCESS once the re-read agrees`() {
+        permissions.accessibilityService = true
+        shell.responses[readServices] = ShellResult.Ok("$otherService:$ourService\n1\n")
+        shell.onLine = { line -> if (line.startsWith("settings put secure enabled_accessibility_services")) permissions.accessibilityService = false }
+        assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.ACCESSIBILITY_SERVICE])
+        assertTrue(shell.lines.contains("settings put secure enabled_accessibility_services '$otherService'"))
+    }
+
+    @Test
+    fun `accessibility revert with the service off succeeds without the broker`() {
+        assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.ACCESSIBILITY_SERVICE])
+        assertFalse(shell.lines.contains(readServices))
+    }
+
+    @Test
+    fun `accessibility revert with the service on but no key is NEEDS_PERMISSION`() {
+        permissions.accessibilityService = true
+        shell.blocker = BrokerBlocker.NOT_PAIRED
+        assertEquals(RevertOutcome.NEEDS_PERMISSION, reset.run().outcomes[RevertStep.ACCESSIBILITY_SERVICE])
+    }
+
+    @Test
+    fun `accessibility revert that did not take is FAILED`() {
+        permissions.accessibilityService = true
+        shell.responses[readServices] = ShellResult.Ok("$ourService\n1\n")
+        assertEquals(RevertOutcome.FAILED, reset.run().outcomes[RevertStep.ACCESSIBILITY_SERVICE])
+        assertTrue(shell.lines.contains("settings delete secure enabled_accessibility_services; settings put secure accessibility_enabled 0"))
+    }
+
+    @Test
+    fun `accessibility revert also takes out an entry left listed with accessibility switched off`() {
+        permissions.accessibilityListed = true
+        shell.responses[readServices] = ShellResult.Ok("$otherService:$ourService\n0\n")
+        shell.onLine = { line -> if (line.startsWith("settings put secure enabled_accessibility_services")) permissions.accessibilityListed = false }
+        assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.ACCESSIBILITY_SERVICE])
+        assertTrue(shell.lines.contains("settings put secure enabled_accessibility_services '$otherService'"))
     }
 }

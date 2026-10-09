@@ -41,6 +41,7 @@ import brobata.physiboard.app.settings.ui.screens.SetupScreen
 import brobata.physiboard.app.settings.ui.screens.StatusScreen
 import brobata.physiboard.app.settings.ui.screens.WhatsNewScreen
 import brobata.physiboard.app.settings.ui.screens.EnterKeyBehaviourScreen
+import brobata.physiboard.app.settings.ui.screens.AccessibilityServiceScreen
 import brobata.physiboard.app.settings.ui.screens.FnLayerScreen
 import brobata.physiboard.app.settings.ui.screens.InputLanguagesScreen
 import brobata.physiboard.app.settings.ui.screens.PunctuationSpacingScreen
@@ -159,6 +160,7 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
 
                 composable(Routes.SCREEN_TRACKPAD) { ScreenTrackpadScreen(onBack = ::back) }
                 composable(Routes.FN_LAYER) { FnLayerScreen(onBack = ::back) }
+                composable(Routes.ACCESSIBILITY_SERVICE) { AccessibilityServiceScreen(onBack = ::back) }
                 composable(Routes.PUNCTUATION_SPACING) { PunctuationSpacingScreen(onBack = ::back) }
                 composable(Routes.AUTO_CORRECTION) { AutoCorrectionScreen(onBack = ::back, onNavigate = ::navigate) }
                 composable(Routes.VOICE) { VoiceScreen(onBack = ::back) }

@@ -16,6 +16,7 @@ import brobata.physiboard.core.actions.commands.LaunchSpec
 import brobata.physiboard.core.actions.launcher.ShortcutRun
 import brobata.physiboard.device.privileged.PrivilegedServices
 import brobata.physiboard.device.privileged.broker.ShellResult
+import brobata.physiboard.ime.access.AccessibilityBridge
 
 /**
  * Runs a command against the device. spec: expansion-clipboard-pickers-launcher.md SS8.1 (the
@@ -99,7 +100,8 @@ internal class CommandExecutor(
         InternalActions.TOGGLE_PRIVATE_MODE -> togglePrivateMode() || fail(CommandFailure.COMMAND_FAILED, silent)
         InternalActions.TOGGLE_DICTATION -> toggleDictation() || fail(CommandFailure.NO_INPUT_CONTEXT, silent)
         InternalActions.OPEN_SYM_PAGE_CHOOSER -> openSymPageChooser() || fail(CommandFailure.NO_INPUT_CONTEXT, silent)
-        InternalActions.OPEN_HOME -> startIntent(LaunchSpec.IntentUri(Intent.ACTION_MAIN, categories = listOf(Intent.CATEGORY_HOME)), silent)
+        // per-app-behavior.md SS16: with the accessibility service on, Home is the Home key's own action.
+        InternalActions.OPEN_HOME -> AccessibilityBridge.goHome() || startIntent(LaunchSpec.IntentUri(Intent.ACTION_MAIN, categories = listOf(Intent.CATEGORY_HOME)), silent)
         InternalActions.MEDIA_PLAY_PAUSE -> mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, silent)
         InternalActions.MEDIA_PREVIOUS -> mediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS, silent)
         InternalActions.MEDIA_NEXT -> mediaKey(KeyEvent.KEYCODE_MEDIA_NEXT, silent)

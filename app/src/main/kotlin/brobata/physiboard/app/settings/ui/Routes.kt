@@ -23,6 +23,7 @@ object Routes {
     const val T2E_TOOLS = "t2e_tools"
     const val SCREEN_TRACKPAD = "screen_trackpad"
     const val FN_LAYER = "fn_layer"
+    const val ACCESSIBILITY_SERVICE = "accessibility_service"
     const val PUNCTUATION_SPACING = "punctuation_spacing"
     const val AUTO_CORRECTION = "auto_correction"
     const val VOICE = "voice"

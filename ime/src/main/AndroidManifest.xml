@@ -110,6 +110,24 @@
                 android:value="conversations|alerting|silent" />
         </service>
 
+        <!-- per-app-behavior.md SS16: the optional accessibility service. Android binds it only
+             after the user turns it on in Settings > Accessibility (BIND_ACCESSIBILITY_SERVICE
+             means only the system can bind it). It focuses the box the keyboard types into and
+             sees hardware keys while no text box is open; it subscribes to no events, logs no
+             text and stores nothing. Same process as the keyboard, which it talks to directly. -->
+        <service
+            android:name="brobata.physiboard.ime.access.PhysiBoardAccessibilityService"
+            android:label="@string/accessibility_service_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service" />
+        </service>
+
         <!-- layers-sym-alt.md SS4.5: a GIF sent from the GIF page reaches the app as a content URI
              (InputConnection.commitContent) with a one-off read grant; only the cache path
              `gif-share/` is exposed, and it holds at most the last few GIFs sent. -->

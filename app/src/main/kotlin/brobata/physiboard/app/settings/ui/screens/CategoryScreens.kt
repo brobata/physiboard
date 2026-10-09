@@ -1,6 +1,7 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccessibilityNew
 import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
 import androidx.compose.material.icons.outlined.Functions
 import androidx.compose.material.icons.outlined.KeyboardCommandKey
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import brobata.physiboard.app.R
 import brobata.physiboard.app.settings.ui.AboutExpander
@@ -27,12 +29,14 @@ import brobata.physiboard.core.actions.launcher.AssignableKeys
 import brobata.physiboard.core.actions.launcher.LauncherShortcuts
 import brobata.physiboard.core.settings.StatusBarPrefs
 import brobata.physiboard.core.shell.AppLocale
+import brobata.physiboard.device.privileged.setup.AndroidPermissionProbe
 
 /**
  * "Keys & shortcuts" (docs/plans/settings-reorganization.md): everything that changes what a key
  * does, as opposed to what gets typed. Key mapping is the map of the whole keyboard; the Fn layer
- * and the screen trackpad are the two ways to move the cursor; the quick launcher is the one way
- * to open apps from the keys. Each row says where it stands now.
+ * and the screen trackpad are the two ways to move the cursor; the accessibility service carries
+ * the shortcuts to screens with no text box (per-app-behavior.md SS16); the quick launcher is the
+ * one way to open apps from the keys. Each row says where it stands now.
  */
 @Composable
 fun KeysScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
@@ -41,6 +45,8 @@ fun KeysScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
         .applyDefault(defaultAlreadyAssigned = settings.launcher.assignedKeysJson.isNotBlank())
         .shortcuts.quickLauncherKeycode
         ?.let { "Sym + ${AssignableKeys.label(it)}" }
+
+    val context = LocalContext.current
 
     SettingsScreenScaffold(title = "Keys & shortcuts", onBack = onBack) {
         RowList {
@@ -66,6 +72,15 @@ fun KeysScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     icon = Icons.Outlined.TouchApp,
                     value = Summaries.onOff(settings.trackpad.enabled),
                 ) { onNavigate(Routes.SCREEN_TRACKPAD) }
+            }
+            header("Where there is no text box")
+            item {
+                NavigateRow(
+                    "Accessibility service",
+                    "Shortcuts everywhere, and the cursor in apps that forget it",
+                    icon = Icons.Outlined.AccessibilityNew,
+                    value = if (AndroidPermissionProbe.accessibilityServiceEnabled(context)) "On" else "Off",
+                ) { onNavigate(Routes.ACCESSIBILITY_SERVICE) }
             }
             header("Opening apps")
             item {

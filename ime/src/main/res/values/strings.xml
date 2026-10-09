@@ -26,4 +26,8 @@
     <string name="spell_vietnamese">Tiếng Việt</string>
     <!-- layers-sym-alt.md SS4.7: the name Android's "Notification access" list shows for the one-time code reader. -->
     <string name="otp_listener_name">PhysiBoard one-time codes</string>
+    <!-- per-app-behavior.md SS16: the name Android's Accessibility list shows, and what it says the service does. -->
+    <string name="accessibility_service_name">PhysiBoard keys and text boxes</string>
+    <string name="accessibility_service_summary">Fn and Sym shortcuts with no text box, and focus for the box you type into</string>
+    <string name="accessibility_service_description">PhysiBoard uses this for two things, each with its own switch in PhysiBoard\'s settings (Keys &amp; shortcuts, Accessibility service).\n\nFn and Sym shortcuts everywhere: Android sends a keyboard keys only while a text box is open, so your Sym shortcuts, the quick launcher and the Fn layer do nothing in the camera, on a video or in most of Settings. With this on, PhysiBoard sees the keys there too. Keys it has no shortcut for go on to the app untouched.\n\nFocus the text box when you start typing: some apps, such as Messages, open with the box connected to the keyboard but not selected, so no cursor shows and Backspace may not work until you tap it. With this on, the first key you type selects the box for you and puts the cursor back where it was.\n\nPhysiBoard reads the screen only to find that box, once per box, and never reads, stores, logs or sends what is on your screen or what you type. It has no internet access of its own.</string>
 </resources>

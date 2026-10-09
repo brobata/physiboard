@@ -21,6 +21,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
@@ -52,7 +53,10 @@ import brobata.physiboard.core.keys.CharacterResolution
 import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.DictationFnGuard
 import brobata.physiboard.core.keys.KeyEdge
+import brobata.physiboard.core.keys.AccessibilityKeyRelay
+import brobata.physiboard.core.keys.ConsumedRelayDowns
 import brobata.physiboard.core.keys.KeyId
+import brobata.physiboard.core.keys.RelayedKeys
 import brobata.physiboard.core.keys.KeyCommands
 import brobata.physiboard.core.keys.SymChooserTarget
 import brobata.physiboard.core.keys.SymFieldBounce
@@ -129,7 +133,12 @@ import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.EnterOverride
 import brobata.physiboard.core.text.EnterOverrideResolver
+import brobata.physiboard.core.text.FieldFocusRescue
 import brobata.physiboard.core.text.FieldKind
+import brobata.physiboard.ime.access.AccessibilityBridge
+import brobata.physiboard.ime.access.FieldReading
+import brobata.physiboard.ime.access.FocusRequest
+import brobata.physiboard.ime.access.relayIdentity
 import brobata.physiboard.core.text.MessagingPreset
 import brobata.physiboard.device.titan.DeviceIdentity
 import brobata.physiboard.device.titan.KeyNormalizer
@@ -493,6 +502,12 @@ internal class KeyboardSession(
 
     /** text-input.md SS8.1: Backspace and forward delete go to the connected editor, not the window. */
     private val editingKeys = EditingKeyRouter()
+
+    /** keys-and-modifiers.md SS15.1: the keys the accessibility service already ran through [onKeyEventFromAccessibility]. */
+    private val relayedKeys = RelayedKeys()
+
+    /** keys-and-modifiers.md SS15.1: the relayed presses the service consumed, so their releases are consumed too. */
+    private val relayDowns = ConsumedRelayDowns()
     private var collectedHaptic: HapticEvent? = null
 
     /** spec SS9.2: the suggestion-slot tap vibration rows. */
@@ -1095,6 +1110,8 @@ internal class KeyboardSession(
 
     /** The selection start the editor last reported, the cursor fact used when a stroke does not read the whole document. */
     private var lastReportedSelStart = 0
+    /** The selection end the editor last reported; the focus request's fallback for where the cursor is (per-app-behavior.md SS16.2). */
+    private var lastReportedSelEnd = 0
     /** The editor's last report said the selection was collapsed; a passed-through Backspace on a real selection lands somewhere this side cannot predict. */
     private var lastReportedSelectionCollapsed = true
 
@@ -1147,6 +1164,9 @@ internal class KeyboardSession(
         reportFieldAttachDebug(reportedPackage, info)
         ownEdit = null
         lastReportedSelStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
+        lastReportedSelEnd = info?.initialSelEnd?.coerceAtLeast(0) ?: lastReportedSelStart
+        // per-app-behavior.md SS16.2: a new field gets its own one focus request; a restart is the same field.
+        if (!restarting) focusAskedThisField = false
         val openingText = initialTextBeforeCursor(info)
         if (restarting) {
             // spec: text-input.md line 85, 463, 497: a restart reclassifies and re-evaluates, but
@@ -1685,6 +1705,7 @@ internal class KeyboardSession(
 
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         lastReportedSelStart = newSelStart
+        lastReportedSelEnd = newSelEnd
         lastReportedSelectionCollapsed = newSelStart == newSelEnd
         noteFieldClearedByAppIfSo(newSelStart, newSelEnd)
         ownEdit?.let { expectation ->
@@ -1738,6 +1759,47 @@ internal class KeyboardSession(
      * the one code path (`android.inputmethodservice.InputMethodService`'s own callback contract)
      * that no unit test in this project runs against for real.
      */
+    /**
+     * keys-and-modifiers.md SS15.1: a key the accessibility service saw first. While the keyboard
+     * has no text box it runs here exactly as it would had Android sent it to the keyboard; with a
+     * text box (or the switch off, or Fn's own repeats) the service hands it on untouched and the
+     * keyboard gets it the usual way, if Android sends it at all.
+     */
+    fun onKeyEventFromAccessibility(event: KeyEvent): Boolean {
+        val stroke = normalizeStroke(event) ?: return false
+        val verdict = AccessibilityKeyRelay.verdict(
+            featureOn = lastSettings.keys.accessibilityFnShortcuts,
+            keyboardRunning = true,
+            fieldReallyEditable = pipeline.fieldReallyEditable,
+            fnOrigin = stroke.key == KeyId.Modifier(ModifierKey.FN),
+        )
+        if (verdict == AccessibilityKeyRelay.Verdict.PASS_THROUGH) return false
+        relayedKeys.remember(event.relayIdentity())
+        // With no connection at all (a camera, a video) the overlays that type into a box (the
+        // trackpad's held Space, the Fill page, picker searches, the firmware swipe) have nothing to
+        // type into and would only swallow the key; the no-field decisions are all that apply.
+        val pathConsumed = if (service.currentInputConnection == null) {
+            runCatching { processWithoutConnection(stroke) }.getOrElse { error -> Log.e(TAG, "relayed key crashed; it goes on to the app", error); false }
+        } else {
+            onKeyEvent(event)
+        }
+        val down = event.action == KeyEvent.ACTION_DOWN
+        val downWasConsumed = if (down) false else relayDowns.takeOnUp(event.keyCode)
+        val consumed = AccessibilityKeyRelay.consumes(stroke.key, stroke.edge, pathConsumed, downWasConsumed)
+        if (down && event.repeatCount == 0) relayDowns.onDown(event.keyCode, consumed)
+        return consumed
+    }
+
+    /**
+     * A key Android sent the keyboard. One the accessibility service already ran through
+     * [onKeyEventFromAccessibility] (and that was not consumed there, or it would not arrive) goes
+     * on to the app as it is, so no key is ever handled twice.
+     */
+    fun onKeyEventFromWindow(event: KeyEvent): Boolean {
+        if (relayedKeys.wasRelayed(event.relayIdentity())) return false
+        return onKeyEvent(event)
+    }
+
     fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
         // app-shell.md SS10.2: origin `ime_service`, reported before anything below can consume or
         // rewrite the event, so the Diagnostics panel sees exactly what Android delivered.
@@ -1952,8 +2014,79 @@ internal class KeyboardSession(
 
 
 
+    /**
+     * keys-and-modifiers.md SS15.1: a key with no input connection at all, which only the
+     * accessibility service delivers (a camera, a video: Android gave the keyboard nothing to type
+     * into). The no-field decisions run as usual; what they decide that needs no connection is
+     * done (a launcher key, the Sym-armed mode, a command), and a mapping that would need one has
+     * already declined the key. With a text box this is never the keyboard's to answer.
+     */
+    private fun processWithoutConnection(stroke: KeyStroke): Boolean {
+        if (pipeline.fieldReallyEditable) return false
+        val result = pipeline.onKeyStroke(stroke, EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs), hasInputConnection = false)
+        result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
+        result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
+        if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
+        if (result.symWantsTheField) {
+            haptics.play(HapticEvent.REFUSAL)
+            runCatching { Toast.makeText(service, SymFieldBounce.TAP_THE_BOX, Toast.LENGTH_SHORT).show() }
+        }
+        if (result.navModeTransition == NavModeTransition.ENTERED) haptics.play(HapticEvent.NAV_MODE)
+        // A media mapping needs no connection: its key goes out through the audio service. Any
+        // other edit would, so a key that produced one is not claimed after all.
+        val media = result.ops.filterIsInstance<EditorOp.DispatchMediaKey>()
+        media.forEach { op -> dispatchMediaKey(op.effect) }
+        if (result.ops.any { it !is EditorOp.DispatchMediaKey }) return false
+        return result.consumed
+    }
+
+    /** per-app-behavior.md SS16.2: whether this field has had its one focus request; a restart of the same field keeps it. */
+    private var focusAskedThisField = false
+
+    private fun maybeAskForFocus(stroke: KeyStroke) {
+        val ask = FieldFocusRescue.shouldAsk(
+            featureOn = lastSettings.keys.accessibilityFocusField,
+            serviceConnected = AccessibilityBridge.connected,
+            fieldReallyEditable = pipeline.fieldReallyEditable,
+            alreadyAskedThisField = focusAskedThisField,
+            isInitialKeyDown = stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0,
+            isModifier = stroke.key is KeyId.Modifier,
+        )
+        if (!ask) return
+        focusAskedThisField = true
+        val packageName = service.currentInputEditorInfo?.packageName ?: return
+        val session = inputSession
+        AccessibilityBridge.focusField(FocusRequest(packageName) { if (session == inputSession) readFieldForFocus() else null })
+    }
+
+    /**
+     * What the keyboard knows about its field, for the service to find the box by. Called on the
+     * main thread, and only when no view in the app has focus. A password field, or one that may
+     * hold a one-time code, is never read: the box is still focused, by its place alone.
+     */
+    private fun readFieldForFocus(): FieldReading? {
+        val info = service.currentInputEditorInfo ?: return null
+        val packageName = info.packageName ?: return null
+        val password = currentFieldKind == FieldKind.PASSWORD
+        val readable = !password && !textMayHoldCode
+        val extracted = if (readable) {
+            runCatching { service.currentInputConnection?.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = FOCUS_TEXT_MAX_CHARS }, 0) }.getOrNull()
+        } else {
+            null
+        }
+        val text = extracted?.text?.toString()?.takeIf { it.length < FOCUS_TEXT_MAX_CHARS }
+        val selection = when {
+            password -> null
+            extracted != null && extracted.selectionStart >= 0 ->
+                FieldFocusRescue.Selection(extracted.startOffset + extracted.selectionStart, extracted.startOffset + extracted.selectionEnd)
+            else -> FieldFocusRescue.Selection(lastReportedSelStart, lastReportedSelEnd)
+        }
+        val hint = if (password) null else info.hintText?.toString()
+        return FieldReading(FieldFocusRescue.Expected(packageName, password, text, hint), selection)
+    }
+
     private fun processKeyStroke(stroke: KeyStroke, event: KeyEvent? = null): Boolean {
-        val ic = service.currentInputConnection ?: return false
+        val ic = service.currentInputConnection ?: return processWithoutConnection(stroke)
         // spec: expansion-clipboard-pickers-launcher.md SS9.1: "on every hardware key down with
         // repeat count 0 while an editable field is active" -- reaching this line already means an
         // editor has an active InputConnection; [shouldPlay] itself only tests the repeat count.
@@ -2066,6 +2199,9 @@ internal class KeyboardSession(
             // let go after a chord); the icon follows without a whole strip refresh.
             refreshStatusIcon()
         }
+        // per-app-behavior.md SS16.2: the first key typed into a box nobody focused asks the
+        // accessibility service to focus it. Posted, so this keystroke never waits for it.
+        maybeAskForFocus(stroke)
         val totalMs = (System.nanoTime() - tStart) / 1_000_000.0
         if (totalMs >= SLOW_KEYSTROKE_MS) {
             Log.w(
@@ -3568,6 +3704,9 @@ internal class KeyboardSession(
     private companion object {
         /** A keystroke slower than this is reported with its breakdown; a fast typist sends one every ~60 ms. */
         const val SLOW_KEYSTROKE_MS = 12.0
+
+        /** per-app-behavior.md SS16.2: a field longer than this is not compared by its text (the box is then found by its place or hint alone). */
+        const val FOCUS_TEXT_MAX_CHARS = 4_000
 
         /** A margin on the dip's re-show, and the retry if it still lands early. */
         const val DIP_RESHOW_RETRY_MS = 32L
