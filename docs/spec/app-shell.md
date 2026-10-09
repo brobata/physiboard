@@ -227,8 +227,10 @@ version, a preview would still suppress the note for that version.
 ### 6.1 Layout
 
 Top to bottom: the terminal header (section 22.1), then one scrolling list 16 dp in from each
-side: exactly one status card (section 6.3), the settings search field (settings-catalog.md
-section 8), then the category index (section 6.4) on four cards. While a query is typed the
+side: exactly one status card (section 6.3), the Titan toolbox pane (section 6.4a), the
+settings search field (settings-catalog.md section 8, drawn as the `$ search settings_` prompt),
+then the category index (section 6.4) on four panes. The toolbox pane is hidden while a query is
+typed. While a query is typed the
 results replace the index; an empty result shows the empty state "No settings match “<query>”.
 Try a shorter word." A translucent overlay (black at 30 % in dark theme, white at 20 % in light)
 covers the status-bar area.
@@ -249,22 +251,63 @@ wireless debugging flips, polled every 1500 ms.
 | an update was found on this open (section 13.4) | "Update available" | "Version X is ready to install" | reopens the update dialog for that version |
 | otherwise | "Ready to type" | "PhysiBoard is your keyboard", plus " · Titan tools <problem>" when the verified broker status is known and not `OK` | opens Status |
 
-The first matching row wins. The first three are action cards filled with the primary container
-colour (dark amber on dark, pale amber on light): a 44 dp icon tile, the title and subtitle, a
-chevron. "Ready to type" is a calm card in the surface container colour with a green check.
+The first matching row wins. The first three are action panes with the 1 dp amber border: a
+40 dp keycap with the icon, the title in mono in the accent, the subtitle, a chevron. "Ready to
+type" is a calm pane with the slate border and a green check, so on a phone that is set up the
+toolbox below is the one amber pane on the page.
+
+**Turn on spell checking** (3.1). Under whichever of the four is shown, after a 1 dp rule, a
+second line "Turn on spell checking" / "Pick PhysiBoard so apps underline misspellings" opens
+Android's spell checker screen (the same route as Autocorrect & words > "System spell checker").
+It shows only while no pairing key is stored (paired, the setup pass does this itself,
+broker-privileged-toolbox.md section 7 step 5), `auto_select_spell_checker` is on, and the same
+rules would select PhysiBoard: spell checking is off while PhysiBoard is selected, or the
+selected spell checker is none, or is one that came with the phone. A spell checker someone
+installed (another keyboard's, or the other PhysiBoard build's) is their choice and is never
+nagged about. Re-checked with the 2000 ms probe.
 
 ### 6.4 The category index
 
-Four cards of category rows (settings-catalog.md section 9.0 lists every row, its summary and
+Four panes of category rows (settings-catalog.md section 9.0 lists every row, its summary and
 what it opens): Typing, Autocorrect & words, Languages & layouts; Long press & accents, Sym
-pages, Voice, Keys & shortcuts, Apps; Look & feel, Privacy, Titan tools; Backup & restore, Help,
-About. A row is at least 64 dp tall: a 40 dp icon tile tinted in the category's own hue (each
-glyph at least 3:1 on its tile), the name (title medium), one line of summary (body medium,
-ellipsised) and a chevron. The summary is computed from the stored settings when the row draws,
-so it is never stale and nothing loads. The Titan tools row names the broker problem ("needs
-pairing", "debugging off", "unreachable", "pairing refused") in the primary colour when the
-verified broker status is known and not `OK`; it stays quiet while the status is unknown, since
-flashing "needs attention" at every launch would train the user to ignore it.
+pages, Voice, Keys & shortcuts, Apps; Look & feel, Privacy; Backup & restore, Help, About.
+Titan tools is the toolbox pane above (section 6.4a). A row is at least 64 dp tall: a 40 dp
+keycap outlined and washed in the category's own hue (each glyph at least 3:1 on its tile), the
+name (title medium, mono), one line of summary (body medium, ellipsised) and a chevron. The
+summary is computed from the stored settings when the row draws, so it is never stale and
+nothing loads. The broker problem the old Titan tools row named in its summary is now the
+toolbox's `adb` line; the status card's "Ready to type" subtitle still appends " · Titan tools
+<problem>" when the verified status is known and not `OK`.
+
+### 6.4a The Titan toolbox
+
+The phone-level tools are what no other keyboard has, so since 3.1 they are featured directly
+under the status card rather than listed as one index row among fourteen. The pane has the
+1 dp amber border (the one featured pane on a set-up phone); tapping anywhere on it opens Titan
+tools, so it is the index's entry for that category and Titan tools is not repeated as a row.
+
+- Header: a 40 dp amber keycap with the toolbox icon, "Titan toolbox" (mono, accent), "The phone
+  itself, tuned for a keyboard", a chevron.
+- A status listing, one `key  value` line each, mono, the key muted in a 96 dp column and the
+  value as output: `adb` (`paired ✓` in the accent when a key is stored and the verified status is
+  `OK`; `checking…` muted while unknown; `paired · debugging off`, `paired · unreachable`,
+  `pairing refused` or `not paired` in the error colour). With a key stored, three more:
+  `backlight` (`lit in the dark` when `smart_backlight_enabled`, else `stock · 30 s`), `ring`
+  (`on · N min` from `notification_ring_minutes`, or `off`) and `density` (`N dpi · stock` or
+  `N dpi · custom`, read once through the broker when the status turns `OK`; `reading…` until
+  then, `needs adb` while the broker is not verified, `unreadable` if the read fails). The
+  density is never asked for an unverified broker, so an unreachable one cannot hold the page on
+  a ten second timeout.
+- Paired: three square chips `backlight`, `ring`, `density` that open Smart keyboard backlight,
+  Notification ring and Screen density.
+- Not paired: one line on why ("Pair once to keep the keys lit in the dark, glow a ring for
+  notifications and fit more on screen. It survives reboots.") and the primary button "Pair
+  Titan tools", which opens Titan tools, where the device setup card runs the pairing flow
+  (broker-privileged-toolbox.md section 3, 4).
+
+Each listing line is one accessibility node, read as its key with its value as the state. The
+density is read by Home, not the pane, so scrolling the pane away or typing a search does not
+ask the broker again.
 
 ### 6.5 Automatic update check on open
 
@@ -784,27 +827,37 @@ that exist in the source but have no path from any screen:
 
 ## 22. Theme and chrome
 
-### 22.1 Visual identity
+### 22.1 Visual identity: the terminal skin
 
-Every activity uses one theme: Material 3 with dynamic colour disabled, dark or light following
-the system. Palette: Ink `#0F172A` (dark background), Slate `#1E293B` (dark surfaces and the
-settings cards), Signal Amber `#F59E0B` (primary and tertiary on dark, `onPrimary` Ink), Amber
+Since 3.1 the settings app keeps the modern structure (category index, detail screens,
+summaries, collapsing titles, panes, 48 dp targets) and wears it as a terminal: JetBrains Mono
+is the voice of the chrome, Inter is kept only for the sentences a person reads through.
+
+**Palette.** Every activity uses one theme: Material 3 with dynamic colour disabled, dark or
+light following the system. Ink `#0F172A` (dark page), Pane `#111B2E` (dark pane fill, the
+`surfaceContainer`; one step above the page so the border carries the edge), Slate `#1E293B`
+(dark `surface`), Signal Amber `#F59E0B` (primary and tertiary on dark, `onPrimary` Ink), Amber
 Deep `#B45309` (primary and tertiary on light, `onPrimary` white: Signal Amber is about 2:1 on
-white, too faint for text), Sky `#38BDF8` (secondary), Cloud `#F1F5F9` (light background, dark
-text), Slate500 `#64748B` (outline and muted text on light), Slate400 `#94A3B8` (muted text and
-outline on dark: Slate500 is under 4:1 on Ink and about 3:1 on a card), error `#EF4444` dark /
-`#DC2626` light. The tonal container (`secondaryContainer`: tonal buttons, selected chips) is amber, `#78350F` with `#FDE68A` on dark and `#FEF3C7` with `#78350F` on light, so amber is the one accent family. Every text colour meets WCAG AA (4.5:1) on the surface it sits on, in both
-themes. The window theme is no-action-bar Material with status and navigation bars in the splash
-colours (dark or light variant), and edge-to-edge is enabled on every activity.
+white), Sky `#38BDF8` (secondary), Cloud `#F1F5F9` (light page; panes are white), Slate400
+`#94A3B8` (muted text and outline on dark), Slate550 `#5B6B80` (muted text and outline on light:
+Slate500 measured 4.3:1 on Cloud), pane border `#2A3A52` dark / `#CBD5E1` light
+(`outlineVariant`, decoration only), comment `#B8925A` dark / `#7A5C2E` light (the section
+labels), error `#EF4444` dark / `#DC2626` light. The tonal container (`secondaryContainer`) stays
+amber, `#78350F` with `#FDE68A` on dark and `#FEF3C7` with `#78350F` on light; it fills slider
+tracks. Every text colour meets WCAG AA (4.5:1) on the surface it sits on in
+both themes: muted text 7.0 / 5.0, comments 6.2 / 5.6, the accent 8.3 / 4.6 (Cloud) and 5.0
+(white), selected-chip text 8.3 / 5.0. The window theme is no-action-bar Material with status and
+navigation bars in the splash colours (dark or light variant), and edge-to-edge is enabled on
+every activity.
 
 **Typography.** Two families, both vendored under `res/font` under the SIL Open Font License 1.1
 (LICENSING.md, credited on About under "Fonts"):
 
-- **JetBrains Mono** (regular, medium, bold) is the brand voice: screen titles in the top bar,
-  dialog titles, the section labels between cards, the `physiboard:~$` prompts (home header,
-  setup, what's new, About), and Diagnostics' log and report text.
-- **Inter** (regular, medium, semi-bold) is the reading face: row titles, descriptions, dialog
-  bodies, buttons, chips, fields and home tiles.
+- **JetBrains Mono** (regular, medium, bold): screen titles as prompts, section labels, row
+  labels, row values, category names, buttons, chips, text fields, dialog titles, the
+  `physiboard:~$` prompts, and Diagnostics' log and report text.
+- **Inter** (regular, medium, semi-bold): descriptions, explanations, dialog bodies, intro
+  paragraphs, What's new and setup prose.
 
 One Material 3 type scale, defined in the theme; screens use its roles and never a font size of
 their own:
@@ -813,53 +866,81 @@ their own:
 |---|---|---|---|---|
 | display large/medium/small | Mono | 48/56, 40/48, 32/40 | bold | (reserved) |
 | headline large/medium | Mono | 28/36, 24/32 | bold | (reserved) |
-| headline small | Mono | 21/28 | bold | top-bar screen title, dialog title |
-| title large | Mono | 19/26 | bold | large in-page titles |
-| title medium | Inter | 16/22 | semi-bold | card and tile titles |
-| title small | Inter | 14/20 | semi-bold | sub-headings inside a card, expander rows |
-| body large | Inter | 16/23 | regular | row titles, field text |
+| headline small | Mono | 19/26 | bold | dialog title |
+| title large | Mono | 18/24 | bold | large in-page titles |
+| title medium | Mono | 15/21 | bold | category names, card titles, the collapsed bar's path |
+| title small | Mono | 13/18 | bold | expander rows, sub-headings |
+| body large | Mono | 14/20 | medium | row labels, list item titles, field text |
 | body medium | Inter | 14/20 | regular | descriptions, dialog text |
 | body small | Inter | 13/18 | regular | notes and fine print |
-| label large/medium/small | Inter | 14/20, 12/16, 11/16 | semi-bold, medium, medium | buttons, badges, key letters |
+| label large/medium/small | Mono | 14/20, 12/16, 11/16 | medium | buttons, chips, badges, key letters |
 
-Three brand roles sit beside the scale: the prompt (Mono bold 18/24, amber), the section label
-(Mono bold 13/18, primary colour, sentence case) and code (Mono regular 12/17, Diagnostics).
-Glyph cells that show a character as itself (emoji and character pickers, accent tiles) use one
-glyph style (Inter 22/28).
+Brand roles beside the scale: the prompt (Mono bold 18/24), the section label (Mono medium
+13/18), the value (Mono medium 13/18, the accent), code (Mono regular 12/17, Diagnostics) and
+reading (Inter 16/23, long prose). Glyph cells that show a character as itself (emoji and
+character pickers, accent tiles) use one glyph style (Inter 22/28).
 
-**Spacing and shape.** Spacing steps are 4, 8, 12, 16 and 24 dp; the side margin is 16 dp.
-Corners grow with the layer: 6 dp (extra small), 10 dp (small: chips, fields), 12 dp (medium),
-16 dp (large: settings cards, preset cards, leading icon tiles use 10 dp), 28 dp (extra large:
-dialogs and sheets). Home tiles and the action card use 20 dp.
+**Shapes and spacing.** Terminal corners: 2 dp (extra small: outlined fields), 4 dp (small:
+chips, buttons, keycaps, the switch), 6 dp (medium and large: panes, cards, preset cards), 8 dp
+(extra large: dialogs). Spacing steps are 4, 8, 12, 16 and 24 dp; the side margin is 16 dp.
 
-**Settings layout.** Every settings list draws its rows on rounded 16 dp cards in the surface
-container colour (Slate on dark, white on light) on the page background, 16 dp in from each side;
-a section label between two cards names the group. A full-width element (the theme preset
-carousel, the Sym page preview, the device setup card, search fields, empty states) sits between
-cards rather than inside one. A row is at least 56 dp tall (the 48 dp touch target plus room).
-Every row that opens another screen carries a leading icon in a 36 dp "keycap" tile (the raised
-surface tone with the icon in the primary colour; outlined Material icons) and a trailing chevron
-in the muted colour. A switch row's whole surface toggles it. Buttons inside rows are tonal and
-at least 48 dp tall. Long explanations sit behind a collapsed "About ..." row under a one-line
-summary (the Terminal-mode pattern), so the controls stay near the top. An empty list shows an
-icon in a 56 dp keycap tile and one line that says how to fill it. Search fields are filled,
-fully rounded and carry a clear button once something is typed. Screens that are a plain column
-rather than a list (About, What's new, setup) use the same card surface.
+**Screen titles as prompts.** Every settings screen shares one top bar: status-bar and cutout
+insets, the page colour, a 56 dp row with the back arrow (content description "Back", full
+contrast) and the trailing actions in the same colour. Below it the title is a prompt,
+`physiboard:~/<dir>$`, where `<dir>` is the title lower-cased with every run of non-letters and
+non-digits made one `-` ("Sym pages" is `sym-pages`, "Look & feel" is `look-feel`): `physiboard`
+and `$` in the accent, `:` muted, `~/<dir>` in full contrast, up to 20 sp and stepped down to
+fit one line (never under 14 sp). As the content scrolls up the prompt folds away (Material's
+exit-until-collapsed nested scroll over its 52 dp) and the short path `~/<dir>` fades into the
+bar in the accent (title medium), which then takes a 1 dp rule in the pane-border colour along
+its bottom edge. The title is one accessibility heading read as the plain title: on the prompt
+while the bar is more than half expanded, on the bar's short copy once it is more than half
+collapsed (the other copy is hidden then), so a scrolled screen still has its heading. The
+scroll-driven fades and the fold are applied in layout and draw, so scrolling never recomposes
+the bar.
 
-The home header is an Ink band with a 2 dp amber hairline on top and `physiboard:~$` in the
-prompt style in Signal Amber followed by a 10 × 20 dp amber block cursor that fades between
-opaque and transparent every 600 ms; the fade is held static when the system animator duration
-scale is 0 (reduced motion). The settings screens share one top bar: status-bar inset, the page
-background colour (the cards are the only raised surfaces), back arrow (content description
-"Back"), the title in the mono headline style on one line, trailing actions drawn in the
-same full-contrast colour as the back arrow. The bar is a collapsing large-title bar: the title
-starts large below the back arrow and folds into the bar as the content scrolls up.
+**Panes.** Every settings list draws its rows on panes: the pane fill, a 1 dp border in the
+pane-border colour, 6 dp corners, 16 dp in from each side. A run of rows is one pane; its border
+is drawn as one outline across the rows, with no seams between them. A section label between two
+panes is a shell comment, `# capitals`: the `#` in the accent, the words lower-cased in the
+comment colour (read aloud as the label, marked a heading); the same style names a group inside
+a pane. A full-width element (the theme preset carousel, the Sym page preview, the device setup
+card, search fields, empty states) sits between panes. Cards that are not lists (the device setup
+card, setup, Diagnostics' event card, Remove bloat's presets, theme presets) use the same pane:
+surface fill, 1 dp border, 6 dp corners. The featured pane on Home (the Titan toolbox) and the
+status card's action panes take the border in the accent instead.
 
-Since 3.1 a row that opens another screen also shows that screen's current value at its right in
-the muted colour ("On", "Slate Light", "3 apps"), and a destructive row (reset, delete) has its
-label and icon in the error colour, no chevron, and asks for confirmation. "About ..." and other
-expanders open and close with a short height-and-fade animation and a turning chevron. An intro
-paragraph sits above the first card as plain muted text, not on a card of its own.
+**Rows.** A row is at least 56 dp tall (the 48 dp target plus room). Its label is body large
+(mono), its description body medium (Inter, muted). Every row that opens another screen carries
+a leading icon in a 36 dp keycap (4 dp corners, a 1 dp border in the pane-border colour, a faint
+wash of the glyph's hue, the glyph in the accent; outlined Material icons) and a trailing chevron
+in the muted colour; its current value ("On", "Slate Light", "3 apps") sits at its right as
+command output, in the value style in the accent. A destructive row (reset, delete) has its
+label and icon in the error colour, no chevron, and asks for confirmation. Buttons inside rows
+are terminal buttons: the label in the accent inside a 1 dp accent outline, 4 dp corners, at
+least 48 dp tall. Long explanations sit behind a collapsed
+"About ..." row under a one-line summary (the Terminal-mode pattern), so the controls stay near
+the top; expanders open and close with a short height-and-fade animation and a turning chevron.
+An intro paragraph sits above the first pane as plain muted text. An empty list shows an icon in
+a 56 dp keycap and one line that says how to fill it.
+
+**Controls.** Switches are the terminal switch: a 42 x 24 dp track with 4 dp corners and a 16 dp
+square thumb; on, the track is filled in the accent and the thumb is the page ink; off, the
+track is an outline and the thumb is the outline colour (both 3:1 or better). A switch row's
+whole surface toggles it, and a switch that takes taps itself has a 52 x 48 dp target with the
+switch role. Chips are square-ish (4 dp) with mono labels; a selected chip is highlighted as a
+terminal highlights a selection, the accent as the fill and the page ink as the text. Buttons
+are 4 dp. Search fields are prompts: an outlined field on the pane fill, a `$` in the accent
+where the magnifier was, the placeholder lower-cased in mono ending in `_` (`$ search
+settings_`), the border amber while focused, and a clear button once something is typed.
+
+**Dialogs and sheets.** 8 dp corners on the raised surface, the title in mono (headline small),
+the body in Inter, buttons in mono.
+
+**Home header.** An Ink band with a 2 dp amber hairline on top and `physiboard:~$` in the prompt
+style in Signal Amber followed by a 10 x 20 dp amber block cursor that blinks hard, on for 600 ms
+and off for 600 ms; it is held on when the system animator duration scale is 0 (reduced motion).
+Setup, What's new and About keep their own `physiboard:~$ <command>` prompt lines in the page.
 
 ### 22.2 Transitions and sizing
 

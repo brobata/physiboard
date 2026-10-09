@@ -872,7 +872,7 @@ current state and a chevron. A category with one screen opens it; the others ope
 | Apps | "No terminal apps · Enter sends" | Apps: Terminal mode, Enter key |
 | Look & feel | "Slate Light · silent keys" | Look & feel: Theme, Sound & haptics, Modifier badge (switch and two colours), App Language |
 | Privacy | "Private mode off · clean links on" | Privacy: Private mode, Clean links, Notification access for codes |
-| Titan tools | "Backlight, notification ring, screen", or the broker problem | Titan tools (formerly T2E Tools): pairing card, smart backlight, remove bloat, screen density, system tweaks, notification ring |
+| Titan tools (3.1: the featured "Titan toolbox" pane under the status card, not an index row; app-shell.md SS6.4a) | the toolbox's status listing: `adb`, `backlight`, `ring`, `density` | Titan tools (formerly T2E Tools): pairing card, smart backlight, remove bloat, screen density, system tweaks, notification ring |
 | Backup & restore | "Save your settings to a file, or reset them" | Backup & restore: Back up now, Restore from a file; Start over: Reset device settings to stock, Reset all settings |
 | Help | "Status check, test field, diagnostics" | Help: Status check, Test field, Diagnostics, Show the tutorial, Check for updates (GitHub installs only) |
 | About | "Version <name>" | About: version card, Report a problem, Support, Licences and credits (collapsed) |
