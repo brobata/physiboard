@@ -489,6 +489,9 @@ internal class KeyboardSession(
      * haptic is held here instead of played, so the keystroke's strongest event plays alone.
      */
     private var collectingHaptic = false
+
+    /** text-input.md SS8.1: Backspace and forward delete go to the connected editor, not the window. */
+    private val editingKeys = EditingKeyRouter()
     private var collectedHaptic: HapticEvent? = null
 
     /** spec SS9.2: the suggestion-slot tap vibration rows. */
@@ -1236,6 +1239,7 @@ internal class KeyboardSession(
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         handler.removeCallbacksAndMessages(selectionSyncToken)
         currentFieldKind = FieldKind.NOT_EDITABLE
+        editingKeys.reset()
         pipeline.onFinishInput(nowMs = SystemClock.uptimeMillis())
         requestCandidatesShown(false)
         fieldChangeInProgress = true
@@ -1985,11 +1989,17 @@ internal class KeyboardSession(
         val tPipeline = System.nanoTime()
         collectingHaptic = true
         collectedHaptic = null
-        val consumed = try {
+        val applied = try {
             applyResult(ic, result, readout, keyTypes = event?.typedCharacter())
         } finally {
             collectingHaptic = false
         }
+        // text-input.md SS8.1: a Backspace the pipeline lets through goes to the connected editor,
+        // so it works in a messaging app that has connected its box but given no view focus yet.
+        val consumed = applied || (
+            event != null &&
+                editingKeys.route(ic, event, editableField = currentFieldKind != FieldKind.NOT_EDITABLE, terminalMode = currentFieldKind == FieldKind.RAW_MODE_APP)
+            )
         // spec expansion-clipboard-pickers-launcher.md SS4.7: a letter that just typed an emoji
         // which takes tones (an Emoji page key, a Sym chord) arms the hold that opens the chooser.
         if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key is KeyId.Letter) {

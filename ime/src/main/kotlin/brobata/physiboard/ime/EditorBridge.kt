@@ -431,3 +431,47 @@ internal fun fillFieldFacts(info: EditorInfo?): FieldFacts? {
     }
     return FieldFacts(inputClass, password, signedOrDecimal, hints)
 }
+
+/**
+ * Backspace and forward delete that PhysiBoard has nothing special to do with go to the app
+ * through the input connection, not back to the window (text-input.md SS8.1, per-app-behavior.md
+ * D9). Right after a messaging app opens, its text box is already connected to the keyboard, so
+ * letters (committed through the connection) land, but no view holds key focus yet, so a raw
+ * KEYCODE_DEL handed back to the window reached nothing until the box was tapped. A key sent
+ * through the connection goes to the connected editor itself.
+ *
+ * The key is sent as it arrived: meta state, repeat count (hold to repeat) and device all kept.
+ * The release follows its press: a press sent this way has its release sent this way too, and a
+ * press that went to the window leaves its release to the window. Never in a terminal-mode app
+ * (its keys keep their exact hardware path, section 4.6) or without an editable field (the
+ * launcher, system screens). Enter already goes through the connection (per-app-behavior.md
+ * SS3.4); Tab and the arrows stay on the window's path on purpose, since they also move focus
+ * between views, which a key sent to one editor cannot.
+ */
+internal class EditingKeyRouter {
+    private val routedDowns = HashSet<Int>(4)
+
+    /** A new field: any press still in flight belonged to the old one. */
+    fun reset() = routedDowns.clear()
+
+    /** Sends [event] to [connection] and answers true when it is one of the keys this routes; false leaves it to the window as before. */
+    fun route(connection: InputConnection, event: KeyEvent, editableField: Boolean, terminalMode: Boolean): Boolean {
+        val code = event.keyCode
+        if (code != KeyEvent.KEYCODE_DEL && code != KeyEvent.KEYCODE_FORWARD_DEL) return false
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (!editableField || terminalMode) return false
+                routedDowns.add(code)
+            }
+            KeyEvent.ACTION_UP -> if (!routedDowns.remove(code)) return false
+            else -> return false
+        }
+        // A connection that has already gone (the editor torn down before onFinishInput arrives)
+        // answers false: the key then goes to the window as before rather than being eaten.
+        if (!connection.sendKeyEvent(KeyEvent(event))) {
+            if (event.action == KeyEvent.ACTION_DOWN) routedDowns.remove(code)
+            return false
+        }
+        return true
+    }
+}

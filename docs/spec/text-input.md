@@ -489,6 +489,22 @@ Backspace on an auto-inserted space is nothing special: the space is one committ
 like any other and the app deletes it; the keyboard only forgets the auto-space flag and the
 deferred debt.
 
+### 8.1 How a falling-through Backspace reaches the app (3.2)
+
+"Falls through" used to mean the keyboard answered "not mine" and the system handed the raw key
+to the app's window, which gives it to the view holding key focus. Right after a messaging app
+opens, its text box is already connected to the keyboard (letters, committed through the
+connection, land) but no view holds key focus until the box is tapped, so Backspace did nothing
+(reported for every physical keyboard but one; per-app-behavior.md D9). Since 3.2 a Backspace
+or forward delete that falls through, in an editable field outside a terminal-mode app, is sent
+through the input connection as it arrived (meta state, repeat count and device kept, so holding
+it repeats) and consumed; the connected editor deletes one character or the selection exactly as
+before. A press sent this way has its release sent the same way; a press that went to the window
+leaves its release there. With no editable field (the launcher, a list), in a terminal-mode app
+(per-app-behavior.md 4.6) or with no connection, the key still goes to the window. Enter already
+goes through the connection (per-app-behavior.md 3.4); Tab and the arrow keys stay on the
+window's path because they also move focus between views, which a key sent to one editor cannot.
+
 ## 9. Auto-capitalization
 
 Auto-cap never types an uppercase letter by itself. It requests a Shift one-shot; the next
