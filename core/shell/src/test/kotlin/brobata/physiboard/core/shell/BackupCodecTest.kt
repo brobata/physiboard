@@ -1,8 +1,10 @@
 package brobata.physiboard.core.shell
 
+import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.settings.SettingsCodec
 import brobata.physiboard.core.settings.SettingsKeys
+import brobata.physiboard.core.settings.StatusBarVisibility
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -50,6 +52,43 @@ class BackupCodecTest {
         assertEquals("physiboard_settings", name)
         assertEquals(SettingsCodec.toMap(settings), entries)
         assertTrue(text.contains(""""type": "string""""))
+    }
+
+    /**
+     * The 3.1 settings reorganization took every strip-only control off the screens
+     * (docs/plans/settings-reorganization.md). Their keys must still leave in a backup and come
+     * back on restore exactly as they were, so a backup made before the change loses nothing.
+     */
+    @Test
+    fun `settings no screen offers any more still round-trip through a backup`() {
+        val base = Settings()
+        val custom = base.copy(
+            statusBar = base.statusBar.copy(
+                visibility = StatusBarVisibility.ALWAYS,
+                apps = setOf("com.example.chat"),
+                heightDp = 36,
+                leftButtons = listOf(BarButton.UNDO, BarButton.CLIPBOARD),
+                rightButtons = listOf(BarButton.REDO),
+                hideWhereNothingToSuggest = false,
+                accessibilityLiveAnnouncementsEnabled = true,
+                accessibilitySuggestionsAnnouncementDelayMs = 900,
+                theme = base.statusBar.theme.copy(
+                    ledInactive = 0xFF010203.toInt(),
+                    ledActive = 0xFF040506.toInt(),
+                    ledLocked = 0xFF070809.toInt(),
+                    showLeds = true,
+                    keyCornerRadiusRatio = 0.5,
+                    chromeCornerRadiusRatio = 0.25,
+                    suggestionsHeightScale = 1.5,
+                ),
+            ),
+            perApp = base.perApp.copy(nudgePackages = setOf("com.example.dip")),
+            correction = base.correction.copy(suggestionsEnabled = false),
+        )
+        val (_, entries) = requireNotNull(BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", custom)))
+        val outcome = BackupRestore.restore(Settings(), BackupFile(meta = meta, entries = entries))
+        assertEquals(0, outcome.skippedCount)
+        assertEquals(custom, outcome.settings)
     }
 
     @Test
