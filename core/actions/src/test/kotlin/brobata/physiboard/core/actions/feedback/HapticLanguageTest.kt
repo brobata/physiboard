@@ -56,8 +56,10 @@ class HapticLanguageTest {
     @Test
     fun `T-H2 the events people tell apart stay apart on the Titan`() {
         fun on(event: HapticEvent) = HapticLanguage.plan(event, HapticIntensity.LIGHT, titan)
-        // A one-shot and a lock must not feel the same; nor a correction and its undo; nor a refusal and anything else.
-        assertTrue(on(HapticEvent.MODIFIER_ONE_SHOT) != on(HapticEvent.MODIFIER_LOCK))
+        // A one-shot and a lock feel the same on purpose: the double tap is already felt as two
+        // taps (maintainer, 2026-10-09). A correction and its undo, Sym open and close, and a
+        // refusal stay apart.
+        assertEquals(on(HapticEvent.MODIFIER_ONE_SHOT), on(HapticEvent.MODIFIER_LOCK))
         assertTrue(on(HapticEvent.CORRECTION) != on(HapticEvent.CORRECTION_UNDONE))
         assertTrue(on(HapticEvent.SYM_OPEN) != on(HapticEvent.SYM_CLOSE))
         assertTrue(on(HapticEvent.TOGGLE_ON) != on(HapticEvent.TOGGLE_OFF))

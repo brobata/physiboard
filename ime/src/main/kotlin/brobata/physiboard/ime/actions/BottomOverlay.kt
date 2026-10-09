@@ -71,7 +71,7 @@ internal class BottomOverlay(private val service: InputMethodService, private va
             )
         }
         if (OverlayPermission.availability(service) != OverlayAvailability.AVAILABLE) {
-            runCatching { Toast.makeText(service, "This panel needs Display over other apps. Enable it in PhysiBoard settings.", Toast.LENGTH_SHORT).show() }
+            brobata.physiboard.ime.pointer.OverlayPermission.explainAndOpenSettings(service, "This panel")
             return false
         }
         val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return false

@@ -955,7 +955,7 @@ predefined effect the maker tuned, and a plain pulse for anything else.
 |---|---|---|---|---|
 | `KEY` | an ordinary key's first down (not a repeat, not Back, not a modifier), only with `key_haptics` on | light: TICK 0.35; standard: TICK 0.6; strong: CLICK 0.8 | TICK / CLICK / HEAVY_CLICK | 8 / 12 / 18 ms |
 | `MODIFIER_ONE_SHOT` | a modifier press arms a one-shot (Shift, Alt, Ctrl) | CLICK 0.5 | CLICK | 15 ms |
-| `MODIFIER_LOCK` | a press locks one (caps lock, an Alt or Ctrl latch) | CLICK 0.9, TICK 0.5 after 40 | HEAVY_CLICK | 30 ms |
+| `MODIFIER_LOCK` | a press locks one (caps lock, an Alt or Ctrl latch) | CLICK 0.5, the same as `MODIFIER_ONE_SHOT` (amended 2026-10-09: the double tap is already felt as two taps; a firmer second buzz read as a third) | CLICK | 15 ms |
 | `MODIFIER_RELEASE` | a modifier press clears a one-shot or a lock | LOW_TICK 0.6 | TICK | 8 ms |
 | `SYM_OPEN` / `SYM_CLOSE` / `SYM_STEP` | Sym opens the pages, closes them, or steps to the next page | QUICK_RISE 0.4 + CLICK 0.6 / QUICK_FALL 0.4 / TICK 0.6 | CLICK / TICK / TICK | 15 / 10 / 10 ms |
 | `PICK` | an accent (layers-sym-alt.md 8.4) or a skin tone (expansion-clipboard-pickers-launcher.md 4.7) chosen from its chooser | CLICK 0.7 | CLICK | 15 ms |

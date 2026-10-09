@@ -109,9 +109,7 @@ internal class TrackpadOverlayController(
         if (effect.openOverlayHold || effect.openOverlaySticky) openOverlay()
         if (effect.closeOverlay) closeOverlay()
         if (effect.showPermissionToast) {
-            runCatching {
-                Toast.makeText(service, "Screen trackpad needs Display over other apps. Enable it in PhysiBoard settings.", Toast.LENGTH_SHORT).show()
-            }
+            OverlayPermission.explainAndOpenSettings(service, "Screen trackpad")
         }
         // spec SS2.3: "the raw event is kept for replay". Which stroke(s) that is belongs to the
         // caller (see this class's own KDoc); this only ever tells it which shape of replay SS2.3

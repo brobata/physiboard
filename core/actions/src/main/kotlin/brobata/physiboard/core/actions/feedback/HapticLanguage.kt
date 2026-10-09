@@ -117,11 +117,9 @@ object HapticLanguage {
             HapticIntensity.STRONG -> HapticRecipe(listOf(PrimitiveStep(HapticPrimitive.CLICK, 0.8f)), PredefinedHaptic.HEAVY_CLICK, oneShot(18, 200))
         }
         HapticEvent.MODIFIER_ONE_SHOT -> HapticRecipe(listOf(PrimitiveStep(HapticPrimitive.CLICK, 0.5f)), PredefinedHaptic.CLICK, oneShot(15, 140))
-        HapticEvent.MODIFIER_LOCK -> HapticRecipe(
-            listOf(PrimitiveStep(HapticPrimitive.CLICK, 0.9f), PrimitiveStep(HapticPrimitive.TICK, 0.5f, delayMs = 40)),
-            PredefinedHaptic.HEAVY_CLICK,
-            oneShot(30, 220),
-        )
+        // The same soft click as the first tap (maintainer, 2026-10-09): the double tap that
+        // locks is already felt as two taps, and a firmer second buzz read as a third.
+        HapticEvent.MODIFIER_LOCK -> HapticRecipe(listOf(PrimitiveStep(HapticPrimitive.CLICK, 0.5f)), PredefinedHaptic.CLICK, oneShot(15, 140))
         HapticEvent.MODIFIER_RELEASE -> HapticRecipe(listOf(PrimitiveStep(HapticPrimitive.LOW_TICK, 0.6f)), PredefinedHaptic.TICK, oneShot(8, 80))
         HapticEvent.SYM_OPEN -> HapticRecipe(
             listOf(PrimitiveStep(HapticPrimitive.QUICK_RISE, 0.4f), PrimitiveStep(HapticPrimitive.CLICK, 0.6f)),

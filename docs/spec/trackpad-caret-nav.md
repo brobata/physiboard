@@ -101,7 +101,7 @@ Timings in the hold flow:
 | Trigger up at t < 250 ms | timer cancelled; down and up replayed; consumed |
 | Other key down at t < 250 ms | timer cancelled; trigger down replayed alone; other key not consumed; trackpad in "aborted" state until the trigger's real up, which is then not consumed and flows normally |
 | Timer fires at 250 ms and the overlay opens | active (hold) |
-| Timer fires and the overlay cannot open (permission) | toast "Screen trackpad needs Display over other apps. Enable it in PhysiBoard settings."; state aborted; trigger down replayed |
+| Timer fires and the overlay cannot open (permission) | toast "Screen trackpad needs Display over other apps. Turn it on for this app, then come back." and Android's "Display over other apps" screen for this app opens (at most once every 8 s; amended 2026-10-09, the same for every keyboard panel); state aborted; trigger down replayed |
 | Trigger up while active (hold) | overlay removed; consumed |
 | Trigger down again while active (sticky), repeat 0 | overlay removed; consumed |
 | Trigger up while active (sticky) | consumed |
