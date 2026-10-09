@@ -62,7 +62,7 @@ class KeyMappingInventoryTest {
     @Test
     fun `Sym mentions the assistant and trackpad when both are configured`() {
         val snapshot = baseSnapshot().copy(symLongPressAssistantOn = true, symTrackpadTriggerOn = true)
-        val row = KeyMappingInventory.rows(snapshot).first { it.label == "Sym" }
+        val row = KeyMappingInventory.rows(snapshot).first { it.label == "Hold Sym: assistant" }
         assertEquals("Symbol and emoji pages · hold for the assistant · hold for the trackpad", row.bindingText)
     }
 
@@ -85,7 +85,7 @@ class KeyMappingInventoryTest {
     fun `every row is present including the fixed ones`() {
         val labels = KeyMappingInventory.rows(baseSnapshot()).map { it.label }
         assertEquals(
-            listOf("Fn", "Sym", "Orange side key", "Space", "Right Shift", "Home", "Recent apps", "Back", "Volume up / down", "Power"),
+            listOf("Fn", "Hold Sym: assistant", "Orange side key", "Space", "Right Shift", "Home", "Recent apps", "Back", "Volume up / down", "Power"),
             labels,
         )
     }

@@ -4,22 +4,28 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.ColorLens
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,15 +39,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.ColorFieldRow
-import brobata.physiboard.app.settings.ui.DividerLabel
+import brobata.physiboard.app.settings.ui.ExpandableSection
+import brobata.physiboard.app.settings.ui.InfoText
 import brobata.physiboard.app.settings.ui.KeyboardUiPreview
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.ReorderableMultiChoiceRow
-import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
+import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.StatusBarPrefs
@@ -62,13 +70,14 @@ import brobata.physiboard.core.strip.StripSide
 fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val controller = LocalSettingsController.current
     val statusBar = controller.current.value.statusBar
+    val symPages = controller.current.value.symPages
     fun set(transform: (StatusBarPrefs) -> StatusBarPrefs) = controller.update { it.copy(statusBar = transform(it.statusBar)) }
     var confirmReset by remember { mutableStateOf(false) }
 
     SettingsScreenScaffold(title = "Theme", onBack = onBack) {
         RowList {
-            item { DividerLabel("Choose a preset") }
-            item {
+            header("Choose a preset")
+            plainItem {
                 ThemePresetRow(
                     savedThemeNames = statusBar.savedThemes.map { it.name },
                     activeTheme = statusBar.theme,
@@ -80,46 +89,17 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     },
                 )
             }
-            item { DividerLabel("Keyboard UI Preview") }
-            item { KeyboardUiPreview(statusBar.theme) }
-            item {
-                SwitchRow("Show LEDs", checked = statusBar.theme.showLeds, onCheckedChange = { checked ->
-                    set { p -> p.copy(theme = p.theme.copy(showLeds = checked)) }
-                })
-            }
-            item { NavigateRow("Customize colors", onClick = { onNavigate(Routes.CUSTOMIZE_COLORS) }) }
-            item { NavigateRow("Saved themes", "${statusBar.savedThemes.size} saved") { onNavigate(Routes.SAVED_THEMES) } }
-            item { NavigateRow("Layout overrides", "A different theme per language or layout") { onNavigate(Routes.THEME_LAYOUT_OVERRIDES) } }
-            item { DividerLabel("Buttons") }
-            item {
-                ReorderableMultiChoiceRow(
-                    label = "Left buttons",
-                    options = BarButton.entries,
-                    optionLabel = ::barButtonLabel,
-                    selected = statusBar.leftButtons,
-                    onChange = { updated -> set { p -> p.copy(leftButtons = updated) } },
+            header("Keyboard UI Preview")
+            plainItem {
+                KeyboardUiPreview(
+                    theme = statusBar.theme,
+                    characters = effectiveCharacters(isEmoji = false, customEmoji = symPages.customEmojiPage, customSymbols = symPages.customSymbolsPage),
                 )
             }
-            item {
-                ReorderableMultiChoiceRow(
-                    label = "Right buttons",
-                    options = BarButton.entries,
-                    optionLabel = ::barButtonLabel,
-                    selected = statusBar.rightButtons,
-                    onChange = { updated -> set { p -> p.copy(rightButtons = updated) } },
-                )
-            }
-            item {
-                SingleChoiceChipsRow(
-                    label = "Bar height",
-                    description = "36 dp is below Android's minimum touch target size; pick it only if you type on the physical keys and just read the bar.",
-                    options = listOf(36, 48, 56, 64),
-                    optionLabel = { "$it dp" },
-                    selected = statusBar.heightDp,
-                    onSelect = { height -> set { p -> p.copy(heightDp = height) } },
-                )
-            }
-            item { DividerLabel("Modifiers") }
+            item { NavigateRow("Customize colors", "Keys, buttons, text and accent on the Sym pages", icon = Icons.Outlined.ColorLens) { onNavigate(Routes.CUSTOMIZE_COLORS) } }
+            item { NavigateRow("Saved themes", "${statusBar.savedThemes.size} saved", icon = Icons.Outlined.Bookmarks) { onNavigate(Routes.SAVED_THEMES) } }
+            item { NavigateRow("Layout overrides", "A different theme per language or layout", icon = Icons.Outlined.Translate) { onNavigate(Routes.THEME_LAYOUT_OVERRIDES) } }
+            header("Modifiers")
             item {
                 SwitchRow(
                     "Show modifiers at the cursor",
@@ -134,8 +114,37 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             item {
                 ColorFieldRow("Locked colour", statusBar.caretBadgeLockedColor) { v -> set { p -> p.copy(caretBadgeLockedColor = v) } }
             }
+            header("Status strip")
             item {
-                ButtonRow(label = "Reset", buttonText = "Reset", onClick = { confirmReset = true })
+                InfoText("The strip above the keyboard is switched off, so these change nothing you can see. They are kept so a backup restores them.")
+                ExpandableSection("Strip buttons, LEDs and height") {
+                    SwitchRow("Show LEDs", checked = statusBar.theme.showLeds, onCheckedChange = { checked ->
+                        set { p -> p.copy(theme = p.theme.copy(showLeds = checked)) }
+                    })
+                    ReorderableMultiChoiceRow(
+                        label = "Left buttons",
+                        options = BarButton.entries,
+                        optionLabel = ::barButtonLabel,
+                        selected = statusBar.leftButtons,
+                        onChange = { updated -> set { p -> p.copy(leftButtons = updated) } },
+                    )
+                    ReorderableMultiChoiceRow(
+                        label = "Right buttons",
+                        options = BarButton.entries,
+                        optionLabel = ::barButtonLabel,
+                        selected = statusBar.rightButtons,
+                        onChange = { updated -> set { p -> p.copy(rightButtons = updated) } },
+                    )
+                    SingleChoiceChipsRow(
+                        label = "Strip height",
+                        description = "36 dp is below Android's minimum touch target size.",
+                        options = listOf(36, 48, 56, 64),
+                        optionLabel = { "$it dp" },
+                        selected = statusBar.heightDp,
+                        onSelect = { height -> set { p -> p.copy(heightDp = height) } },
+                    )
+                    ButtonRow(label = "Strip buttons", description = "Back to Menu, Emoji and Microphone", buttonText = "Reset", onClick = { confirmReset = true })
+                }
             }
         }
     }
@@ -183,8 +192,8 @@ private fun ThemePresetRow(
     // contentPadding rather than a padding modifier, so the row scrolls out to the screen edge
     // instead of clipping the last visible card 16 dp short of it.
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+        contentPadding = PaddingValues(horizontal = Spacing.l),
         modifier = Modifier.fillMaxWidth(),
     ) {
         items(StripThemePresets.ALL, key = { "preset:${it.name}" }) { preset ->
@@ -198,20 +207,22 @@ private fun ThemePresetRow(
 
 @Composable
 private fun PresetCard(name: String, theme: StripTheme?, active: Boolean, onClick: () -> Unit) {
-    // The active preset gets an amber outline and an amber "Active" tag, so it no longer reads
-    // as a third line of the name; a strip of the preset's own colours shows what it looks like.
+    // The active preset gets an accent outline and its own "Active" tag, so it never reads as a
+    // third line of the name; a strip of the preset's own colours shows what it looks like.
     Card(
         onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         border = if (active) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-        modifier = Modifier.padding(vertical = 4.dp).width(104.dp).height(104.dp),
+        modifier = Modifier.padding(vertical = Spacing.xs).width(112.dp).height(112.dp),
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-            Text(name, maxLines = 2)
-            if (active) Text("Active", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        Column(modifier = Modifier.fillMaxSize().padding(Spacing.m)) {
+            Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 2)
+            if (active) Text("Active", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.weight(1f))
             if (theme != null) {
-                Row(modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(3.dp))) {
-                    listOf(theme.background, theme.suggestion, theme.accent).forEach { argb ->
+                Row(modifier = Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(4.dp))) {
+                    listOf(theme.background, theme.suggestion, theme.statusBarButton, theme.accent).forEach { argb ->
                         Box(modifier = Modifier.weight(1f).fillMaxHeight().background(Color(argb)))
                     }
                 }

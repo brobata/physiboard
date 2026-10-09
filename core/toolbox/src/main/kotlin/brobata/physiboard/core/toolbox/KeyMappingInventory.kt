@@ -73,12 +73,12 @@ object KeyMappingInventory {
         return KeyMappingRow("Fn", "scancode 251 (FUNC3)", binding.toString(), ROUTE_FN_LAYER)
     }
 
-    /** spec: SS15 Sym row. */
+    /** spec: SS15 Sym row. Labelled for what the row opens (Voice, where the hold-for-assistant switch lives), not the bare key name. */
     private fun symRow(s: KeyMappingSnapshot): KeyMappingRow {
         val binding = StringBuilder("Symbol and emoji pages")
         if (s.symLongPressAssistantOn) binding.append(" · hold for the assistant")
         if (s.symTrackpadTriggerOn) binding.append(" · hold for the trackpad")
-        return KeyMappingRow("Sym", "scancode 253 (AGUI_SYM)", binding.toString(), ROUTE_VOICE)
+        return KeyMappingRow("Hold Sym: assistant", "scancode 253 (AGUI_SYM)", binding.toString(), ROUTE_VOICE)
     }
 
     /**

@@ -50,6 +50,7 @@ fun ThemeLayoutOverrideEditScreen(index: Int, onBack: () -> Unit) {
 
     SettingsScreenScaffold(title = if (index >= 0) "Edit override" else "Add override", onBack = ::save) {
         RowList {
+            header("Applies to")
             item {
                 OutlinedTextField(
                     value = locale,
@@ -68,12 +69,15 @@ fun ThemeLayoutOverrideEditScreen(index: Int, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
+            // Same labels as Customize colors: what each colour paints on the Sym pages now.
+            header("Sym pages and panels")
             item { ColorFieldRow("Background", theme.background) { v -> theme = theme.copy(background = v) } }
-            item { ColorFieldRow("Dividers", theme.divider) { v -> theme = theme.copy(divider = v) } }
+            item { ColorFieldRow("Keys", theme.suggestion) { v -> theme = theme.copy(suggestion = v) } }
+            item { ColorFieldRow("Buttons", theme.statusBarButton) { v -> theme = theme.copy(statusBarButton = v) } }
+            item { ColorFieldRow("Key outlines", theme.divider) { v -> theme = theme.copy(divider = v) } }
             item { ColorFieldRow("Text and icons", theme.textAndIcons) { v -> theme = theme.copy(textAndIcons = v) } }
             item { ColorFieldRow("Accent", theme.accent) { v -> theme = theme.copy(accent = v) } }
-            item { ColorFieldRow("Suggestions", theme.suggestion) { v -> theme = theme.copy(suggestion = v) } }
-            item { ColorFieldRow("Status bar buttons", theme.statusBarButton) { v -> theme = theme.copy(statusBarButton = v) } }
+            header("Status strip (switched off)")
             item { ColorFieldRow("LED inactive", theme.ledInactive) { v -> theme = theme.copy(ledInactive = v) } }
             item { ColorFieldRow("LED active", theme.ledActive) { v -> theme = theme.copy(ledActive = v) } }
             item { ColorFieldRow("LED locked", theme.ledLocked) { v -> theme = theme.copy(ledLocked = v) } }
