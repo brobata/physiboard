@@ -8,7 +8,15 @@ import android.provider.Settings as AndroidSettings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import brobata.physiboard.app.settings.ui.terminalPane
+import brobata.physiboard.app.settings.ui.SpellCheckerSettings
+import brobata.physiboard.app.settings.ui.MinTouchTarget
+import brobata.physiboard.app.settings.ui.KeycapIcon
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -31,7 +39,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
@@ -40,7 +47,6 @@ import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.EmojiSymbols
-import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.KeyboardCommandKey
@@ -55,8 +61,6 @@ import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.ToggleOn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -124,9 +128,14 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     val settings = controller.current.value
 
     var probe by remember { mutableStateOf(ImeProbeAndroid.evaluate(context, ImeComponent.SERVICE_CLASS_NAME)) }
+    var keyStored by remember { mutableStateOf(application.privileged.broker.isPaired()) }
+    // spec: SS6.3, "Turn on spell checking": offered only while unpaired, since pairing does it.
+    var offerSpellCheck by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (true) {
             probe = ImeProbeAndroid.evaluate(context, ImeComponent.SERVICE_CLASS_NAME)
+            keyStored = application.privileged.broker.isPaired()
+            offerSpellCheck = !keyStored && SpellCheckerSettings.shouldOfferTurnOn(context, controller.current.value.device.autoSelectSpellChecker)
             delay(2000)
         }
     }
@@ -141,6 +150,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     }
 
     val brokerVerdict by application.privileged.broker.verdict.collectAsState()
+    val toolboxDensity = rememberToolboxDensity(keyStored && brokerVerdict == BrokerVerdict.OK)
 
     val updateState = rememberUpdateCheckState()
     val installer = remember { runCatching { context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName }.getOrNull() }
@@ -164,7 +174,10 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         HomeHeader()
         Box(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
             RowList {
-                plainItem(key = "status") { HomeStatusCard(probe, updateState, brokerLabel, onNavigate) }
+                plainItem(key = "status") { HomeStatusCard(probe, updateState, brokerLabel, offerSpellCheck, onNavigate) }
+                if (query.isBlank()) {
+                    plainItem(key = "toolbox") { TitanToolboxCard(settings.device, brokerVerdict, keyStored, toolboxDensity, onNavigate) }
+                }
                 plainItem(key = "search") {
                     SearchPill(
                         value = query,
@@ -190,7 +203,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                         }
                     }
                 } else {
-                    homeIndex(settings, brokerLabel, onNavigate)
+                    homeIndex(settings, onNavigate)
                 }
             }
         }
@@ -223,11 +236,11 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
 }
 
 /**
- * The category index (docs/plans/settings-reorganization.md): four cards, from what changes
- * every sentence to what is touched once. A category with one screen opens it directly; the rest
+ * The category index (docs/plans/settings-reorganization.md): four panes, from what changes
+ * every sentence to what is touched once. Titan tools is the featured toolbox pane above, not a row. A category with one screen opens it directly; the rest
  * open a small screen that gathers theirs.
  */
-private fun SettingsListScope.homeIndex(settings: Settings, brokerLabel: String?, onNavigate: (String) -> Unit) {
+private fun SettingsListScope.homeIndex(settings: Settings, onNavigate: (String) -> Unit) {
     header("")
     item { CategoryRow("Typing", Summaries.typing(settings), Icons.Outlined.TextFields, CategoryTint.AMBER) { onNavigate(Routes.TYPING) } }
     item { CategoryRow("Autocorrect & words", Summaries.autocorrect(settings), Icons.Outlined.Spellcheck, CategoryTint.EMERALD) { onNavigate(Routes.AUTO_CORRECTION) } }
@@ -241,15 +254,7 @@ private fun SettingsListScope.homeIndex(settings: Settings, brokerLabel: String?
     header("")
     item { CategoryRow("Look & feel", Summaries.look(settings), Icons.Outlined.Palette, CategoryTint.AMBER) { onNavigate(Routes.LOOK) } }
     item { CategoryRow("Privacy", Summaries.privacy(settings), Icons.Outlined.Shield, CategoryTint.EMERALD) { onNavigate(Routes.PRIVACY) } }
-    item {
-        CategoryRow(
-            "Titan tools",
-            brokerLabel?.let { "Titan tools $it" } ?: "Backlight, notification ring, screen",
-            Icons.Outlined.Handyman,
-            CategoryTint.SKY,
-            attention = brokerLabel != null,
-        ) { onNavigate(Routes.T2E_TOOLS) }
-    }
+    // Titan tools is not repeated here: the toolbox pane above the search is its entry (SS6.4a).
     header("")
     item { CategoryRow("Backup & restore", "Save your settings to a file, or reset them", Icons.Outlined.SettingsBackupRestore, CategoryTint.SLATE) { onNavigate(Routes.BACKUP) } }
     item { CategoryRow("Help", "Status check, test field, diagnostics", Icons.AutoMirrored.Outlined.HelpOutline, CategoryTint.SLATE) { onNavigate(Routes.HELP) } }
@@ -293,101 +298,104 @@ private fun HomeHeader() {
     }
 }
 
-/** The 10x20 dp amber block cursor (app-shell.md SS22.1), shared by every terminal header. */
+/** The 10x20 dp amber block cursor (app-shell.md SS22.1), shared by every terminal header: on for [periodMillis], off for as long. */
 @Composable
 fun TerminalCursor(modifier: Modifier = Modifier, periodMillis: Int = 600) {
     val reducedMotion = rememberReducedMotion()
     val alpha = if (reducedMotion) {
         1f
     } else {
+        // A terminal's block cursor blinks hard, on then off, rather than fading.
         val transition = rememberInfiniteTransition(label = "terminal_cursor")
-        val animated by transition.animateFloat(
-            initialValue = 1f,
-            targetValue = 0f,
-            animationSpec = infiniteRepeatable(animation = tween(periodMillis), repeatMode = RepeatMode.Reverse),
-            label = "terminal_cursor_alpha",
+        val phase by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 2f,
+            animationSpec = infiniteRepeatable(animation = tween(periodMillis * 2, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+            label = "terminal_cursor_phase",
         )
-        animated
+        if (phase < 1f) 1f else 0f
     }
     Box(modifier = modifier.size(width = 10.dp, height = 20.dp).alpha(alpha).background(PhysiBoardColors.SignalAmber))
 }
 
 /**
- * The one status card (app-shell.md SS6.2): the thing that needs doing, in the accent's container
- * colour, or a calm "ready" card that opens the full status check. Only one is ever shown.
+ * The one status card (app-shell.md SS6.3): the thing that needs doing, in an amber-bordered
+ * pane, or a calm "ready" pane that opens the full status check. Only one is ever shown. Below
+ * either, while unpaired and PhysiBoard is not the spell checker it would choose itself, a second
+ * line offers "Turn on spell checking", which opens Android's spell checker screen.
  */
 @Composable
-private fun HomeStatusCard(probe: ImeProbeResult, updateState: brobata.physiboard.app.shell.UpdateCheckState, brokerLabel: String?, onNavigate: (String) -> Unit) {
+private fun HomeStatusCard(
+    probe: ImeProbeResult,
+    updateState: brobata.physiboard.app.shell.UpdateCheckState,
+    brokerLabel: String?,
+    offerSpellCheck: Boolean,
+    onNavigate: (String) -> Unit,
+) {
     val context = LocalContext.current
-    when {
-        !probe.enabled -> ActionCard("Enable PhysiBoard", "Turn it on in system keyboard settings", Icons.Outlined.ToggleOn) {
+    val dark = isSystemInDarkTheme()
+    val (title, subtitle, icon, action) = when {
+        !probe.enabled -> StatusCardContent("Enable PhysiBoard", "Turn it on in system keyboard settings", Icons.Outlined.ToggleOn) {
             context.startActivity(Intent(AndroidSettings.ACTION_INPUT_METHOD_SETTINGS))
         }
-        !probe.selected -> ActionCard("Set as keyboard", "Pick PhysiBoard from the input switcher", Icons.Outlined.Keyboard) {
+        !probe.selected -> StatusCardContent("Set as keyboard", "Pick PhysiBoard from the input switcher", Icons.Outlined.Keyboard) {
             (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showInputMethodPicker()
         }
         updateState.foundRelease != null -> {
             val release = updateState.foundRelease!!
-            ActionCard("Update available", "Version ${release.tag} is ready to install", Icons.Outlined.SystemUpdate) { updateState.reopenDialog() }
+            StatusCardContent("Update available", "Version ${release.tag} is ready to install", Icons.Outlined.SystemUpdate) { updateState.reopenDialog() }
         }
-        else -> ReadyCard(
-            subtitle = if (brokerLabel == null) "PhysiBoard is your keyboard" else "PhysiBoard is your keyboard · Titan tools $brokerLabel",
-            onClick = { onNavigate(Routes.STATUS) },
-        )
+        else -> StatusCardContent(
+            "Ready to type",
+            if (brokerLabel == null) "PhysiBoard is your keyboard" else "PhysiBoard is your keyboard · Titan tools $brokerLabel",
+            null,
+        ) { onNavigate(Routes.STATUS) }
     }
-}
-
-/** The one thing that needs doing, in the accent's container colour so it stands apart from the index. */
-@Composable
-private fun ActionCard(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
+    val ready = icon == null
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.l, vertical = Spacing.s)
+            .terminalPane(featured = !ready),
     ) {
-        Row(modifier = Modifier.padding(Spacing.l), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp)) }
-            Column(modifier = Modifier.weight(1f).padding(horizontal = Spacing.l)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = action).padding(horizontal = Spacing.l, vertical = Spacing.m),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (ready) {
+                Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = CategoryTint.EMERALD.glyph(dark), modifier = Modifier.size(28.dp))
+            } else {
+                KeycapIcon(icon!!, size = 40.dp, iconSize = 22.dp, category = CategoryTint.AMBER)
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-        }
-    }
-}
-
-/** All clear: a quiet card on the page's own surface, a green check and one line, tappable for the details. */
-@Composable
-private fun ReadyCard(subtitle: String, onClick: () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
-    ) {
-        Row(modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Outlined.CheckCircle,
-                contentDescription = null,
-                tint = CategoryTint.EMERALD.glyph(dark),
-                modifier = Modifier.size(28.dp),
-            )
-            Column(modifier = Modifier.weight(1f).padding(horizontal = Spacing.l)) {
-                Text("Ready to type", style = MaterialTheme.typography.titleMedium)
+            Column(modifier = Modifier.weight(1f).padding(horizontal = Spacing.m)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = if (ready) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary)
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        if (offerSpellCheck) {
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { SpellCheckerSettings.open(context) }
+                    .defaultMinSize(minHeight = MinTouchTarget)
+                    .padding(horizontal = Spacing.l, vertical = Spacing.s),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Spellcheck, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Column(modifier = Modifier.weight(1f).padding(horizontal = Spacing.m)) {
+                    Text("Turn on spell checking", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                    Text("Pick PhysiBoard so apps underline misspellings", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
+
+/** What the status card shows; a null [icon] is the calm "ready" card. */
+private data class StatusCardContent(val title: String, val subtitle: String, val icon: ImageVector?, val action: () -> Unit)
 
 /**
  * What the Titan tools row says when the broker is not usable. Every verdict used to read
