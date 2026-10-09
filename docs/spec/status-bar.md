@@ -616,6 +616,15 @@ Top to bottom:
    `show_leds`, with a reset-to-preset affordance), then "Reset", which restores the slot
    defaults only.
 
+**3.1 (the settings reorganization, docs/plans/settings-reorganization.md).** Theme is reached
+from Look & feel. Its sections are "Presets", "Preview", then rows "Colours" (formerly "Customize
+colors", now with the preview at its top and "Save as…" in the top bar), "Saved themes" and
+"Per-language themes" (formerly "Layout overrides"). Items 4 and 5 below are gone from the page:
+the modifier badge moved to Look & feel > "Modifier badge", and the "Status strip" section, its
+buttons, LEDs and height, and the strip's LED colours and corner and text-size sliders on the
+colour page and the override editor, have no screen at all. Their keys stay in the store and in
+backups.
+
 **The 3.x Theme page (2026-10-08).** With the strip hidden for good, the page is titled "Theme"
 and is laid out for what the theme still colours, the Sym pages and the panels beside them:
 
@@ -782,7 +791,7 @@ it was on before the field, and the system status-bar icon is hidden unless nav 
 | `status_bar_slots_left` | JSON array string | `["hamburger"]` | Left buttons in order | Status Bar Theme > Buttons | Left buttons |
 | `status_bar_slots_right` | JSON array string | `["emoji","microphone"]` | Right buttons in order | Status Bar Theme > Buttons | Right buttons |
 | `status_bar_slot_left`, `status_bar_slot_right_1`, `status_bar_slot_right_2` | string | `hamburger`, `emoji`, `microphone` | Legacy mirrors; fallback when the JSON is absent | none | |
-| `app_keyboard_nudge_packages` | string set | seeded with `com.microsoft.teams` | Apps that get the dip | Keyboard > Text box under the bar | per-app switches |
+| `app_keyboard_nudge_packages` | string set | seeded with `com.microsoft.teams` | Apps that get the dip | No screen in 3.1 (strip only); kept for backups | per-app switches |
 | `titan2_elite_rounded_corner_insets` | boolean | true on a Titan 2 Elite, false elsewhere | Rounded bar corners, edge buttons, side insets | none (no UI row) | |
 | `keyboard_theme_hardware` | JSON object string | absent (Slate Dark, scale 1.4) | The hardware strip's theme | Status Bar Theme | preset cards |
 | `keyboard_theme_software` | JSON object string | absent (Slate Dark with software geometry) | The theme above the on-screen keyboard | Status Bar Theme (page 1) | preset cards |

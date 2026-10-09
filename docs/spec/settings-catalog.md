@@ -65,55 +65,56 @@ the reset, `impact_defaults_applied` is kept, step 3 does not run, and the basel
 
 Columns: key | type | code default | baseline (only when it differs from the code default; "same"
 means the baseline carries the code default; blank means the baseline does not carry the key) |
-what it changes | screen and label ("no screen" means nothing in 2.x writes it except a backup
+what it changes | screen and label, as of the 3.1 category index (docs/plans/settings-reorganization.md;
+"no screen" means nothing in 2.x writes it except a backup
 restore or the baseline). Value ranges are clamped on read and on write unless noted.
 
 ### 2.1 Typing pipeline (text-input.md)
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `auto_capitalize_first_letter` | boolean | true | same | Capital at the start of a field | Keyboard > Smart Features > Capitalization > "Capitalize at text start" |
-| `auto_capitalize_after_period` | boolean | true | | Capital after a sentence end | Smart Features > "Capitalize after sentence end" |
-| `auto_capitalize_restricted_fields` | boolean | false | | Auto-shift in fields that ask not to | Smart Features > Advanced > "Shift in all text fields" |
-| `double_space_to_period` | boolean | true | | Two spaces become ". " | Smart Features > Spacing & punctuation > "Double Space inserts period" |
-| `clear_alt_on_space` | boolean | true | | Space drops an armed or locked Alt | Smart Features > Keyboard behavior > "Release Alt with Space" |
+| `auto_capitalize_first_letter` | boolean | true | same | Capital at the start of a field | Typing > Capitals > "At the start of a text box" |
+| `auto_capitalize_after_period` | boolean | true | | Capital after a sentence end | Typing > Capitals > "After a full stop, ? or !" |
+| `auto_capitalize_restricted_fields` | boolean | false | | Auto-shift in fields that ask not to | Typing > Capitals > "In web address and email boxes too" (only while the first row is on) |
+| `double_space_to_period` | boolean | true | | Two spaces become ". " | Typing > Punctuation > "Double Space types a full stop" |
+| `clear_alt_on_space` | boolean | true | | Space drops an armed or locked Alt | Typing > Alt key > "Space or Enter releases Alt" |
 | `auto_show_keyboard` | boolean | true | same | Bring the keyboard up when a field gains focus | Smart Features > "Show keyboard automatically" |
 | `physical_keyboard_currency_symbol` | string, one of `€ $ £ ¥ ₹ ₽ ₿ ¤`; anything else reads as `€` | `€` | `$` | The currency key's output | Smart Features > "Currency Symbol" chips |
-| `shift_backspace_delete` | boolean | false | | Shift+Backspace deletes forward | Smart Features > Delete > "Shift + Backspace" |
-| `alt_backspace_delete` | boolean | false | | Alt+Backspace deletes forward | Smart Features > Delete > "Alt + Backspace" |
-| `backspace_at_start_delete` | boolean | false | | Backspace at line start deletes forward | Smart Features > Advanced > "Backspace at line start" |
-| `auto_space_punctuation` | string: an ordered subset of the characters `.,;:!?\/")]}` in that canonical order, other characters dropped | `""` | | Which punctuation gets a space put before it | Smart Features > Advanced > "Punctuation spacing", "before" column |
+| `shift_backspace_delete` | boolean | false | | Shift+Backspace deletes forward | Typing > Backspace > "Shift + Backspace deletes forward" |
+| `alt_backspace_delete` | boolean | false | | Alt+Backspace deletes forward | Typing > Backspace > "Alt + Backspace deletes forward" |
+| `backspace_at_start_delete` | boolean | false | | Backspace at line start deletes forward | Typing > Backspace > "At the start of a line, delete forward" |
+| `auto_space_punctuation` | string: an ordered subset of the characters `.,;:!?\/")]}` in that canonical order, other characters dropped | `""` | | Which punctuation gets a space put before it | Typing > More punctuation > "Spaces around punctuation", "before" column |
 | `space_after_punctuation` | string, same shape | `""` | | Which punctuation gets a space put after it | Same dialog, "after" column |
-| `comma_space` | boolean | false | | Space after a comma | Smart Features > Advanced > "Space after comma" |
-| `spaced_hyphen_to_en_dash` | boolean | false | | " - " becomes a dash | Smart Features > Advanced > "Hyphen to dash" |
+| `comma_space` | boolean | false | | Space after a comma | Typing > More punctuation > "Space after a comma" |
+| `spaced_hyphen_to_en_dash` | boolean | false | | " - " becomes a dash | Typing > More punctuation > "Spaced hyphen becomes a dash" |
 | `spaced_hyphen_dash_style` | string `en_dash` or `em_dash`; anything else reads as `en_dash` | `en_dash` | | Which dash | Same row |
 | `mid_word_quote_to_apostrophe` | boolean | false | | A quote inside a word becomes an apostrophe | Smart Features > Advanced > "Quotes inside words" |
-| `smart_quotes` | boolean | false | | Straight quotes become typographic | Smart Features > Advanced > "Quotation mark style" |
+| `smart_quotes` | boolean | false | | Straight quotes become typographic | Typing > More punctuation > "Curly quotation marks" |
 | `smart_quotes_style` | string, one of `german_guillemets`, `french_guillemets`, `french_guillemets_narrow_spaced`, `german_low_high`, `english_curly`; anything else reads as `german_guillemets` | `german_guillemets` | | Which quote pair | Same row |
 | `french_punctuation_spacing` | boolean | false | | Narrow space before `?!:;` | No screen in 2.x |
 | `french_punctuation_only_french` | boolean | false | | Apply the above only when the input language is French | No screen in 2.x |
 | `swipe_to_delete` | boolean | false | | Swipe left on the keyboard deletes a word | No screen in 2.x (keys-and-modifiers.md) |
 | `swipe_to_delete_provider` | string `titan2_keycode` or `native_ime`; written synchronously | `native_ime` | | Which event source the swipe comes from | No screen in 2.x |
-| `layout_aware_ctrl_shortcuts` | boolean | false | | Ctrl+letter resolved through the active layout | Keyboard > Fn Layer > "Layout-aware app Ctrl shortcuts" |
-| `long_press_threshold` | long ms, 50 to 1000 | 300, but see the quirk: the Alt/Sym layer reads the raw row with a fallback of 500 when it is absent; 3.0: 500 for both | | Hold time before a key is a long press | 2.x: only on the "Key Behaviour & Timing" screen, which no row navigates to (dead UI); 3.0: Keyboard > Long press > "Hold time" |
+| `layout_aware_ctrl_shortcuts` | boolean | false | | Ctrl+letter resolved through the active layout | Keys & shortcuts > Fn layer > "Ctrl shortcuts follow the layout" |
+| `long_press_threshold` | long ms, 50 to 1000 | 300, but see the quirk: the Alt/Sym layer reads the raw row with a fallback of 500 when it is absent; 3.0: 500 for both | | Hold time before a key is a long press | 2.x: only on the "Key Behaviour & Timing" screen, which no row navigates to (dead UI); 3.1: Long press & accents > "Hold time" |
 | `swipe_incremental_threshold` | float dp, 3 to 25 | 9.6 | | Distance per cursor step on the retired swipe bar | Dead: written by nothing, read by nothing since 2.0 |
 
 ### 2.2 Autocorrect and suggestions (autocorrect-suggestions.md)
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `auto_correct_enabled` | boolean | true | | The text replacement engine | Keyboard > Auto-correction > "Text replacements" |
-| `auto_correct_enabled_languages` | string, comma-separated language codes | absent reads as {system language if it is one of it, en, es, fr, de, pl, otherwise en} plus `x-pastiera` | | Which languages' replacement tables apply | Auto-correction > "Manage text replacements" |
-| `auto_correct_custom_<code>` (one row per language code) | string, JSON object; the field `__name` holds the display name, every other field is `wrong: right` | none | | User substitutions for that language | Text Replacements > Custom Substitutions > edit screen ("Add Correction") |
-| `auto_replace_on_space_enter` | boolean | false | true | Replace the word on Space or Enter | Auto-correction > "Automatic correction" |
-| `max_auto_replace_distance` | int 0 to 3 (0 = off) | 1 | 2 | Edit distance allowed for an automatic replacement | Auto-correction > "Maximum correction distance" |
-| `suggestions_enabled` | boolean | true | | The suggestion strip | Auto-correction > "Suggestions while typing" |
-| `accent_matching_enabled` | boolean | true | | Accent-insensitive matching; with a word-pair table, whether a correction may add a missing apostrophe or accent (`dont` -> `don't`) (autocorrect-suggestions.md SS13) | Auto-correction > "Accent & spelling marks" |
-| `use_keyboard_proximity` | boolean | false | true | Key-distance ranking on the path without a word-pair table; no effect on English, whose sentence-aware correction always weighs the Titan's key distances (autocorrect-suggestions.md SS13, SS16) | Auto-correction > "Keyboard Proximity Ranking" |
-| `fix_word_mixups` | boolean | false | | Swaps a real word typed for its twin (its/it's, your/you're, their/there, then/than) by reading the words on both sides; ships off until proven on the phone (autocorrect-suggestions.md SS10) | Auto-correction > "Fix mixed-up words" |
-| (none) | link | | | Not a setting: says whether PhysiBoard is Android's selected spell checker and opens Android's spell checker picker; nothing stored or backed up (autocorrect-suggestions.md SS18) | Auto-correction > "System spell checker" |
+| `auto_correct_enabled` | boolean | true | | The text replacement engine | Autocorrect & words > Text replacements > "Use text replacements" (the row on Autocorrect & words shows On/Off) |
+| `auto_correct_enabled_languages` | string, comma-separated language codes | absent reads as {system language if it is one of it, en, es, fr, de, pl, otherwise en} plus `x-pastiera` | | Which languages' replacement tables apply | Autocorrect & words > "Text replacements" |
+| `auto_correct_custom_<code>` (one row per language code) | string, JSON object; the field `__name` holds the display name, every other field is `wrong: right` | none | | User substitutions for that language | Autocorrect & words > Text replacements > a language > edit screen ("Add Correction") |
+| `auto_replace_on_space_enter` | boolean | false | true | Replace the word on Space or Enter | Autocorrect & words > Autocorrect > "Fix typos" |
+| `max_auto_replace_distance` | int 0 to 3 (0 = off) | 1 | 2 | Edit distance allowed for an automatic replacement | Autocorrect & words > Fine-tuning > "How far a correction may reach" |
+| `suggestions_enabled` | boolean | true | | The suggestion strip | No screen in 3.1 (strip only, c61c240); kept for backups |
+| `accent_matching_enabled` | boolean | true | | Accent-insensitive matching; with a word-pair table, whether a correction may add a missing apostrophe or accent (`dont` -> `don't`) (autocorrect-suggestions.md SS13) | Autocorrect & words > Autocorrect > "Add missing apostrophes and accents" |
+| `use_keyboard_proximity` | boolean | false | true | Key-distance ranking on the path without a word-pair table; no effect on English, whose sentence-aware correction always weighs the Titan's key distances (autocorrect-suggestions.md SS13, SS16) | Autocorrect & words > Fine-tuning > "Weigh nearby keys" |
+| `fix_word_mixups` | boolean | false | | Swaps a real word typed for its twin (its/it's, your/you're, their/there, then/than) by reading the words on both sides; ships off until proven on the phone (autocorrect-suggestions.md SS10) | Autocorrect & words > Autocorrect > "Fix mixed-up words" |
+| (none) | link | | | Not a setting: says whether PhysiBoard is Android's selected spell checker and opens Android's spell checker picker; nothing stored or backed up (autocorrect-suggestions.md SS18) | Autocorrect & words > Words > "System spell checker" |
 | `use_edit_type_ranking` | boolean | false | | Insert > substitute > delete ranking | Auto-correction > "Edit Type Ranking" |
-| `user_dictionary_entries` | string, JSON array of objects `{"w": word, "f": frequency, "u": last used ms}` | none | | The personal dictionary | Auto-correction > "Personal dictionary" (User dictionary screen) |
+| `user_dictionary_entries` | string, JSON array of objects `{"w": word, "f": frequency, "u": last used ms}` | none | | The personal dictionary | Autocorrect & words > Words > "Personal dictionary" |
 | `suggestion_debug_logging` | boolean | true | | Verbose suggestion logs (stripped from release builds anyway) | No screen |
 | `trackpad_gestures_enabled` | boolean; written synchronously | false | | Swipe gestures on the suggestion strip | No screen in 2.x |
 | `trackpad_gesture_add_word_enabled` | boolean; synchronous | true | | Gesture may add a word | No screen in 2.x |
@@ -127,20 +128,20 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `keyboard_layout` | string layout id | `qwerty` | same | The active physical layout | Extras > Input Languages (layout per input style) |
-| `keyboard_layout_auto_by_locale` | boolean | true | | Resolve layout from the input style's locale mapping | Input Languages > "Automatic Layout Mapping" |
+| `keyboard_layout` | string layout id | `qwerty` | same | The active physical layout | Languages & layouts > "Keyboard layout" |
+| `keyboard_layout_auto_by_locale` | boolean | true | | Resolve layout from the input style's locale mapping | Languages & layouts > Keyboard layout > "Follow the language" |
 | `keyboard_layout_auto_mapping_updated` | long, epoch ms | none | | Reload trigger after the locale-to-layout mapping file changes | Written by Input Languages, read by the keyboard |
 | `keyboard_layout_list` | string, JSON array of layout ids | absent reads as [current layout] | | The cycle order for the layout-switch chords | No screen writes it in 2.x |
-| `alt_shift_layout_switch` | boolean | false on a new install, true on an install that already had rows when the one-time initialisation ran (section 5.4) | true | Alt+Shift cycles layouts | Input Languages > Layout Switch Shortcuts > "Alt+Shift Layout Switch" |
+| `alt_shift_layout_switch` | boolean | false on a new install, true on an install that already had rows when the one-time initialisation ran (section 5.4) | true | Alt+Shift cycles layouts | Languages & layouts > Switch language with > "Alt + Shift" |
 | `alt_shift_default_initialized` | boolean marker | | | Guards the above | |
-| `alt_enter_layout_switch` | boolean | false | | Alt+Enter cycles layouts | "Alt+Enter Layout Switch" |
-| `ctrl_space_layout_switch` | boolean | true | | Ctrl+Space cycles layouts | "Ctrl+Space Layout Switch" |
+| `alt_enter_layout_switch` | boolean | false | | Alt+Enter cycles layouts | Languages & layouts > Switch language with > "Alt + Enter" |
+| `ctrl_space_layout_switch` | boolean | true | | Ctrl+Space cycles layouts | Languages & layouts > Switch language with > "Ctrl + Space" |
 | `toast_on_layout_switch` | boolean | true | | Toast on a layout change | No screen in 2.x |
 | `additional_ime_subtypes` | string set of `locale:layout` | empty | | Extra input styles registered with Android | Input Languages list |
-| `custom_input_styles` | string, entries separated by `;` | absent reads as the app's predefined subtype list | | The user's input style list | Input Languages |
-| `input_style_suggestion_locales` | string, JSON object keyed `<locale>:<layout>` (locale with `-`), each value a JSON array of locale tags | none | | Extra suggestion dictionaries per input style | Input Languages > "Suggestion dictionaries" |
-| `hidden_system_input_styles` | string, JSON array of `<locale>:<layout>` | none | | System-provided styles the user hid | Input Languages > hide/show system locale |
-| `app_language_tag` | string BCP-47; blank means system | none | | The settings app's own UI language | About > "App Language" and Input Languages > "App Language" |
+| `custom_input_styles` | string, entries separated by `;` | absent reads as the app's predefined subtype list | | The user's input style list | Languages & layouts > "Languages you type in" |
+| `input_style_suggestion_locales` | string, JSON object keyed `<locale>:<layout>` (locale with `-`), each value a JSON array of locale tags | none | | Extra suggestion dictionaries per input style | Languages & layouts > Languages you type in > "Suggestion dictionaries" |
+| `hidden_system_input_styles` | string, JSON array of `<locale>:<layout>` | none | | System-provided styles the user hid | Languages & layouts > Languages you type in > hide/show system locale |
+| `app_language_tag` | string BCP-47; blank means system | none | | The settings app's own UI language | Look & feel > "App Language" (the dropdown that duplicated it on Input Languages is gone) |
 | `physical_keyboard_profile_override` | string `auto`, `key2`, `Q25`, `titan`, `titan2`, `titan2elite_qwerty`, `mp01`, `clicks_razr`, `clicks_pixel`, `clicks_power`; anything else reads as `auto` | `auto` | | Which device profile's key mappings apply | Only on the "Built-in Keyboards" screen, which nothing navigates to in 2.x (dead UI); the picker offers `auto`, `titan2`, `titan2elite_qwerty` |
 | `titan2_layout_enabled` | boolean | absent reads as "the phone is a Titan 2 family device" | | Aligns the on-screen keyboard with the physical layout | Same dead screen, "Titan 2 Layout Alignment" |
 | `global_variation_layout_override` | string layout id, blank = none | `""` | | Variation ordering layout | Dropped by the 1.x migration, yet still read once by the variation loader: effectively dead |
@@ -156,8 +157,8 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `alt_latch_stays_on_space` | boolean | false | | Armed Alt survives Space | No screen |
 | `ctrl_latch_stays_on_space` | boolean | false | | Armed Ctrl survives Space | No screen |
 | `long_press_modifier` | string `alt`, `shift`, `variations`, `sym`, `sym_symbols`, `sym_emoji`; anything else reads as `alt` | `alt` | | What holding a letter produces | No screen in 2.x; 3.0: Keyboard > Long press > "Long press types" |
-| `long_press_variation_chooser` (3.0) | boolean | true | | In Accent mode, a letter with several accents shows them all in a transient bar to pick another (layers-sym-alt.md 8.4) | Keyboard > Long press > "Show every accent" |
-| `custom_variations` (3.0) | string, JSON object from one character to an array of strings, `{"a": ["ą", "à"], "E": []}`; keys that are not one character, non-arrays and non-string members are skipped; unparseable reads as `{}` | `{}` | | The user's own accent lists, each replacing the built-in list for that character; an empty array means none (layers-sym-alt.md 8.3) | Keyboard > Long press > "Customize Variations" |
+| `long_press_variation_chooser` (3.0) | boolean | true | | In Accent mode, a letter with several accents shows them all in a transient bar to pick another (layers-sym-alt.md 8.4) | Long press & accents > "Show every accent" |
+| `custom_variations` (3.0) | string, JSON object from one character to an array of strings, `{"a": ["ą", "à"], "E": []}`; keys that are not one character, non-arrays and non-string members are skipped; unparseable reads as `{}` | `{}` | | The user's own accent lists, each replacing the built-in list for that character; an empty array means none (layers-sym-alt.md 8.3) | Long press & accents > "Customize Variations" |
 | `bounce_keys_enabled` | boolean | false | | Ignore a repeat of the same key inside the delay | No screen (Accessibility screen deleted) |
 | `bounce_keys_delay_ms` | long 20 to 500 | 80 | | The delay | No screen |
 | `bounce_keys_character_keys_enabled` | boolean | true | | Filter applies to letters | No screen |
@@ -166,17 +167,17 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `bounce_keys_enter_enabled` | boolean | true | | Filter applies to Enter | No screen |
 | `bounce_keys_backspace_enabled` | boolean | true | | Filter applies to Backspace | No screen |
 | `overlapping_keys_enabled` | boolean | false | | Overlapping-press handling | No screen |
-| `nav_mode_enabled` | boolean | true | | The Fn layer | Keyboard > Fn Layer > "Enable Fn Layer" |
-| `nav_mode_ctrl_hold_enabled` | boolean | false | | Holding Ctrl uses the Fn layer in text fields | Fn Layer > "Ctrl-hold navigation" |
+| `nav_mode_enabled` | boolean | true | | The Fn layer | Keys & shortcuts > Fn layer > "Fn layer" |
+| `nav_mode_ctrl_hold_enabled` | boolean | false | | Holding Ctrl uses the Fn layer in text fields | Keys & shortcuts > Fn layer > "Holding Ctrl works like Fn" |
 | `nav_mode_default_mappings_version` | int marker | absent reads as 1; current is 3 | | Which default-mapping upgrade of `ctrl_key_mappings.json` has run | |
 | `nav_mode_mappings_updated` | long, epoch ms | none | | Reload trigger after the mappings file changes | Written by Fn Layer saves, resets and upgrades |
-| `fn_ctrl_prev_captured` | boolean marker | false | | The two rows below are valid | Fn Layer > "Set Fn key to Ctrl" |
+| `fn_ctrl_prev_captured` | boolean marker | false | | The two rows below are valid | Keys & shortcuts > Fn layer > "Set Fn key to Ctrl" |
 | `fn_ctrl_prev_enable` | int; absent reads as the sentinel "unset" (the most negative int) | | | The system's programmable-key enable value before the app changed it | |
 | `fn_ctrl_prev_function` | int, same sentinel | | | The system's programmable-key function value before | |
 | `fn_speech_scan_code` | int | 251 | | Scan code of the key held for dictation | No screen (dictation.md) |
-| `power_shortcuts_enabled` | boolean | true | | Sym+assigned key launches | Extras > PhysiBoard-QuickLauncher > "SYM key shortcuts" |
-| `launcher_shortcuts_enabled` | boolean | false | | Assigned keys fire on the home screen | PhysiBoard-QuickLauncher > "Homescreen shortcuts" |
-| `sym_edit_shortcuts` | boolean | true | | Sym+C/V/X/A edit chords | SYM customization > "Sym+C/V/X/A: copy, paste, cut, select all" |
+| `power_shortcuts_enabled` | boolean | true | | Sym+assigned key launches | Keys & shortcuts > Quick launcher > "SYM key shortcuts" |
+| `launcher_shortcuts_enabled` | boolean | false | | Assigned keys fire on the home screen | Keys & shortcuts > Quick launcher > "Homescreen shortcuts" |
+| `sym_edit_shortcuts` | boolean | true | | Sym+C/V/X/A edit chords | Sym pages > Sym key > "Sym+C/V/X/A: copy, paste, cut, select all" |
 
 ### 2.5 Sym pages and the Alt layer (layers-sym-alt.md)
 
@@ -184,17 +185,17 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 |---|---|---|---|---|---|
 | `sym_mappings_custom` | string, JSON `{"mappings": {"KEYCODE_Q": "text", ...}}` for the 26 letter keys | none | | Custom Sym page 1 (emoji) | SYM customization activity |
 | `sym_mappings_page2_custom` | string, same shape | none | | Custom Sym page 2 (symbols) | SYM customization activity |
-| `sym_custom_pages` (3.0) | string, JSON `{"pages": [{"name": "...", "mappings": {"KEYCODE_Q": "text", ...}}, ...]}`; always read as exactly three pages, a missing or malformed page empty, a name trimmed and cut to 24 characters | three empty pages | | The user's own Sym pages 7 to 9 (layers-sym-alt.md 4.6) | Customize SYM Keyboard > the pencil on "My page 1" to 3 > "Page name", the grid, "Clear page" |
-| `sym_pages_config` | string, JSON object with `deviceEnabled`, `emojiEnabled`, `symbolsEnabled`, `clipboardEnabled`, `emojiPickerEnabled`, `gifEnabled` (3.0), `custom1Enabled` to `custom3Enabled` (3.0), `fillEnabled` (3.0) (booleans), `emojiFirst` (legacy boolean, written for older builds), `symPageOrder` (array of page ids `device`, `emoji`, `symbols`, `clipboard`, `emoji_picker`, `gif` (3.0), `custom1` to `custom3` (3.0), `fill` (3.0)) | device off, emoji on, symbols on, clipboard off, picker off, order device, emoji, symbols, clipboard, emoji_picker | emoji off, symbols on, clipboard off, picker on, `emojiFirst` false, order emoji_picker, symbols, clipboard, emoji (device is absent from the order and is appended last when read; 3.0: `gif` is appended last and `gifEnabled` reads false when absent from a stored config; `custom1` to `custom3` are appended after it and read off likewise; `fill` (the Fill page, page 10) is appended last and `fillEnabled` reads true when absent. 3.0 default and baseline 8: picker, symbols and gif on, the rest off, order emoji_picker, symbols, gif, clipboard, emoji, custom1, custom2, custom3) | Which Sym pages exist and in what order | SYM customization > "Sym pages" |
+| `sym_custom_pages` (3.0) | string, JSON `{"pages": [{"name": "...", "mappings": {"KEYCODE_Q": "text", ...}}, ...]}`; always read as exactly three pages, a missing or malformed page empty, a name trimmed and cut to 24 characters | three empty pages | | The user's own Sym pages 7 to 9 (layers-sym-alt.md 4.6) | Sym pages > the pencil on "My page 1" to 3 > "Page name", the grid, "Clear page" |
+| `sym_pages_config` | string, JSON object with `deviceEnabled`, `emojiEnabled`, `symbolsEnabled`, `clipboardEnabled`, `emojiPickerEnabled`, `gifEnabled` (3.0), `custom1Enabled` to `custom3Enabled` (3.0), `fillEnabled` (3.0) (booleans), `emojiFirst` (legacy boolean, written for older builds), `symPageOrder` (array of page ids `device`, `emoji`, `symbols`, `clipboard`, `emoji_picker`, `gif` (3.0), `custom1` to `custom3` (3.0), `fill` (3.0)) | device off, emoji on, symbols on, clipboard off, picker off, order device, emoji, symbols, clipboard, emoji_picker | emoji off, symbols on, clipboard off, picker on, `emojiFirst` false, order emoji_picker, symbols, clipboard, emoji (device is absent from the order and is appended last when read; 3.0: `gif` is appended last and `gifEnabled` reads false when absent from a stored config; `custom1` to `custom3` are appended after it and read off likewise; `fill` (the Fill page, page 10) is appended last and `fillEnabled` reads true when absent. 3.0 default and baseline 8: picker, symbols and gif on, the rest off, order emoji_picker, symbols, gif, clipboard, emoji, custom1, custom2, custom3) | Which Sym pages exist and in what order | Sym pages > Pages |
 | `alt_character_layer_binding` | string `first`, `emoji`, `symbols`, or `device:<something>`; anything else reads as `device:auto` | `device:auto` | | Which Sym page the Alt layer shows | none (no settings row; the 2.x row led nowhere and was dropped) |
-| `sym_auto_close` | boolean | true | | Sym page closes after a key | SYM customization > "Auto-Close SYM Layout" |
-| `sym_auto_close_on_touch` | boolean | true | | Also after an on-screen Sym key | "Also close after on-screen SYM keys" |
-| `sym_double_tap_chooser` (3.0) | boolean | true | | Two quick Sym taps (300 ms from the first release to the second press) open the Sym page chooser instead of stepping two pages (layers-sym-alt.md 5.10). Backed up. | SYM customization > "Double-tap Sym for the page chooser" |
-| `emoji_picker_expanded_height` | boolean | true | false | Taller emoji picker | SYM customization > "Larger emoji picker" |
-| `emoji_picker_kaomoji` (3.0) | boolean | false | false (baseline 8) | Kaomoji is a mode of the Emoji page and has the chooser's K row (expansion-clipboard-pickers-launcher.md 4.3). Backed up. | SYM customization > "Kaomoji on the Emoji page" |
-| `otp_from_notifications` (3.0) | boolean | true | | One-time codes are read from notifications for the Fill page (layers-sym-alt.md 4.7). Inert until the user gives "PhysiBoard one-time codes" notification access; off, or private mode on, reads nothing and drops every code. Codes are memory only. Backed up. | SYM customization > "One-time codes from notifications"; the "Notification access" row beside it opens Android's page for the listener |
-| `fill_inline_suggestions` (3.0) | boolean | false | | Experimental: a password manager's inline suggestions on the Fill page; on, the keyboard asks Android for them and raises an empty input view in a field autofill can fill, and the manager's own drop-down no longer shows (layers-sym-alt.md 4.7, D15). Backed up. | SYM customization > "Password manager suggestions (experimental)" |
-| `emoji_default_skin_tone` | string `none`, `light`, `medium_light`, `medium`, `medium_dark`, `dark`; anything else reads as `none` | `none` | | The tone emoji that take one are inserted and shown in: Sym pages, chords, the picker and its recents (expansion-clipboard-pickers-launcher.md 4.7). Backed up. | SYM customization > "Default skin tone" |
+| `sym_auto_close` | boolean | true | | Sym page closes after a key | Sym pages > Sym key > "Close Sym after typing a character" |
+| `sym_auto_close_on_touch` | boolean | true | | Also after an on-screen Sym key | Sym pages > Sym key > "Also after tapping a key on screen" |
+| `sym_double_tap_chooser` (3.0) | boolean | true | | Two quick Sym taps (300 ms from the first release to the second press) open the Sym page chooser instead of stepping two pages (layers-sym-alt.md 5.10). Backed up. | Sym pages > Sym key > "Double-tap Sym for the page chooser" |
+| `emoji_picker_expanded_height` | boolean | true | false | Taller emoji picker | Sym pages > Emoji > "Larger emoji picker" |
+| `emoji_picker_kaomoji` (3.0) | boolean | false | false (baseline 8) | Kaomoji is a mode of the Emoji page and has the chooser's K row (expansion-clipboard-pickers-launcher.md 4.3). Backed up. | Sym pages > Emoji > "Kaomoji on the Emoji page" |
+| `otp_from_notifications` (3.0) | boolean | true | | One-time codes are read from notifications for the Fill page (layers-sym-alt.md 4.7). Inert until the user gives "PhysiBoard one-time codes" notification access; off, or private mode on, reads nothing and drops every code. Codes are memory only. Backed up. | Sym pages > Fill page > "One-time codes from notifications"; the "Notification access" row beside it (also on Privacy) opens Android's page for the listener |
+| `fill_inline_suggestions` (3.0) | boolean | false | | Experimental: a password manager's inline suggestions on the Fill page; on, the keyboard asks Android for them and raises an empty input view in a field autofill can fill, and the manager's own drop-down no longer shows (layers-sym-alt.md 4.7, D15). Backed up. | Sym pages > Fill page > "Password manager suggestions (experimental)" |
+| `emoji_default_skin_tone` | string `none`, `light`, `medium_light`, `medium`, `medium_dark`, `dark`; anything else reads as `none` | `none` | | The tone emoji that take one are inserted and shown in: Sym pages, chords, the picker and its recents (expansion-clipboard-pickers-launcher.md 4.7). Backed up. | Sym pages > Emoji > "Default skin tone" |
 | `restore_sym_page` | int 0, 1 (emoji) or 2 (symbols) | 0 | | Page to reopen after returning from SYM customization | Transient |
 | `pending_restore_sym_page` | int | 0 | | Candidate for the above, promoted only when the user presses Back | Transient |
 | `current_sym_page` | int | 0 | | The page currently open, written by the keyboard, read when opening SYM customization | Not managed by the settings layer |
@@ -203,26 +204,26 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `status_bar_visibility` | string `ALWAYS`, `NEVER`, `APPS` | absent reads through `show_status_bar`: true or absent gives `ALWAYS`, false gives `NEVER` | `APPS` (but a fresh install ends at `ALWAYS`, section 1.1) | Where the strip appears | Keyboard > Status Bar Theme > "Show status bar": Always / Never / Only in these apps |
+| `status_bar_visibility` | string `ALWAYS`, `NEVER`, `APPS` | absent reads through `show_status_bar`: true or absent gives `ALWAYS`, false gives `NEVER` | `APPS` (but a fresh install ends at `ALWAYS`, section 1.1) | Where the strip appears | No screen in 3.1 (strip only, c61c240); kept for backups |
 | `show_status_bar` | boolean | true | same | Legacy mirror; every write of the row above also writes this as (visibility is not NEVER) | Same control |
-| `status_bar_apps` | string set of package names | seeded on first read with the 20-app messaging, mail and social list (D8) | same 20 | Apps where the strip shows in `APPS` mode | "Only in these apps" list |
-| `status_bar_height_dp` | int, offered 36, 48, 56, 64 | 56 | same | Strip height | Theme > Status strip > "Strip height" (status-bar.md SS9.4, 3.x) |
-| `status_bar_slots_left` | string, JSON array of button ids | `["hamburger"]` | `["clipboard"]` | Buttons on the left | Status Bar Theme > Buttons > "Left buttons" |
-| `status_bar_slots_right` | string, JSON array | `["emoji","microphone"]` | `["microphone","none"]` | Buttons on the right | "Right buttons" |
+| `status_bar_apps` | string set of package names | seeded on first read with the 20-app messaging, mail and social list (D8) | same 20 | Apps where the strip shows in `APPS` mode | No screen in 3.1 (strip only, c61c240); kept for backups |
+| `status_bar_height_dp` | int, offered 36, 48, 56, 64 | 56 | same | Strip height | No screen in 3.1 (strip only, c61c240); kept for backups |
+| `status_bar_slots_left` | string, JSON array of button ids | `["hamburger"]` | `["clipboard"]` | Buttons on the left | No screen in 3.1 (strip only, c61c240); kept for backups |
+| `status_bar_slots_right` | string, JSON array | `["emoji","microphone"]` | `["microphone","none"]` | Buttons on the right | No screen in 3.1 (strip only, c61c240); kept for backups |
 | `status_bar_slot_left` | string button id | `hamburger` | `clipboard` | Legacy mirror of element 0 of the left array; the array read falls back to it when the array is absent | Same control |
 | `status_bar_slot_right_1` | string | `emoji` | `microphone` | Legacy mirror of right element 0 | |
 | `status_bar_slot_right_2` | string | `microphone` | `none` | Legacy mirror of right element 1 | |
 | `modifier_indicator_mode` | string | none | `menu_bar` | Nothing: dead. Written by the baseline and the impact defaults, read by no code path since the indicator was pinned to the status bar in 2.0 | |
 | `hardware_bar_height_migrated` | boolean marker | false | | The one-time lift of `suggestions_height_scale` from 1.0 to 1.4 has run (section 6.1) | |
-| `caret_modifier_badge` | boolean | true | | Modifier glyphs beside the cursor | Status Bar Theme > Modifiers > "Show modifiers at the cursor" |
-| `caret_badge_armed_color` | int ARGB | 0xFF2563EB (-14326805) | 0xFF111827 (-15656921) | Colour for a one-shot modifier | "One press colour" |
-| `caret_badge_locked_color` | int ARGB | 0xFFDC2626 (-2349530) | | Colour for a locked modifier | "Locked colour" |
-| `keyboard_theme_hardware` | string, JSON theme (section 3.1) | Slate Dark with `suggestions_height_scale` 1.4 | a custom theme (section 4.1) | The theme of the strip and hardware-mode chrome | Status Bar Theme (presets, colour rows, "Save and use theme") |
+| `caret_modifier_badge` | boolean | true | | Modifier glyphs beside the cursor | Look & feel > Modifier badge > "Show Shift, Alt, Ctrl and Sym at the cursor" |
+| `caret_badge_armed_color` | int ARGB | 0xFF2563EB (-14326805) | 0xFF111827 (-15656921) | Colour for a one-shot modifier | Look & feel > Modifier badge > "Colour after one press" |
+| `caret_badge_locked_color` | int ARGB | 0xFFDC2626 (-2349530) | | Colour for a locked modifier | Look & feel > Modifier badge > "Colour while locked" |
+| `keyboard_theme_hardware` | string, JSON theme (section 3.1) | Slate Dark with `suggestions_height_scale` 1.4 | a custom theme (section 4.1) | The theme of the strip and hardware-mode chrome | Look & feel > Theme (presets, preview) and Theme > "Colours" (six colours, "Save as…"); the LED colours, corner ratios, strip text scale and `showLeds` have no row in 3.1 (strip only) and stay in the stored theme |
 | `keyboard_theme_software` | string, JSON theme | Slate Dark with the software geometry (corner 0.19/0.20, key height 1.5489256, row gap 0.47933885, suggestions 0.8982954, variations 0.95914257, ortholinear) | | Theme of the on-screen keyboard | Reached only with a "software" target extra |
 | `keyboard_theme_assignment_mode_hardware`, `..._software` | string `fixed` or `follow_system` | | | Nothing: since 2.0 the mode is always `fixed` and the stored value is ignored | Dead |
 | `keyboard_theme_light_hardware`, `..._dark_hardware`, `..._light_software`, `..._dark_software` | string, JSON theme | | | The follow-system slots; only read when the mode is `follow_system`, which never happens. Still touched by the bar-height lift | Dead in effect |
-| `keyboard_theme_layout_overrides_hardware`, `..._software` | string, JSON array of `{"locale"?: tag, "layout"?: id, "theme": theme}`; an entry with neither locale nor layout is dropped | `[]` | | A theme per input style or layout; the best match wins (exact locale 16 points, language 8, layout 4) | Status Bar Theme override editor |
-| `keyboard_theme_saved_themes` | string, JSON array of `{"name", "theme"}`; names compare case-insensitively; blank name saves as "Custom" | `[]` | | Saved custom themes | Status Bar Theme |
+| `keyboard_theme_layout_overrides_hardware`, `..._software` | string, JSON array of `{"locale"?: tag, "layout"?: id, "theme": theme}`; an entry with neither locale nor layout is dropped | `[]` | | A theme per input style or layout; the best match wins (exact locale 16 points, language 8, layout 4) | Look & feel > Theme > "Per-language themes" and its editor (six colours; LED colours kept, not shown) |
+| `keyboard_theme_saved_themes` | string, JSON array of `{"name", "theme"}`; names compare case-insensitively; blank name saves as "Custom" | `[]` | | Saved custom themes | Look & feel > Theme > "Saved themes" |
 | `keyboard_theme_drafts` | string, JSON array of `{"name", "theme", "populated_fields": [field names]}`; blank name saves as "Untitled theme" | `[]` | | Unfinished custom themes | Status Bar Theme > "Create a custom theme" |
 | `keyboard_theme_preview_viewport_scale` | float 1.0 to 1.8 | 1.0 | | Zoom of the preview | Status Bar Theme > "Keyboard UI Preview" |
 | `accessibility_live_announcements_enabled` | boolean | false | | TalkBack live region on the strip | No screen (Accessibility screen deleted) |
@@ -237,15 +238,15 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `app_raw_mode_packages` | string set of package names | empty | `org.chromium.webapk.a5d49fddf77614419_v2` (D3) | Apps typed into raw | Keyboard > Terminal mode |
-| `app_keyboard_nudge_packages` | string set | seeded on first read with `com.microsoft.teams` | | Apps that get the strip dip | Keyboard > Text box under the bar |
-| `app_enter_behavior_enabled` | boolean | true | | Per-app Enter handling at all | Keyboard > Enter key behaviour > "App-specific Enter behaviour" |
-| `app_enter_behavior_preset` | string `app_default`, `enter_send_shift_newline`, `enter_newline_ctrl_send`, `custom`; anything else, including the UI's `enter_newline_only`, reads as `app_default` | `enter_send_shift_newline` | same | Preset for the known messaging apps | Enter key behaviour > "Messaging preset" |
-| `app_enter_behavior_overrides` | string, JSON array of `{"packageName", "behavior", "sendStrategy", "additionalSendShortcut"}`; duplicates by package dropped, blank package dropped; `behavior` one of `app_default`, `enter_newline`, `enter_send_shift_newline`, `enter_newline_ctrl_send`; `sendStrategy` one of `auto`, `editor_action`, `ctrl_enter`, `plain_enter`; `additionalSendShortcut` `none` or `sym_enter` | `[]` | four entries: `com.whatsapp`, `com.discord`, `com.google.android.apps.messaging`, `com.instagram.android`, each `enter_send_shift_newline` / `auto` / `none` | Per-app Enter rules | Enter key behaviour > "App overrides", "Add app" |
+| `app_raw_mode_packages` | string set of package names | empty | `org.chromium.webapk.a5d49fddf77614419_v2` (D3) | Apps typed into raw | Apps > "Terminal mode" |
+| `app_keyboard_nudge_packages` | string set | seeded on first read with `com.microsoft.teams` | | Apps that get the strip dip | No screen in 3.1 (strip only, c61c240); kept for backups |
+| `app_enter_behavior_enabled` | boolean | true | | Per-app Enter handling at all | Apps > Enter key > "App-specific Enter behaviour" |
+| `app_enter_behavior_preset` | string `app_default`, `enter_send_shift_newline`, `enter_newline_ctrl_send`, `custom`; anything else, including the UI's `enter_newline_only`, reads as `app_default` | `enter_send_shift_newline` | same | Preset for the known messaging apps | Apps > Enter key > "Messaging preset" |
+| `app_enter_behavior_overrides` | string, JSON array of `{"packageName", "behavior", "sendStrategy", "additionalSendShortcut"}`; duplicates by package dropped, blank package dropped; `behavior` one of `app_default`, `enter_newline`, `enter_send_shift_newline`, `enter_newline_ctrl_send`; `sendStrategy` one of `auto`, `editor_action`, `ctrl_enter`, `plain_enter`; `additionalSendShortcut` `none` or `sym_enter` | `[]` | four entries: `com.whatsapp`, `com.discord`, `com.google.android.apps.messaging`, `com.instagram.android`, each `enter_send_shift_newline` / `auto` / `none` | Per-app Enter rules | Apps > Enter key > "App overrides", "Add app" |
 | `software_keyboard_mode` | string `auto`, `force_hardware`, `force_virtual` | `auto` | same | Whether the on-screen keyboard is forced | Status bar button and the launcher shortcut; writing it clears the runtime override |
 | `software_keyboard_mode_runtime_override` | string `force_hardware` or `force_virtual`; `auto` or absent means none | none | | Temporary override until the next explicit choice | Keyboard toggle |
 | `software_keyboard_mode_toggle_toasts` | boolean | true | | Toast when the mode flips | No screen |
-| `launcher_shortcuts` | string, JSON object keyed by decimal keycode, each value `{"type", "packageName"?, "appName"?, "action"?, "data"?, "commandId"?, "source"?, "kind"?, "title"?, "subtitle"?, "launch"?}`; `type` is `app`, `shortcut`, `quick_launcher` or `command` | `{}`, after which the quick launcher is assigned to Space (keycode 62) on first read unless Space already holds something | `{"62": {type command, appName "Pastiera QuickLauncher", commandId `pastiera.quick_launcher`, source `pastiera`, kind PastieraAction, title "Pastiera QuickLauncher", subtitle "Open Pastiera search", launch {type internal_action, actionId open_quick_launcher}}}` | Key assignments | PhysiBoard-QuickLauncher > "Assigned launcher keys" |
+| `launcher_shortcuts` | string, JSON object keyed by decimal keycode, each value `{"type", "packageName"?, "appName"?, "action"?, "data"?, "commandId"?, "source"?, "kind"?, "title"?, "subtitle"?, "launch"?}`; `type` is `app`, `shortcut`, `quick_launcher` or `command` | `{}`, after which the quick launcher is assigned to Space (keycode 62) on first read unless Space already holds something | `{"62": {type command, appName "Pastiera QuickLauncher", commandId `pastiera.quick_launcher`, source `pastiera`, kind PastieraAction, title "Pastiera QuickLauncher", subtitle "Open Pastiera search", launch {type internal_action, actionId open_quick_launcher}}}` | Key assignments | Keys & shortcuts > Quick launcher > "Assigned launcher keys" |
 | `quick_launcher_default_assigned` | boolean marker | false | | The Space auto-assignment has been decided | |
 
 ### 2.8 Dictation and the assistant (dictation.md)
@@ -253,9 +254,9 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
 | `alt_ctrl_speech_shortcut` | boolean | true | false | Alt+Ctrl starts dictation | No screen in 2.x (removed) |
-| `fn_long_press_speech` | boolean | false | true | Holding Fn dictates | Keyboard > Voice > Triggers > "Long-press Fn for speech input" |
-| `dictation_haptics` | boolean | true | same | Vibrate on start and stop (also gated on the system haptic setting) | Keyboard > Sound & Haptics > "Vibrate on dictation start/stop" |
-| `dictation_haptic_strength` | string `light`, `standard`, `strong` | `strong` | | Pulse length | Sound & Haptics > "Vibration strength" (only while the row above is on) |
+| `fn_long_press_speech` | boolean | false | true | Holding Fn dictates | Voice > Triggers > "Long-press Fn for speech input" |
+| `dictation_haptics` | boolean | true | same | Vibrate on start and stop (also gated on the system haptic setting) | Look & feel > Sound & haptics > Dictation > "Vibrate when dictation starts and stops" |
+| `dictation_haptic_strength` | string `light`, `standard`, `strong` | `strong` | | Pulse length | Look & feel > Sound & haptics > Dictation > "Vibration strength" (only while the row above is on) |
 | `dictation_stop_after_silence_ms` | int 0 to 60000; 0 = runs until stopped (60 s safety) | 2500 | | Silence limit (dictation.md 6.4) | Voice > Transcription > "Stop after silence" (switch "Stop when I go quiet" + typed seconds, 1 to 60, decimals) |
 | `dictation_stop_on_typing` | boolean | true | | Any key other than a modifier ends the session before doing its work | Voice > "Typing stops dictation" |
 | `dictation_prefer_offline` | boolean | true | | The engine's on-device recognizer first; one online fallback when the pack is missing | Voice > "Keep speech on the phone" |
@@ -275,7 +276,7 @@ All five rows are written synchronously.
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `screen_trackpad_enabled` | boolean | false | true | The trackpad | T2E Tools > Screen trackpad > "Enable screen trackpad" |
+| `screen_trackpad_enabled` | boolean | false | true | The trackpad | Keys & shortcuts > Screen trackpad > "Enable screen trackpad" |
 | `screen_trackpad_trigger_key` | string `space`, `shift_left`, `shift_right`, `shift_either`, `sym`; anything else reads as `space` | `space` | | Which key is held | "Trigger key" |
 | `screen_trackpad_activation` | string `hold`, `double_tap`, `single_tap`; anything else reads as `hold` | `hold` | | How the trigger engages | "Activate by" |
 | `screen_trackpad_step_px` | int 8 to 64 | 32 | same | Pixels per cursor step | "Sensitivity" |
@@ -285,9 +286,9 @@ All five rows are written synchronously.
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `smart_backlight_enabled` | boolean | false | true | Keep the keyboard lit in the dark | T2E Tools > Smart keyboard backlight > "Smart backlight" |
+| `smart_backlight_enabled` | boolean | false | true | Keep the keyboard lit in the dark | Titan tools > Smart keyboard backlight > "Smart backlight" |
 | `smart_backlight_applied` | boolean marker | false | | The persistent vendor value was written at least once | |
-| `notification_ring_enabled` | boolean | false | true | The ring | T2E Tools > Notification ring > "Ring on new notifications" |
+| `notification_ring_enabled` | boolean | false | true | The ring | Titan tools > Notification ring > "Ring on new notifications" |
 | `notification_ring_minutes` | int 1 to 60 | 10 | 2 | Screen-on time | "Keep the screen on for" slider |
 | `notification_ring_brightness` | string `DIM`, `NORMAL`, `BRIGHT`; anything else reads as `NORMAL` | `NORMAL` | | Screen brightness while ringing (0.05, 0.2, 0.6) | "Ring brightness" |
 | `notification_ring_icons` | boolean | false | | App icons under the ring | "Show app icons" |
@@ -317,9 +318,9 @@ Never edited by the user.
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `snippets_enabled` | boolean | false | | Snippets | Extras > Text expansion > Snippets > "Enable snippets" |
+| `snippets_enabled` | boolean | false | | Snippets | Typing > Text expansion > "Expand snippets" |
 | `snippets_prefix` | string; must pass the prefix validity rule or reads as `!` | `!` | | Trigger prefix | "Snippet prefix" |
-| `snippets_v1` | string, JSON object shortcut (lower-cased, validated) to replacement (blank replacements dropped) | `{}` | | The snippets | "Manage snippets" |
+| `snippets_v1` | string, JSON object shortcut (lower-cased, validated) to replacement (blank replacements dropped) | `{}` | | The snippets | Typing > Text expansion > "Snippets" |
 | `snippets_presentation` | string `off`, `floating_popup`, `suggestion_bar`; anything else reads as `floating_popup` | `floating_popup` | | Where matches show | "Show matches in" |
 | `snippets_exact_on_space` | boolean | true | | Space expands an exact match | "Expand exact match with Space" |
 | `snippets_accept_prefix_with_space` | boolean | false | | Space accepts a prefix match | "Accept prefix match with Space" |
@@ -327,7 +328,7 @@ Never edited by the user.
 | `snippets_accept_with_enter` | boolean | false | | Enter accepts | "Accept with Enter" |
 | `clipboard_history_enabled` | boolean | true | | Clipboard history | No screen in 2.x |
 | `clipboard_retention_time` | long minutes | 5 | | Age at which unpinned entries expire | No screen in 2.x |
-| `quick_launcher_behavior` | string `pastiera` (PhysiBoard's own launcher) or `niagara`; anything else reads as `pastiera` | `pastiera` | | Which launcher search opens | PhysiBoard-QuickLauncher > Behaviour > "QuickLauncher behaviour" dropdown ("PhysiBoard QuickLauncher" / "Niagara Launcher Search") |
+| `quick_launcher_behavior` | string `pastiera` (PhysiBoard's own launcher) or `niagara`; anything else reads as `pastiera` | `pastiera` | | Which launcher search opens | Keys & shortcuts > Quick launcher > Behaviour > "QuickLauncher behaviour" ("PhysiBoard" / "Niagara") |
 | `quick_launcher_auto_start_single` | boolean | false | | Open a unique match | Behaviour > "Open unique match automatically" |
 | `quick_launcher_limit_results` | boolean | false | | Show only the top results | "Show only top search results" |
 | `quick_launcher_respect_keyboard_layout` | boolean | true | | Search letters follow the layout | "Use active keyboard layout" |
@@ -348,13 +349,13 @@ Never edited by the user.
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `typing_sound_mode` | string `off`, `click`, `typewriter`, `custom`; anything else reads as `off` | `off` | | Key sound | Keyboard > Sound & Haptics > "Typing Sounds": Off / Keyboard click / Typewriter / Custom sound pack… |
+| `typing_sound_mode` | string `off`, `click`, `typewriter`, `custom`; anything else reads as `off` | `off` | | Key sound | Look & feel > Sound & haptics > Typing > "Key sounds": Off / Keyboard click / Typewriter |
 | `typing_sound_output_mode` | string `media`, `system`, `notification`; anything else reads as `media` | `media` | | Audio stream | Same row: Media volume / System sounds / Notifications |
 | `typing_sound_custom_file_name` | string | none | | Directory name of the imported pack under the app's `typing_sounds/` folder (`custom_pack`) | Written by the import |
 | `typing_sound_custom_display_name` | string | none | | The zip's display name | Written by the import |
 | `typing_sound_updated_at` | long epoch ms | none | | Reload trigger | Written by the import |
-| `tap_haptic_use_system` | boolean | true | | Use the system click haptic | Sound & Haptics > "Tap vibration" |
-| `tap_haptic_duration_ms` | long 5 to 80 | 25 | | Custom pulse length when the above is off | "Custom vibration: N ms" |
+| `tap_haptic_use_system` | boolean | true | | Use the system click haptic | Look & feel > Sound & haptics > "Tap vibration" |
+| `tap_haptic_duration_ms` | long 5 to 80 | 25 | | Custom pulse length when the above is off | "Vibration length: N ms" |
 
 ### 2.14 On-screen keyboard (drop for 3.0)
 
@@ -763,7 +764,15 @@ ignored if none does.
 
 ## 8. Settings search
 
-A static catalog of 36 entries drives the search field at the top of Settings and of both hubs
+**3.1:** the search field is on the home screen only (the hubs that carried one are gone). The
+catalog was regenerated from the 3.1 screen map (section 9.0): one entry per category, then the
+rows people look for, each with the title its screen shows now. No entry points at a setting no
+screen offers (the strip's buttons, height and LEDs, "Suggestions while typing"), and every entry
+must open a registered screen (a unit test checks both). A result's description reads
+"In <screen>" when the screen differs from the title. The table below is the 2.x catalog, kept as
+the record of what 3.0 replaced.
+
+In 2.x, a static catalog of 36 entries drives the search field at the top of Settings and of both hubs
 (T2E Tools, Keyboard). Each entry is a title, the screen it lives on, a target, and a keyword
 string. A query matches when the trimmed query is a case-insensitive substring of the title, of
 the screen title, or of the keywords. Results are listed in catalog order; an empty result shows
@@ -838,6 +847,49 @@ The two "Vibrate" entries point at Voice, where those rows have not lived since 
 Sound & Haptics).
 
 ## 9. The settings app
+
+### 9.0 The 3.1 category index
+
+The 3.1 reorganization (docs/plans/settings-reorganization.md) replaced the six home tiles, the
+Settings screen and the Keyboard and Extras hubs with one category index on the home screen
+(app-shell.md SS6). Under the terminal header: one status card, the search field, then four cards
+of category rows. Each row is a tinted icon, the name, a one-line summary of the category's
+current state and a chevron. A category with one screen opens it; the others open a short screen.
+
+| Row | Summary (computed from the stored settings) | Opens |
+|---|---|---|
+| Typing | "Auto-capitals on · double-space period on" | Typing: Capitals; Punctuation (with "More punctuation" collapsed: comma space, dashes, curly quotes, "Spaces around punctuation"); Backspace; Alt key; Shortcuts > Text expansion |
+| Autocorrect & words | "Autocorrect on · mix-ups off" | Autocorrect & words: Autocorrect (fix typos, mixed-up words, apostrophes and accents); Words (Personal dictionary, Text replacements, System spell checker); Fine-tuning collapsed |
+| Languages & layouts | "QWERTY · follows the language" (the layout by the name Keyboard layout gives it) | Languages & layouts: Keyboard layout, Languages you type in, Dictionaries; Switch language with (three chords) |
+| Long press & accents | "Alt symbol · 500 ms" | Long press & accents |
+| Sym pages | "Emoji → Symbols" | Sym pages (formerly Customize SYM Keyboard): Pages; Emoji; Fill page; Sym key; Clipboard > Clipboard history |
+| Voice | "Hold Fn · stops after 2.5 s" | Voice |
+| Keys & shortcuts | "Fn layer on · trackpad off" | Keys & shortcuts: Key mapping; Moving the cursor (Fn layer, Screen trackpad); Opening apps (Quick launcher) |
+| Apps | "No terminal apps · Enter sends" | Apps: Terminal mode, Enter key |
+| Look & feel | "Slate Light · silent keys" | Look & feel: Theme, Sound & haptics, Modifier badge (switch and two colours), App Language |
+| Privacy | "Private mode off · clean links on" | Privacy: Private mode, Clean links, Notification access for codes |
+| Titan tools | "Backlight, notification ring, screen", or the broker problem | Titan tools (formerly T2E Tools): pairing card, smart backlight, remove bloat, screen density, system tweaks, notification ring |
+| Backup & restore | "Save your settings to a file, or reset them" | Backup & restore: Back up now, Restore from a file; Start over: Reset device settings to stock, Reset all settings |
+| Help | "Status check, test field, diagnostics" | Help: Status check, Test field, Diagnostics, Show the tutorial, Check for updates (GitHub installs only) |
+| About | "Version <name>" | About: version card, Report a problem, Support, Licences and credits (collapsed) |
+
+Every screen has a collapsing large-title bar (the title starts large under the back arrow and
+folds into the bar as the content scrolls). A row that opens a screen shows that screen's current
+value at its right ("On", "Slate Light", "3 apps"). Destructive rows are in the error colour, have
+no chevron and confirm first.
+
+Settings that no 3.1 screen offers because they only ever applied to the suggestion strip:
+`status_bar_visibility`, `status_bar_apps`, `status_bar_height_dp`, the left and right slot lists,
+`app_keyboard_nudge_packages`, `suggestions_enabled`, the theme's LED colours, `showLeds`, the two
+corner ratios and the strip text scale, and the two suggestion-row announcement rows. Each is
+still read, written, backed up and restored.
+
+Sections 9.1 and 9.2 below describe the 2.x and 3.0 screens; where a 3.1 screen has the same
+contents under a new name, the rename is: Smart Features → Typing, Auto-correction →
+Autocorrect & words, Input Languages → Languages & layouts, Customize SYM Keyboard → Sym pages,
+Status Bar Theme / Theme → Look & feel > Theme, Customize colors → Theme > Colours, Layout overrides
+→ Per-language themes, T2E Tools → Titan tools, PhysiBoard-QuickLauncher → Quick launcher, Enter
+key behaviour → Enter key, Fn Layer → Fn layer.
 
 ### 9.1 Entry points
 

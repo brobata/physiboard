@@ -285,8 +285,8 @@ to the software keyboard mode toggle (section 9) when the slot is empty.
 
 ### 3.11 The settings screen
 
-Reached from Settings > Keyboard hub row "Enter key behaviour" ("Configure app-specific Enter
-and newline handling"), and from the tutorial's Enter card. It is one scrolling page:
+Reached from Apps > "Enter key" ("Whether Enter sends or starts a new line, per app"; 3.1, formerly
+the Keyboard hub row "Enter key behaviour"; the screen is titled "Enter key"), and from the tutorial's Enter card. It is one scrolling page:
 
 1. Top bar with a "+" (Add app) icon.
 2. Master switch "App-specific Enter behaviour", description "Use PhysiBoard overrides for
@@ -431,8 +431,8 @@ matched (D3).
 
 ### 4.4 The screen
 
-Settings > Keyboard hub row "Terminal mode" ("For terminals, SSH and code. Nothing corrected or
-capitalised; Ctrl, Esc and Alt symbols go straight to the app."), also reachable from settings
+Apps > "Terminal mode" ("Raw typing for terminals, SSH and code: nothing corrected or
+capitalised"; 3.1, formerly a Keyboard hub row), also reachable from settings
 search (keywords include "exact typing", "raw", "terminal", "ssh", "code"). It uses the shared
 toggle-list screen (section 6.1) with title "Terminal mode", the one-line summary "No
 corrections or capitals in these apps; Ctrl, Esc, Tab and Alt symbols go straight through.",

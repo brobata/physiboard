@@ -918,7 +918,7 @@ the key is unset. The factory baseline does not set the key, so a fresh install 
 preset writes 200.
 
 3.0: one default, 500 ms, for the screen and the timer alike. The row is "Hold time" on the
-Keyboard > Long press screen ("How long to hold a key before it counts as a long press."), a
+the Long press & accents screen ("How long to hold a key before it counts as a long press."), a
 slider from 50 to 1000 ms in 50 ms steps showing "N ms"; a stored value outside the range is
 clamped.
 
@@ -938,7 +938,7 @@ other screen exposes it):
 
 Unknown stored values read as `alt`.
 
-3.0: the modes are chosen on Keyboard > Long press, under "Long press types", one radio row
+3.0: the modes are chosen on Long press & accents, under "Long press types", one radio row
 each, with the stored values unchanged:
 
 | Value | 3.0 label | Description shown |
@@ -1140,7 +1140,7 @@ key that is not exactly one character, a value that is not an array and a member
 string are skipped; an unparseable value reads as empty. Every list is cleaned on use: blanks
 dropped, an entry cut to 16 characters, duplicates removed keeping the first, at most ten kept.
 
-The screen "Customize Variations" (Keyboard > Long press > Customize Variations) says: "With
+The screen "Customize Variations" (Long press & accents > Customize Variations) says: "With
 Long press set to Accent / variation, holding a letter types the first accent in its list. Tap a
 letter to choose, order or add its accents. Your changes apply in every language." Then:
 
@@ -1399,10 +1399,10 @@ is empty.
 | `alt_tap_latches` | boolean | false | a single Alt tap locks instead of one-shot | none found | Single-tap locks Alt |
 | `clear_alt_on_space` | boolean | true | Space/Enter end Alt one-shot and lock | Text input | Release Alt with Space |
 | `alt_latch_stays_on_space` | boolean | false | a locked Alt survives Space | none found | Keep locked Alt after Space |
-| `long_press_modifier` | string | `alt` | long-press action (7.2) | 2.x: onboarding tutorial; 3.0: Keyboard > Long press | 2.x: Long Press Modifier; 3.0: Long press types |
-| `long_press_threshold` | long ms | 2.x: 300 shown, 500 used when unset (7.1); 3.0: 500, clamped 50 to 1000 | hold time before the alternate | 2.x: Keyboard timing; 3.0: Keyboard > Long press | 2.x: Long Press; 3.0: Hold time |
-| `long_press_variation_chooser` | boolean | true | 3.0: a long press in `variations` mode on a letter with several variations opens the accent chooser (8.4) | Keyboard > Long press | Show every accent |
-| `custom_variations` | string (JSON, 8.3) | `{}` | 3.0: the user's own variation lists, per character | Keyboard > Long press > Customize Variations | (per-letter lists) |
+| `long_press_modifier` | string | `alt` | long-press action (7.2) | 2.x: onboarding tutorial; 3.0: Long press & accents | 2.x: Long Press Modifier; 3.0: Long press types |
+| `long_press_threshold` | long ms | 2.x: 300 shown, 500 used when unset (7.1); 3.0: 500, clamped 50 to 1000 | hold time before the alternate | 2.x: Keyboard timing; 3.0: Long press & accents | 2.x: Long Press; 3.0: Hold time |
+| `long_press_variation_chooser` | boolean | true | 3.0: a long press in `variations` mode on a letter with several variations opens the accent chooser (8.4) | Long press & accents | Show every accent |
+| `custom_variations` | string (JSON, 8.3) | `{}` | 3.0: the user's own variation lists, per character | Long press & accents > Customize Variations | (per-letter lists) |
 | `physical_keyboard_profile_override` | string | `auto` | device layer profile | Built-in Keyboards | Physical Keyboard Profile |
 | `titan2_layout_enabled` | boolean | unset (reads as true on the Titan family) | ortholinear on-screen Sym grid | Built-in Keyboards | Titan 2 Layout Alignment |
 | `physical_keyboard_currency_symbol` | string | `€` (baseline `$`) | replaces a `KEYCODE_GRAVE` device entry; inert on Titan | Text input | Currency Symbol |
@@ -1713,7 +1713,7 @@ The Fill page (3.0, section 4.7):
 | Long-press modes `alt`, `variations`, `shift` | keep | all useful on a hardware keyboard |
 | Long-press modes `sym`, `sym_symbols`, `sym_emoji` | keep | a user asked to choose between capital, accent and symbol (2026-10); cheap with the pages kept |
 | Long-press threshold with one default | keep, done | 500 ms for the screen and the timer (7.1) |
-| A screen for the long-press mode and threshold | new in 3.0 | Keyboard > Long press (7.2) |
+| A screen for the long-press mode and threshold | new in 3.0 | Long press & accents (7.2) |
 | Anchored composing-region replacement for variations | drop, keep the check | delete-and-commit like every other mode, guarded by "the text still ends with the letter" (7.4); composed text is dropped by a web terminal |
 | Variations data and layout overrides | replace | one built-in table ordered by language, not layout (8.1, 8.2) |
 | `files/variations.json` | replace | `custom_variations`, edited on Customize Variations (8.3) |

@@ -769,7 +769,7 @@ defaults no longer set `side_key_assistant` (section 17).
 
 ## 12. Screens
 
-### 12.1 Voice (Settings > Voice)
+### 12.1 Voice (home index > Voice)
 
 Section **Triggers**: switch "Long-press Fn for speech input".
 

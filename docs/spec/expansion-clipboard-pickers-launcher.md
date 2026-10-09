@@ -171,8 +171,8 @@ Consequences for the rest of typing:
 
 ### 2.7 The settings screen
 
-Settings > Extras > "Text expansion" ("Type a short trigger and have it expand into whatever
-you saved."). The screen is titled "Text expansion" with a "Snippets" section:
+Typing > Shortcuts > "Text expansion" ("Type a short trigger, get the text you saved"; 3.1,
+formerly under Extras). The screen is titled "Text expansion" with a "Snippets" section:
 
 1. "Enable snippets" switch ("Expand global text snippets after a shared prefix.").
 2. "Snippet prefix" text field ("One printable symbol. A colon is reserved for emoji and symbol
@@ -337,7 +337,7 @@ of settings-catalog.md section 2.17.
 
 ### 3.7 Clean links (3.0)
 
-`clean_links`, boolean, default true, on Settings > Privacy > "Clean links". When on, links in
+`clean_links`, boolean, default true, on Privacy > "Clean links". When on, links in
 clipboard text lose their tracking at the two places the keyboard handles that text itself:
 
 1. **Capture**: a clip accepted by section 3.1 is stored with its links cleaned. Two copies that
@@ -970,8 +970,8 @@ extras are `key_code` (int) and `skip_launch` (boolean).
 
 ### 6.5 The assignments screen
 
-Settings > Extras > "PhysiBoard-QuickLauncher" (also reachable from the home screen's status
-card and the tutorial) opens a hub titled "PhysiBoard-QuickLauncher" with the intro "These
+Keys & shortcuts > "Quick launcher" (3.1, formerly Extras > "PhysiBoard-QuickLauncher"; also reachable from the home screen's status
+card and the tutorial) opens a hub titled "Quick launcher" with the intro "These
 settings share one launcher-key assignment list. Choose where PhysiBoard should listen for
 those assigned keys.", the blocked-default hint when it applies, and:
 
@@ -1333,7 +1333,7 @@ use the system keyboard-tap haptic regardless of this setting. Dictation cues ar
 
 ### 9.3 Settings and the screen
 
-Settings > "Sound & Haptics": a "Typing Sounds" row whose dropdown offers Off, Keyboard click,
+Look & feel > "Sound & haptics" (3.1): a "Key sounds" row whose dropdown offers Off, Keyboard click,
 Typewriter (the custom entry is hidden); a "Tap vibration" switch ("Use Android keyboard haptics
 for suggestions and variations on compatible devices."); when that is off, a "Custom vibration:
 N ms" slider ("Used when Android keyboard haptics are disabled.") from 5 to 80 in steps of 5

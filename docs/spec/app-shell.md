@@ -17,7 +17,7 @@ Everything below is the 2.x behavior unless a row says otherwise.
 ## 1. Vocabulary
 
 - **Home**: the screen the launcher icon opens once setup is done. An action surface: it shows
-  only what needs attention, then a grid of six tiles.
+  only what needs attention, then (3.1) the settings search and the category index (section 6.4).
 - **Setup screen**: the two-step first-run flow (enable, then select). Also called onboarding.
 - **What's new note**: the single page shown once after a version change, listing this
   release's notes.
@@ -126,7 +126,7 @@ button:
 
 - microphone icon: "Hold Fn to talk (dictation)"
 - sun icon: "Backlight can light the dark (one-time setup)"
-- gear icon: "Everything else lives in the Settings tile"
+- gear icon: "Everything else is on the home screen, by category" (3.1; 2.x: "Everything else lives in the Settings tile")
 
 "Skip" and "Done" do the same thing: mark setup complete and open the home screen.
 
@@ -226,14 +226,11 @@ version, a preview would still suppress the note for that version.
 
 ### 6.1 Layout
 
-Top to bottom: the terminal header (section 22.1), then a 16 dp-padded column on the page
-background: zero or one setup action card, zero or one update action card, the all-clear line,
-and the six tiles in rows of two with 12 dp gaps, each row as tall as its taller tile (an odd
-last row keeps tile width by leaving the second slot empty). On the Titan's 1080 × 1200 panel
-the header, an action card and all six tiles fit without scrolling; the page still scrolls when
-the font scale makes it taller. The action card is filled with the primary container colour
-(dark amber on dark, pale amber on light): a 44 dp icon tile, the title and subtitle, and a
-chevron. The all-clear line is "✓ all set" in the prompt style in the primary colour. A translucent overlay (black at 30 % in dark theme, white at 20 % in light)
+Top to bottom: the terminal header (section 22.1), then one scrolling list 16 dp in from each
+side: exactly one status card (section 6.3), the settings search field (settings-catalog.md
+section 8), then the category index (section 6.4) on four cards. While a query is typed the
+results replace the index; an empty result shows the empty state "No settings match “<query>”.
+Try a shorter word." A translucent overlay (black at 30 % in dark theme, white at 20 % in light)
 covers the status-bar area.
 
 ### 6.2 What the home probes, and how often
@@ -243,36 +240,31 @@ a count of distinct languages among PhysiBoard's enabled subtypes (computed but 
 anywhere in 2.x). The verified broker status is observed as in section 1 and refreshed when
 wireless debugging flips, polled every 1500 ms.
 
-### 6.3 Action cards
+### 6.3 The status card
 
 | Condition | Card title | Subtitle | Tap |
 |---|---|---|---|
 | not enabled | "Enable PhysiBoard" | "Turn it on in system keyboard settings" | opens `android.settings.INPUT_METHOD_SETTINGS` |
 | enabled, not selected | "Set as keyboard" | "Pick PhysiBoard from the input switcher" | shows the input-method picker |
 | an update was found on this open (section 13.4) | "Update available" | "Version X is ready to install" | reopens the update dialog for that version |
+| otherwise | "Ready to type" | "PhysiBoard is your keyboard", plus " · Titan tools <problem>" when the verified broker status is known and not `OK` | opens Status |
 
-At most one setup card shows (enable wins). When enabled, selected and no update is pending,
-the monospace amber line "✓ all set" is shown instead.
+The first matching row wins. The first three are action cards filled with the primary container
+colour (dark amber on dark, pale amber on light): a 44 dp icon tile, the title and subtitle, a
+chevron. "Ready to type" is a calm card in the surface container colour with a green check.
 
-### 6.4 Tiles
+### 6.4 The category index
 
-| Order | Label | Icon | Status line | Attention dot | Opens |
-|---|---|---|---|---|---|
-| 1 | "T2E Tools" | handyman | the broker problem ("needs pairing", "debugging off", "unreachable", "pairing refused") when the verified broker status is known and not `OK`, else "Backlight, ring, keys" | when a broker problem shows | settings, destination `toolbox_destination` |
-| 2 | "Keyboard" | keyboard | "Typing, correction, Sym" | no | settings, `keyboard_hub_destination` |
-| 3 | "Theme" | palette | the active preset's name, else the name of a saved theme it equals, else "Custom colours" | no | settings, `keyboard_theme_destination` |
-| 4 | "Status" | check circle | "all good" when enabled and selected, else "needs setup" | when not (enabled and selected) | settings, `status_destination` |
-| 5 | "Extras" | extension | "Launcher, languages" | no | settings, `extras_destination` |
-| 6 | "Settings" | settings gear | "Backup, privacy, about" | no | settings, top level |
-
-A tile is a 20 dp-rounded card in the surface container colour: a 40 dp keycap icon tile, then
-the label (title medium) and the status line (body medium, one line, ellipsised), muted, or in
-the primary colour when the tile needs attention. The attention dot is a 9 dp amber circle at
-the tile's top-right. The broker badge deliberately
-stays off while the status is unknown: flashing "needs attention" at every launch would train
-the user to ignore it. Settings is opened with a slide-in-from-right animation and closes with
-a slide-out-to-right; the destination travels in the string extra
-`brobata.physiboard.SETTINGS_DESTINATION`.
+Four cards of category rows (settings-catalog.md section 9.0 lists every row, its summary and
+what it opens): Typing, Autocorrect & words, Languages & layouts; Long press & accents, Sym
+pages, Voice, Keys & shortcuts, Apps; Look & feel, Privacy, Titan tools; Backup & restore, Help,
+About. A row is at least 64 dp tall: a 40 dp icon tile tinted in the category's own hue (each
+glyph at least 3:1 on its tile), the name (title medium), one line of summary (body medium,
+ellipsised) and a chevron. The summary is computed from the stored settings when the row draws,
+so it is never stale and nothing loads. The Titan tools row names the broker problem ("needs
+pairing", "debugging off", "unreachable", "pairing refused") in the primary colour when the
+verified broker status is known and not `OK`; it stays quiet while the status is unknown, since
+flashing "needs attention" at every launch would train the user to ignore it.
 
 ### 6.5 Automatic update check on open
 
@@ -859,12 +851,20 @@ prompt style in Signal Amber followed by a 10 × 20 dp amber block cursor that f
 opaque and transparent every 600 ms; the fade is held static when the system animator duration
 scale is 0 (reduced motion). The settings screens share one top bar: status-bar inset, the page
 background colour (the cards are the only raised surfaces), back arrow (content description
-"Back"), the title in the headline-small mono style on one line, trailing actions drawn in the
-same full-contrast colour as the back arrow.
+"Back"), the title in the mono headline style on one line, trailing actions drawn in the
+same full-contrast colour as the back arrow. The bar is a collapsing large-title bar: the title
+starts large below the back arrow and folds into the bar as the content scrolls up.
+
+Since 3.1 a row that opens another screen also shows that screen's current value at its right in
+the muted colour ("On", "Slate Light", "3 apps"), and a destructive row (reset, delete) has its
+label and icon in the error colour, no chevron, and asks for confirmation. "About ..." and other
+expanders open and close with a short height-and-fade animation and a turning chevron. An intro
+paragraph sits above the first card as plain muted text, not on a card of its own.
 
 ### 22.2 Transitions and sizing
 
-Opening settings from home slides in from the right; finishing the settings activity slides out
+Opening a screen slides it in from the right while the screen underneath drifts a fifth of the
+way to the left; going back reverses both. Finishing the settings activity slides out
 to the right (also on Android 14 and later through the newer API). Screens that need the
 window's size read it from the window, not the display configuration, so multi-window and the
 near-square Titan screen get the bounds the content is actually in.
@@ -1016,7 +1016,7 @@ locales.
 | `privileged_broker_status`, `privileged_broker_status_at` | string, long | absent | the seed for the verified broker status before the first live check (1) | internal | none |
 | `privileged_<step>_ok`, `_reason`, `_at` for backlight, overlay_grant, notification_ring, ring_backlight | boolean, string, long | absent | the last outcome of each privileged step, printed in the export (10.6) | internal | none |
 | `privileged_backlight_device_value`, `_at` | string, long | absent | the backlight value last read from the device, printed in the export | internal | none |
-| `private_mode` (3.0) | boolean | false | private mode: no learning, no network (31) | Settings > Privacy; the "Private mode" command | "Private mode" |
+| `private_mode` (3.0) | boolean | false | private mode: no learning, no network (31) | Privacy; the "Private mode" command | "Private mode" |
 
 Values written once by the first-run defaults (section 2, step 3), for the record:
 `auto_capitalize_first_letter` true, `fn_long_press_speech` true, `dictation_haptics` true,
@@ -1285,7 +1285,7 @@ Android's special permissions: an app holding it is shown every notification's c
 sensitive, so:
 
 - **Asked for by the user, never taken.** The listener ("PhysiBoard one-time codes") works only
-  after the user allows it in Android's settings. Customize SYM Keyboard > "Notification access"
+  after the user allows it in Android's settings. Sym pages > Fill page > "Notification access" (also Privacy > "Notification access for codes")
   says what it is for and opens Android's own page for this one listener
   (`Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS` with
   `Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME`, falling back to

@@ -706,7 +706,7 @@ the effective long press is 500 ms while the screen says 300 ms. The tutorial's 
 preset writes 200 ms and `variations`.
 
 3.0: one default, 500 ms, read the same way by the screen and the timer. The mode and the hold
-time are set on Keyboard > Long press ("Long press types", "Hold time"; layers-sym-alt.md 7.1,
+time are set on Long press & accents ("Long press types", "Hold time"; layers-sym-alt.md 7.1,
 7.2), where the accent options sit too: "Show every accent" (`long_press_variation_chooser`)
 and "Customize Variations" (`custom_variations`, layers-sym-alt.md 8.3). The variation lists
 come from 3.0's built-in table in the keyboard language's order, with the user's own lists over
@@ -964,10 +964,10 @@ and Space to the screen trackpad screen. Keys nobody can change say so.
 
 | Preference key | Type | Default | What it changes | Screen | Label |
 |---|---|---|---|---|---|
-| `long_press_threshold` | long (ms) | 2.x: 300 (timer falls back to 500 when unset); 3.0: 500 | long-press timer, section 8.3; clamped 50 to 1000, slider in 50 ms steps | 2.x: Key Behaviour & Timing; 3.0: Keyboard > Long press | 2.x: Long Press; 3.0: Hold time |
-| `long_press_modifier` | string: `alt`, `shift`, `variations`, `sym`, `sym_symbols`, `sym_emoji` | `alt` | what a long press produces | 2.x: tutorial "Devs choice" preset and long-press selector (`app-shell.md`); 3.0: Keyboard > Long press | 3.0: Long press types (Alt symbol, Capital letter, Accent / variation, Sym symbol, Sym emoji, First Sym page) |
-| `long_press_variation_chooser` | boolean | true | 3.0: in `variations` mode a letter with several variations opens the accent chooser (layers-sym-alt.md 8.4) | Keyboard > Long press | Show every accent |
-| `custom_variations` | string, JSON object of one character to an array of strings | `{}` | 3.0: the user's own variation lists (layers-sym-alt.md 8.3) | Keyboard > Long press > Customize Variations | (per-letter lists) |
+| `long_press_threshold` | long (ms) | 2.x: 300 (timer falls back to 500 when unset); 3.0: 500 | long-press timer, section 8.3; clamped 50 to 1000, slider in 50 ms steps | 2.x: Key Behaviour & Timing; 3.0: Long press & accents | 2.x: Long Press; 3.0: Hold time |
+| `long_press_modifier` | string: `alt`, `shift`, `variations`, `sym`, `sym_symbols`, `sym_emoji` | `alt` | what a long press produces | 2.x: tutorial "Devs choice" preset and long-press selector (`app-shell.md`); 3.0: Long press & accents | 3.0: Long press types (Alt symbol, Capital letter, Accent / variation, Sym symbol, Sym emoji, First Sym page) |
+| `long_press_variation_chooser` | boolean | true | 3.0: in `variations` mode a letter with several variations opens the accent chooser (layers-sym-alt.md 8.4) | Long press & accents | Show every accent |
+| `custom_variations` | string, JSON object of one character to an array of strings | `{}` | 3.0: the user's own variation lists (layers-sym-alt.md 8.3) | Long press & accents > Customize Variations | (per-letter lists) |
 | `fn_long_press_speech` | boolean | false | hold-Fn burst detection and dictation, section 3.3 | Voice | Long-press Fn for speech input |
 | `fn_speech_scan_code` | int | 251 | scancode recognised as Fn | none (preference only) | none |
 | `sym_long_press_assistant` | boolean | false | 600 ms Sym hold opens the assistant | Voice | Hold Sym for the assistant |
@@ -1168,7 +1168,7 @@ set is now just an ordinary Alt press (one-shot armed, down consumed), not a dic
 | Numeric-field Ctrl forcing of copy/cut/paste/select all | keep | tested, fixes Fn+V in number fields |
 | Ctrl+Space language switch | keep | on by default and the only always-available switch chord |
 | Alt+Shift and Alt+Enter language switch | undecided | off by default; Alt+Shift also collides with the system chord |
-| Long press with four modes and a slider | keep, done in 3.0 | used daily; one default only (500 ms); all six modes on Keyboard > Long press with the accent chooser and Customize Variations |
+| Long press with four modes and a slider | keep, done in 3.0 | used daily; one default only (500 ms); all six modes on Long press & accents with the accent chooser and Customize Variations |
 | Multi-tap | keep | needed by multi-tap layouts; the ẞ exception must survive |
 | Bounce filter | undecided | accessibility value, no UI today; keep only with a screen |
 | Accidental-press (overlap) filter | undecided | same as bounce |
