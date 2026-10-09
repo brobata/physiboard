@@ -2,51 +2,77 @@ package brobata.physiboard.core.keys
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
-/** spec: keys-and-modifiers.md SS13.1 (the system status bar icon), trackpad-caret-nav.md SS5.7 (nav mode wins the same slot). */
+/** spec: keys-and-modifiers.md SS13.1 (the system status bar icon and its precedence), trackpad-caret-nav.md SS5.7, dictation.md SS9. */
 class StatusBarModifierIconTest {
 
     private val off = ModifierIconState.OFF
     private val active = ModifierIconState.ACTIVE
     private val locked = ModifierIconState.LOCKED
 
+    private fun choose(shift: ModifierIconState = off, ctrl: ModifierIconState = off, alt: ModifierIconState = off, sym: Boolean = false, nav: Boolean = false, dictation: Boolean = false) =
+        StatusBarModifierIcon.choose(shift, ctrl, alt, symPageOpen = sym, navModeActive = nav, dictationListening = dictation)
+
     @Test
     fun `all three modifiers off and no Sym page shows no icon`() {
-        assertEquals(StatusBarIcon.None, StatusBarModifierIcon.choose(off, off, off, symPageOpen = false, navModeActive = false))
+        assertEquals(StatusBarIcon.NONE, choose())
     }
 
     @Test
-    fun `all off with a Sym page open shows the Sym icon`() {
-        assertEquals(StatusBarIcon.Sym, StatusBarModifierIcon.choose(off, off, off, symPageOpen = true, navModeActive = false))
+    fun `each single state has its own icon`() {
+        assertEquals(StatusBarIcon.SHIFT, choose(shift = active))
+        assertEquals(StatusBarIcon.CAPS_LOCK, choose(shift = locked))
+        assertEquals(StatusBarIcon.ALT, choose(alt = active))
+        assertEquals(StatusBarIcon.ALT_LOCKED, choose(alt = locked))
+        assertEquals(StatusBarIcon.CTRL, choose(ctrl = active))
+        assertEquals(StatusBarIcon.CTRL_LOCKED, choose(ctrl = locked))
+        assertEquals(StatusBarIcon.SYM, choose(sym = true))
+        assertEquals(StatusBarIcon.NAV, choose(nav = true))
+        assertEquals(StatusBarIcon.DICTATION, choose(dictation = true))
     }
 
     @Test
-    fun `nav mode wins over every other state, even a Sym page`() {
-        assertEquals(StatusBarIcon.Nav, StatusBarModifierIcon.choose(active, locked, off, symPageOpen = true, navModeActive = true))
-        assertEquals(StatusBarIcon.Nav, StatusBarModifierIcon.choose(off, off, off, symPageOpen = false, navModeActive = true))
+    fun `a listening dictation session wins over nav mode and every modifier`() {
+        assertEquals(StatusBarIcon.DICTATION, choose(shift = active, ctrl = locked, sym = true, nav = true, dictation = true))
     }
 
     @Test
-    fun `a listening dictation session wins the slot over nav mode and every modifier`() {
-        assertEquals(StatusBarIcon.Dictation, StatusBarModifierIcon.choose(active, locked, off, symPageOpen = true, navModeActive = true, dictationListening = true))
-        assertEquals(StatusBarIcon.Dictation, StatusBarModifierIcon.choose(off, off, off, symPageOpen = false, navModeActive = false, dictationListening = true))
+    fun `nav mode wins over every modifier and a Sym page`() {
+        assertEquals(StatusBarIcon.NAV, choose(shift = locked, ctrl = locked, alt = locked, sym = true, nav = true))
     }
 
     @Test
-    fun `one active modifier selects the modifier combination, not the Sym fallback`() {
-        val result = StatusBarModifierIcon.choose(active, off, off, symPageOpen = true, navModeActive = false)
-        assertEquals(StatusBarIcon.Modifiers(active, off, off), result)
+    fun `Ctrl beats Alt, Alt beats Shift, any modifier beats Sym`() {
+        assertEquals(StatusBarIcon.CTRL, choose(shift = locked, ctrl = active, alt = locked))
+        assertEquals(StatusBarIcon.ALT, choose(shift = locked, alt = active))
+        assertEquals(StatusBarIcon.SHIFT, choose(shift = active, sym = true))
     }
 
     @Test
-    fun `every one of the 26 non-empty combinations is distinct and none is None`() {
+    fun `within one modifier locked beats active`() {
+        assertEquals(StatusBarIcon.CTRL_LOCKED, choose(ctrl = locked, alt = active))
+        assertEquals(StatusBarIcon.ALT_LOCKED, choose(alt = locked, shift = active))
+    }
+
+    @Test
+    fun `every one of the 26 non-empty modifier combinations shows some modifier icon`() {
         val states = listOf(off, active, locked)
         val combos = states.flatMap { s -> states.flatMap { c -> states.map { a -> Triple(s, c, a) } } }
             .filterNot { (s, c, a) -> s == off && c == off && a == off }
         assertEquals(26, combos.size)
-        val icons = combos.map { (s, c, a) -> StatusBarModifierIcon.choose(s, c, a, symPageOpen = false, navModeActive = false) }
-        assertEquals(26, icons.toSet().size, "every non-empty combination must map to its own distinct icon value")
-        icons.forEach { assertEquals(true, it is StatusBarIcon.Modifiers) }
+        combos.forEach { (s, c, a) ->
+            val icon = choose(shift = s, ctrl = c, alt = a)
+            assertTrue(icon.isModifierState && icon != StatusBarIcon.SYM && icon != StatusBarIcon.NAV, "($s, $c, $a) -> $icon")
+        }
+    }
+
+    @Test
+    fun `only modifier, Sym and nav states are modifier states`() {
+        assertFalse(StatusBarIcon.NONE.isModifierState)
+        assertFalse(StatusBarIcon.DICTATION.isModifierState)
+        StatusBarIcon.entries.filter { it != StatusBarIcon.NONE && it != StatusBarIcon.DICTATION }.forEach { assertTrue(it.isModifierState, it.name) }
     }
 
     @Test

@@ -563,7 +563,10 @@ internal class KeyboardSession(
         runCatching { caretBadge.hide() }.onFailure { error -> Log.e(TAG, "caret badge teardown crashed", error) }
         // spec: trackpad-caret-nav.md SS5.7: the status icon is hidden "when the keyboard service is destroyed".
         runCatching { service.hideStatusIcon() }.onFailure { error -> Log.e(TAG, "status icon teardown crashed", error) }
-        lastShownStatusIcon = StatusBarIcon.None
+        lastShownStatusIcon = StatusBarIcon.NONE
+        handler.removeCallbacks(modifierHoldReleaseRunnable)
+        modifierHoldPolicy.reset()
+        shownHold.clear()
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
         runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); variationChooser.reset(); symChooser.reset(); gifPage.onServiceDestroyed(); gifSender.onServiceDestroyed(); quickLauncher.onServiceDestroyed() }
@@ -1156,7 +1159,8 @@ internal class KeyboardSession(
         }
         // dictation.md SS6.8: a field restarting under a running session (a web terminal does it
         // on every key) must not cost the hold; the request is idempotent for the system.
-        if (imeHeldForDictation && dictationController.isActive) requestOwnShow()
+        val dictationReasserted = shownHold.holds(ShownHoldOwner.DICTATION) && dictationController.isActive
+        if (dictationReasserted) requestOwnShow()
         clipboard.onFieldStarted()
         // spec SS2.4: matches are cleared "on every start of input".
         handler.removeCallbacks(expansionRefreshRunnable)
@@ -1177,6 +1181,11 @@ internal class KeyboardSession(
             settingsSource?.write { stored -> stored.copy(symPages = stored.symPages.copy(restoreSymPage = 0)) }
         }
         refreshCandidatesStrip()
+        // keys-and-modifiers.md SS13.1: caps lock (or any shown state) carried into a new field
+        // keeps its icon there; Back's one-time release ends with the field it was pressed in.
+        modifierHoldPolicy.onFieldStarted(lastShownStatusIcon).let { decision ->
+            if (!(decision == ModifierHoldPolicy.Decision.REASSERT && dictationReasserted)) applyModifierHold(decision)
+        }
         syncSymPanels()
         // spec trackpad-caret-nav.md SS3.3: re-attached "whenever the editor starts".
         attachKeyboardSwipeListener()
@@ -1279,8 +1288,15 @@ internal class KeyboardSession(
     // The keyboard held visible for dictation. spec: dictation.md SS6.8, D22.
     // -----------------------------------------------------------------------------------------
 
-    /** True from the session's hold to its release; re-asserted on every field start in between. */
-    private var imeHeldForDictation = false
+    /**
+     * The keyboard-shown hold, shared by dictation (dictation.md SS6.8) and the status bar icon
+     * (keys-and-modifiers.md SS13.1), counted per owner so one letting go never drops the other's.
+     */
+    private val shownHold = KeyboardShownHold()
+
+    /** When the status bar icon's state takes or gives up its share of [shownHold]. */
+    private val modifierHoldPolicy = ModifierHoldPolicy()
+    private val modifierHoldReleaseRunnable = Runnable { applyModifierHold(modifierHoldPolicy.onReleaseDue(lastShownStatusIcon)) }
 
     /** True between the session's own show request and the platform's callback for it, so that callback is not taken for an app's. */
     private var ownShowRequestPending = false
@@ -1300,7 +1316,7 @@ internal class KeyboardSession(
      * changes.
      */
     private fun holdImeVisibleForDictation() {
-        imeHeldForDictation = true
+        shownHold.acquire(ShownHoldOwner.DICTATION)
         requestOwnShow()
     }
 
@@ -1321,8 +1337,48 @@ internal class KeyboardSession(
      * can see stays, because the platform's hide would take it down with it.
      */
     private fun releaseImeVisibleForDictation() {
-        if (!imeHeldForDictation) return
-        imeHeldForDictation = false
+        if (!shownHold.holds(ShownHoldOwner.DICTATION)) return
+        // Another owner (a modifier icon) still needs the keyboard counted as shown.
+        if (!shownHold.release(ShownHoldOwner.DICTATION)) return
+        hideIfNothingOnScreen()
+    }
+
+    /**
+     * keys-and-modifiers.md SS13.1: the status bar icon's share of the hold. A modifier, Sym or
+     * nav state is only drawn by the system while the keyboard counts as shown, so the icon holds
+     * it the same zero-footprint way dictation does; see [ModifierHoldPolicy] for when.
+     */
+    private fun applyModifierHold(decision: ModifierHoldPolicy.Decision) {
+        when (decision) {
+            ModifierHoldPolicy.Decision.ACQUIRE -> {
+                handler.removeCallbacks(modifierHoldReleaseRunnable)
+                // A hold dictation already has is the system's "shown" already; no second request.
+                val alreadyShown = shownHold.isHeld
+                shownHold.acquire(ShownHoldOwner.MODIFIER_ICON)
+                if (!alreadyShown) requestOwnShow()
+            }
+            ModifierHoldPolicy.Decision.REASSERT -> {
+                handler.removeCallbacks(modifierHoldReleaseRunnable)
+                requestOwnShow()
+            }
+            ModifierHoldPolicy.Decision.SCHEDULE_RELEASE -> {
+                handler.removeCallbacks(modifierHoldReleaseRunnable)
+                handler.postDelayed(modifierHoldReleaseRunnable, ModifierHoldPolicy.RELEASE_DELAY_MS)
+            }
+            ModifierHoldPolicy.Decision.CANCEL_RELEASE -> handler.removeCallbacks(modifierHoldReleaseRunnable)
+            ModifierHoldPolicy.Decision.RELEASE -> {
+                handler.removeCallbacks(modifierHoldReleaseRunnable)
+                if (shownHold.release(ShownHoldOwner.MODIFIER_ICON)) hideIfNothingOnScreen()
+            }
+            ModifierHoldPolicy.Decision.NONE -> Unit
+        }
+    }
+
+    /**
+     * The last owner of [shownHold] let go. The service is told to hide only when there is nothing
+     * of the keyboard on screen anyway; see dictation.md SS6.8 for the three conditions.
+     */
+    private fun hideIfNothingOnScreen() {
         // An ending caused by a field change (the next field, or none) leaves the system to
         // decide the keyboard's visibility for that field; a hide sent now would land on it.
         if (fieldChangeInProgress) return
@@ -1339,7 +1395,7 @@ internal class KeyboardSession(
             pipeline.onWindowShown(textBeforeCursor)
             // dictation.md SS9: the status bar icon is shown again with the window, in case the
             // window's own hide took it down.
-            if (lastShownStatusIcon != StatusBarIcon.None) lastShownStatusIcon = StatusBarIcon.None
+            if (lastShownStatusIcon != StatusBarIcon.NONE) lastShownStatusIcon = StatusBarIcon.NONE
             refreshCandidatesStrip()
             // spec trackpad-caret-nav.md SS3.3: re-attached "whenever ... the keyboard window is shown".
             attachKeyboardSwipeListener()
@@ -1655,6 +1711,12 @@ internal class KeyboardSession(
         // app-shell.md SS10.2: origin `ime_service`, reported before anything below can consume or
         // rewrite the event, so the Diagnostics panel sees exactly what Android delivered.
         reportKeyboardDebugEvent(event)
+        // keys-and-modifiers.md SS13.1: while the status icon holds the keyboard shown, the system
+        // may spend a Back on closing that (invisible) keyboard. The icon gives its hold up at the
+        // first Back, so that happens at most once per state; Back itself goes on as usual.
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            applyModifierHold(modifierHoldPolicy.onBack(lastShownStatusIcon))
+        }
         // spec SS6.4: "The close button and the hardware Back key close it." Consumed outright,
         // like the close button, rather than falling through to nav mode or the app.
         if (quickActionsOpen && event.keyCode == KeyEvent.KEYCODE_BACK) {
@@ -1940,7 +2002,13 @@ internal class KeyboardSession(
             handler.postDelayed(expansionRefreshRunnable, SnippetExpansion.LOOKUP_DELAY_MS)
         }
         // The strip only changes when something was typed; a bare key-up leaves it as it was.
-        if (!symPageChanged && (stroke.edge == KeyEdge.DOWN || result.ops.isNotEmpty())) refreshCandidatesStrip()
+        if (!symPageChanged && (stroke.edge == KeyEdge.DOWN || result.ops.isNotEmpty())) {
+            refreshCandidatesStrip()
+        } else if (!symPageChanged && stroke.key is KeyId.Modifier) {
+            // keys-and-modifiers.md SS13.1: a modifier's release can end its state (a held Shift
+            // let go after a chord); the icon follows without a whole strip refresh.
+            refreshStatusIcon()
+        }
         val totalMs = (System.nanoTime() - tStart) / 1_000_000.0
         if (totalMs >= SLOW_KEYSTROKE_MS) {
             Log.w(
@@ -3270,23 +3338,15 @@ internal class KeyboardSession(
     }
 
     // -----------------------------------------------------------------------------------------
-    // The system status bar's modifier/Sym/nav icon. spec: keys-and-modifiers.md SS13.1;
-    // trackpad-caret-nav.md SS5.7 ("nav mode wins the icon slot"). `StatusBarModifierIcon` (core/keys)
-    // decides which of the 28 states applies; this only maps that onto `InputMethodService`'s
-    // status icon slot and forced-on-screen exclusion, per the same section.
+    // The system status bar's modifier/Sym/nav/dictation icon. spec: keys-and-modifiers.md SS13.1;
+    // trackpad-caret-nav.md SS5.7; dictation.md SS9. `StatusBarModifierIcon` (core/keys) decides
+    // which state shows, by the spec's precedence; this maps it onto a drawable and the
+    // `InputMethodService` status icon slot, and gives the state its share of the shown hold.
     // -----------------------------------------------------------------------------------------
 
-    /** Last icon actually shown (or [StatusBarIcon.None] for hidden), so a same-icon refresh does not re-show it (spec: "Icon changes are deduplicated"). */
-    private var lastShownStatusIcon: StatusBarIcon = StatusBarIcon.None
+    /** Last icon actually shown (or [StatusBarIcon.NONE] for hidden), so a same-icon refresh does not re-show it (spec: "Icon changes are deduplicated"). */
+    private var lastShownStatusIcon: StatusBarIcon = StatusBarIcon.NONE
 
-    /**
-     * SPEC GAP: SS13.1 lists 26 distinct icons, one per non-empty Shift/Ctrl/Alt combination, plus
-     * a Sym icon and a nav icon. This milestone ships one drawable
-     * ([R.drawable.ic_status_modifier]) for every [StatusBarIcon.Modifiers] combination, reused
-     * for [StatusBarIcon.Sym] and [StatusBarIcon.Nav] too: the icon's presence (and, for nav, its
-     * priority over the modifier icon) is real, but its 28 distinct pictures are not drawn.
-     * Authoring 26 hand-distinguishable icons is out of this task's scope; see the report.
-     */
     private fun refreshStatusIcon() {
         val glyph = pipeline.modifierGlyphInput()
         val shift = StatusBarModifierIcon.shiftState(
@@ -3309,13 +3369,26 @@ internal class KeyboardSession(
         )
         if (icon == lastShownStatusIcon) return
         lastShownStatusIcon = icon
+        // Hold first, so the system counts the keyboard as shown by the time the icon arrives.
+        applyModifierHold(modifierHoldPolicy.onIcon(icon))
         runCatching {
-            when (icon) {
-                StatusBarIcon.None -> service.hideStatusIcon()
-                StatusBarIcon.Dictation -> service.showStatusIcon(R.drawable.ic_status_dictation)
-                else -> service.showStatusIcon(R.drawable.ic_status_modifier)
-            }
+            val drawable = statusIconDrawable(icon)
+            if (drawable == null) service.hideStatusIcon() else service.showStatusIcon(drawable)
         }.onFailure { error -> Log.e(TAG, "status icon refresh crashed", error) }
+    }
+
+    /** keys-and-modifiers.md SS13.1: one drawable per state; null hides the icon. */
+    private fun statusIconDrawable(icon: StatusBarIcon): Int? = when (icon) {
+        StatusBarIcon.DICTATION -> R.drawable.ic_status_dictation
+        StatusBarIcon.NAV -> R.drawable.ic_status_nav
+        StatusBarIcon.CTRL_LOCKED -> R.drawable.ic_status_ctrl_locked
+        StatusBarIcon.CTRL -> R.drawable.ic_status_ctrl
+        StatusBarIcon.ALT_LOCKED -> R.drawable.ic_status_alt_locked
+        StatusBarIcon.ALT -> R.drawable.ic_status_alt
+        StatusBarIcon.CAPS_LOCK -> R.drawable.ic_status_caps_lock
+        StatusBarIcon.SHIFT -> R.drawable.ic_status_shift
+        StatusBarIcon.SYM -> R.drawable.ic_status_sym
+        StatusBarIcon.NONE -> null
     }
 
     // -----------------------------------------------------------------------------------------

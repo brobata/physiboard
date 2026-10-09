@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  keys-and-modifiers.md SS13.1: one of the status bar icons, white on transparent (the status bar tints it).
+  Alt (one-shot or held): the ISO 9995-7 Alternate key symbol, a line that steps down and a branch.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M3,6.5 L9,6.5 L15,17.5 L21,17.5 M14,6.5 L21,6.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+</vector>

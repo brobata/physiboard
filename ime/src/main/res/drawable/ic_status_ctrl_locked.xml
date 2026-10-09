@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  keys-and-modifiers.md SS13.1: one of the status bar icons, white on transparent (the status bar tints it).
+  Ctrl latched: the control caret with the lock bar.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M4.5,14 L12,5.5 L19.5,14"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M5,19.5 L19,19.5 L19,22 L5,22 Z"
+        android:fillColor="#FFFFFFFF" />
+</vector>

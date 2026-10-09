@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  keys-and-modifiers.md SS13.1: one of the status bar icons, white on transparent (the status bar tints it).
+  Caps lock: the Shift arrow filled, with the lock bar under it that every locked state carries.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M12,2 L20.5,10.5 L15.5,10.5 L15.5,17 L8.5,17 L8.5,10.5 L3.5,10.5 Z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M5,19.5 L19,19.5 L19,22 L5,22 Z"
+        android:fillColor="#FFFFFFFF" />
+</vector>

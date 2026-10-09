@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  keys-and-modifiers.md SS13.1: one of the status bar icons, white on transparent (the status bar tints it).
+  A Sym page is open: a bold hash, the symbols the page offers.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M9.5,4 L8,20 M16,4 L14.5,20 M4.5,9 L19.5,9 M4,15 L19,15"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+</vector>
