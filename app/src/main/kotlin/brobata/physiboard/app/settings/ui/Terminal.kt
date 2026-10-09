@@ -1,5 +1,8 @@
 package brobata.physiboard.app.settings.ui
 
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -124,17 +127,19 @@ fun PromptTitle(title: String, slug: String, modifier: Modifier = Modifier, maxS
 }
 
 /**
- * The terminal switch: a near-square track with a square thumb, filled in the accent when on.
- * Same contract as Material's Switch: [onCheckedChange] null makes it display-only (the row
- * around it takes the tap), and it is at least 48 dp wide and tall as a target when it takes one.
+ * The switch: a rounded pill in the skin's colours (amber track and a light thumb when on, a
+ * filled slate track when off), sliding with a short ease. The square terminal version read as
+ * clunky and was hard to tell on from off at a glance (maintainer, 2026-10-09). Same contract as
+ * Material's Switch: [onCheckedChange] null makes it display-only (the row around it takes the
+ * tap), and it is at least 48 dp wide and tall as a target when it takes one.
  */
 @Composable
 fun TerminalSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val colors = MaterialTheme.colorScheme
-    val track by animateColorAsState(if (checked) colors.primary else Color.Transparent, tween(150), label = "switch_track")
-    val thumb by animateColorAsState(if (checked) colors.onPrimary else colors.outline, tween(150), label = "switch_thumb")
-    val border = if (checked) colors.primary else colors.outline
-    val offset by animateDpAsState(if (checked) TrackWidth - ThumbSize - ThumbInset * 2 else 0.dp, tween(150), label = "switch_offset")
+    val motion = tween<Color>(180, easing = FastOutSlowInEasing)
+    val track by animateColorAsState(if (checked) colors.primary else colors.outline, motion, label = "switch_track")
+    val thumb by animateColorAsState(if (checked) colors.onPrimary else colors.surface, motion, label = "switch_thumb")
+    val offset by animateDpAsState(if (checked) TrackWidth - ThumbSize - ThumbInset * 2 else 0.dp, tween(180, easing = FastOutSlowInEasing), label = "switch_offset")
     val toggle = if (onCheckedChange != null) {
         Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
     } else {
@@ -143,7 +148,7 @@ fun TerminalSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modi
     Box(
         modifier = modifier
             .then(toggle)
-            .size(width = if (onCheckedChange != null) 52.dp else TrackWidth, height = if (onCheckedChange != null) MinTouchTarget else TrackHeight)
+            .size(width = if (onCheckedChange != null) 56.dp else TrackWidth, height = if (onCheckedChange != null) MinTouchTarget else TrackHeight)
             .alpha(if (enabled) 1f else 0.38f),
         contentAlignment = Alignment.Center,
     ) {
@@ -152,17 +157,23 @@ fun TerminalSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modi
                 .size(width = TrackWidth, height = TrackHeight)
                 .clip(TrackShape)
                 .background(track)
-                .border(1.5.dp, border, TrackShape)
                 .padding(ThumbInset),
             contentAlignment = Alignment.CenterStart,
         ) {
-            Box(modifier = Modifier.offset(x = offset).size(ThumbSize).clip(RoundedCornerShape(2.dp)).background(thumb))
+            Box(
+                modifier = Modifier
+                    .offset(x = offset)
+                    .size(ThumbSize)
+                    .shadow(1.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(thumb),
+            )
         }
     }
 }
 
-private val TrackWidth: Dp = 42.dp
-private val TrackHeight: Dp = 24.dp
-private val ThumbSize: Dp = 16.dp
-private val ThumbInset: Dp = 4.dp
-private val TrackShape = RoundedCornerShape(4.dp)
+private val TrackWidth: Dp = 46.dp
+private val TrackHeight: Dp = 26.dp
+private val ThumbSize: Dp = 20.dp
+private val ThumbInset: Dp = 3.dp
+private val TrackShape = RoundedCornerShape(50)

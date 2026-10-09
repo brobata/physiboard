@@ -721,6 +721,7 @@ fun <T> SingleChoiceChipsRow(
         FlowRow(
             modifier = Modifier.padding(top = Spacing.s),
             horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+            verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
             options.forEach { option ->
                 FilterChip(

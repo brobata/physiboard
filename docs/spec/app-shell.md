@@ -924,11 +924,13 @@ the top; expanders open and close with a short height-and-fade animation and a t
 An intro paragraph sits above the first pane as plain muted text. An empty list shows an icon in
 a 56 dp keycap and one line that says how to fill it.
 
-**Controls.** Switches are the terminal switch: a 42 x 24 dp track with 4 dp corners and a 16 dp
-square thumb; on, the track is filled in the accent and the thumb is the page ink; off, the
-track is an outline and the thumb is the outline colour (both 3:1 or better). A switch row's
-whole surface toggles it, and a switch that takes taps itself has a 52 x 48 dp target with the
-switch role. Chips are square-ish (4 dp) with mono labels; a selected chip is highlighted as a
+**Controls.** Switches are rounded pills (amended 2026-10-09: the square terminal switch read as
+clunky): a 46 x 26 dp track, fully rounded, with a 20 dp round thumb inset 3 dp and a 1 dp
+shadow; on, the track is the accent and the thumb the accent's ink; off, the track is the outline
+colour, filled, and the thumb the surface colour (both 3:1 or better); the thumb slides in 180 ms
+with an ease. A switch row's whole surface toggles it, and a switch that takes taps itself has a
+56 x 48 dp target with the switch role. Chips are square-ish (4 dp) with mono labels, and a row
+of them that wraps keeps the same 8 dp gap between lines as between chips; a selected chip is highlighted as a
 terminal highlights a selection, the accent as the fill and the page ink as the text. Buttons
 are 4 dp. Search fields are prompts: an outlined field on the pane fill, a `$` in the accent
 where the magnifier was, the placeholder lower-cased in mono ending in `_` (`$ search

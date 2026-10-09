@@ -127,6 +127,7 @@ fun TitanToolboxCard(
             FlowRow(
                 modifier = Modifier.padding(top = Spacing.m),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
                 ToolChip("backlight", Icons.Outlined.Lightbulb) { onNavigate(Routes.SMART_BACKLIGHT) }
                 ToolChip("ring", Icons.Outlined.NotificationsActive) { onNavigate(Routes.NOTIFICATION_RING) }
