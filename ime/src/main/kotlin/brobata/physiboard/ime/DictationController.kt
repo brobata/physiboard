@@ -29,6 +29,7 @@ import android.util.Log
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import brobata.physiboard.core.speech.AudioFocusChange
 import brobata.physiboard.core.speech.CuePattern
 import brobata.physiboard.core.speech.DictationCues
 import brobata.physiboard.core.speech.DictationEffect
@@ -45,6 +46,7 @@ import brobata.physiboard.core.speech.DictationPartialDisplay
 import brobata.physiboard.core.speech.LanguageTagResolver
 import brobata.physiboard.core.speech.PendingUtterance
 import brobata.physiboard.core.speech.RecognizerRequest
+import brobata.physiboard.core.speech.SessionAudioRoute
 import brobata.physiboard.core.speech.RecognizerResolution
 import brobata.physiboard.core.speech.RecognizerTarget
 import java.util.Locale
@@ -175,7 +177,8 @@ internal class DictationController(
 
     fun trigger(ownerPackage: String?) {
         if (session != null || hasMicPermission()) {
-            dispatch(DictationEvent.Trigger(ownerPackage, currentTextBeforeCursor()))
+            val route = if (session == null) audioWatch.currentRoute().also { sessionRoute = it } else SessionAudioRoute.LOCAL
+            dispatch(DictationEvent.Trigger(ownerPackage, currentTextBeforeCursor(), route))
             return
         }
         // spec SS2.6 step 1 / SS10: remember the pending start, open the permission activity, and
@@ -255,6 +258,20 @@ internal class DictationController(
         recognizer = null
         session = null
         abandonAudioFocus()
+        audioWatch.stop()
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The car. spec SS6.10: the route the microphone takes and the calls that end a session.
+    // -----------------------------------------------------------------------------------------
+
+    /** The route [trigger] read for the session now starting, handed to the watch for its trace. */
+    private var sessionRoute: SessionAudioRoute = SessionAudioRoute.LOCAL
+
+    private val audioWatch = DictationAudioWatch(service, handler).apply {
+        onRouteSettling = { if (session != null) dispatch(DictationEvent.InputRouteSettling) }
+        onRouteSettled = { if (session != null) dispatch(DictationEvent.InputRouteSettled) }
+        onCallStarted = { if (session != null) dispatch(DictationEvent.CallStarted) }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -302,6 +319,15 @@ internal class DictationController(
             directCommit = DirectCommitState()
         }
         rescheduleClock()
+        // spec SS6.10: the audio around the session is watched (and traced) from its start to its
+        // end. The start is posted to the front of the queue: it is some twenty calls into the
+        // audio service, kept off the trigger key's own stroke, and still lands well before the
+        // recognizer's first callback (a bind and a microphone open away).
+        if (!wasActive && session != null) {
+            val route = sessionRoute
+            handler.postAtFrontOfQueue { if (session != null) audioWatch.start(route) }
+        }
+        if (wasActive && session == null) audioWatch.stop()
         if (!wroteCleanly) onEditorRejectedInsert()
     }
 
@@ -355,13 +381,25 @@ internal class DictationController(
     private var focusRequest: AudioFocusRequest? = null
 
     /**
-     * spec SS6.7: another app taking the audio for good (a call, a video) stops the session. A
-     * transient loss is the recognizer's own request for the same microphone session and is
-     * ignored; focus comes back to this request when the recognizer lets go, which is exactly
-     * what keeps the music paused across the engine's internal restarts.
+     * spec SS6.7: every change is traced with its likely source and handed to the engine, which
+     * decides: a loss during a call ends the session; a media app taking the audio for good is
+     * taken back once and then left playing; a transient loss (the recognizer's own request for
+     * the same microphone session) is ignored, and focus comes back to this request when the
+     * recognizer lets go, which keeps the music paused across the engine's internal restarts.
      */
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
-        if (change == AudioManager.AUDIOFOCUS_LOSS) dispatch(DictationEvent.AudioFocusLost)
+        audioWatch.traceFocusChange(change, ownRequestHeld = focusRequest != null)
+        val mapped = when (change) {
+            AudioManager.AUDIOFOCUS_GAIN -> AudioFocusChange.GAIN
+            AudioManager.AUDIOFOCUS_LOSS -> AudioFocusChange.LOSS
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> AudioFocusChange.LOSS_TRANSIENT
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> AudioFocusChange.LOSS_TRANSIENT_CAN_DUCK
+            else -> null
+        } ?: return@OnAudioFocusChangeListener
+        // A permanent loss takes this request off the system's focus stack: nothing is held any
+        // more, and a retake must be a new request.
+        if (mapped == AudioFocusChange.LOSS) focusRequest = null
+        if (session != null) dispatch(DictationEvent.AudioFocusChanged(mapped, audioWatch.callActive()))
     }
 
     /**
@@ -374,13 +412,15 @@ internal class DictationController(
     private fun requestAudioFocus() {
         val manager = audioManager ?: return
         if (focusRequest != null) return
+        val retake = session?.focusRetaken == true
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
             .setOnAudioFocusChangeListener(focusListener, handler)
             .build()
         focusRequest = request
         val result = runCatching { manager.requestAudioFocus(request) }.getOrDefault(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
-        DiagnosticLog.i(TAG) { "audio focus request result=$result" }
+        audioWatch.traceFocusRequest(result, retake)
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_FAILED) focusRequest = null
     }
 
     private fun abandonAudioFocus() {
@@ -444,6 +484,7 @@ internal class DictationController(
 
     private fun startListening(request: RecognizerRequest) {
         DiagnosticLog.i(TAG) { "start listening segmented=${request.segmented} offline=${request.preferOffline} silenceMs=${request.completeSilenceMs} minimumMs=${request.minimumLengthMs}" }
+        audioWatch.noteListenStarted()
         val speechRecognizer = ensureRecognizer()
         if (speechRecognizer == null) {
             // spec SS2.6 step 4: no recognizer could be created.
@@ -559,7 +600,8 @@ internal class DictationController(
             // spec SS8.1: the first level report is the proof the microphone is open; only the
             // first one is worth a dispatch, the rest only colour the strip's button, except
             // while a continuation probe is waiting for exactly this sign of life (SS6.3).
-            if (session?.cuePlayed == false) dispatch(DictationEvent.FirstAudio)
+            // While the cue waits for the route (SS6.10) the first report is remembered once.
+            if (session?.let { !it.cuePlayed && !it.firstAudioSeen } == true) dispatch(DictationEvent.FirstAudio)
             else if (session?.continuationProbeDeadlineMs != null) dispatch(DictationEvent.EngineActivity)
             onAudioLevel?.invoke(rmsdB)
         }

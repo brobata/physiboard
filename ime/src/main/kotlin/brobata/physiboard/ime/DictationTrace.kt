@@ -45,6 +45,11 @@ internal object DictationTrace {
         Log.println(Log.INFO, TAG, "$ev | ops=[$written] | effects=[$fx] | $phase")
     }
 
+    /** spec SS6.9, SS6.10: one line about the audio around the session (routes, focus, recordings, playback, mode). Types and counts only. */
+    fun audio(line: String) {
+        Log.println(Log.INFO, TAG, line)
+    }
+
     /** A per-process salt, so the hash says "same text as that other line" and nothing else: an unsalted hash of a short utterance could be looked up. */
     private val salt: String = java.util.UUID.randomUUID().toString()
 
