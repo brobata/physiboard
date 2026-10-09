@@ -1,10 +1,13 @@
 package brobata.physiboard.device.privileged.setup
 
 import brobata.physiboard.core.settings.DeviceCaptures
+import brobata.physiboard.core.toolbox.SpellCheckerReading
+import brobata.physiboard.core.toolbox.SpellCheckerSelection
 import brobata.physiboard.device.privileged.DeviceStateStore
 import brobata.physiboard.device.privileged.backlight.KeyboardBacklightController
 import brobata.physiboard.device.privileged.backlight.MasterSwitchAccess
 import brobata.physiboard.device.privileged.broker.BrokerBlocker
+import brobata.physiboard.device.privileged.broker.ShellResult
 import brobata.physiboard.device.privileged.broker.ShellRunner
 import brobata.physiboard.device.privileged.updateCaptures
 import brobata.physiboard.device.titan.KeyboardBacklight
@@ -12,8 +15,8 @@ import brobata.physiboard.device.titan.KeyboardBacklight
 /** How one revert ended. spec: broker-privileged-toolbox.md SS10. */
 enum class RevertOutcome { SUCCESS, FAILED, NEEDS_PERMISSION }
 
-/** The five reverts, in the spec's order. spec: SS10. */
-enum class RevertStep { FN_CTRL, BACKLIGHT, QS_BACKLIGHT, SIDE_KEY, NOTIFICATION_RING }
+/** The six reverts, in the spec's order. spec: SS10. */
+enum class RevertStep { FN_CTRL, BACKLIGHT, QS_BACKLIGHT, SIDE_KEY, NOTIFICATION_RING, SPELL_CHECKER }
 
 /** The whole reset's result, plus the one snackbar line for it. spec: SS10 ("Result snackbar"); T44 to T46. */
 data class ResetReport(val outcomes: Map<RevertStep, RevertOutcome>) {
@@ -68,7 +71,7 @@ object RevertValues {
 
 /**
  * "Reset device settings to stock": reverts exactly what the app wrote at the OS or vendor
- * level, since Android gives an app no uninstall hook. Five reverts run independently (one
+ * level, since Android gives an app no uninstall hook. Six reverts run independently (one
  * failing never skips the others), off the main thread, each never throwing.
  *
  * Differences from 2.x that the spec's Keep/Drop decides for 3.0: the backlight write is
@@ -98,6 +101,7 @@ class ResetToStock(
         outcomes[RevertStep.QS_BACKLIGHT] = guarded(::revertQsBacklight)
         outcomes[RevertStep.SIDE_KEY] = guarded(::revertSideKey)
         outcomes[RevertStep.NOTIFICATION_RING] = guarded(::revertNotificationRing)
+        outcomes[RevertStep.SPELL_CHECKER] = guarded(::revertSpellChecker)
         return ResetReport(outcomes)
     }
 
@@ -175,6 +179,38 @@ class ResetToStock(
         if (!shell.isPaired()) return RevertOutcome.NEEDS_PERMISSION
         shell.run(ShellLines.ringRevoke(identity))
         return if (permissions.isNotificationListenerGranted()) RevertOutcome.FAILED else RevertOutcome.SUCCESS
+    }
+
+    /**
+     * spec: SS10 step 6: the spell checker rows go back to what the setup pass recorded, but only
+     * while PhysiBoard is still the one selected; a spell checker the user picked since is theirs.
+     * Like the backlight and the ring, the feature is switched off first, so the next keyboard
+     * start does not choose PhysiBoard again; the "decided" marker is cleared with the record, so
+     * switching the setting back on makes the setup pass decide afresh.
+     */
+    private fun revertSpellChecker(): RevertOutcome {
+        store.update { it.copy(device = it.device.copy(autoSelectSpellChecker = false)) }
+        val captures = store.snapshot().captures
+        if (!captures.spellCheckerPrevCaptured) {
+            store.updateCaptures { it.copy(spellCheckerDecided = false) }
+            return RevertOutcome.SUCCESS
+        }
+        if (!shell.isPaired()) return RevertOutcome.NEEDS_PERMISSION
+        val current = (shell.run(SpellCheckerSelection.READ_LINE) as? ShellResult.Ok)?.output?.let(SpellCheckerSelection::parse)
+            ?: return RevertOutcome.FAILED
+        val previous = SpellCheckerReading(captures.spellCheckerPrevSelected, captures.spellCheckerPrevEnabled, captures.spellCheckerPrevSubtype)
+        val line = SpellCheckerSelection.revertLine(previous, current, identity.spellCheckerComponent)
+        if (line != null && !shell.run(line).isOk) return RevertOutcome.FAILED
+        store.updateCaptures {
+            it.copy(
+                spellCheckerDecided = false,
+                spellCheckerPrevCaptured = false,
+                spellCheckerPrevSelected = null,
+                spellCheckerPrevEnabled = null,
+                spellCheckerPrevSubtype = null,
+            )
+        }
+        return RevertOutcome.SUCCESS
     }
 
     private fun guarded(body: () -> RevertOutcome): RevertOutcome = try {

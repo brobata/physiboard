@@ -179,6 +179,7 @@ object SettingsKeys {
     const val RING_CY = "notification_ring_cy"
     const val RING_RADIUS = "notification_ring_radius"
     const val RING_STROKE = "notification_ring_stroke"
+    const val AUTO_SELECT_SPELL_CHECKER = "auto_select_spell_checker"
 
     // SS2.12 expansion and launcher
     const val SNIPPETS_ENABLED = "snippets_enabled"
@@ -233,6 +234,11 @@ object SettingsKeys {
     const val RING_BACKLIGHT_PREV_CAPTURED = "ring_backlight_prev_captured"
     const val RING_BACKLIGHT_PREV = "ring_backlight_prev"
     const val SMART_BACKLIGHT_APPLIED = "smart_backlight_applied"
+    const val SPELL_CHECKER_DECIDED = "spell_checker_auto_select_done"
+    const val SPELL_CHECKER_PREV_CAPTURED = "spell_checker_prev_captured"
+    const val SPELL_CHECKER_PREV_SELECTED = "spell_checker_prev_selected"
+    const val SPELL_CHECKER_PREV_ENABLED = "spell_checker_prev_enabled"
+    const val SPELL_CHECKER_PREV_SUBTYPE = "spell_checker_prev_subtype"
 }
 
 /**
@@ -686,6 +692,7 @@ object SettingsCodec {
             put(SettingsKeys.RING_RADIUS, it.radius.toString())
             put(SettingsKeys.RING_STROKE, it.stroke.toString())
         }
+        put(SettingsKeys.AUTO_SELECT_SPELL_CHECKER, x.autoSelectSpellChecker.toString())
     }
 
     private fun readDevice(r: FlatReader): DevicePrefs {
@@ -714,6 +721,7 @@ object SettingsCodec {
             ringDefaultColor = r.intOrNull(SettingsKeys.RING_DEFAULT_COLOR),
             ringAppColors = appColors ?: d.ringAppColors,
             ringFit = fit,
+            autoSelectSpellChecker = r.bool(SettingsKeys.AUTO_SELECT_SPELL_CHECKER, d.autoSelectSpellChecker),
         )
     }
 
@@ -854,6 +862,11 @@ object SettingsCodec {
         put(SettingsKeys.RING_BACKLIGHT_PREV_CAPTURED, c.ringBacklightPrevCaptured.toString())
         c.ringBacklightPrev?.let { put(SettingsKeys.RING_BACKLIGHT_PREV, it.toString()) }
         put(SettingsKeys.SMART_BACKLIGHT_APPLIED, c.smartBacklightApplied.toString())
+        put(SettingsKeys.SPELL_CHECKER_DECIDED, c.spellCheckerDecided.toString())
+        put(SettingsKeys.SPELL_CHECKER_PREV_CAPTURED, c.spellCheckerPrevCaptured.toString())
+        c.spellCheckerPrevSelected?.let { put(SettingsKeys.SPELL_CHECKER_PREV_SELECTED, it) }
+        c.spellCheckerPrevEnabled?.let { put(SettingsKeys.SPELL_CHECKER_PREV_ENABLED, it) }
+        c.spellCheckerPrevSubtype?.let { put(SettingsKeys.SPELL_CHECKER_PREV_SUBTYPE, it) }
     }
 
     private fun readCaptures(r: FlatReader): DeviceCaptures {
@@ -870,6 +883,11 @@ object SettingsCodec {
             ringBacklightPrevCaptured = r.bool(SettingsKeys.RING_BACKLIGHT_PREV_CAPTURED, d.ringBacklightPrevCaptured),
             ringBacklightPrev = r.intOrNull(SettingsKeys.RING_BACKLIGHT_PREV),
             smartBacklightApplied = r.bool(SettingsKeys.SMART_BACKLIGHT_APPLIED, d.smartBacklightApplied),
+            spellCheckerDecided = r.bool(SettingsKeys.SPELL_CHECKER_DECIDED, d.spellCheckerDecided),
+            spellCheckerPrevCaptured = r.bool(SettingsKeys.SPELL_CHECKER_PREV_CAPTURED, d.spellCheckerPrevCaptured),
+            spellCheckerPrevSelected = r.string(SettingsKeys.SPELL_CHECKER_PREV_SELECTED),
+            spellCheckerPrevEnabled = r.string(SettingsKeys.SPELL_CHECKER_PREV_ENABLED),
+            spellCheckerPrevSubtype = r.string(SettingsKeys.SPELL_CHECKER_PREV_SUBTYPE),
         )
     }
 }

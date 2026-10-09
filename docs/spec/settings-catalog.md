@@ -113,6 +113,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `use_keyboard_proximity` | boolean | false | true | Key-distance ranking on the path without a word-pair table; no effect on English, whose sentence-aware correction always weighs the Titan's key distances (autocorrect-suggestions.md SS13, SS16) | Autocorrect & words > Fine-tuning > "Weigh nearby keys" |
 | `fix_word_mixups` | boolean | false | | Swaps a real word typed for its twin (its/it's, your/you're, their/there, then/than) by reading the words on both sides; ships off until proven on the phone (autocorrect-suggestions.md SS10) | Autocorrect & words > Autocorrect > "Fix mixed-up words" |
 | (none) | link | | | Not a setting: says whether PhysiBoard is Android's selected spell checker and opens Android's spell checker picker; nothing stored or backed up (autocorrect-suggestions.md SS18) | Autocorrect & words > Words > "System spell checker" |
+| `auto_select_spell_checker` | boolean | true | | Once paired, the setup pass makes PhysiBoard the phone's spell checker and turns spell checking on, once, never over a spell checker the user installed; reset to stock sets it false (broker-privileged-toolbox.md SS7 step 5, SS10 step 6). Unpaired, Home's status card offers "Turn on spell checking" on the same rules (app-shell.md SS6.3) | Autocorrect & words > Words > "Choose PhysiBoard as the spell checker" |
 | `use_edit_type_ranking` | boolean | false | | Insert > substitute > delete ranking | Auto-correction > "Edit Type Ranking" |
 | `user_dictionary_entries` | string, JSON array of objects `{"w": word, "f": frequency, "u": last used ms}` | none | | The personal dictionary | Autocorrect & words > Words > "Personal dictionary" |
 | `suggestion_debug_logging` | boolean | true | | Verbose suggestion logs (stripped from release builds anyway) | No screen |
@@ -300,6 +301,9 @@ All five rows are written synchronously.
 | `ring_backlight_prev` | int | absent reads as 1 | | The switch value to put back | |
 | `qs_backlight_prev_captured` | boolean marker | false | | The quick-settings tile captured the vendor global | |
 | `qs_backlight_prev` | int; absent reads as the "unset" sentinel | | | The vendor global before the tile flipped it | |
+| `spell_checker_auto_select_done` | boolean marker | false | | The setup pass made its one spell checker decision | |
+| `spell_checker_prev_captured` | boolean marker | false | | The spell checker rows were recorded before the setup pass wrote them | |
+| `spell_checker_prev_selected`, `_enabled`, `_subtype` | string; absent = unset | | | `selected_spell_checker`, `spell_checker_enabled`, `selected_spell_checker_subtype` before the write, put back by reset to stock | |
 
 ### 2.11 Privileged setup diagnostics (broker-privileged-toolbox.md)
 
@@ -859,7 +863,7 @@ current state and a chevron. A category with one screen opens it; the others ope
 | Row | Summary (computed from the stored settings) | Opens |
 |---|---|---|
 | Typing | "Auto-capitals on · double-space period on" | Typing: Capitals; Punctuation (with "More punctuation" collapsed: comma space, dashes, curly quotes, "Spaces around punctuation"); Backspace; Alt key; Shortcuts > Text expansion |
-| Autocorrect & words | "Autocorrect on · mix-ups off" | Autocorrect & words: Autocorrect (fix typos, mixed-up words, apostrophes and accents); Words (Personal dictionary, Text replacements, System spell checker); Fine-tuning collapsed |
+| Autocorrect & words | "Autocorrect on · mix-ups off" | Autocorrect & words: Autocorrect (fix typos, mixed-up words, apostrophes and accents); Words (Personal dictionary, Text replacements, System spell checker, Choose PhysiBoard as the spell checker); Fine-tuning collapsed |
 | Languages & layouts | "QWERTY · follows the language" (the layout by the name Keyboard layout gives it) | Languages & layouts: Keyboard layout, Languages you type in, Dictionaries; Switch language with (three chords) |
 | Long press & accents | "Alt symbol · 500 ms" | Long press & accents |
 | Sym pages | "Emoji → Symbols" | Sym pages (formerly Customize SYM Keyboard): Pages; Emoji; Fill page; Sym key; Clipboard > Clipboard history |

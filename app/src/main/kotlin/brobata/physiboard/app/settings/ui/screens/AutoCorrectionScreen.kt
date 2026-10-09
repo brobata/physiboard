@@ -40,6 +40,7 @@ import brobata.physiboard.core.settings.CorrectionPrefs
 fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
     val controller = LocalSettingsController.current
     val correction = controller.current.value.correction
+    val device = controller.current.value.device
     fun set(transform: (CorrectionPrefs) -> CorrectionPrefs) = controller.update { it.copy(correction = transform(it.correction)) }
 
     // autocorrect-suggestions.md SS18: re-read on every return, since the choice is made in Android's own settings.
@@ -95,6 +96,16 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
             }
             item {
                 NavigateRow("System spell checker", SpellCheckerSettings.description(spellChecker), icon = Icons.Outlined.Spellcheck) { SpellCheckerSettings.open(context) }
+            }
+            item {
+                // broker-privileged-toolbox.md SS7 step 5: the paired setup pass chooses PhysiBoard
+                // once; this only decides whether it may.
+                SwitchRow(
+                    "Choose PhysiBoard as the spell checker",
+                    description = "Once Titan tools are paired, make PhysiBoard the phone's spell checker and turn spell checking on. Done once, and never over a spell checker you installed yourself.",
+                    checked = device.autoSelectSpellChecker,
+                    onCheckedChange = { on -> controller.update { it.copy(device = it.device.copy(autoSelectSpellChecker = on)) } },
+                )
             }
             header("")
             item {

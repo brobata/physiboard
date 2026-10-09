@@ -70,6 +70,9 @@ object LegacyImport {
         SettingsKeys.FN_CTRL_PREV_FUNCTION,
         SettingsKeys.QS_BACKLIGHT_PREV,
         SettingsKeys.RING_BACKLIGHT_PREV,
+        SettingsKeys.SPELL_CHECKER_PREV_SELECTED,
+        SettingsKeys.SPELL_CHECKER_PREV_ENABLED,
+        SettingsKeys.SPELL_CHECKER_PREV_SUBTYPE,
         SettingsKeys.LAUNCHER_SHORTCUTS,
         SettingsKeys.LAUNCHER_COMMAND_CUSTOMIZATIONS,
     )

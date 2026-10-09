@@ -1,5 +1,6 @@
 package brobata.physiboard.device.privileged.setup
 
+import brobata.physiboard.core.toolbox.SpellCheckerSelection
 import brobata.physiboard.device.titan.BacklightWrite
 import brobata.physiboard.device.titan.KeyboardBacklight
 
@@ -10,7 +11,12 @@ import brobata.physiboard.device.titan.KeyboardBacklight
  * addressed to the wrong package lands nowhere and reports success (the 2.x tile bug in another
  * form, device-backlight-ring.md SS2.2 "Known bug").
  */
-data class AppIdentity(val packageName: String, val ringListenerComponent: String)
+data class AppIdentity(
+    val packageName: String,
+    val ringListenerComponent: String,
+    /** The running build's own spell checker, so dev3 and the release build each select themselves. */
+    val spellCheckerComponent: String = SpellCheckerSelection.component(packageName),
+)
 
 /**
  * Every shell line this module sends, rendered in one place so a test can pin the exact text

@@ -9,6 +9,7 @@ import brobata.physiboard.device.privileged.InMemoryDiagnosticsStore
 import brobata.physiboard.device.privileged.backlight.FakeMasterSwitch
 import brobata.physiboard.device.privileged.backlight.KeyboardBacklightController
 import brobata.physiboard.device.privileged.broker.BrokerBlocker
+import brobata.physiboard.device.privileged.broker.ShellResult
 import java.util.concurrent.Executors
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -240,7 +241,66 @@ class ResetToStockTest {
         val report = reset.run()
         assertEquals(RevertOutcome.FAILED, report.outcomes[RevertStep.FN_CTRL])
         assertEquals(RevertOutcome.SUCCESS, report.outcomes[RevertStep.BACKLIGHT])
-        assertEquals(5, report.outcomes.size)
+        assertEquals(6, report.outcomes.size)
         assertEquals(ResetMessages.PARTIAL, report.message)
+    }
+
+    // Step 6: the spell checker. -------------------------------------------------------------
+
+    private val ourSpell = "brobata.physiboard/brobata.physiboard.ime.PhysiBoardSpellCheckerService"
+    private val vendorSpell = "com.android.inputmethod.latin/com.android.inputmethod.latin.spellcheck.AndroidSpellCheckerService"
+    private val readSpell = "settings get secure selected_spell_checker; settings get secure spell_checker_enabled; settings get secure selected_spell_checker_subtype"
+
+    private fun spellRecorded() = captures {
+        it.copy(spellCheckerDecided = true, spellCheckerPrevCaptured = true, spellCheckerPrevSelected = vendorSpell, spellCheckerPrevEnabled = null, spellCheckerPrevSubtype = "7")
+    }
+
+    @Test
+    fun `spell checker revert puts the recorded rows back while ours is still selected, and switches the feature off`() {
+        spellRecorded()
+        shell.responses[readSpell] = ShellResult.Ok("$ourSpell\n1\n0\n")
+        assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.SPELL_CHECKER])
+        assertTrue(
+            shell.lines.contains(
+                "settings put secure selected_spell_checker $vendorSpell; settings put secure selected_spell_checker_subtype 7; settings delete secure spell_checker_enabled",
+            ),
+        )
+        val s = store.snapshot()
+        assertFalse(s.device.autoSelectSpellChecker, "the next keyboard start must not choose PhysiBoard again")
+        assertFalse(s.captures.spellCheckerPrevCaptured)
+        assertFalse(s.captures.spellCheckerDecided)
+        assertNull(s.captures.spellCheckerPrevSelected)
+    }
+
+    @Test
+    fun `spell checker revert leaves a checker the user picked since alone`() {
+        spellRecorded()
+        shell.responses[readSpell] = ShellResult.Ok("com.grammarly/com.grammarly.Spell\n1\n0\n")
+        assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.SPELL_CHECKER])
+        assertFalse(shell.lines.any { it.startsWith("settings put secure selected_spell_checker") || it.startsWith("settings delete secure selected_spell_checker") })
+        assertFalse(store.snapshot().captures.spellCheckerPrevCaptured)
+    }
+
+    @Test
+    fun `spell checker revert with nothing recorded succeeds without the broker`() {
+        assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.SPELL_CHECKER])
+        assertFalse(shell.lines.contains(readSpell))
+    }
+
+    @Test
+    fun `spell checker revert with a record but no key is NEEDS_PERMISSION and keeps the record`() {
+        spellRecorded()
+        shell.blocker = BrokerBlocker.NOT_PAIRED
+        assertEquals(RevertOutcome.NEEDS_PERMISSION, reset.run().outcomes[RevertStep.SPELL_CHECKER])
+        assertTrue(store.snapshot().captures.spellCheckerPrevCaptured)
+    }
+
+    @Test
+    fun `spell checker revert whose write fails is FAILED and keeps the record`() {
+        spellRecorded()
+        shell.responses[readSpell] = ShellResult.Ok("$ourSpell\n1\n0\n")
+        shell.failWith("settings put secure selected_spell_checker $vendorSpell; settings put secure selected_spell_checker_subtype 7; settings delete secure spell_checker_enabled")
+        assertEquals(RevertOutcome.FAILED, reset.run().outcomes[RevertStep.SPELL_CHECKER])
+        assertTrue(store.snapshot().captures.spellCheckerPrevCaptured)
     }
 }

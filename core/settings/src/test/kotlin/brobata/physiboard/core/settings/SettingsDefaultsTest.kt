@@ -64,6 +64,7 @@ class SettingsDefaultsTest {
         assertEquals(2, d.device.ringMinutes)
         assertTrue(d.device.ringEnabled)
         assertTrue(d.device.smartBacklightEnabled)
+        assertTrue(d.device.autoSelectSpellChecker, "spell checking is chosen after pairing unless switched off")
         assertEquals("$", "$") // the currency symbol row is dropped; nothing to assert but that it is gone
     }
 

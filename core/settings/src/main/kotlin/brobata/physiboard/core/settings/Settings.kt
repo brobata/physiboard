@@ -657,6 +657,11 @@ data class DevicePrefs(
     val ringDefaultColor: Int? = null,
     val ringAppColors: Map<String, Int> = emptyMap(),
     val ringFit: RingFit? = RingFit(cx = 78.4834f, cy = 80.4834f, radius = 45.9375f, stroke = 9.625f),
+    /**
+     * `auto_select_spell_checker`: once paired, the setup pass makes PhysiBoard the phone's spell
+     * checker, once, unless someone already chose another (broker-privileged-toolbox.md SS7 step 5).
+     */
+    val autoSelectSpellChecker: Boolean = true,
 )
 
 /** `snippets_presentation`. spec: expansion-clipboard-pickers-launcher.md SS2. */
@@ -796,4 +801,11 @@ data class DeviceCaptures(
     val ringBacklightPrevCaptured: Boolean = false,
     val ringBacklightPrev: Int? = null,
     val smartBacklightApplied: Boolean = false,
+    /** The setup pass made its one spell checker decision (selected, already ours, or another respected); it never looks again. */
+    val spellCheckerDecided: Boolean = false,
+    /** The setup pass wrote the spell checker rows; the three below are what was there, null meaning unset. */
+    val spellCheckerPrevCaptured: Boolean = false,
+    val spellCheckerPrevSelected: String? = null,
+    val spellCheckerPrevEnabled: String? = null,
+    val spellCheckerPrevSubtype: String? = null,
 )

@@ -3,7 +3,7 @@ package brobata.physiboard.device.privileged
 import brobata.physiboard.device.privileged.broker.BrokerVerdict
 
 /**
- * The four privileged steps whose outcome is recorded. spec: broker-privileged-toolbox.md SS8.
+ * The five privileged steps whose outcome is recorded. spec: broker-privileged-toolbox.md SS8.
  * [key] is the row suffix (`privileged_<key>_ok` / `_reason` / `_at`).
  */
 enum class PrivilegedStep(val key: String) {
@@ -11,6 +11,7 @@ enum class PrivilegedStep(val key: String) {
     OVERLAY_GRANT("overlay_grant"),
     NOTIFICATION_RING("notification_ring"),
     RING_BACKLIGHT("ring_backlight"),
+    SPELL_CHECKER("spell_checker"),
 }
 
 /** One step's last outcome. [reason] is one of [StepReasons] or free text. spec: SS8. */

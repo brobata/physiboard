@@ -183,4 +183,71 @@ class PrivilegedSetupTest {
         assertEquals("IllegalStateException: dead system", report.outcomes.getValue(PrivilegedStep.OVERLAY_GRANT).reason)
         assertNotNull(report.outcomes[PrivilegedStep.RING_BACKLIGHT])
     }
+
+    // Step 5: the spell checker. ---------------------------------------------------------------
+
+    private val ourSpell = "brobata.physiboard.dev3/brobata.physiboard.ime.PhysiBoardSpellCheckerService"
+    private val vendorSpell = "com.android.inputmethod.latin/com.android.inputmethod.latin.spellcheck.AndroidSpellCheckerService"
+    private val readSpell = "settings get secure selected_spell_checker; settings get secure spell_checker_enabled; settings get secure selected_spell_checker_subtype"
+    private val selectOurs = "settings put secure selected_spell_checker $ourSpell; settings put secure selected_spell_checker_subtype 0; settings put secure spell_checker_enabled 1"
+
+    @Test
+    fun `step 5 selects this build's spell checker over the phone's own, records what was there, and is done`() {
+        shell.responses[readSpell] = ShellResult.Ok("$vendorSpell\n0\n7\n")
+        shell.responses["pm list packages -s com.android.inputmethod.latin"] = ShellResult.Ok("package:com.android.inputmethod.latin\n")
+        val report = setup.run(SetupReasons.PAIRING_SUCCEEDED)
+        assertTrue(shell.lines.contains(selectOurs))
+        assertEquals(StepReasons.OK, report.outcomes.getValue(PrivilegedStep.SPELL_CHECKER).reason)
+        val c = store.snapshot().captures
+        assertTrue(c.spellCheckerDecided)
+        assertTrue(c.spellCheckerPrevCaptured)
+        assertEquals(vendorSpell, c.spellCheckerPrevSelected)
+        assertEquals("0", c.spellCheckerPrevEnabled)
+        assertEquals("7", c.spellCheckerPrevSubtype)
+    }
+
+    @Test
+    fun `step 5 leaves a spell checker someone installed alone and never asks again`() {
+        val release = "brobata.physiboard/brobata.physiboard.ime.PhysiBoardSpellCheckerService"
+        shell.responses[readSpell] = ShellResult.Ok("$release\n1\n0\n")
+        shell.responses["pm list packages brobata.physiboard"] = ShellResult.Ok("package:brobata.physiboard\npackage:brobata.physiboard.dev3\n")
+        setup.run(SetupReasons.IME_START)
+        assertFalse(shell.lines.any { it.startsWith("settings put secure selected_spell_checker") })
+        assertEquals("another_spell_checker_chosen", diagnostics.step(PrivilegedStep.SPELL_CHECKER)?.reason)
+        assertTrue(store.snapshot().captures.spellCheckerDecided)
+        assertFalse(store.snapshot().captures.spellCheckerPrevCaptured)
+
+        shell.lines.clear()
+        setup.run(SetupReasons.IME_START)
+        assertFalse(shell.lines.contains(readSpell), "once decided, the step sends nothing")
+        assertEquals("already_decided", diagnostics.step(PrivilegedStep.SPELL_CHECKER)?.reason)
+    }
+
+    @Test
+    fun `step 5 with the setting off reads nothing and writes nothing`() {
+        store.update { it.copy(device = it.device.copy(autoSelectSpellChecker = false)) }
+        setup.run(SetupReasons.IME_START)
+        assertFalse(shell.lines.contains(readSpell))
+        assertEquals("skipped_feature_disabled", diagnostics.step(PrivilegedStep.SPELL_CHECKER)?.reason)
+        assertFalse(store.snapshot().captures.spellCheckerDecided)
+    }
+
+    @Test
+    fun `step 5 that cannot read the phone fails and tries again next time`() {
+        setup.run(SetupReasons.IME_START)
+        assertFalse(diagnostics.step(PrivilegedStep.SPELL_CHECKER)!!.ok)
+        assertFalse(store.snapshot().captures.spellCheckerDecided)
+    }
+
+    @Test
+    fun `step 5 whose write fails keeps the record and is not done`() {
+        shell.responses[readSpell] = ShellResult.Ok("null\nnull\nnull\n")
+        shell.failWith(selectOurs, "SecurityException")
+        setup.run(SetupReasons.IME_START)
+        val c = store.snapshot().captures
+        assertFalse(diagnostics.step(PrivilegedStep.SPELL_CHECKER)!!.ok)
+        assertFalse(c.spellCheckerDecided)
+        assertTrue(c.spellCheckerPrevCaptured)
+        assertEquals(null, c.spellCheckerPrevSelected)
+    }
 }

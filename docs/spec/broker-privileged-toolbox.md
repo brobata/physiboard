@@ -297,16 +297,39 @@ Otherwise, in this order:
    `pm grant brobata.physiboard android.permission.WRITE_SECURE_SETTINGS`, then the outcome is
    decided by re-checking the permission, not by the shell's exit status, because `pm grant`
    prints nothing on success.
+5. **Spell checker** (3.1), only if `auto_select_spell_checker` is true and the one-time
+   decision has not been made yet (`spell_checker_auto_select_done` false); once it has, the
+   step sends nothing and records `already_decided`, and with the setting off it records
+   `skipped_feature_disabled`. Otherwise it reads the three rows in one line
+   (`settings get secure selected_spell_checker; settings get secure spell_checker_enabled; settings get secure selected_spell_checker_subtype`;
+   fewer than three lines records `unreadable` and is retried next pass) and decides
+   (`SpellCheckerSelection`, core/toolbox, pure):
+   - The selected component belongs to a package the user installed (`pm list packages -s <pkg>`
+     does not list it but `pm list packages <pkg>` does), including the other PhysiBoard build:
+     that is a choice. Nothing is written; the decision is marked done
+     (`another_spell_checker_chosen`), so it is never revisited.
+   - It is this build's own (`<applicationId>/brobata.physiboard.ime.PhysiBoardSpellCheckerService`,
+     the running package, so dev3 and the release build each select themselves) and
+     `spell_checker_enabled` is 1: marked done (`already_selected`). Ours but spell checking off:
+     `settings put secure spell_checker_enabled 1`.
+   - Nothing selected, a component whose package is gone, or a preinstalled spell checker (the
+     factory default Android picks by itself): one line
+     `settings put secure selected_spell_checker <ours>; settings put secure selected_spell_checker_subtype 0; settings put secure spell_checker_enabled 1`
+     (subtype 0 is "follow the system languages").
+   Before any write the three values read are recorded once (`spell_checker_prev_captured`,
+   `spell_checker_prev_selected`, `_enabled`, `_subtype`; null = unset) so a process death
+   between the two still leaves the originals for the reset. The decision is marked done only
+   when the write succeeds; a failed write records the broker's error and is retried next pass.
+   Package names go into the `pm` lines only when they match `[A-Za-z0-9_.]+`.
 
-Steps 2 to 4 use "a key is stored" as their pre-flight, not the verified verdict; they are
-tolerant of failing. Only steps 1 and 4 record outcomes (section 8); steps 2 and 3 log only,
-which in a release build means nothing is recorded for them.
+Steps 2 to 5 use "a key is stored" as their pre-flight, not the verified verdict; they are
+tolerant of failing. In 3.0 every step records its outcome (section 8).
 
 ## 8. Privileged diagnostics
 
 Outcomes are persisted in the main preferences so they survive IME restarts and reach the debug
 export. For each step name in {`backlight`, `overlay_grant`, `notification_ring`,
-`ring_backlight`}: `privileged_<step>_ok` (boolean), `privileged_<step>_reason` (string; one of
+`ring_backlight`, `spell_checker`}: `privileged_<step>_ok` (boolean), `privileged_<step>_reason` (string; one of
 `ok`, `not_paired`, `wireless_debugging_off`, `shell_failed`, or a free-text error), and
 `privileged_<step>_at` (epoch ms; 0 or absent means never run). The last observed backlight
 value is `privileged_backlight_device_value` (string, may be null) with
@@ -344,6 +367,7 @@ for `system`, `WRITE_SECURE_SETTINGS` for `global`/`secure` once granted); "brok
 | secure | `one_handed_enabled` | 1, or deleted | System tweaks | broker | no: stock is unset |
 | window manager | display density override | any value in the safe range, or reset | Screen density | broker (`wm density N` / `wm density reset`) | the revert is always "reset", never a number |
 | package manager | per-user enabled/installed state of catalog packages | disabled / uninstalled for user 0 | Remove bloat | broker | yes: the removal journal (section 12.6) |
+| secure | `selected_spell_checker`, `selected_spell_checker_subtype`, `spell_checker_enabled` | this build's spell checker, 0, 1 | `auto_select_spell_checker`: PhysiBoard as the phone's spell checker, once (section 7 step 5) | broker | yes: `spell_checker_prev_captured`, `spell_checker_prev_selected`, `_enabled`, `_subtype` (null = unset) |
 | app ops and grants | `SYSTEM_ALERT_WINDOW`, `USE_FULL_SCREEN_INTENT`, `POST_NOTIFICATION` for the app; notification listener allow-list; `WRITE_SECURE_SETTINGS` runtime grant | allow / granted | trackpad overlay, notification ring, ring backlight | broker | no |
 
 Side-key values are validated before they are written or restored: only strings up to 256
@@ -363,7 +387,7 @@ this before you uninstall." Tapping opens a dialog "Reset device settings to sto
 PhysiBoard preferences are kept. You can re-apply these features anytime." with "Reset to
 stock" and "Cancel". While running, the row shows a spinner and is not tappable.
 
-Five reverts run independently (one failing never skips the others), off the main thread, each
+Six reverts run independently (one failing never skips the others), off the main thread, each
 never throwing:
 
 1. **Fn to Ctrl**: write the captured originals to `fn_programmable_key_enable` and
@@ -385,8 +409,17 @@ never throwing:
    NEEDS_PERMISSION; otherwise send
    `cmd notification disallow_listener <component>; appops set brobata.physiboard USE_FULL_SCREEN_INTENT default`
    and report SUCCESS only if notification access is gone afterwards.
+6. **Spell checker** (3.1): set `auto_select_spell_checker` false, so the next keyboard start
+   does not choose PhysiBoard again. Nothing recorded: SUCCESS (and the done marker is
+   cleared). Else, with no key stored: NEEDS_PERMISSION, record kept. Otherwise read the three
+   rows; only while the selected spell checker is still this build's are they put back, each to
+   its recorded value or deleted when it was unset (a recorded value that is not a plain
+   `package/class` or integer is deleted rather than written into the line); a spell checker
+   the user picked since is left alone. The read failing or the write failing is FAILED with the
+   record kept; otherwise the record and the done marker are cleared, so switching the setting
+   back on makes the setup pass decide afresh.
 
-Result snackbar: all five SUCCESS gives "Device settings restored to stock."; any
+Result snackbar: all six SUCCESS gives "Device settings restored to stock."; any
 NEEDS_PERMISSION gives "Grant PhysiBoard "Modify system settings", or pair wireless debugging,
 then try again."; otherwise "Some settings were restored. A reboot may be needed for changes to
 fully apply."
@@ -737,6 +770,10 @@ control.
 | `fn_ctrl_prev_function` | int | Int.MIN_VALUE | original `fn_programmable_key_function` | n/a | n/a |
 | `qs_backlight_prev_captured` | boolean | false | original tile value was captured | n/a | n/a |
 | `qs_backlight_prev` | int | Int.MIN_VALUE | original `agui_keyboard_background_light` | n/a | n/a |
+| `auto_select_spell_checker` | boolean | true | whether the setup pass makes PhysiBoard the phone's spell checker, once (section 7 step 5); reset to stock sets false | Autocorrect & words | "Choose PhysiBoard as the spell checker" / "Once Titan tools are paired, make PhysiBoard the phone's spell checker and turn spell checking on. Done once, and never over a spell checker you installed yourself." |
+| `spell_checker_auto_select_done` | boolean | false | the one-time spell checker decision was made; the step never looks again | n/a | n/a |
+| `spell_checker_prev_captured` | boolean | false | the spell checker rows were recorded before the step wrote them | n/a | n/a |
+| `spell_checker_prev_selected` / `_enabled` / `_subtype` | string | absent (unset) | `selected_spell_checker`, `spell_checker_enabled`, `selected_spell_checker_subtype` before the write | n/a | n/a |
 | `side_key_original_captured` | boolean | false | original side-key pair was captured | n/a | n/a |
 | `side_key_original_package` | string | null | original `func1_long_press_package` | n/a | n/a |
 | `side_key_original_activity` | string | null | original `func1_long_press_activity` | n/a | n/a |
@@ -744,6 +781,7 @@ control.
 | `privileged_overlay_grant_ok` / `_reason` / `_at` | boolean / string / long | absent | reserved; only written by the blocker short-circuit | debug export | n/a |
 | `privileged_notification_ring_ok` / `_reason` / `_at` | boolean / string / long | absent | reserved; only written by the blocker short-circuit | debug export | n/a |
 | `privileged_ring_backlight_ok` / `_reason` / `_at` | boolean / string / long | absent | last secure-settings grant outcome | debug export | n/a |
+| `privileged_spell_checker_ok` / `_reason` / `_at` | boolean / string / long | absent | last spell checker step outcome (`ok`, `already_decided`, `already_selected`, `another_spell_checker_chosen`, `skipped_feature_disabled`, `unreadable`, or the broker's error) | debug export | n/a |
 | `privileged_backlight_device_value` / `_at` | string / long | absent | timeout last read back from the device | debug export | n/a |
 | `privileged_broker_status` / `_at` | string (verdict name) / long | absent | last verified verdict, seeds every screen | all readiness surfaces | n/a |
 | `removal_journal` (file `physiboard_toolbox`) | JSON array string | absent | packages changed and their prior state | Remove bloat ("Restore all") | "N package(s) changed by PhysiBoard" |

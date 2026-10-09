@@ -59,6 +59,7 @@ object SearchCatalog {
         SearchEntry("Personal dictionary", AUTOCORRECT, Routes.PERSONAL_DICTIONARY, "personal dictionary user words add delete edit"),
         SearchEntry("Text replacements", AUTOCORRECT, Routes.CUSTOM_SUBSTITUTIONS, "text replacements custom substitutions correction language rules"),
         SearchEntry("System spell checker", AUTOCORRECT, Routes.AUTO_CORRECTION, "spell checker spellcheck underline red misspelled squiggle typo apps android"),
+        SearchEntry("Choose PhysiBoard as the spell checker", AUTOCORRECT, Routes.AUTO_CORRECTION, "spell checker spellcheck automatic select default pairing turn on"),
         SearchEntry("How far a correction may reach", AUTOCORRECT, Routes.AUTO_CORRECTION, "maximum correction distance edit distance fine-tuning proximity nearby keys"),
         // Languages & layouts.
         SearchEntry("Keyboard layout", LANGUAGES, Routes.KEYBOARD_LAYOUT, "keyboard layout qwertz azerty multitap standard import viewer follow language automatic"),

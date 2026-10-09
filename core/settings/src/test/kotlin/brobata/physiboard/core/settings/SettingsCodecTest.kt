@@ -91,6 +91,7 @@ class SettingsCodecTest {
             smartBacklightEnabled = false, ringEnabled = false, ringMinutes = 30, ringBrightness = RingBrightness.BRIGHT,
             ringShowIcons = true, ringKeyboardDark = false, ringDefaultColor = 0xFF123456.toInt(),
             ringAppColors = mapOf("com.example.a" to 0xFF00FF00.toInt()), ringFit = RingFit(1f, 2f, 3f, 4f),
+            autoSelectSpellChecker = false,
         ),
         expansion = ExpansionPrefs(
             snippetsEnabled = true, snippetPrefix = "#", snippets = mapOf("sig" to "Best regards"), presentation = SnippetPresentation.SUGGESTION_BAR,
@@ -113,6 +114,8 @@ class SettingsCodecTest {
             fnCtrlPrevCaptured = true, fnCtrlPrevEnable = 1, fnCtrlPrevFunction = 7, sideKeyOriginalCaptured = true,
             sideKeyOriginalPackage = "com.example.assistant", sideKeyOriginalActivity = "com.example.assistant.Main",
             qsBacklightPrevCaptured = true, qsBacklightPrev = 0, ringBacklightPrevCaptured = true, ringBacklightPrev = 1, smartBacklightApplied = true,
+            spellCheckerDecided = true, spellCheckerPrevCaptured = true,
+            spellCheckerPrevSelected = "com.example.kb/com.example.kb.Spell", spellCheckerPrevEnabled = "0", spellCheckerPrevSubtype = "12",
         ),
     )
 
