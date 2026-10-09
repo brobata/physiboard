@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +39,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -97,29 +101,44 @@ fun RingFitScreen(onDone: () -> Unit) {
                 systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
-        ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
-            val rect = insets.displayCutout?.boundingRects?.firstOrNull()
-            val cutout = rect?.let { CutoutRect(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()) }
-            lastCutout = cutout
-            if (override == null && !seededFromCutout) {
-                val geometry = NotificationRingGeometry.resolve(null, cutout, densityDpi)
-                cx = geometry.centerX
-                cy = geometry.centerY
-                radius = geometry.radius
-                stroke = geometry.strokeWidth
-                seededFromCutout = true
-            }
-            insets
-        }
         onDispose {
-            ViewCompat.setOnApplyWindowInsetsListener(view, null)
             if (window != null) {
-                WindowCompat.setDecorFitsSystemWindows(window, true)
+                // MainActivity is edge-to-edge (decor does not fit the system windows; each screen
+                // pads itself from Compose's insets). Putting `true` back here made the decor pad
+                // for the status bar too, so every screen after this one had a doubled gap above
+                // its top bar until the activity was recreated.
+                WindowCompat.setDecorFitsSystemWindows(window, false)
                 WindowInsetsControllerCompat(window, view).show(WindowInsetsCompat.Type.systemBars())
                 window.attributes = window.attributes.apply {
                     layoutInDisplayCutoutMode = originalCutoutMode ?: WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
                 }
             }
+        }
+    }
+
+    // Reads the phone's cutout through Compose's own window-insets tracking. This screen used to
+    // set its own insets listener on the Compose view, which replaced the one Compose installs
+    // there, so insets stopped reaching every other screen once this one closed. The effect
+    // re-runs whenever the cutout insets change (they arrive, or the cutout mode above applies).
+    val density = LocalDensity.current
+    val cutoutInsets = WindowInsets.displayCutout
+    val cutoutKey = listOf(
+        cutoutInsets.getLeft(density, LayoutDirection.Ltr),
+        cutoutInsets.getTop(density),
+        cutoutInsets.getRight(density, LayoutDirection.Ltr),
+        cutoutInsets.getBottom(density),
+    )
+    LaunchedEffect(cutoutKey) {
+        val rect = ViewCompat.getRootWindowInsets(view)?.displayCutout?.boundingRects?.firstOrNull()
+        val cutout = rect?.let { CutoutRect(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()) }
+        lastCutout = cutout
+        if (override == null && !seededFromCutout && cutout != null) {
+            val geometry = NotificationRingGeometry.resolve(null, cutout, densityDpi)
+            cx = geometry.centerX
+            cy = geometry.centerY
+            radius = geometry.radius
+            stroke = geometry.strokeWidth
+            seededFromCutout = true
         }
     }
 
@@ -172,7 +191,7 @@ fun RingFitScreen(onDone: () -> Unit) {
                 "Drag to move · arrows nudge · + and − resize · [ and ] change thickness · Enter saves",
                 color = Color.Black,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
             )
         }
         Row(
