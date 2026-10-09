@@ -937,9 +937,13 @@ settings_`), the border amber while focused, and a clear button once something i
 **Dialogs and sheets.** 8 dp corners on the raised surface, the title in mono (headline small),
 the body in Inter, buttons in mono.
 
-**Home header.** An Ink band with a 2 dp amber hairline on top and `physiboard:~$` in the prompt
-style in Signal Amber followed by a 10 x 20 dp amber block cursor that blinks hard, on for 600 ms
-and off for 600 ms; it is held on when the system animator duration scale is 0 (reduced motion).
+**Home header.** `physiboard:~$` in the prompt style in the theme's accent (Signal Amber dark,
+the deeper amber light), on the page's own background, followed by a 12 x 3 dp accent underscore
+cursor (the same `_` the search field ends in) that breathes between full and 25 % opacity over
+1.2 s each way; held steady when the system animator duration scale is 0 (reduced motion). A 1 dp
+accent rule at 45 % sits under the header, inset 16 dp like the panes. No dark band and no status
+bar overlay: the status bar shows the page (amended 2026-10-09: the maintainer found the Ink band
+and hard-blinking block out of keeping with the light theme's skin).
 Setup, What's new and About keep their own `physiboard:~$ <command>` prompt lines in the page.
 
 ### 22.2 Transitions and sizing

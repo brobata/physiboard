@@ -1,5 +1,6 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,7 +9,6 @@ import android.provider.Settings as AndroidSettings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import brobata.physiboard.app.settings.ui.terminalPane
 import brobata.physiboard.app.settings.ui.SpellCheckerSettings
@@ -273,49 +273,47 @@ private fun SettingsListScope.homeIndex(settings: Settings, onNavigate: (String)
  */
 @Composable
 private fun HomeHeader() {
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
-    Box(modifier = Modifier.fillMaxWidth().background(PhysiBoardColors.Ink)) {
+    // The prompt sits on the page itself (2026-10-09, the maintainer: the dark band read as a
+    // separate, darker title on the light theme), set off by the same 1 dp amber rule the panes
+    // use, so the header belongs to the skin in both themes.
+    val accent = MaterialTheme.colorScheme.primary
+    Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 .padding(top = 2.dp)
                 .padding(vertical = 14.dp, horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
         ) {
-            Text("physiboard:~$", style = PhysiBoardType.prompt, color = PhysiBoardColors.SignalAmber)
-            TerminalCursor(modifier = Modifier.padding(start = 6.dp))
+            Text("physiboard:~$", style = PhysiBoardType.prompt, color = accent)
+            TerminalCursor(modifier = Modifier.padding(start = 6.dp, bottom = 4.dp))
         }
-        // spec: SS6.1, "a translucent overlay ... covers the status-bar area."
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsTopHeight(WindowInsets.statusBars)
-                .background(if (dark) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.2f)),
-        )
-        // The 2 dp amber hairline sits at the true top edge of the band.
-        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(PhysiBoardColors.SignalAmber).align(Alignment.TopStart))
+        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(accent.copy(alpha = 0.45f)))
     }
 }
 
-/** The 10x20 dp amber block cursor (app-shell.md SS22.1), shared by every terminal header: on for [periodMillis], off for as long. */
+/**
+ * The prompt's idle cursor (app-shell.md SS22.1): an amber underscore, the same `_` the search
+ * field ends in, breathing softly rather than hard-blinking a block. Held steady under reduced
+ * motion.
+ */
 @Composable
 fun TerminalCursor(modifier: Modifier = Modifier, periodMillis: Int = 600) {
     val reducedMotion = rememberReducedMotion()
     val alpha = if (reducedMotion) {
         1f
     } else {
-        // A terminal's block cursor blinks hard, on then off, rather than fading.
         val transition = rememberInfiniteTransition(label = "terminal_cursor")
-        val phase by transition.animateFloat(
-            initialValue = 0f,
-            targetValue = 2f,
-            animationSpec = infiniteRepeatable(animation = tween(periodMillis * 2, easing = LinearEasing), repeatMode = RepeatMode.Restart),
-            label = "terminal_cursor_phase",
+        val breath by transition.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.25f,
+            animationSpec = infiniteRepeatable(animation = tween(periodMillis * 2, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse),
+            label = "terminal_cursor_breath",
         )
-        if (phase < 1f) 1f else 0f
+        breath
     }
-    Box(modifier = modifier.size(width = 10.dp, height = 20.dp).alpha(alpha).background(PhysiBoardColors.SignalAmber))
+    Box(modifier = modifier.size(width = 12.dp, height = 3.dp).alpha(alpha).background(MaterialTheme.colorScheme.primary))
 }
 
 /**
