@@ -55,7 +55,7 @@ fun CustomSubstitutionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             }
         },
     ) {
-        if (codes.isEmpty()) Text("No custom substitutions yet.", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (codes.isEmpty()) Text("No custom substitutions yet. Tap + to add a language, then its replacements.", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         RowList {
             items(codes.size) { index ->
                 val code = codes[index]
@@ -71,7 +71,7 @@ fun CustomSubstitutionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
         AlertDialog(
             onDismissRequest = { adding = false },
             title = { Text("Add language") },
-            text = { OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Language code") }, singleLine = true, modifier = Modifier.fillMaxWidth()) },
+            text = { OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Language code") }, supportingText = { Text("For example en, de or it") }, singleLine = true, modifier = Modifier.fillMaxWidth()) },
             confirmButton = {
                 TextButton(
                     enabled = code.trim().isNotEmpty(),

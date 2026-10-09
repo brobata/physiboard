@@ -39,6 +39,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
+import brobata.physiboard.app.settings.ui.MinTouchTarget
+import brobata.physiboard.app.settings.ui.WideDialogProperties
+import brobata.physiboard.app.settings.ui.wideDialog
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.defaultMinSize
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.AppCatalog
 import brobata.physiboard.app.settings.ui.ButtonRow
@@ -106,7 +111,7 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
         RowList {
             item {
                 Text(
-                    "When a notification arrives and the screen is off, a ring lights up around the camera hole in the app's colour, with the waiting apps below it. The rest of the screen stays black, which on this AMOLED panel means off. It ends when you touch the screen, press a key or unlock, and it stops holding the screen on after the time you choose.",
+                    "When a notification arrives with the screen off, a ring lights up around the camera hole in the app's colour. Touch the screen, press a key or unlock to end it.",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(16.dp),
                 )
@@ -282,21 +287,25 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
         var query by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddApp = false },
+            properties = WideDialogProperties,
+            modifier = Modifier.wideDialog(),
             title = { Text("Add an app") },
             text = {
                 Column {
-                    OutlinedTextField(value = query, onValueChange = { query = it }, singleLine = true, label = { Text("Search apps") })
-                    LazyColumn(modifier = Modifier.size(width = 300.dp, height = 300.dp)) {
+                    OutlinedTextField(value = query, onValueChange = { query = it }, singleLine = true, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth())
+                    LazyColumn(modifier = Modifier.fillMaxWidth().height(300.dp)) {
                         items(apps.filter { it.label.contains(query, ignoreCase = true) }) { app ->
                             Text(
                                 app.label,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
+                                    .defaultMinSize(minHeight = MinTouchTarget)
                                     .clickable {
                                         controller.update { it.copy(device = it.device.copy(ringAppColors = it.device.ringAppColors + (app.packageName to DEFAULT_GREEN))) }
                                         showAddApp = false
-                                    },
+                                    }
+                                    .padding(vertical = 12.dp),
                             )
                         }
                     }

@@ -212,7 +212,7 @@ private fun LazyListScope.rootRows(
     item {
         NavigateRow(
             label = "Test field",
-            description = "A place to type, to try the keyboard while settings screens are built",
+            description = "A place to type, to try the keyboard",
             onClick = { onNavigate(Routes.TEST_FIELD) },
         )
     }

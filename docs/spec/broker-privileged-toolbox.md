@@ -728,7 +728,7 @@ control.
 | Preference key | Type | Default | What it changes | Screen | Label |
 |---|---|---|---|---|---|
 | `adbkey` (file `embedded_adb`) | string (Base64 AES-GCM blob) | absent | the broker's private key; presence = "paired" | Device setup card (Forget pairing removes it) | n/a |
-| `smart_backlight_enabled` | boolean | false (Titan baseline stamps true) | whether the setup pass writes the always-on timeout | Smart keyboard backlight | "Smart backlight" / "Keeps the keyboard backlight on whenever the screen is on. A one-time setup below — it survives reboots." |
+| `smart_backlight_enabled` | boolean | false (Titan baseline stamps true) | whether the setup pass writes the always-on timeout | Smart keyboard backlight | "Smart backlight" / "Keeps the keyboard backlight on whenever the screen is on. It needs a one-time pairing, and survives reboots." |
 | `smart_backlight_applied` | boolean | false | one-way "configured once" latch; true after a successful always-on write, false after a revert; gates the collapsed ready line | n/a | n/a |
 | `notification_ring_enabled` | boolean | false (baseline true) | whether the setup pass grants the ring's permissions and the secure-settings grant | Notification ring | (see ring document) |
 | `screen_trackpad_enabled` | boolean | false (baseline true) | switched on automatically by the first successful overlay grant | Screen trackpad | (see trackpad document) |

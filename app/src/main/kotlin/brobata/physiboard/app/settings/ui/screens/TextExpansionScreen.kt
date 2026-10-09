@@ -50,7 +50,13 @@ fun TextExpansionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
             item {
                 SingleChoiceChipsRow(
                     label = "Show matches in",
-                    options = listOf(SnippetPresentation.OFF, SnippetPresentation.FLOATING_POPUP, SnippetPresentation.SUGGESTION_BAR),
+                    // The suggestion bar is gone (c61c240), so it is no longer offered. A setting
+                    // restored from an older backup keeps its chip, so it shows and can be changed.
+                    options = listOfNotNull(
+                        SnippetPresentation.OFF,
+                        SnippetPresentation.FLOATING_POPUP,
+                        SnippetPresentation.SUGGESTION_BAR.takeIf { expansion.presentation == it },
+                    ),
                     optionLabel = ::presentationLabel,
                     selected = expansion.presentation,
                     onSelect = { value -> set { p -> p.copy(presentation = value) } },
@@ -108,5 +114,5 @@ private fun isValidSnippetPrefix(char: String): Boolean = SnippetRules.isValidPr
 private fun presentationLabel(presentation: SnippetPresentation): String = when (presentation) {
     SnippetPresentation.OFF -> "Off"
     SnippetPresentation.FLOATING_POPUP -> "Floating popup"
-    SnippetPresentation.SUGGESTION_BAR -> "Suggestion bar"
+    SnippetPresentation.SUGGESTION_BAR -> "Suggestion bar (removed)"
 }

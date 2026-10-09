@@ -26,7 +26,20 @@ import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 private const val PUNCTUATION_ALPHABET = ".,;:!?/\")]}"
 
 /** spec: text-input.md SS15, the row's own label for each candidate character. */
-private fun candidateLabel(char: Char): String = "\"$char\""
+private fun candidateLabel(char: Char): String = when (char) {
+    '.' -> ".   full stop"
+    ',' -> ",   comma"
+    ';' -> ";   semicolon"
+    ':' -> ":   colon"
+    '!' -> "!   exclamation mark"
+    '?' -> "?   question mark"
+    '/' -> "/   slash"
+    '"' -> "\"   double quote"
+    ')' -> ")   closing bracket"
+    ']' -> "]   closing square bracket"
+    '}' -> "}   closing brace"
+    else -> char.toString()
+}
 
 /**
  * Keeps [current]'s membership rule for the fixed alphabet order (text-input.md SS15: "subset of

@@ -1,6 +1,13 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
@@ -19,6 +28,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.ColorFieldRow
@@ -169,25 +180,42 @@ private fun ThemePresetRow(
     onApplyPreset: (StripTheme) -> Unit,
     onApplySaved: (String) -> Unit,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    // contentPadding rather than a padding modifier, so the row scrolls out to the screen edge
+    // instead of clipping the last visible card 16 dp short of it.
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         items(StripThemePresets.ALL, key = { "preset:${it.name}" }) { preset ->
-            PresetCard(name = preset.name, active = preset.theme == activeTheme, onClick = { onApplyPreset(preset.theme) })
+            PresetCard(name = preset.name, theme = preset.theme, active = preset.theme == activeTheme, onClick = { onApplyPreset(preset.theme) })
         }
         items(savedThemeNames, key = { "saved:$it" }) { name ->
-            PresetCard(name = name, active = false, onClick = { onApplySaved(name) })
+            PresetCard(name = name, theme = null, active = false, onClick = { onApplySaved(name) })
         }
     }
 }
 
 @Composable
-private fun PresetCard(name: String, active: Boolean, onClick: () -> Unit) {
+private fun PresetCard(name: String, theme: StripTheme?, active: Boolean, onClick: () -> Unit) {
+    // The active preset gets an amber outline and an amber "Active" tag, so it no longer reads
+    // as a third line of the name; a strip of the preset's own colours shows what it looks like.
     Card(
         onClick = onClick,
+        border = if (active) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = Modifier.padding(vertical = 4.dp).width(104.dp).height(104.dp),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
             Text(name, maxLines = 2)
-            if (active) Text("Active")
+            if (active) Text("Active", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.weight(1f))
+            if (theme != null) {
+                Row(modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(3.dp))) {
+                    listOf(theme.background, theme.suggestion, theme.accent).forEach { argb ->
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight().background(Color(argb)))
+                    }
+                }
+            }
         }
     }
 }

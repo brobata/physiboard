@@ -120,7 +120,7 @@ fun SmartBacklightScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
                         }
                         enabled && !latch -> {
                             Text(
-                                "Pairing is needed before this can apply. Set it up from T2E Tools.",
+                                "Pairing is needed before this can apply.",
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             TextButton(onClick = onNavigateToolbox, modifier = Modifier.padding(top = 8.dp)) { Text("Set up pairing") }
@@ -132,7 +132,7 @@ fun SmartBacklightScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
             item {
                 SwitchRow(
                     label = "Smart backlight",
-                    description = "Keeps the keyboard backlight on whenever the screen is on. A one-time setup below, it survives reboots.",
+                    description = "Keeps the keyboard backlight on whenever the screen is on. It needs a one-time pairing, and survives reboots.",
                     checked = enabled,
                     onCheckedChange = { checked ->
                         controller.update { it.copy(device = it.device.copy(smartBacklightEnabled = checked)) }

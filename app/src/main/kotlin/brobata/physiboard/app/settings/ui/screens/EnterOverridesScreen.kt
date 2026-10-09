@@ -33,11 +33,14 @@ import brobata.physiboard.app.settings.ui.AppCatalog
 import brobata.physiboard.app.settings.ui.InstalledApp
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
+import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.toEnterOverride
+import brobata.physiboard.app.settings.ui.WideDialogProperties
+import brobata.physiboard.app.settings.ui.wideDialog
 import brobata.physiboard.core.settings.EnterOverrideRow
 import brobata.physiboard.core.text.EnterBehavior
 import brobata.physiboard.core.text.EnterOverrideResolver
@@ -128,6 +131,10 @@ fun EnterOverridesScreen(onBack: () -> Unit) {
                     onRemove = { removeRow(row.packageName) },
                 )
             }
+            // spec SS3.11 point 5: the same dialog as the "+", for anyone who does not spot it.
+            item(key = "add-app") {
+                NavigateRow("Add app", "Any app on your phone - Messenger, Slack, a fork of one of these") { showAddDialog = true }
+            }
         }
     }
 
@@ -167,13 +174,15 @@ private fun FavouriteOverrideCard(
             Text(status.badge, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(status.line1, style = MaterialTheme.typography.bodyMedium)
             Text(status.line2, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { manualOverrideRevealed = true }) { Text("Manual override") }
+        } else {
+            // spec SS3.11 point 4: the note goes with the revealed dropdowns, so it is not
+            // repeated under every collapsed card.
             Text(
                 "The curated strategy is usually the better default. Override only for app updates or special cases.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TextButton(onClick = { manualOverrideRevealed = true }) { Text("Manual override") }
-        } else {
             SingleChoiceChipsRow(
                 label = "Wanted behaviour",
                 options = OFFERED_BEHAVIORS,
@@ -270,6 +279,8 @@ private fun AddAppDialog(
     if (app == null) {
         AlertDialog(
             onDismissRequest = onDismiss,
+            properties = WideDialogProperties,
+            modifier = Modifier.wideDialog(),
             title = { Text("Add app") },
             text = {
                 Column {
@@ -288,6 +299,7 @@ private fun AddAppDialog(
                                 items(filtered, key = { it.packageName }) { candidate ->
                                     Text(
                                         candidate.label,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = MinTouchTarget)
                                             .clickable { chosen = candidate }.padding(vertical = 12.dp),
                                     )

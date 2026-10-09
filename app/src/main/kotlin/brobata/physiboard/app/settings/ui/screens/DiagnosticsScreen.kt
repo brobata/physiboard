@@ -334,12 +334,14 @@ private fun LastKeyboardEventPanel(
             Row {
                 Text("Last Keyboard Event", style = MaterialTheme.typography.titleSmall, modifier = Modifier.fillMaxWidth())
             }
+            // Two equal columns. The left one used to fill the whole width, which squeezed the
+            // right column to a single character per line.
             Row(modifier = Modifier.padding(top = 8.dp)) {
-                Column(modifier = Modifier.fillMaxWidth().padding(end = 8.dp)) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     val left = event?.let { KeyboardEventExport.leftColumn(it) } ?: listOf("n/a")
                     for (line in left) Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                 }
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
                     val right = event?.let { KeyboardEventExport.rightColumn(it) } ?: listOf("n/a")
                     for (line in right) Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                 }

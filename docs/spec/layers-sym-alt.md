@@ -734,10 +734,9 @@ the arrows reorder. The 2.x screen, for the record:
    (disabled on the first row), a down arrow (disabled on the last), a kind label ("Key layer"
    or "Panel"), an edit pencil for Device, Emoji and Symbols, an "under construction" badge on
    Device, and an enable switch. Every change writes `sym_pages_config` immediately.
-2. **Alt character layer** row ("Choose which SYM layer Alt uses in Modifier settings."): opens
-   the settings activity at the `modifiers` destination. That destination has no screen since
-   the 2.0 settings rework, so the row leads nowhere useful; the preference it describes is in
-   section 6.3.
+2. *(Removed 2026-10-08.)* 2.x had an **Alt character layer** row here ("Choose which SYM layer
+   Alt uses in Modifier settings.") that opened a destination with no screen, so it led nowhere.
+   3.x drops the dead row; the preference it described (section 6.3) has no settings row.
 3. **SYM behaviour and display**: the three switches `sym_edit_shortcuts`, `sym_auto_close`,
    `sym_auto_close_on_touch` (the last greyed out while auto-close is off).
 4. **Larger emoji picker** (`emoji_picker_expanded_height`).
@@ -1476,7 +1475,7 @@ baseline reset clears every preference above except the backup-independent files
 | Locale `de-AT` | `qwertz` | language-only fallback after exact miss |
 | `variations.json` unparsable | no variations anywhere; long press `variations` mode never arms | parse failure yields an empty table |
 | Variation picker dialog | unreachable | no caller since the strip's second row was removed |
-| "Alt character layer" row on the SYM screen | opens settings at a destination with no screen | orphaned deep link |
+| "Alt character layer" row on the SYM screen | removed (it opened a destination with no screen) | dead row, dropped 2026-10-08 |
 | Emoji map text for page 1 | computed every strip update, never shown | leftover view kept hidden |
 | `SYM` indicator colour | locked colour only on the Symbols page | as shipped |
 | Tutorial "Long Press Mappings" text | shows the non-Elite legend | stale string (D14) |

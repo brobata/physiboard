@@ -173,7 +173,7 @@ than the count needs all yield "unreadable".
 
 | Preference key | Type | Default | What it changes | Screen | Label |
 |---|---|---|---|---|---|
-| `smart_backlight_enabled` | boolean | false (the first-run defaults stamp sets it to true once per install) | Whether the always-on timeout is written at the events in 3.2 | Smart keyboard backlight | "Smart backlight", description "Keeps the keyboard backlight on whenever the screen is on. A one-time setup below, it survives reboots." |
+| `smart_backlight_enabled` | boolean | false (the first-run defaults stamp sets it to true once per install) | Whether the always-on timeout is written at the events in 3.2 | Smart keyboard backlight | "Smart backlight", description "Keeps the keyboard backlight on whenever the screen is on. It needs a one-time pairing, and survives reboots." |
 | `smart_backlight_applied` | boolean | false | Readiness latch: the always-on value has been written successfully at least once and not reverted since | (not shown as a control) | none |
 
 The switch row is the last thing on the screen. Flipping it writes the preference immediately,
@@ -536,10 +536,11 @@ happens: the listener is never bound, so no notification is ever seen.
 
 ### 5.10 The Notification ring screen, top to bottom
 
-Title "Notification ring". Intro: "When a notification arrives and the screen is off, a ring
-lights up around the camera hole in the app's colour, with the waiting apps below it. The rest
-of the screen stays black, which on this AMOLED panel means off. It ends when you touch the
-screen, press a key or unlock, and it stops holding the screen on after the time you choose."
+Title "Notification ring". Intro, kept to two lines so the enable switch sits near the top of
+the Titan's short screen: "When a notification arrives with the screen off, a ring lights up
+around the camera hole in the app's colour. Touch the screen, press a key or unlock to end it."
+(The rest of the screen stays black, which on this AMOLED panel means off; how long the ring
+holds the screen on is said by the "Keep the screen on for" row.)
 
 1. The enable switch (5.7.4).
 2. Divider; the three grant rows (5.9); the grant button or pairing hint when any is missing.

@@ -179,7 +179,9 @@ you saved."). The screen is titled "Text expansion" with a "Snippets" section:
    shortcodes."): only the last typed character is kept; an invalid one shows the error "Choose
    one non-whitespace symbol other than a colon." and is not saved; a valid one is saved as you
    type.
-3. "Show matches in" dropdown: Off, Floating popup, Suggestion bar.
+3. "Show matches in" chips: Off, Floating popup. The suggestion bar is gone, so "Suggestion bar"
+   is no longer offered; a stored `suggestion_bar` (an older backup) shows as a third chip,
+   "Suggestion bar (removed)", until the user picks another.
 4. "Accept with Tab" switch ("Use Tab to accept the highlighted or unique exact match.").
 5. "Accept with Enter" switch (same wording with Enter).
 6. "Manage snippets" row ("Add global shortcuts and multiline replacement text.") opening the

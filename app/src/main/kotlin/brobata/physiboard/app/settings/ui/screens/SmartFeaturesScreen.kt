@@ -70,7 +70,7 @@ fun SmartFeaturesScreen(onBack: () -> Unit, onNavigateFnLayer: () -> Unit, onNav
                 ExpandableSection("Advanced") {
                     SwitchRow(
                         "Shift in all text fields",
-                        description = "Auto-capitalize in URL, email and filter fields too (never password or exact-typing fields)",
+                        description = "Auto-capitalize in URL, email and filter fields too (never in password fields or Terminal mode apps)",
                         checked = typing.capitalizeRestrictedFields,
                         onCheckedChange = { set { p -> p.copy(capitalizeRestrictedFields = it) } },
                     )

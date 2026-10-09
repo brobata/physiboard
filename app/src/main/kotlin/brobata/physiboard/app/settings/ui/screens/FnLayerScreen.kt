@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +27,7 @@ import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.FnLayerMappingStore
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
@@ -89,7 +91,7 @@ fun FnLayerScreen(onBack: () -> Unit) {
         RowList {
             item {
                 Text(
-                    "Fn Layer turns the physical Fn key into arrow-key and Ctrl-shortcut navigation. See keys-and-modifiers.md.",
+                    "Fn Layer turns the physical Fn key into arrow-key and Ctrl-shortcut navigation. Tap a letter below to change what Fn and that letter do.",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(16.dp),
                 )
@@ -217,14 +219,16 @@ private val FN_LAYER_ROWS: List<String> = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXC
 private fun FnLayerKeyGrid(mappings: CtrlMappingTable, onKeyTapped: (Char) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         FN_LAYER_ROWS.forEach { row ->
-            Row {
+            // Every key takes a tenth of the width (the top row's count), so the keys fill the
+            // screen like the real keyboard and stay above the 48 dp touch floor.
+            Row(modifier = Modifier.fillMaxWidth()) {
                 row.forEach { letter ->
                     val mapped = mappings.mappingFor(KeyId.Letter(letter)) != CtrlMapping.None
                     Card(
                         modifier = Modifier
+                            .weight(1f)
                             .padding(1.dp)
-                            .width(32.dp)
-                            .defaultMinSize(minHeight = 40.dp)
+                            .defaultMinSize(minHeight = MinTouchTarget)
                             .then(Modifier.clickableCard { onKeyTapped(letter) }),
                     ) {
                         Column(modifier = Modifier.padding(4.dp)) {
@@ -233,6 +237,8 @@ private fun FnLayerKeyGrid(mappings: CtrlMappingTable, onKeyTapped: (Char) -> Un
                         }
                     }
                 }
+                val missing = FN_LAYER_ROWS.first().length - row.length
+                if (missing > 0) Spacer(modifier = Modifier.weight(missing.toFloat()))
             }
         }
     }

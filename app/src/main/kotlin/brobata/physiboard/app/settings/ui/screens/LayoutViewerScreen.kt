@@ -1,6 +1,7 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -108,7 +110,7 @@ fun LayoutViewerScreen(layoutId: String, onBack: () -> Unit) {
 @Composable
 private fun ViewerKeyRow(row: ViewerRow) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             AssistChip(onClick = {}, label = { Text(keyName(row.keyId)) })
             Text(
                 "  ${row.entry.lowercase}/${row.entry.uppercase}",
@@ -123,7 +125,8 @@ private fun ViewerKeyRow(row: ViewerRow) {
             )
         }
         if (row.entry.isMultiTap) {
-            Row(modifier = Modifier.padding(top = 4.dp)) {
+            // Wraps, so a key with many taps does not run off the right edge.
+            FlowRow(modifier = Modifier.padding(top = 4.dp)) {
                 row.entry.taps.forEach { tap ->
                     val label = if (tap.uppercase.isNotEmpty()) "${tap.lowercase}/${tap.uppercase}" else tap.lowercase
                     AssistChip(onClick = {}, label = { Text(label) }, modifier = Modifier.padding(end = 4.dp))

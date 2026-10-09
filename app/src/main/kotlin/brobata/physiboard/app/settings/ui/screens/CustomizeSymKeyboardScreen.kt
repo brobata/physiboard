@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import brobata.physiboard.app.settings.ui.EmojiPickerDialog
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
-import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -214,11 +213,6 @@ fun CustomizeSymKeyboardScreen(
                         checked = symPages.doubleTapChooser,
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(doubleTapChooser = checked)) } },
                     )
-                }
-                item {
-                    // spec SS5.9: opens the settings activity at the `modifiers` destination, which
-                    // "has no screen since the 2.0 settings rework, so the row leads nowhere useful".
-                    NavigateRow("Alt character layer", "Choose which SYM layer Alt uses in Modifier settings.") {}
                 }
                 item { SectionHeader("SYM behaviour and display") }
                 item {
@@ -584,12 +578,13 @@ private val EDIT_GRID_ROWS: List<String> = listOf("QWERTYUIOP", "ASDFGHJKL", "ZX
 private fun SymEditGrid(characters: Map<Char, String>, onKeyTapped: (Char) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().background(Color.Black).padding(horizontal = 16.dp, vertical = 8.dp)) {
         EDIT_GRID_ROWS.forEach { row ->
-            Row(modifier = Modifier.padding(vertical = 2.dp)) {
+            // Each key takes a tenth of the width, so the grid fills the screen as the keyboard does.
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                 row.forEach { letter ->
                     Card(
                         modifier = Modifier
+                            .weight(1f)
                             .padding(1.dp)
-                            .width(40.dp)
                             .defaultMinSize(minHeight = 48.dp)
                             .clickable { onKeyTapped(letter) },
                     ) {
@@ -599,6 +594,8 @@ private fun SymEditGrid(characters: Map<Char, String>, onKeyTapped: (Char) -> Un
                         }
                     }
                 }
+                val missing = EDIT_GRID_ROWS.first().length - row.length
+                if (missing > 0) Spacer(modifier = Modifier.weight(missing.toFloat()))
             }
         }
     }
