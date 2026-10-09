@@ -220,6 +220,19 @@ data class KeyPrefs(
     val bounceKeysBackspaceEnabled: Boolean = true,
     /** `overlapping_keys_enabled`. spec: keys-and-modifiers.md SS11. */
     val overlappingKeysEnabled: Boolean = false,
+    /**
+     * `accessibility_focus_field` (3.2). spec: per-app-behavior.md SS16.2: with the accessibility
+     * service on, the first key typed into a box that is connected but not focused focuses it.
+     * On by default; does nothing until the user turns the service on.
+     */
+    val accessibilityFocusField: Boolean = true,
+    /**
+     * `accessibility_fn_shortcuts` (3.2). spec: keys-and-modifiers.md SS15.1: with the
+     * accessibility service on, the keys the keyboard answers with no text box (Sym shortcuts,
+     * the Fn layer, home screen keys) also work where Android sends the keyboard nothing. On by
+     * default; does nothing until the user turns the service on.
+     */
+    val accessibilityFnShortcuts: Boolean = true,
 )
 
 /** The Sym pages 3.0 keeps. spec: layers-sym-alt.md Keep/Drop: the device page (5) is dropped. */

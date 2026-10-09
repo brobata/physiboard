@@ -92,6 +92,16 @@ class BackupCodecTest {
     }
 
     @Test
+    fun `the accessibility service switches leave in a backup and come back on restore`() {
+        val base = Settings()
+        val custom = base.copy(keys = base.keys.copy(accessibilityFocusField = false, accessibilityFnShortcuts = false))
+        val (_, entries) = requireNotNull(BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", custom)))
+        val outcome = BackupRestore.restore(Settings(), BackupFile(meta = meta, entries = entries))
+        assertEquals(0, outcome.skippedCount)
+        assertEquals(custom, outcome.settings)
+    }
+
+    @Test
     fun `an unparsable prefs file fails to decode`() {
         assertNull(BackupCodec.decodePrefsFile("not json at all"))
         assertNull(BackupCodec.decodePrefsFile("""{"entries": {}}"""))

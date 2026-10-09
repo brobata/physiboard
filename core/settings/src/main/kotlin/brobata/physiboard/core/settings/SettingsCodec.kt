@@ -93,6 +93,8 @@ object SettingsKeys {
     const val BOUNCE_KEYS_ENTER_ENABLED = "bounce_keys_enter_enabled"
     const val BOUNCE_KEYS_BACKSPACE_ENABLED = "bounce_keys_backspace_enabled"
     const val OVERLAPPING_KEYS_ENABLED = "overlapping_keys_enabled"
+    const val ACCESSIBILITY_FOCUS_FIELD = "accessibility_focus_field"
+    const val ACCESSIBILITY_FN_SHORTCUTS = "accessibility_fn_shortcuts"
 
     // SS2.5 sym
     const val SYM_PAGES_CONFIG = "sym_pages_config"
@@ -449,6 +451,8 @@ object SettingsCodec {
         put(SettingsKeys.BOUNCE_KEYS_ENTER_ENABLED, k.bounceKeysEnterEnabled.toString())
         put(SettingsKeys.BOUNCE_KEYS_BACKSPACE_ENABLED, k.bounceKeysBackspaceEnabled.toString())
         put(SettingsKeys.OVERLAPPING_KEYS_ENABLED, k.overlappingKeysEnabled.toString())
+        put(SettingsKeys.ACCESSIBILITY_FOCUS_FIELD, k.accessibilityFocusField.toString())
+        put(SettingsKeys.ACCESSIBILITY_FN_SHORTCUTS, k.accessibilityFnShortcuts.toString())
     }
 
     private fun readKeys(r: FlatReader): KeyPrefs {
@@ -472,6 +476,8 @@ object SettingsCodec {
             bounceKeysEnterEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_ENTER_ENABLED, d.bounceKeysEnterEnabled),
             bounceKeysBackspaceEnabled = r.bool(SettingsKeys.BOUNCE_KEYS_BACKSPACE_ENABLED, d.bounceKeysBackspaceEnabled),
             overlappingKeysEnabled = r.bool(SettingsKeys.OVERLAPPING_KEYS_ENABLED, d.overlappingKeysEnabled),
+            accessibilityFocusField = r.bool(SettingsKeys.ACCESSIBILITY_FOCUS_FIELD, d.accessibilityFocusField),
+            accessibilityFnShortcuts = r.bool(SettingsKeys.ACCESSIBILITY_FN_SHORTCUTS, d.accessibilityFnShortcuts),
         )
     }
 

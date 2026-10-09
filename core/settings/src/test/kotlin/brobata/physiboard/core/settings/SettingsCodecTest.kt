@@ -51,6 +51,7 @@ class SettingsCodecTest {
             navModeMappingsUpdatedAtMs = 1700000000000L, navModeDefaultMappingsVersion = 3, bounceKeysEnabled = true, bounceKeysDelayMs = 120,
             bounceKeysCharacterKeysEnabled = false, bounceKeysModifierKeysEnabled = true, bounceKeysSpaceEnabled = false,
             bounceKeysEnterEnabled = false, bounceKeysBackspaceEnabled = false, overlappingKeysEnabled = true,
+            accessibilityFocusField = false, accessibilityFnShortcuts = false,
         ),
         symPages = SymPagePrefs(
             pages = SymPagesConfig(emojiEnabled = true, symbolsEnabled = false, clipboardEnabled = true, emojiPickerEnabled = false, gifEnabled = true,
@@ -363,6 +364,20 @@ class SettingsCodecTest {
         val map = SettingsCodec.toMap(on)
         assertEquals("true", map[SettingsKeys.EMOJI_PICKER_KAOMOJI])
         assertEquals(true, SettingsCodec.fromMap(map).symPages.kaomojiEnabled)
+    }
+
+    @Test
+    fun `the two accessibility service switches default on and round-trip off`() {
+        val fresh = SettingsCodec.fromMap(emptyMap()).keys
+        assertEquals(true, fresh.accessibilityFocusField)
+        assertEquals(true, fresh.accessibilityFnShortcuts)
+        val off = Settings().let { it.copy(keys = it.keys.copy(accessibilityFocusField = false, accessibilityFnShortcuts = false)) }
+        val map = SettingsCodec.toMap(off)
+        assertEquals("false", map[SettingsKeys.ACCESSIBILITY_FOCUS_FIELD])
+        assertEquals("false", map[SettingsKeys.ACCESSIBILITY_FN_SHORTCUTS])
+        val back = SettingsCodec.fromMap(map).keys
+        assertEquals(false, back.accessibilityFocusField)
+        assertEquals(false, back.accessibilityFnShortcuts)
     }
 
     @Test
