@@ -246,9 +246,9 @@ Editing (the "Customize SYM Keyboard" screen, section 5.7): tapping a key on the
 opens the emoji picker (page 1) or the Unicode character picker (page 2) for that letter.
 Choosing writes the whole page map back immediately; a failed write shows the toast "Failed to
 save settings". On page 2, picking the empty choice restores that key's shipped character (or
-removes the key if the shipped file has none). "Reset to Default" asks for confirmation
-("Are you sure you want to reset all SYM mappings to default? This action cannot be undone.")
-and then deletes the preference for that page.
+removes the key if the shipped file has none). "Reset to Default" (greyed while the page has no
+custom map) deletes the preference for that page at once and offers Undo for 8 seconds
+(app-shell.md 22.4); 3.2 dropped the confirmation dialog.
 
 The IME reloads the page maps when either preference changes.
 
@@ -389,8 +389,9 @@ The page chooser opens one with M, N or B (5.10).
 **Editing** (Customize SYM Keyboard, 5.9): the three pages are rows in "Arrange SYM pages
 order", each with a switch, the arrows and a pencil, and the kind label "Key layer · your own ·
 chooser letter M" (N, B). The pencil opens "Edit <name>": a "Page name" field, the grid of 5.9,
-and a red "Clear page" button that asks "Remove every key from this page? Its name stays. This
-cannot be undone." Tapping a grid key opens the character dialog (expansion-clipboard-pickers-
+and a red "Clear page" button (greyed while the page is empty) that removes every key at once,
+keeping the name, and offers Undo for 8 seconds (app-shell.md 22.4). Switching a page off or
+moving it in the order offers the same Undo, which puts the whole order back. Tapping a grid key opens the character dialog (expansion-clipboard-pickers-
 launcher.md 5.2): any text in its custom field, or a character from its grid; its "Clear this
 key" choice removes the key. Every change is written at once and travels in backups.
 

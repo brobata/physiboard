@@ -940,6 +940,75 @@ Ctrl active = one-shot and not latched; Alt likewise; Sym locked when page 2 is 
 
 The modifier keys belong to the "modifier" sound group (`app-shell.md`).
 
+### 13.5 The haptic language (3.2)
+
+Every moment the keyboard (and the settings app, app-shell.md 22.2) answers with a vibration
+has a name and a feel of its own, so the hand learns them: a one-shot Shift never feels like
+caps lock, a correction never feels like its undo, and only a refusal is a double. The rules
+are pure (`:core:actions` `HapticLanguage`); `:ime`'s `HapticPlayer` plays them.
+
+**Events and their feel.** Each event has three rungs: a composition of
+`VibrationEffect.Composition` primitives (scale 0 to 1, delay in ms before the step), a
+predefined effect the maker tuned, and a plain pulse for anything else.
+
+| Event | When | Composition | Predefined | Plain pulse |
+|---|---|---|---|---|
+| `KEY` | an ordinary key's first down (not a repeat, not Back, not a modifier), only with `key_haptics` on | light: TICK 0.35; standard: TICK 0.6; strong: CLICK 0.8 | TICK / CLICK / HEAVY_CLICK | 8 / 12 / 18 ms |
+| `MODIFIER_ONE_SHOT` | a modifier press arms a one-shot (Shift, Alt, Ctrl) | CLICK 0.5 | CLICK | 15 ms |
+| `MODIFIER_LOCK` | a press locks one (caps lock, an Alt or Ctrl latch) | CLICK 0.9, TICK 0.5 after 40 | HEAVY_CLICK | 30 ms |
+| `MODIFIER_RELEASE` | a modifier press clears a one-shot or a lock | LOW_TICK 0.6 | TICK | 8 ms |
+| `SYM_OPEN` / `SYM_CLOSE` / `SYM_STEP` | Sym opens the pages, closes them, or steps to the next page | QUICK_RISE 0.4 + CLICK 0.6 / QUICK_FALL 0.4 / TICK 0.6 | CLICK / TICK / TICK | 15 / 10 / 10 ms |
+| `PICK` | an accent (layers-sym-alt.md 8.4) or a skin tone (expansion-clipboard-pickers-launcher.md 4.7) chosen from its chooser | CLICK 0.7 | CLICK | 15 ms |
+| `CORRECTION` | autocorrect, a case repair, a text replacement, a mix-up fix or a tapped suggestion rewrites the text (every `EditorOp.Haptic`) | TICK 0.4 | TICK | 10 ms |
+| `CORRECTION_UNDONE` | Backspace puts the typed word back (text-input.md 8 steps 5 and 6, `EditorOp.HapticUndo`) | QUICK_FALL 0.5 + TICK 0.5 | CLICK | 15 ms |
+| `LONG_PRESS` | a long press fires: its character, or the accent chooser opening | THUD 0.6 | HEAVY_CLICK | 30 ms |
+| `NAV_MODE` | nav mode turns on (trackpad-caret-nav.md 5.7) | THUD 0.8 | none | 70 ms (the spec's pulse) |
+| `REFUSAL` | the keyboard declines: Sym with no text box to type in (layers-sym-alt.md 5.2), no assistant to open, a personal-dictionary save that failed | LOW_TICK 0.7, LOW_TICK 0.7 after 70 | DOUBLE_CLICK | two 12 ms pulses 70 ms apart |
+| `TOGGLE_ON` / `TOGGLE_OFF` | a switch or a check box in the settings app | CLICK 0.6 / LOW_TICK 0.7 | CLICK / TICK | 15 / 10 ms |
+| `SELECT` | a different chip or dropdown entry chosen | TICK 0.7 | TICK | 10 ms |
+| `STEP` | a slider passes a detent | LOW_TICK 0.5 | TICK | 6 ms |
+| `REORDER` | a row moved up or down | TICK 0.5, CLICK 0.5 after 30 | CLICK | 15 ms |
+| `CONFIRM_DESTRUCTIVE` | something is thrown away: a confirmed device-level reset, or an undoable delete or reset (app-shell.md 22.4) | THUD 0.7 | HEAVY_CLICK | 35 ms |
+| `REVEAL` | a folded screen title pulled all the way back into view | QUICK_RISE 0.3 | TICK | 8 ms |
+| `UNDO` | Undo on the snackbar | QUICK_FALL 0.5 + CLICK 0.5 | CLICK | 15 ms |
+
+Dictation's start and stop cues are not part of this table: they keep their waveform, length
+and strength exactly as dictation.md 8.1 gives them, and still play only once the microphone is
+live.
+
+**The ladder.** At creation the player asks the actuator once
+(`Vibrator.arePrimitivesSupported`, `areEffectsSupported`, `hasAmplitudeControl`). The
+composition plays only when every primitive in it is supported; otherwise the predefined effect,
+unless the actuator answers "no" for it ("unknown" counts as usable: the platform then plays its
+own fallback); otherwise the plain pulse, at the actuator's own level when it has no amplitude
+control. No vibrator, nothing. The Titan 2 Elite reports no primitives and no amplitude control
+and the four predefined effects (plus TEXTURE_TICK), so on it every event lands on a tuned effect
+except nav mode's 70 ms pulse (D16).
+
+**Gates.** The phone's own touch feedback switch (`Settings.System` `haptic_feedback_enabled`,
+read as on when unreadable, followed through a content observer, never read per key) silences
+everything. Then `KEY` follows `key_haptics` (default off: the Titan's keys already click under
+the finger), with `key_haptic_strength` choosing its row; every other event follows
+`event_haptics` (default on). The suggestion-tap rows (`tap_haptic_use_system`,
+`tap_haptic_duration_ms`, expansion-clipboard-pickers-launcher.md 9.2) keep their own pulses.
+Every effect goes through plain `Vibrator.vibrate` with no audio attributes, for the same reason
+the dictation cues do (D5 there): notification-class vibration is muted with the phone's
+notification vibration.
+
+**One event per keystroke.** The key tick plays first, at the key's down, before any work
+(one exception: with the screen trackpad on, Space's down is held back to tell a tap from a
+trackpad hold, trackpad-caret-nav.md, so its tick plays when the down is replayed). Then
+the keystroke's other events (the editor's haptic ops, held while the result is applied; the
+change in the modifier levels across a modifier press, a physical hold not counting; the change
+of Sym page; nav mode; a refusal) are reduced to the one with the highest rank (refusal, nav
+mode, long press, correction undone, correction, pick, lock, Sym open, Sym close, one-shot,
+Sym step, release, key) and only that one plays, replacing the tick. The same event again
+within 35 ms plays once, so a slider dragged across its detents is a texture.
+
+**Keystroke budget.** Every (event, strength) effect is built at creation into a prebuilt
+runnable; playing is two array reads, a clock read and a `Handler.post` to the player's own
+thread, which makes the binder call. Nothing is allocated or read from disk on the key path.
+
 ## 14. Keys passed to the app untouched
 
 - Back, always (after closing an overlay or Sym page when one is open in an editable field).
@@ -1028,6 +1097,9 @@ and Space to the screen trackpad screen. Keys nobody can change say so.
 | `sym_long_press_assistant` | boolean | false | 600 ms Sym hold opens the assistant | Voice | Hold Sym for the assistant |
 | `alt_ctrl_speech_shortcut` | boolean | true | Alt held plus Ctrl (or the reverse) starts dictation | none (preference only) | none |
 | `clear_alt_on_space` | boolean | true | Space/Enter clear Alt | Smart Features | Release Alt with Space |
+| `key_haptics` | boolean | false | 3.2: the `KEY` tick of section 13.5 | Look & feel > Sound & haptics | Vibrate on every key |
+| `key_haptic_strength` | string: `light`, `standard`, `strong` | `light` | 3.2: which row of the `KEY` tick plays | Sound & haptics (only while the row above is on) | Key vibration strength |
+| `event_haptics` | boolean | true | 3.2: every other event of section 13.5, in the keyboard and the settings app | Sound & haptics | Feedback vibrations |
 | `alt_latch_stays_on_space` | boolean | false | an Alt latch survives Space/Enter | none | none |
 | `ctrl_latch_stays_on_space` | boolean | false | a Ctrl latch survives Ctrl+Space (with `ctrl_tap_latches`) | none | none |
 | `shift_tap_latches` | boolean | false | single Shift tap toggles caps lock | none | none |
@@ -1091,6 +1163,7 @@ honoured, backed up, and restored.
 | D13 | Companion input devices: `touchPad` event4 (capacitive touch layer on the keys), `fts_ts` event6 (touchscreen and gesture keys), `ff_key` event7 (scancode 249). Volume keys are gpio-keys 115 / 114; Power is ff_key 116. | DEVICE.md; Key mapping screen |
 | D14 | Build fingerprints: a Titan 2 Elite exposes `titan2elite_qwerty` in at least one field, or leaks "elite" in the display string or "g72" in the board string within a Unihertz/Titan fingerprint; model string `Titan 2`, build `Titan 2 Elite_V02.00.02`, Android 16. | device identification rules and tests; DEVICE.md |
 | D15 | The screen is 1080x1200 at density 300, about 574 x 640 dp: wide and short, which is why settings text must wrap. | DEVICE.md; changelog 0.86 "settings text clipped" |
+| D16 | The vibrator (id 1) reports no composition primitives, no amplitude control (`capabilities = []`) and the predefined effects CLICK, DOUBLE_CLICK, TICK, HEAVY_CLICK and TEXTURE_TICK; a prebaked CLICK runs about 63 ms, TEXTURE_TICK about 52 ms; touch vibration intensity MEDIUM. So on this phone the haptic language (13.5) speaks in tuned effects, and strength can only be expressed by choosing a firmer effect, never by amplitude. | `dumpsys vibrator_manager` on the maintainer's phone, 2026-10-09 |
 
 ## 20. Edge cases, quirks and known bugs
 
@@ -1201,6 +1274,20 @@ committed text.
 
 Amended 2026-09-24: rewrote T22 for the dropped Alt+Ctrl dictation chord — Alt down with Ctrl meta
 set is now just an ordinary Alt press (one-shot armed, down consumed), not a dictation toggle.
+
+Haptic language (section 13.5), asserted in `HapticLanguageTest`:
+
+| # | Input | Expected |
+|---|---|---|
+| T-H1 | an event on an actuator with every primitive; one primitive missing | the composition; the predefined effect |
+| T-H2 | every event on the Titan's reported capabilities | a predefined effect for all but nav mode (70 ms pulse); one-shot ≠ lock, correction ≠ undo, Sym open ≠ close, toggle on ≠ off, only a refusal is DOUBLE_CLICK |
+| T-H3 | the key tick at light, standard, strong | TICK, CLICK, HEAVY_CLICK; rising composition scales; other events do not scale |
+| T-H4 | a vibrator with nothing but on/off; no vibrator | plain pulses at the default level (waveforms on/off only); silent |
+| T-H5 | system touch feedback off; `key_haptics` off; `event_haptics` off | nothing plays; no key tick; no other event |
+| T-H6 | a letter's first down, its repeat, Back, a modifier | tick, none, none, none |
+| T-H7 | Shift tapped once, twice; caps lock cleared; Alt armed as Shift lapses | one-shot, lock, release, one-shot |
+| T-H8 | Sym page 0→1, 1→2, 3→0; key plus correction | open, step, close; the correction alone |
+
 
 ## 22. Keep / Drop for 3.0
 

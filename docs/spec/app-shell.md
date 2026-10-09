@@ -916,19 +916,22 @@ a leading icon in a 36 dp keycap (4 dp corners, a 1 dp border in the pane-border
 wash of the glyph's hue, the glyph in the accent; outlined Material icons) and a trailing chevron
 in the muted colour; its current value ("On", "Slate Light", "3 apps") sits at its right as
 command output, in the value style in the accent. A destructive row (reset, delete) has its
-label and icon in the error colour, no chevron, and asks for confirmation. Buttons inside rows
+label and icon in the error colour, no chevron, and acts at once with an Undo (22.4); only the
+two device-level resets still ask for confirmation. Buttons inside rows
 are terminal buttons: the label in the accent inside a 1 dp accent outline, 4 dp corners, at
 least 48 dp tall. Long explanations sit behind a collapsed
 "About ..." row under a one-line summary (the Terminal-mode pattern), so the controls stay near
-the top; expanders open and close with a short height-and-fade animation and a turning chevron.
+the top; expanders open and close on a spring (height and fade) with a turning chevron, and stay open
+or closed for as long as their screen is on the back stack (22.5).
 An intro paragraph sits above the first pane as plain muted text. An empty list shows an icon in
 a 56 dp keycap and one line that says how to fill it.
 
 **Controls.** Switches are rounded pills (amended 2026-10-09: the square terminal switch read as
 clunky): a 46 x 26 dp track, fully rounded, with a 20 dp round thumb inset 3 dp and a 1 dp
 shadow; on, the track is the accent and the thumb the accent's ink; off, the track is the outline
-colour, filled, and the thumb the surface colour (both 3:1 or better); the thumb slides in 180 ms
-with an ease. A switch row's whole surface toggles it, and a switch that takes taps itself has a
+colour, filled, and the thumb the surface colour (both 3:1 or better); the thumb is thrown on a
+spring with a touch of bounce (damping 0.72) while the colours ease over 180 ms, and the tap is
+felt (`TOGGLE_ON` / `TOGGLE_OFF`, keys-and-modifiers.md 13.5). A switch row's whole surface toggles it, and a switch that takes taps itself has a
 56 x 48 dp target with the switch role. Chips are square-ish (4 dp) with mono labels, and a row
 of them that wraps keeps the same 8 dp gap between lines as between chips; a selected chip is highlighted as a
 terminal highlights a selection, the accent as the fill and the page ink as the text. Buttons
@@ -948,11 +951,37 @@ bar overlay: the status bar shows the page (amended 2026-10-09: the maintainer f
 and hard-blinking block out of keeping with the light theme's skin).
 Setup, What's new and About keep their own `physiboard:~$ <command>` prompt lines in the page.
 
-### 22.2 Transitions and sizing
+### 22.2 Transitions, feel and sizing
 
 Opening a screen slides it in from the right while the screen underneath drifts a fifth of the
-way to the left; going back reverses both. Finishing the settings activity slides out
-to the right (also on Android 14 and later through the newer API). Screens that need the
+way to the left and dims to 60 %; going back reverses both. Finishing the settings activity
+slides out to the right (also on Android 14 and later through the newer API).
+
+**Springs (3.2).** Every movement is a spring, not a timed curve, so an interrupted transition
+carries its speed into the next one: pages critically damped at stiffness 380 (about 350 ms, no
+overshoot), expanders and list rows critically damped at Material's medium-low stiffness, fades
+at medium. Rows of a keyed list (the Sym page order, the personal dictionary, the app pickers)
+glide to their new place when the list is reordered, and fade in or out when one is added,
+deleted or put back by Undo.
+
+**Predictive back (3.2).** The application opts into Android 14's predictive back
+(`android:enableOnBackInvokedCallback`). Holding the back swipe on any screen shows the screen
+underneath sliding into place under the finger (the navigation host scrubs its pop transition
+with the gesture), and letting go either finishes the pop or springs back. A screen with an
+inner page (Sym pages and the page being edited; Customize Variations and one letter) pushes and
+pops it the same way, and during the back swipe the inner page shrinks to 90 % toward the far
+edge and shifts 24 dp with the finger (Material's in-app predictive back); system Back closes the
+inner page, not the whole screen.
+
+**Haptics.** The settings app speaks the keyboard's haptic language (keys-and-modifiers.md 13.5)
+behind the same switches: switches and check boxes, a different chip or dropdown entry, slider
+detents, reorder arrows, the destructive confirm of the two device resets and every undoable
+delete or reset, Undo itself, and a folded title pulled all the way back into view (once per
+fold).
+
+**Reduced motion.** With the system animator duration scale at 0 every spring lands at its end at
+once (Compose scales them by it), the page transitions are not drawn at all, the predictive back
+gesture still follows the finger, and the home cursor holds still (22.1). Screens that need the
 window's size read it from the window, not the display configuration, so multi-window and the
 near-square Titan screen get the bounds the content is actually in.
 
@@ -962,6 +991,45 @@ Every activity wraps its base context with the locale from `app_language_tag` wh
 non-blank; blank or absent means the system locale. Because it is applied at activity creation,
 a language change takes effect when the screen is recreated. Options: system default, then
 `en`, `it`, `de`, `es`, `fr`, `pl`, `ru`, `uk`, `vi`, `hy`.
+
+### 22.4 Undo instead of confirm (3.2)
+
+A reset of one section or a delete happens at once, and a snackbar at the bottom of the app,
+above the navigation stack, says what happened ("Cleared My page 1", "Deleted “teh”",
+"Moved GIFs up") with an Undo action, for 8 seconds; it survives going back to another
+screen. Undo puts back exactly the prior state of what the action touched and nothing else: a
+change made elsewhere while the snackbar was up is kept. A second action of the same kind while
+it is up (three arrow taps on one Sym page) extends it, and Undo returns to where that run of
+changes began; any other action replaces it, and the earlier one stands. The snackbar is a raised
+pane with the 1 dp border, the message in mono and Undo in the accent; the action plays
+`CONFIRM_DESTRUCTIVE` (or `REORDER`, or nothing for a switch that already gave its tick), Undo
+plays `UNDO`.
+
+| Action | What Undo restores |
+|---|---|
+| Punctuation spacing's reset | both character lists |
+| Fn layer's "Reset these switches" | the three switches |
+| Customize Variations' "Reset every letter to default"; one letter's "Reset to default" | every stored list; that letter's list (or its absence) |
+| Sym pages: a page switched off, a page moved | the whole order and every page's switch, as before the run |
+| "Clear page" on My page 1 to 3 | that page's keys (its name was never touched) |
+| "Reset to Default" on the Emoji or Symbols layer | that layer's custom map |
+| Deleting a personal-dictionary word | the word with its count and last use, read back into the current file (a word re-added meanwhile keeps the newer entry); a default word goes back in its old place |
+
+Only "Reset all settings" and "Reset device settings to stock" (Backup & restore) keep their
+confirmation dialog, with the confirm button in the error colour; they reach outside one
+section (the whole store, or the phone's own settings through the broker). Clearing the
+clipboard history is on the keyboard's Clipboard page, which shows no snackbar; it is not part of
+this.
+
+### 22.5 Remembered place (3.2)
+
+Coming back to a settings screen finds it as it was left: its scroll position (and how far its
+title had folded), its open expanders, the inner page it was on (22.2) and what was typed into a
+search field. Each is saved with the screen's own entry on the back stack, so it survives a trip
+to another screen, rotation and the process being reclaimed while the app is in the background;
+it is forgotten when the screen is popped. Open expanders are kept per screen by title rather
+than in the row, so a row scrolled out of the list keeps its state too. A fresh visit opens every
+expander collapsed again.
 
 ## 23. Build configuration as behavior
 

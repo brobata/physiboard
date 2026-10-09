@@ -360,6 +360,9 @@ Never edited by the user.
 | `typing_sound_updated_at` | long epoch ms | none | | Reload trigger | Written by the import |
 | `tap_haptic_use_system` | boolean | true | | Use the system click haptic | Look & feel > Sound & haptics > "Tap vibration" |
 | `tap_haptic_duration_ms` | long 5 to 80 | 25 | | Custom pulse length when the above is off | "Vibration length: N ms" |
+| `key_haptics` | boolean | false | | 3.2: a tick on every ordinary key down (keys-and-modifiers.md 13.5) | Look & feel > Sound & haptics > Vibration > "Vibrate on every key" |
+| `key_haptic_strength` | string `light`, `standard`, `strong`; anything else reads as `light` | `light` | | 3.2: which tick | "Key vibration strength" chips Light / Standard / Strong (only while the row above is on; each chip plays its tick) |
+| `event_haptics` | boolean | true | | 3.2: the rest of the haptic language, in the keyboard and this app | "Feedback vibrations" |
 
 ### 2.14 On-screen keyboard (drop for 3.0)
 
@@ -1131,6 +1134,11 @@ Title "Sound & Haptics". Rows in order:
    toasts "import success"; failure toasts "import failed" and leaves the mode alone. A pack that
    is a single file rather than a directory is served as the `normal` group.
 2. "Tap vibration" switch (`tap_haptic_use_system`).
+
+3.2 puts a "Vibration" section above all of these: "Vibrate on every key" (`key_haptics`), its
+"Key vibration strength" chips while on, and "Feedback vibrations" (`event_haptics`); both
+switches carry a note while Android's own touch feedback is off ("these stay still until it is
+on again"). See keys-and-modifiers.md 13.5.
 3. "Custom vibration: N ms" slider 5 to 80, shown when tap vibration does not use the system.
 4. "Vibrate on dictation start/stop" switch.
 5. "Vibration strength" chips Light / Standard / Strong, shown only while row 4 is on; picking a
@@ -1151,8 +1159,9 @@ broker-privileged-toolbox.md. The preference store is not touched by this action
 settings reset in 2.x is the baseline reset of section 4, which the user cannot trigger.
 
 The "Advanced" screen that held these rows before 2.0 no longer exists. A collapsible "Advanced"
-section still appears inside Smart Features; it opens collapsed and remembers its state only
-while the screen is alive.
+section still appears inside Smart Features; it opens collapsed and, since 3.2, stays open or
+closed for as long as its screen is on the back stack, process death included (app-shell.md
+22.5).
 
 ## 10. Titan-specific facts
 
