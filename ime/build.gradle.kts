@@ -64,6 +64,8 @@ dependencies {
     // app-shell.md SS10.2: the Diagnostics screen's debug capture store, reached only through the
     // DebugCaptureSink seam (mirrors SettingsSource), since :app owns the store and depends on :ime.
     api(project(":core:shell"))
+    // The design system: the fonts, icons, tokens and motion the panels draw with (docs/design/design-system.md).
+    api(project(":design"))
     implementation(libs.androidx.core.ktx)
     // layers-sym-alt.md SS4.7: the inline suggestion style password managers read (Apache-2.0,
     // Android Jetpack). Without a style in this library's format they offer the keyboard nothing.

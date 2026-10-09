@@ -110,6 +110,8 @@ dependencies {
     // layers-sym-alt.md SS5.7: the Theme preview draws the Symbols page from `:core:strip`'s own
     // `SymGridLayout`, so it matches the keyboard's grid key for key.
     implementation(project(":core:strip"))
+    // The design system shared with the keyboard: fonts, icons, tokens (docs/design/design-system.md).
+    implementation(project(":design"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     // The settings store (settings-catalog.md SS1, SS13 "one preference file with typed rows") and

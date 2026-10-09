@@ -18,7 +18,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import brobata.physiboard.app.R
+import brobata.physiboard.design.DesignTokens
+import brobata.physiboard.design.R
 
 /**
  * The shell's one visual identity (app-shell.md SS22.1): Material 3 with dynamic colour disabled,
@@ -27,50 +28,50 @@ import brobata.physiboard.app.R
  * LICENSING.md).
  */
 object PhysiBoardColors {
-    val Ink = Color(0xFF0F172A)
-    val Slate = Color(0xFF1E293B)
-    val SignalAmber = Color(0xFFF59E0B)
-    val Sky = Color(0xFF38BDF8)
-    val Cloud = Color(0xFFF1F5F9)
-    val Slate500 = Color(0xFF64748B)
+    val Ink = Color(DesignTokens.Palette.INK)
+    val Slate = Color(DesignTokens.Palette.SLATE)
+    val SignalAmber = Color(DesignTokens.Palette.SIGNAL_AMBER)
+    val Sky = Color(DesignTokens.Palette.SKY)
+    val Cloud = Color(DesignTokens.Palette.CLOUD)
+    val Slate500 = Color(DesignTokens.Palette.SLATE_500)
 
     /**
      * Muted text on the dark theme. Slate500 measured about 3.7:1 on Ink and 2.6:1 on a dialog's
      * surface, below the 4.5:1 small text needs, so descriptions and dialog bodies read as
      * disabled. Slate400 is about 7:1 on Ink and 5:1 on a dialog.
      */
-    val Slate400 = Color(0xFF94A3B8)
-    val ErrorDark = Color(0xFFEF4444)
+    val Slate400 = Color(DesignTokens.Palette.SLATE_400)
+    val ErrorDark = Color(DesignTokens.Palette.ERROR_DARK)
 
     /**
      * Amber dark enough to be text on the light theme. Signal Amber is about 2:1 on white, so
      * section labels and text buttons in amber were unreadable there; this is about 5:1 on
      * Cloud and white, and stays the primary colour of the light theme only.
      */
-    val AmberDeep = Color(0xFFB45309)
-    val ErrorLight = Color(0xFFDC2626)
+    val AmberDeep = Color(DesignTokens.Palette.AMBER_DEEP)
+    val ErrorLight = Color(DesignTokens.Palette.ERROR_LIGHT)
 
     /**
      * The `# comment` colour of the section labels: a muted amber, quieter than the accent so the
      * rows stay the loudest thing on a screen. 6.2:1 on Ink, 5.9:1 on a dark pane.
      */
-    val CommentDark = Color(0xFFB8925A)
+    val CommentDark = Color(DesignTokens.Palette.COMMENT_DARK)
 
     /** The same comment on the light theme: 5.6:1 on Cloud, 6.2:1 on a white pane. */
-    val CommentLight = Color(0xFF7A5C2E)
+    val CommentLight = Color(DesignTokens.Palette.COMMENT_LIGHT)
 
     /**
      * Muted text on the light theme. Slate500 measured 4.3:1 on Cloud, under AA for the intro
      * paragraphs that sit on the page rather than on a pane; this is 5.0:1 there and 5.4:1 on white.
      */
-    val Slate550 = Color(0xFF5B6B80)
+    val Slate550 = Color(DesignTokens.Palette.SLATE_550)
 
     /** A terminal pane's fill on the dark theme: a step above Ink, so the 1 dp border carries the edge. */
-    val PaneDark = Color(0xFF111B2E)
+    val PaneDark = Color(DesignTokens.Palette.PANE_DARK)
 
     /** A pane's 1 dp border: slate on dark, a light slate on light. Decoration only; never the only cue. */
-    val PaneBorderDark = Color(0xFF2A3A52)
-    val PaneBorderLight = Color(0xFFCBD5E1)
+    val PaneBorderDark = Color(DesignTokens.Palette.PANE_BORDER_DARK)
+    val PaneBorderLight = Color(DesignTokens.Palette.PANE_BORDER_LIGHT)
 }
 
 /** The comment colour of the section labels, for the current theme. */
@@ -245,11 +246,11 @@ object PhysiBoardType {
 
 /** Spacing steps every screen picks from, so gaps line up from screen to screen. */
 object Spacing {
-    val xs = 4.dp
-    val s = 8.dp
-    val m = 12.dp
-    val l = 16.dp
-    val xl = 24.dp
+    val xs = DesignTokens.Space.XS.dp
+    val s = DesignTokens.Space.S.dp
+    val m = DesignTokens.Space.M.dp
+    val l = DesignTokens.Space.L.dp
+    val xl = DesignTokens.Space.XL.dp
 }
 
 /**
@@ -257,11 +258,11 @@ object Spacing {
  * every surface reads as a pane in one terminal rather than a soft card.
  */
 private val PhysiBoardShapes = Shapes(
-    extraSmall = RoundedCornerShape(2.dp),
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(6.dp),
-    large = RoundedCornerShape(6.dp),
-    extraLarge = RoundedCornerShape(8.dp),
+    extraSmall = RoundedCornerShape(DesignTokens.Radius.FIELD.dp),
+    small = RoundedCornerShape(DesignTokens.Radius.KEY.dp),
+    medium = RoundedCornerShape(DesignTokens.Radius.PANE.dp),
+    large = RoundedCornerShape(DesignTokens.Radius.PANE.dp),
+    extraLarge = RoundedCornerShape(DesignTokens.Radius.DIALOG.dp),
 )
 
 /** The terminal-header monospace style shared by Home and the setup/what's-new pages (SS22.1). */

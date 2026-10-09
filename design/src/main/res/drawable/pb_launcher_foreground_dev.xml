@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The sideload ("dev") build's foreground: the same keycap, lifted, over a Sky pill reading DEV,
+     so the test build never passes for the release one on the home screen. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateY="-5" android:scaleX="0.9" android:scaleY="0.9" android:pivotX="54" android:pivotY="54">
+    <!-- Skirt: the cap's sides, catching a little light at the bottom. -->
+    <path
+        android:fillColor="#FF334155"
+        android:pathData="M41,31 L67,31 A10,10 0 0 1 77,41 L77,69 A10,10 0 0 1 67,79 L41,79 A10,10 0 0 1 31,69 L31,41 A10,10 0 0 1 41,31 Z" />
+    <!-- Face: the top of the key, set up and in from the skirt. -->
+    <path
+        android:fillColor="#FF1E293B"
+        android:pathData="M42,34 L66,34 A7,7 0 0 1 73,41 L73,65 A7,7 0 0 1 66,72 L42,72 A7,7 0 0 1 35,65 L35,41 A7,7 0 0 1 42,34 Z" />
+    <!-- The prompt. -->
+    <path
+        android:strokeColor="#FFF59E0B"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M44,46 L51,53 L44,60 M56,60 L65,60" />
+    </group>
+    <!-- DEV pill. -->
+    <path
+        android:fillColor="#FF38BDF8"
+        android:pathData="M45,72 L63,72 A5.5,5.5 0 0 1 63,83 L45,83 A5.5,5.5 0 0 1 45,72 Z" />
+    <path
+        android:strokeColor="#FF0F172A"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M45,74.5 L45,80.5 L46.6,80.5 A3,3 0 0 0 46.6,74.5 Z M52.2,74.5 L52.2,80.5 L55.8,80.5 M52.2,74.5 L55.8,74.5 M52.2,77.5 L55,77.5 M58.6,74.5 L60.6,80.5 L62.6,74.5" />
+</vector>
