@@ -194,14 +194,18 @@ fun RemoveBloatScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
 
 @Composable
 private fun PresetCard(preset: BloatPresetInfo, count: Int, busy: Boolean, onDisableAll: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = androidx.compose.foundation.BorderStroke(1.dp, brobata.physiboard.app.settings.ui.paneBorderColor()),
+    ) {
         androidx.compose.foundation.layout.Column(modifier = Modifier.padding(12.dp)) {
             Row {
                 Text(preset.label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                 preset.badge?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
             }
             Text(preset.description, style = MaterialTheme.typography.bodySmall)
-            Button(onClick = onDisableAll, enabled = !busy, modifier = Modifier.padding(top = Spacing.s).heightIn(min = MinTouchTarget)) { Text("Disable all $count") }
+            Button(shape = MaterialTheme.shapes.small, onClick = onDisableAll, enabled = !busy, modifier = Modifier.padding(top = Spacing.s).heightIn(min = MinTouchTarget)) { Text("Disable all $count") }
         }
     }
 }

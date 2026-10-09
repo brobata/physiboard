@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -58,12 +59,13 @@ fun UnicodeCharacterDialog(letter: Char? = null, resetLabel: String = "Reset to 
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
-                    Button(onClick = { if (custom.isNotBlank()) onChoose(custom) }, enabled = custom.isNotBlank(), modifier = Modifier.padding(start = 8.dp)) { Text("Add") }
+                    Button(shape = MaterialTheme.shapes.small, onClick = { if (custom.isNotBlank()) onChoose(custom) }, enabled = custom.isNotBlank(), modifier = Modifier.padding(start = 8.dp)) { Text("Add") }
                 }
                 TextButton(onClick = { onChoose("") }, modifier = Modifier.fillMaxWidth()) { Text(resetLabel) }
                 LazyRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     items(categories) { category ->
                         FilterChip(
+                            colors = terminalChipColors(),
                             selected = category.label == selected,
                             onClick = { selected = category.label },
                             label = { Text(category.label) },

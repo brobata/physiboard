@@ -10,6 +10,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,7 +52,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,13 +61,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,7 +76,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import kotlin.math.roundToInt
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
@@ -92,13 +119,14 @@ val MinTouchTarget = 48.dp
 val RowMinHeight = 56.dp
 
 /**
- * The screen chrome every settings screen shares (app-shell.md SS22.1, "the settings screens
- * share one top bar"): a medium top bar whose large title collapses into the bar as the content
- * scrolls (the large-title pattern the maintainer's other apps use), inset below the status bar
- * and out of the cutout, the page's own background so the cards below are the only raised
- * surfaces, a back arrow with content description "Back", the title in the mono headline style,
- * and trailing actions in the same full-contrast colour as the arrow. The collapse is driven by
- * nested scrolling, so it follows whichever list or column the screen scrolls.
+ * The screen chrome every settings screen shares (app-shell.md SS22.1, the terminal skin): the
+ * title is a shell prompt, `physiboard:~/voice$`, drawn large under the back arrow, and as the
+ * content scrolls up it folds away while the short path (`~/voice`) fades into the bar, which then
+ * takes a 1 dp rule along its bottom edge. Inset below the status bar and out of the cutout, on the
+ * page's own background so the panes below are the only raised surfaces; the back arrow keeps the
+ * content description "Back" and trailing actions are drawn in the same full-contrast colour.
+ * The collapse is Material's exit-until-collapsed nested scroll, so it follows whichever list or
+ * column the screen scrolls. [path] overrides the directory derived from [title].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,37 +134,91 @@ fun SettingsScreenScaffold(
     title: String,
     onBack: (() -> Unit)?,
     trailingAction: (@Composable () -> Unit)? = null,
+    path: String? = null,
     content: @Composable () -> Unit,
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val state = rememberTopAppBarState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state)
+    val slug = path ?: TerminalPath.slug(title)
+    val expandedPx = with(LocalDensity.current) { ExpandedTitleHeight.toPx() }
+    SideEffect { if (state.heightOffsetLimit != -expandedPx) state.heightOffsetLimit = -expandedPx }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            MediumTopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
+            // Scroll-driven values are read in layout and draw lambdas only, so scrolling redraws
+            // the bar without recomposing it; the one composition-time read is whether the title's
+            // accessibility heading lives on the large prompt or on the bar's short copy.
+            val collapsed by remember(state) { derivedStateOf { state.collapsedFraction > 0.5f } }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+            ) {
+                Row(modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
                     if (onBack != null) {
                         IconButton(onClick = onBack, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                         }
+                    } else {
+                        Spacer(modifier = Modifier.width(Spacing.m))
                     }
-                },
-                actions = { trailingAction?.invoke() },
-                scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.mediumTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
-                    // The default muted tint made "Add", "Import" and "Reset" look disabled next
-                    // to the full-contrast back arrow.
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
+                    Text(
+                        TerminalPath.short(slug),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = Spacing.xs)
+                            .graphicsLayer { alpha = ((state.collapsedFraction - 0.5f) * 2f).coerceIn(0f, 1f) }
+                            // Collapsed, this copy is the screen's heading; expanded, the prompt is.
+                            .then(if (collapsed) Modifier.clearAndSetSemantics { heading(); contentDescription = title } else Modifier.clearAndSetSemantics { }),
+                    )
+                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                        Row(verticalAlignment = Alignment.CenterVertically) { trailingAction?.invoke() }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .layout { measurable, constraints ->
+                            val height = (expandedPx + state.heightOffset).coerceAtLeast(0f).roundToInt()
+                            val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+                            layout(placeable.width, height) { placeable.place(0, 0) }
+                        }
+                        .clipToBounds(),
+                    contentAlignment = Alignment.BottomStart,
+                ) {
+                    PromptTitle(
+                        title = title,
+                        slug = slug,
+                        announce = !collapsed,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .requiredHeight(ExpandedTitleHeight)
+                            .padding(start = Spacing.l + Spacing.xs, end = Spacing.l, bottom = Spacing.m)
+                            .graphicsLayer { alpha = 1f - state.collapsedFraction },
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .graphicsLayer { alpha = state.collapsedFraction }
+                        .background(MaterialTheme.colorScheme.outlineVariant),
+                )
+            }
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) { content() }
     }
 }
+
+/** The room the large prompt takes below the bar before it folds away. */
+private val ExpandedTitleHeight = 52.dp
 
 /**
  * For a dialog whose body is a list or a grid (an app list, the speech engines, the character
@@ -245,9 +327,13 @@ private class GroupingListScope : SettingsListScope {
     }
 }
 
-private val CardRadius = 16.dp
+private val CardRadius = 6.dp
 
-/** One row's slice of a card: square where it joins its neighbours, rounded (and padded) where the card starts or ends. */
+/**
+ * One row's slice of a pane: square where it joins its neighbours, rounded (and padded) where the
+ * pane starts or ends. The 1 dp border is drawn as one rounded rectangle that runs past the slice's
+ * open edges and is clipped to it, so a run of slices shows one continuous outline with no seams.
+ */
 @Composable
 private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(
@@ -256,6 +342,7 @@ private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, content: @
         bottomStart = if (bottom) CardRadius else 0.dp,
         bottomEnd = if (bottom) CardRadius else 0.dp,
     )
+    val border = paneBorderColor()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -263,6 +350,22 @@ private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, content: @
             .padding(top = if (top) marginTop else 0.dp, bottom = if (bottom) Spacing.xs else 0.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
+            .drawWithContent {
+                drawContent()
+                val stroke = 1.dp.toPx()
+                val radius = CardRadius.toPx()
+                val overrunTop = if (top) 0f else radius * 2 + stroke
+                val overrunBottom = if (bottom) 0f else radius * 2 + stroke
+                clipRect {
+                    drawRoundRect(
+                        color = border,
+                        topLeft = Offset(stroke / 2, stroke / 2 - overrunTop),
+                        size = Size(size.width - stroke, size.height - stroke + overrunTop + overrunBottom),
+                        cornerRadius = CornerRadius(radius - stroke / 2),
+                        style = Stroke(stroke),
+                    )
+                }
+            }
             .padding(top = if (top) Spacing.xs else 0.dp, bottom = if (bottom) Spacing.xs else 0.dp),
     ) {
         // A header inside an "About" expander in this row is not a card break.
@@ -293,22 +396,34 @@ fun SettingsCard(modifier: Modifier = Modifier, content: @Composable () -> Unit)
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = Spacing.s)
-            .clip(RoundedCornerShape(CardRadius))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .terminalPane(shape = RoundedCornerShape(CardRadius))
             .padding(vertical = Spacing.xs),
     ) {
         CompositionLocalProvider(LocalInsideCard provides true) { content() }
     }
 }
 
+/**
+ * A section label as a shell comment, `# capitals`: the hash in the accent, the words lower case
+ * in the muted comment colour. Read aloud as the label itself and marked a heading.
+ */
 @Composable
 private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
-        text = text,
+        text = commentText(text),
         style = PhysiBoardType.sectionLabel,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.fillMaxWidth().semantics { heading() },
+        modifier = modifier.fillMaxWidth().semantics { heading(); contentDescription = text },
     )
+}
+
+@Composable
+private fun commentText(text: String): AnnotatedString {
+    val hash = MaterialTheme.colorScheme.primary
+    val words = MaterialThemeCommentColor
+    return buildAnnotatedString {
+        withStyle(SpanStyle(color = hash)) { append("# ") }
+        withStyle(SpanStyle(color = words)) { append(text.lowercase(java.util.Locale.getDefault())) }
+    }
 }
 
 /**
@@ -320,10 +435,9 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 fun SectionHeader(text: String, inset: Boolean = true) {
     if (LocalInsideCard.current) {
         Text(
-            text = text,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.fillMaxWidth().padding(start = Spacing.l, top = Spacing.m, end = Spacing.l, bottom = Spacing.xs).semantics { heading() },
+            text = commentText(text),
+            style = PhysiBoardType.sectionLabel,
+            modifier = Modifier.fillMaxWidth().padding(start = Spacing.l, top = Spacing.m, end = Spacing.l, bottom = Spacing.xs).semantics { heading(); contentDescription = text },
         )
     } else {
         // [inset] false: the caller's column already keeps the 16 dp side margin.
@@ -384,13 +498,16 @@ fun KeycapIcon(
 ) {
     val dark = isSystemInDarkTheme()
     val glyph = category?.glyph(dark) ?: tint
-    val fill = category?.let { it.glyph(dark).copy(alpha = if (dark) 0.18f else 0.12f) } ?: MaterialTheme.colorScheme.surfaceContainerHighest
+    // A keycap in the terminal skin: a near-square outline with a faint wash of the glyph's hue.
+    val fill = glyph.copy(alpha = if (dark) 0.10f else 0.07f)
+    val edge = category?.let { glyph.copy(alpha = 0.45f) } ?: MaterialTheme.colorScheme.outlineVariant
+    val shape = RoundedCornerShape(4.dp)
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .background(fill),
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, edge, shape),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = glyph, modifier = Modifier.size(iconSize))
@@ -463,7 +580,7 @@ fun SwitchRow(
                 Text(note, style = MaterialTheme.typography.bodySmall, color = color, modifier = Modifier.padding(top = Spacing.xs))
             }
         }
-        Switch(checked = checked, onCheckedChange = if (enabled) onCheckedChange else null, enabled = enabled)
+        TerminalSwitch(checked = checked, onCheckedChange = if (enabled) onCheckedChange else null, enabled = enabled)
     }
 }
 
@@ -524,10 +641,11 @@ fun NavigateRow(
             }
         }
         if (value != null) {
+            // The current value reads as command output: mono, in the accent.
             Text(
                 value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = PhysiBoardType.value,
+                color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.End,
@@ -606,6 +724,7 @@ fun <T> SingleChoiceChipsRow(
         ) {
             options.forEach { option ->
                 FilterChip(
+                    colors = terminalChipColors(),
                     selected = option == selected,
                     onClick = { onSelect(option) },
                     label = { Text(optionLabel(option)) },
@@ -785,7 +904,15 @@ fun ButtonRow(label: String, description: String? = null, buttonText: String, on
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowLabel(label, description, modifier = Modifier.weight(1f).padding(end = Spacing.m))
-        FilledTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.defaultMinSize(minHeight = MinTouchTarget)) { Text(buttonText) }
+        // A terminal button: the label in the accent inside a 1 dp accent box, not a tonal blob.
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            shape = MaterialTheme.shapes.small,
+            border = BorderStroke(1.dp, if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+            modifier = Modifier.defaultMinSize(minHeight = MinTouchTarget),
+        ) { Text(buttonText) }
     }
 }
 

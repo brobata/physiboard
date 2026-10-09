@@ -1,5 +1,6 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import brobata.physiboard.app.settings.ui.terminalChipColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -87,8 +88,8 @@ fun CustomizeEntriesScreen(onBack: () -> Unit) {
     SettingsScreenScaffold(title = "Customize entries", onBack = onBack) {
         SearchPill(value = query, onValueChange = { query = it }, placeholder = "Search entries", modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.s))
         Row(modifier = Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = !favoritesOnly, onClick = { favoritesOnly = false }, label = { Text("All") })
-            FilterChip(selected = favoritesOnly, onClick = { favoritesOnly = true }, label = { Text("Favorites") })
+            FilterChip(colors = terminalChipColors(), selected = !favoritesOnly, onClick = { favoritesOnly = false }, label = { Text("All") })
+            FilterChip(colors = terminalChipColors(), selected = favoritesOnly, onClick = { favoritesOnly = true }, label = { Text("Favorites") })
         }
         if (commands.isEmpty()) EmptyState(Icons.Outlined.Inbox, "No commands available for the selected sources.")
         else if (shown.isEmpty()) EmptyState(Icons.Outlined.SearchOff, "No entries match \"$query\"")

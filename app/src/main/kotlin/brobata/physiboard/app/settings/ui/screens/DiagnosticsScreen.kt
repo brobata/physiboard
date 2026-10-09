@@ -1,5 +1,6 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import brobata.physiboard.app.settings.ui.terminalChipColors
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -243,7 +244,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
             )
 
             Row(modifier = Modifier.padding(top = 12.dp)) {
-                Button(onClick = {
+                Button(shape = MaterialTheme.shapes.small, onClick = {
                     if (recording) {
                         recording = false
                     } else {
@@ -288,9 +289,9 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FilterChip(selected = includeSuggestions, onClick = { includeSuggestions = !includeSuggestions }, label = { Text("incl. suggestions") })
-                FilterChip(selected = includeRawTrackpad, onClick = { includeRawTrackpad = !includeRawTrackpad }, label = { Text("incl. raw trackpad") })
-                FilterChip(selected = includeAutocorrections, onClick = { includeAutocorrections = !includeAutocorrections }, label = { Text("incl. autocorrections") })
+                FilterChip(colors = terminalChipColors(), selected = includeSuggestions, onClick = { includeSuggestions = !includeSuggestions }, label = { Text("incl. suggestions") })
+                FilterChip(colors = terminalChipColors(), selected = includeRawTrackpad, onClick = { includeRawTrackpad = !includeRawTrackpad }, label = { Text("incl. raw trackpad") })
+                FilterChip(colors = terminalChipColors(), selected = includeAutocorrections, onClick = { includeAutocorrections = !includeAutocorrections }, label = { Text("incl. autocorrections") })
             }
 
             LastKeyboardEventPanel(
@@ -327,7 +328,11 @@ private fun LastKeyboardEventPanel(
     onIgnoreBackChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = androidx.compose.foundation.BorderStroke(1.dp, brobata.physiboard.app.settings.ui.paneBorderColor()),
+    ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row {
                 Text("Last Keyboard Event", style = MaterialTheme.typography.titleSmall, modifier = Modifier.fillMaxWidth())
@@ -348,13 +353,13 @@ private fun LastKeyboardEventPanel(
             if (chips.isNotEmpty()) {
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     chips.forEachIndexed { index, chip ->
-                        FilterChip(selected = true, onClick = {}, label = { Text(chip) }, modifier = if (index == 0) Modifier else Modifier.padding(start = 8.dp))
+                        FilterChip(colors = terminalChipColors(), selected = true, onClick = {}, label = { Text(chip) }, modifier = if (index == 0) Modifier else Modifier.padding(start = 8.dp))
                     }
                 }
             }
             Row(modifier = Modifier.padding(top = 8.dp)) {
                 // spec SS10.3: "on by default"; a BACK event does not replace the panel while this is on.
-                FilterChip(selected = ignoreBack, onClick = { onIgnoreBackChanged(!ignoreBack) }, label = { Text("Ignore BACK") })
+                FilterChip(colors = terminalChipColors(), selected = ignoreBack, onClick = { onIgnoreBackChanged(!ignoreBack) }, label = { Text("Ignore BACK") })
             }
         }
     }

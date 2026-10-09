@@ -95,8 +95,9 @@ fun DeviceSetupCard() {
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = androidx.compose.foundation.BorderStroke(1.dp, paneBorderColor()),
     ) {
         Column(modifier = Modifier.padding(Spacing.l)) {
             HeaderLine(keyStored, checking, verdict)

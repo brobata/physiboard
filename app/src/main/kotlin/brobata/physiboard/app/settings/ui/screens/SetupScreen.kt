@@ -38,7 +38,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
-import brobata.physiboard.app.settings.ui.PhysiBoardColors
 import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.settings.ui.TerminalPromptStyle
 import brobata.physiboard.app.shell.ImeComponent
@@ -82,7 +81,7 @@ fun SetupScreen(onComplete: () -> Unit) {
             .padding(16.dp),
     ) {
         TerminalHeader()
-        Text("Two quick steps to start typing.", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 16.dp))
+        Text("Two quick steps to start typing.", style = brobata.physiboard.app.settings.ui.PhysiBoardType.reading, modifier = Modifier.padding(vertical = 16.dp))
 
         StepCard(
             number = 1,
@@ -110,25 +109,26 @@ fun SetupScreen(onComplete: () -> Unit) {
         if (steps.bothDone) {
             Column(modifier = Modifier.padding(top = 24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = PhysiBoardColors.SignalAmber)
+                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text("You're set.", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 8.dp))
                 }
                 if (!essentialsExpanded) {
                     Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { essentialsExpanded = true }, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text("Show me the essentials") }
-                        OutlinedButton(onClick = { completeSetup(controller, onComplete) }, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text("Skip") }
+                        Button(shape = MaterialTheme.shapes.small, onClick = { essentialsExpanded = true }, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text("Show me the essentials") }
+                        OutlinedButton(shape = MaterialTheme.shapes.small, onClick = { completeSetup(controller, onComplete) }, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text("Skip") }
                     }
                 } else {
                     Card(
                         modifier = Modifier.padding(top = Spacing.l).fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, brobata.physiboard.app.settings.ui.paneBorderColor()),
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Hold Fn to talk (dictation)", modifier = Modifier.padding(vertical = 4.dp))
                             Text("Backlight can light the dark (one-time setup)", modifier = Modifier.padding(vertical = 4.dp))
                             Text("Everything else is on the home screen, by category", modifier = Modifier.padding(vertical = 4.dp))
-                            Button(onClick = { completeSetup(controller, onComplete) }, modifier = Modifier.padding(top = 12.dp)) { Text("Done") }
+                            Button(shape = MaterialTheme.shapes.small, onClick = { completeSetup(controller, onComplete) }, modifier = Modifier.padding(top = 12.dp)) { Text("Done") }
                         }
                     }
                 }
@@ -167,11 +167,11 @@ private fun LaunchedEffectPoll(action: () -> Unit) {
     }
 }
 
-/** spec: SS4, "a cursor that fades between opaque and transparent every 650 ms". */
+/** spec: SS4, the prompt and its block cursor, blinking every 650 ms. */
 @Composable
 private fun TerminalHeader() {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("physiboard:~$ setup", style = TerminalPromptStyle, color = PhysiBoardColors.SignalAmber)
+        Text("physiboard:~$ setup", style = TerminalPromptStyle, color = MaterialTheme.colorScheme.primary)
         TerminalCursor(modifier = Modifier.padding(start = 4.dp), periodMillis = 650)
     }
 }
@@ -191,9 +191,9 @@ private fun StepCard(
             .fillMaxWidth()
             .padding(top = Spacing.m)
             .alpha(if (dimmed) 0.45f else 1f),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        border = if (done) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (done) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else androidx.compose.foundation.BorderStroke(1.dp, brobata.physiboard.app.settings.ui.paneBorderColor()),
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
@@ -203,7 +203,7 @@ private fun StepCard(
             if (done) {
                 Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             } else {
-                Button(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text(buttonLabel) }
+                Button(shape = MaterialTheme.shapes.small, onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = MinTouchTarget)) { Text(buttonLabel) }
             }
         }
     }

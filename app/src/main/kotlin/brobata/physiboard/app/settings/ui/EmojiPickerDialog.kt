@@ -106,6 +106,7 @@ fun EmojiPickerDialog(letter: Char? = null, onDismiss: () -> Unit, onChoose: (St
                             LazyRow(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                                 items(categories.orEmpty()) { category ->
                                     FilterChip(
+                                        colors = terminalChipColors(),
                                         selected = category.id == selectedCategoryId,
                                         onClick = { selectedCategoryId = category.id },
                                         label = { Text(category.label) },

@@ -19,7 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
+import brobata.physiboard.app.settings.ui.TerminalSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -373,7 +373,7 @@ private fun InputStyleEditDialog(
                     otherLanguages.forEach { code ->
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(ownLanguageDisplayName(code), modifier = Modifier.weight(1f))
-                            Switch(
+                            TerminalSwitch(
                                 checked = code in suggestionLanguages,
                                 onCheckedChange = { checked -> suggestionLanguages = if (checked) suggestionLanguages + code else suggestionLanguages - code },
                             )

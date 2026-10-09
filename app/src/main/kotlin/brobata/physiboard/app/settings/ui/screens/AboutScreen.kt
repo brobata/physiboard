@@ -49,10 +49,10 @@ fun AboutScreen(onBack: () -> Unit) {
         Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.l, vertical = Spacing.s)) {
             SettingsCard {
                 Column(modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m)) {
-                    Text("physiboard:~$ about", style = PhysiBoardType.prompt, color = MaterialTheme.colorScheme.primary)
-                    Text("PhysiBoard", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Spacing.s))
-                    Text("Version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Device: ${Build.BRAND} ${Build.MODEL}", style = MaterialTheme.typography.bodyMedium)
+                    // The screen's own prompt is the title now (app-shell.md SS22.1); the facts read as its output.
+                    Text("PhysiBoard", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("version  ${BuildConfig.VERSION_NAME}", style = PhysiBoardType.value, modifier = Modifier.padding(top = Spacing.xs))
+                    Text("device   ${Build.BRAND} ${Build.MODEL}", style = PhysiBoardType.value)
                     Text(
                         "PhysiBoard succeeds Pastiera, the maintainer's earlier keyboard for the Titan 2 Elite, as a clean-room rewrite.",
                         style = MaterialTheme.typography.bodyMedium,

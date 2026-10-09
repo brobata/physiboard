@@ -22,8 +22,8 @@ import brobata.physiboard.app.R
 
 /**
  * The shell's one visual identity (app-shell.md SS22.1): Material 3 with dynamic colour disabled,
- * dark or light following the system, the terminal palette, JetBrains Mono for titles and the
- * prompt and Inter for reading (both vendored under `res/font`, SIL Open Font License; see
+ * dark or light following the system, the terminal palette, JetBrains Mono for the chrome and
+ * Inter for descriptions (both vendored under `res/font`, SIL Open Font License; see
  * LICENSING.md).
  */
 object PhysiBoardColors {
@@ -49,7 +49,33 @@ object PhysiBoardColors {
      */
     val AmberDeep = Color(0xFFB45309)
     val ErrorLight = Color(0xFFDC2626)
+
+    /**
+     * The `# comment` colour of the section labels: a muted amber, quieter than the accent so the
+     * rows stay the loudest thing on a screen. 6.2:1 on Ink, 5.9:1 on a dark pane.
+     */
+    val CommentDark = Color(0xFFB8925A)
+
+    /** The same comment on the light theme: 5.6:1 on Cloud, 6.2:1 on a white pane. */
+    val CommentLight = Color(0xFF7A5C2E)
+
+    /**
+     * Muted text on the light theme. Slate500 measured 4.3:1 on Cloud, under AA for the intro
+     * paragraphs that sit on the page rather than on a pane; this is 5.0:1 there and 5.4:1 on white.
+     */
+    val Slate550 = Color(0xFF5B6B80)
+
+    /** A terminal pane's fill on the dark theme: a step above Ink, so the 1 dp border carries the edge. */
+    val PaneDark = Color(0xFF111B2E)
+
+    /** A pane's 1 dp border: slate on dark, a light slate on light. Decoration only; never the only cue. */
+    val PaneBorderDark = Color(0xFF2A3A52)
+    val PaneBorderLight = Color(0xFFCBD5E1)
 }
+
+/** The comment colour of the section labels, for the current theme. */
+val MaterialThemeCommentColor: Color
+    @Composable get() = if (isSystemInDarkTheme()) PhysiBoardColors.CommentDark else PhysiBoardColors.CommentLight
 
 // Two extra roles [darkColorScheme]/[lightColorScheme] do not name in app-shell.md SS22.1: a
 // "container" tone for primary/secondary/tertiary/error (chips, tonal buttons, dialog fills use
@@ -82,8 +108,9 @@ private val PhysiBoardDarkColors = darkColorScheme(
     surfaceDim = PhysiBoardColors.Ink,
     surfaceBright = Color(0xFF334155),
     surfaceContainerLowest = Color(0xFF0B1220),
-    surfaceContainerLow = Color(0xFF131C2E),
-    surfaceContainer = PhysiBoardColors.Slate,
+    surfaceContainerLow = PhysiBoardColors.PaneDark,
+    // A settings pane: one step above the page, the border does the rest (SS22.1, the terminal skin).
+    surfaceContainer = PhysiBoardColors.PaneDark,
     surfaceContainerHigh = Color(0xFF263449),
     surfaceContainerHighest = Color(0xFF2E3D54),
     surfaceVariant = PhysiBoardColors.Slate,
@@ -94,7 +121,7 @@ private val PhysiBoardDarkColors = darkColorScheme(
     // Slate500 is only about 3:1 on a card (Slate), the floor for a switch's or field's border;
     // Slate400 keeps the off switch and the text fields clearly outlined.
     outline = PhysiBoardColors.Slate400,
-    outlineVariant = Color(0xFF334155),
+    outlineVariant = PhysiBoardColors.PaneBorderDark,
     error = PhysiBoardColors.ErrorDark,
     onError = PhysiBoardColors.Ink,
     errorContainer = Color(0xFF7F1D1D),
@@ -130,12 +157,12 @@ private val PhysiBoardLightColors = lightColorScheme(
     surfaceContainerHigh = Color(0xFFE9EEF3),
     surfaceContainerHighest = Color(0xFFE2E8F0),
     surfaceVariant = Color(0xFFE2E8F0),
-    onSurfaceVariant = PhysiBoardColors.Slate500,
+    onSurfaceVariant = PhysiBoardColors.Slate550,
     surfaceTint = PhysiBoardColors.AmberDeep,
     inverseSurface = PhysiBoardColors.Ink,
     inverseOnSurface = PhysiBoardColors.Cloud,
-    outline = PhysiBoardColors.Slate500,
-    outlineVariant = Color(0xFFCBD5E1),
+    outline = PhysiBoardColors.Slate550,
+    outlineVariant = PhysiBoardColors.PaneBorderLight,
     error = PhysiBoardColors.ErrorLight,
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFEE2E2),
@@ -171,10 +198,11 @@ private fun sans(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, t
     TextStyle(fontFamily = inter, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.sp)
 
 /**
- * The one type scale (app-shell.md SS22.1). Display, headline and title-large are JetBrains Mono:
- * the top bar's screen title and every dialog title (Material draws those in headline-small) keep
- * the terminal voice. Everything a person reads through, title-medium down, is Inter. Screens use
- * these roles and [PhysiBoardType], never a font size of their own.
+ * The one type scale (app-shell.md SS22.1, the terminal skin). JetBrains Mono is the voice of the
+ * chrome: titles, row labels, values, buttons, chips, fields and dialog titles. Inter is kept only
+ * for what a person reads through, the descriptions and explanations (body medium and small),
+ * where a monospace paragraph runs a third wider and wraps where it need not. Screens use these
+ * roles and [PhysiBoardType], never a font size of their own.
  */
 private val PhysiBoardTypography = Typography(
     displayLarge = mono(48, 56),
@@ -182,16 +210,16 @@ private val PhysiBoardTypography = Typography(
     displaySmall = mono(32, 40),
     headlineLarge = mono(28, 36),
     headlineMedium = mono(24, 32),
-    headlineSmall = mono(21, 28),
-    titleLarge = mono(19, 26),
-    titleMedium = sans(16, 22, FontWeight.SemiBold),
-    titleSmall = sans(14, 20, FontWeight.SemiBold),
-    bodyLarge = sans(16, 23),
+    headlineSmall = mono(19, 26),
+    titleLarge = mono(18, 24),
+    titleMedium = mono(15, 21),
+    titleSmall = mono(13, 18),
+    bodyLarge = mono(14, 20, FontWeight.Medium),
     bodyMedium = sans(14, 20),
     bodySmall = sans(13, 18),
-    labelLarge = sans(14, 20, FontWeight.SemiBold, 0.1),
-    labelMedium = sans(12, 16, FontWeight.Medium, 0.2),
-    labelSmall = sans(11, 16, FontWeight.Medium, 0.3),
+    labelLarge = mono(14, 20, FontWeight.Medium),
+    labelMedium = mono(12, 16, FontWeight.Medium),
+    labelSmall = mono(11, 16, FontWeight.Medium),
 )
 
 /** Brand roles Material's scale has no slot for. */
@@ -199,14 +227,20 @@ object PhysiBoardType {
     /** The `physiboard:~$` prompt on Home, Setup and What's new (SS22.1: bold 18 sp amber). */
     val prompt: TextStyle = mono(18, 24)
 
-    /** The label above each group of settings cards: mono, in the accent colour, sentence case. */
-    val sectionLabel: TextStyle = mono(13, 18)
+    /** The `# comment` above each group of panes: mono, in the comment colour, lower case. */
+    val sectionLabel: TextStyle = mono(13, 18, FontWeight.Medium)
+
+    /** A row's current value at its right, styled as command output: mono, in the accent. */
+    val value: TextStyle = mono(13, 18, FontWeight.Medium)
 
     /** Log lines, key-event dumps and report text on Diagnostics: mono so the columns line up. */
     val code: TextStyle = mono(12, 17, FontWeight.Normal)
 
     /** A single character or emoji shown as itself (picker cells, key tiles). */
     val glyph: TextStyle = sans(22, 28)
+
+    /** A long paragraph read through (What's new, setup): Inter at the size of body large. */
+    val reading: TextStyle = sans(16, 23)
 }
 
 /** Spacing steps every screen picks from, so gaps line up from screen to screen. */
@@ -219,15 +253,15 @@ object Spacing {
 }
 
 /**
- * Rounded, but by role: small parts (chips, fields) stay tight, cards take 16 dp and dialogs 28 dp,
- * so a dialog reads as a layer above the cards rather than one more of them.
+ * Terminal corners: barely rounded. Chips and fields 4 dp, panes and cards 6 dp, dialogs 8 dp, so
+ * every surface reads as a pane in one terminal rather than a soft card.
  */
 private val PhysiBoardShapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(28.dp),
+    extraSmall = RoundedCornerShape(2.dp),
+    small = RoundedCornerShape(4.dp),
+    medium = RoundedCornerShape(6.dp),
+    large = RoundedCornerShape(6.dp),
+    extraLarge = RoundedCornerShape(8.dp),
 )
 
 /** The terminal-header monospace style shared by Home and the setup/what's-new pages (SS22.1). */

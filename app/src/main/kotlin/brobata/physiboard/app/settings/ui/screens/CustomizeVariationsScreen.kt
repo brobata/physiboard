@@ -141,7 +141,7 @@ fun CustomizeVariationsScreen(onBack: () -> Unit) {
                     }
                     item {
                         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(onClick = { adding = character }, enabled = list.size < Variations.MAX_PER_CHARACTER) {
+                            OutlinedButton(shape = MaterialTheme.shapes.small, onClick = { adding = character }, enabled = list.size < Variations.MAX_PER_CHARACTER) {
                                 Text(if (list.size < Variations.MAX_PER_CHARACTER) "Add" else "Full (${Variations.MAX_PER_CHARACTER})")
                             }
                             TextButton(onClick = { save(character, null) }, enabled = customised, modifier = Modifier.padding(start = 8.dp)) {

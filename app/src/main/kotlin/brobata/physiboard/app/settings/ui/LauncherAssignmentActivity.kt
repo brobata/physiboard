@@ -201,9 +201,9 @@ private fun AssignmentSheetContent(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     IconButton(onClick = { searching = !searching }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
-                    FilterChip(selected = source == null, onClick = { source = null }, label = { Text(AssignmentSheet.ALL_CHIP) })
-                    sources.forEach { s -> FilterChip(selected = source == s, onClick = { source = s }, label = { Text(s.label) }) }
-                    if (hasAssignment) FilterChip(selected = false, onClick = onRemove, label = { Text(AssignmentSheet.REMOVE_CHIP, color = MaterialTheme.colorScheme.error) })
+                    FilterChip(colors = terminalChipColors(), selected = source == null, onClick = { source = null }, label = { Text(AssignmentSheet.ALL_CHIP) })
+                    sources.forEach { s -> FilterChip(colors = terminalChipColors(), selected = source == s, onClick = { source = s }, label = { Text(s.label) }) }
+                    if (hasAssignment) FilterChip(colors = terminalChipColors(), selected = false, onClick = onRemove, label = { Text(AssignmentSheet.REMOVE_CHIP, color = MaterialTheme.colorScheme.error) })
                 }
                 if (searching) {
                     OutlinedTextField(value = query, onValueChange = { query = it }, placeholder = { Text(AssignmentSheet.SEARCH_HINT) }, singleLine = true, modifier = Modifier.fillMaxWidth())

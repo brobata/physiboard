@@ -27,7 +27,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.settings.ui.LocalSettingsController
-import brobata.physiboard.app.settings.ui.PhysiBoardColors
 import brobata.physiboard.app.settings.ui.PhysiBoardType
 import brobata.physiboard.app.settings.ui.SettingsCard
 import brobata.physiboard.app.settings.ui.Spacing
@@ -58,12 +57,12 @@ fun WhatsNewScreen(onDone: () -> Unit) {
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal))
             .padding(Spacing.l),
     ) {
-        Text("physiboard:~$ whatsnew", style = TerminalPromptStyle, color = PhysiBoardColors.SignalAmber)
+        Text("physiboard:~$ whatsnew", style = TerminalPromptStyle, color = MaterialTheme.colorScheme.primary)
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.padding(top = 16.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = PhysiBoardColors.SignalAmber)
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Text("Updated to v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = Spacing.s))
         }
 
@@ -71,7 +70,7 @@ fun WhatsNewScreen(onDone: () -> Unit) {
             Text(
                 "Your keyboard is up to date. Fixes and improvements are live.",
                 modifier = Modifier.padding(top = 16.dp),
-                style = MaterialTheme.typography.bodyLarge,
+                style = PhysiBoardType.reading,
             )
         } else {
             Spacer(modifier = Modifier.height(Spacing.s))
@@ -94,6 +93,7 @@ fun WhatsNewScreen(onDone: () -> Unit) {
         }
 
         Button(
+            shape = MaterialTheme.shapes.small,
             onClick = {
                 // spec: SS5.3. "Done" writes tutorial_completed and last_seen_whats_new_version,
                 // then opens home. The preview/second-write branch (PREVIEW_UPDATE_TUTORIAL) is

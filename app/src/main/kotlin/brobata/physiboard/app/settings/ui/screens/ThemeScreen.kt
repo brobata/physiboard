@@ -135,9 +135,9 @@ private fun PresetCard(name: String, theme: StripTheme?, active: Boolean, onClic
     // third line of the name; a strip of the preset's own colours shows what it looks like.
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        border = if (active) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (active) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else androidx.compose.foundation.BorderStroke(1.dp, brobata.physiboard.app.settings.ui.paneBorderColor()),
         modifier = Modifier.padding(vertical = Spacing.xs).width(112.dp).height(112.dp),
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(Spacing.m)) {
