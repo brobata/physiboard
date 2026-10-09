@@ -433,45 +433,96 @@ internal fun fillFieldFacts(info: EditorInfo?): FieldFacts? {
 }
 
 /**
- * Backspace and forward delete that PhysiBoard has nothing special to do with go to the app
- * through the input connection, not back to the window (text-input.md SS8.1, per-app-behavior.md
- * D9). Right after a messaging app opens, its text box is already connected to the keyboard, so
- * letters (committed through the connection) land, but no view holds key focus yet, so a raw
- * KEYCODE_DEL handed back to the window reached nothing until the box was tapped. A key sent
- * through the connection goes to the connected editor itself.
+ * Backspace and forward delete that PhysiBoard has nothing special to do with are applied to the
+ * connected editor as text edits, not handed back to the window (text-input.md SS8.1,
+ * per-app-behavior.md D9). Right after a messaging app opens, its box is connected to the keyboard
+ * but no view holds key focus: letters land because they are committed as text, while a key event,
+ * whether handed back to the window or sent with `InputConnection.sendKeyEvent` (which the app's
+ * side dispatches through the same view focus), reaches nothing until the box is tapped. The first
+ * fix (b0de2501) sent the key through the connection and failed on the phone for exactly that
+ * reason (2026-10-09). Now:
  *
- * The key is sent as it arrived: meta state, repeat count (hold to repeat) and device all kept.
- * The release follows its press: a press sent this way has its release sent this way too, and a
- * press that went to the window leaves its release to the window. Never in a terminal-mode app
- * (its keys keep their exact hardware path, section 4.6) or without an editable field (the
- * launcher, system screens). Enter already goes through the connection (per-app-behavior.md
- * SS3.4); Tab and the arrows stay on the window's path on purpose, since they also move focus
- * between views, which a key sent to one editor cannot.
+ * - a selection is deleted with `commitText("")`;
+ * - otherwise the character before (Backspace) or after (forward delete) the cursor is deleted
+ *   with `deleteSurroundingText`, one whole grapheme, so an emoji or an accented letter goes as one;
+ * - when the editor reports no text on that side, or cannot be read, the key is sent through the
+ *   connection as before, so fields that act on the key itself (a chip field deleting a chip, a
+ *   web field that answers "" to every read) keep working.
+ *
+ * A press handled one way has its release handled the same way (a text edit has no release to
+ * send). Never in a terminal-mode app (its keys keep their exact hardware path, section 4.6) or
+ * without an editable field. Enter already goes through the connection (per-app-behavior.md
+ * SS3.4); Tab and the arrows stay on the window's path, since they also move focus between views.
  */
 internal class EditingKeyRouter {
-    private val routedDowns = HashSet<Int>(4)
+    private enum class Road { TEXT_EDIT, KEY }
+    private val routedDowns = HashMap<Int, Road>(4)
 
     /** A new field: any press still in flight belonged to the old one. */
     fun reset() = routedDowns.clear()
 
-    /** Sends [event] to [connection] and answers true when it is one of the keys this routes; false leaves it to the window as before. */
+    /** Applies [event] to [connection] and answers true when it is one of the keys this routes; false leaves it to the window as before. */
     fun route(connection: InputConnection, event: KeyEvent, editableField: Boolean, terminalMode: Boolean): Boolean {
         val code = event.keyCode
         if (code != KeyEvent.KEYCODE_DEL && code != KeyEvent.KEYCODE_FORWARD_DEL) return false
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
                 if (!editableField || terminalMode) return false
-                routedDowns.add(code)
+                val road = deleteAsText(connection, backward = code == KeyEvent.KEYCODE_DEL)
+                if (road == null) {
+                    // Nothing to delete as text on that side, or no answer: the key itself, through the connection.
+                    // A connection that has already gone answers false: the key then goes to the window.
+                    if (!connection.sendKeyEvent(KeyEvent(event))) return false
+                    routedDowns[code] = Road.KEY
+                } else {
+                    if (!road) return false
+                    routedDowns[code] = Road.TEXT_EDIT
+                }
+                return true
             }
-            KeyEvent.ACTION_UP -> if (!routedDowns.remove(code)) return false
+            KeyEvent.ACTION_UP -> {
+                val road = routedDowns.remove(code) ?: return false
+                if (road == Road.KEY) connection.sendKeyEvent(KeyEvent(event))
+                return true
+            }
             else -> return false
         }
-        // A connection that has already gone (the editor torn down before onFinishInput arrives)
-        // answers false: the key then goes to the window as before rather than being eaten.
-        if (!connection.sendKeyEvent(KeyEvent(event))) {
-            if (event.action == KeyEvent.ACTION_DOWN) routedDowns.remove(code)
-            return false
-        }
-        return true
+    }
+
+    /**
+     * Deletes the selection, or one grapheme before/after the cursor, as a text edit. Null when
+     * there is nothing on that side to delete as text (or the editor gives no answer), so the
+     * caller sends the key instead; otherwise whether the connection took the edit.
+     */
+    private fun deleteAsText(connection: InputConnection, backward: Boolean): Boolean? {
+        val selected = runCatching { connection.getSelectedText(0) }.getOrNull()
+        if (!selected.isNullOrEmpty()) return connection.commitText("", 1)
+        val side = runCatching {
+            if (backward) connection.getTextBeforeCursor(GRAPHEME_WINDOW, 0) else connection.getTextAfterCursor(GRAPHEME_WINDOW, 0)
+        }.getOrNull()
+        if (side.isNullOrEmpty()) return null
+        val length = if (backward) lastGraphemeLength(side.toString()) else firstGraphemeLength(side.toString())
+        return if (backward) connection.deleteSurroundingText(length, 0) else connection.deleteSurroundingText(0, length)
+    }
+
+    private fun lastGraphemeLength(text: String): Int {
+        val it = android.icu.text.BreakIterator.getCharacterInstance()
+        it.setText(text)
+        val end = it.last()
+        val start = it.previous()
+        return if (start == android.icu.text.BreakIterator.DONE) text.length else end - start
+    }
+
+    private fun firstGraphemeLength(text: String): Int {
+        val it = android.icu.text.BreakIterator.getCharacterInstance()
+        it.setText(text)
+        val start = it.first()
+        val end = it.next()
+        return if (end == android.icu.text.BreakIterator.DONE) text.length else end - start
+    }
+
+    private companion object {
+        /** Enough text to hold the longest emoji sequence in front of the cursor. */
+        const val GRAPHEME_WINDOW = 32
     }
 }

@@ -63,31 +63,30 @@ class BackspaceWithoutViewFocusTest {
     }
 
     @Test
-    fun `Backspace reaches the connected box with no view focus`() {
+    fun `Backspace deletes in a connected box with no view focus`() {
         assertTrue(press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN))
         assertTrue(press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_UP))
         assertEquals("hell", box.text.toString())
         assertEquals(emptyList<KeyEvent>(), window)
-        assertEquals(listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP), box.received.map { it.action })
+        assertEquals("no key event: an app with no focused view drops them", emptyList<KeyEvent>(), box.received)
     }
 
     @Test
-    fun `holding Backspace repeats through the connection`() {
+    fun `holding Backspace repeats as text edits`() {
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN)
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN, repeat = 1)
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN, repeat = 2)
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_UP)
         assertEquals("he", box.text.toString())
-        assertEquals(listOf(0, 1, 2), box.received.filter { it.action == KeyEvent.ACTION_DOWN }.map { it.repeatCount })
+        assertEquals(emptyList<KeyEvent>(), box.received)
     }
 
     @Test
-    fun `with a selection Backspace deletes the selection, and the meta state goes along`() {
+    fun `with a selection Backspace deletes the selection`() {
         box.select(1, 4)
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN, meta = KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON)
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_UP)
         assertEquals("ho", box.text.toString())
-        assertTrue(box.received.first().isShiftPressed)
     }
 
     @Test
@@ -96,6 +95,27 @@ class BackspaceWithoutViewFocusTest {
         press(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.ACTION_DOWN)
         press(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.ACTION_UP)
         assertEquals("ello", box.text.toString())
+    }
+
+    @Test
+    fun `an emoji with a skin tone goes in one press`() {
+        val emojiBox = MessagesBox("hi \uD83D\uDC4D\uD83C\uDFFD")
+        val router = EditingKeyRouter()
+        assertTrue(router.route(emojiBox, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL), editableField = true, terminalMode = false))
+        assertEquals("hi ", emojiBox.text.toString())
+    }
+
+    @Test
+    fun `an empty box, or one that won't say what's in it, gets the key itself`() {
+        // A chip field deletes its last chip on the key; a web field answers "" to every read.
+        val empty = MessagesBox("")
+        val router = EditingKeyRouter()
+        assertTrue(router.route(empty, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL), editableField = true, terminalMode = false))
+        assertTrue(router.route(empty, KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL), editableField = true, terminalMode = false))
+        assertEquals(listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP), empty.received.map { it.action })
+        val silent = MessagesBox("hello").apply { readable = false }
+        assertTrue(router.route(silent, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL), editableField = true, terminalMode = false))
+        assertEquals(listOf(KeyEvent.ACTION_DOWN), silent.received.map { it.action })
     }
 
     @Test
@@ -128,15 +148,23 @@ class BackspaceWithoutViewFocusTest {
         assertFalse(router.route(box, KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL), editableField = true, terminalMode = false))
     }
 
-    /** A connected text box that applies the keys it is sent itself, with its own selection. */
+    /**
+     * A connected text box as a messaging app has it right after opening: text edits through the
+     * connection apply, but key events are dropped, because no view holds key focus yet (Titan,
+     * Google Messages, 2026-10-09). The first fix passed against a fake that applied key events,
+     * and failed on the phone.
+     */
     private class MessagesBox(initial: String) : InputConnection {
         val text = StringBuilder(initial)
         private var selStart = initial.length
         private var selEnd = initial.length
         val received = mutableListOf<KeyEvent>()
 
-        /** An inactive connection answers false to everything, as the IME side does once the editor is gone. */
+        /** An inactive connection answers false or null to everything, as the IME side does once the editor is gone. */
         var alive = true
+
+        /** False: the editor answers reads with null (some web fields do). */
+        var readable = true
 
         fun select(start: Int, end: Int) {
             selStart = start
@@ -147,42 +175,47 @@ class BackspaceWithoutViewFocusTest {
 
         override fun sendKeyEvent(event: KeyEvent): Boolean {
             if (!alive) return false
-            received += event
-            if (event.action != KeyEvent.ACTION_DOWN) return true
-            when {
-                selStart != selEnd -> text.delete(selStart, selEnd).also { selEnd = selStart }
-                event.keyCode == KeyEvent.KEYCODE_DEL && selStart > 0 -> {
-                    text.deleteCharAt(selStart - 1)
-                    selStart--
-                    selEnd = selStart
-                }
-                event.keyCode == KeyEvent.KEYCODE_FORWARD_DEL && selStart < text.length -> text.deleteCharAt(selStart)
-            }
+            received += event // delivered to the app, which has no focused view: nothing happens
             return true
         }
 
-        override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence = beforeCursor().takeLast(n)
-        override fun getTextAfterCursor(n: Int, flags: Int): CharSequence = text.substring(selEnd).take(n)
-        override fun getSelectedText(flags: Int): CharSequence? = if (selStart == selEnd) null else text.substring(selStart, selEnd)
+        override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence? = if (!alive || !readable) null else beforeCursor().takeLast(n)
+        override fun getTextAfterCursor(n: Int, flags: Int): CharSequence? = if (!alive || !readable) null else text.substring(selEnd).take(n)
+        override fun getSelectedText(flags: Int): CharSequence? = if (!alive || !readable || selStart == selEnd) null else text.substring(selStart, selEnd)
         override fun getCursorCapsMode(reqModes: Int): Int = 0
         override fun getExtractedText(request: ExtractedTextRequest?, flags: Int): ExtractedText? = null
-        override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean = true
-        override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean = true
-        override fun setComposingText(text: CharSequence, newCursorPosition: Int): Boolean = true
-        override fun setComposingRegion(start: Int, end: Int): Boolean = true
-        override fun finishComposingText(): Boolean = true
-        override fun commitText(text: CharSequence, newCursorPosition: Int): Boolean = true
-        override fun commitCompletion(text: CompletionInfo?): Boolean = true
-        override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean = true
-        override fun setSelection(start: Int, end: Int): Boolean = true
-        override fun performEditorAction(editorAction: Int): Boolean = true
-        override fun performContextMenuAction(id: Int): Boolean = true
-        override fun beginBatchEdit(): Boolean = true
-        override fun endBatchEdit(): Boolean = true
-        override fun clearMetaKeyStates(states: Int): Boolean = true
-        override fun reportFullscreenMode(enabled: Boolean): Boolean = true
-        override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = true
-        override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean = true
+        override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+            if (!alive) return false
+            val start = (selStart - beforeLength).coerceAtLeast(0)
+            val end = (selEnd + afterLength).coerceAtMost(text.length)
+            text.delete(selEnd, end)
+            text.delete(start, selStart)
+            selStart = start
+            selEnd = start
+            return true
+        }
+        override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean = alive
+        override fun setComposingText(text: CharSequence, newCursorPosition: Int): Boolean = alive
+        override fun setComposingRegion(start: Int, end: Int): Boolean = alive
+        override fun finishComposingText(): Boolean = alive
+        override fun commitText(text: CharSequence, newCursorPosition: Int): Boolean {
+            if (!alive) return false
+            this.text.replace(selStart, selEnd, text.toString())
+            selStart += text.length
+            selEnd = selStart
+            return true
+        }
+        override fun commitCompletion(text: CompletionInfo?): Boolean = alive
+        override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean = alive
+        override fun setSelection(start: Int, end: Int): Boolean = alive
+        override fun performEditorAction(editorAction: Int): Boolean = alive
+        override fun performContextMenuAction(id: Int): Boolean = alive
+        override fun beginBatchEdit(): Boolean = alive
+        override fun endBatchEdit(): Boolean = alive
+        override fun clearMetaKeyStates(states: Int): Boolean = alive
+        override fun reportFullscreenMode(enabled: Boolean): Boolean = alive
+        override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = alive
+        override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean = alive
         override fun getHandler(): Handler? = null
         override fun closeConnection() = Unit
         override fun commitContent(inputContentInfo: InputContentInfo, flags: Int, opts: Bundle?): Boolean = false
