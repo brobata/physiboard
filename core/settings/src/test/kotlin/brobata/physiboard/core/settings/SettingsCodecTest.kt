@@ -1,5 +1,6 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.actions.feedback.HapticIntensity
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
@@ -107,6 +108,7 @@ class SettingsCodecTest {
         feedback = FeedbackPrefs(
             tapHapticUseSystem = false, tapHapticDurationMs = 40,
             typingSoundMode = TypingSoundMode.TYPEWRITER, typingSoundOutputMode = TypingSoundOutputMode.NOTIFICATION,
+            keyHaptics = true, keyHapticStrength = HapticIntensity.STRONG, eventHaptics = false,
         ),
         privacy = PrivacyPrefs(privateMode = true, cleanLinks = false),
         shell = ShellState(tutorialCompleted = true, lastSeenWhatsNewVersion = "3.0.0", dismissedReleases = listOf("v3.0.1", "v3.0.2"), untestedDeviceNoticeSeen = true),

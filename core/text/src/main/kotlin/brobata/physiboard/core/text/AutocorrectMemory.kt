@@ -118,7 +118,7 @@ object AutocorrectUndo {
         if (trailing.any { !(it.isWhitespace() || it in WordChars.BOUNDARY_PUNCTUATION) }) return null
 
         val deleteCount = last.replacement.length + trailing.length
-        val ops = listOf(EditorOp.DeleteSurrounding(deleteCount, 0), EditorOp.CommitText(last.original))
+        val ops = listOf(EditorOp.DeleteSurrounding(deleteCount, 0), EditorOp.CommitText(last.original), EditorOp.HapticUndo)
         // A mix-up fix replaces the previous word and the current one together ("it's tail" ->
         // "its tail"); undoing it rejects each word, so the next boundary neither redoes the
         // mix-up nor re-corrects the word after it. spec: SS7.5 step 3, SS10.

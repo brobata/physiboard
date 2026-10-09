@@ -32,6 +32,10 @@ import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.clipboard.ClipCapture
 import brobata.physiboard.core.actions.commands.CommandIds
 import brobata.physiboard.core.actions.emoji.SkinTone
+import brobata.physiboard.core.actions.feedback.HapticEvent
+import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
+import brobata.physiboard.core.actions.feedback.HapticLanguage
+import brobata.physiboard.core.actions.feedback.ModifierLevels
 import brobata.physiboard.core.actions.feedback.SoundGroup
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
@@ -146,6 +150,7 @@ import brobata.physiboard.ime.actions.GifPreviews
 import brobata.physiboard.ime.actions.GifSender
 import brobata.physiboard.ime.actions.GifShelfStore
 import brobata.physiboard.ime.actions.SymGridPanelController
+import brobata.physiboard.ime.feedback.HapticPlayer
 import brobata.physiboard.ime.actions.SymPageChooserController
 import brobata.physiboard.ime.actions.VariationChooserController
 import brobata.physiboard.ime.actions.TypingSoundPlayer
@@ -473,6 +478,19 @@ internal class KeyboardSession(
         }.getOrDefault(emptySet())
     }
 
+    /**
+     * keys-and-modifiers.md SS13.5: the haptic language. Built once (capabilities queried, every
+     * effect prebuilt), released in [onServiceDestroyed].
+     */
+    private val haptics = HapticPlayer(service).also { player -> DiagnosticLog.i(TAG) { "haptics: ${player.describe()}" } }
+
+    /**
+     * SS13.5, "one event per keystroke": while [processKeyStroke] applies a result, an editor op's
+     * haptic is held here instead of played, so the keystroke's strongest event plays alone.
+     */
+    private var collectingHaptic = false
+    private var collectedHaptic: HapticEvent? = null
+
     /** spec SS9.2: the suggestion-slot tap vibration rows. */
     private var tapHapticUseSystem = true
     private var tapHapticDurationMs = TapVibration.DEFAULT_DURATION_MS
@@ -553,6 +571,7 @@ internal class KeyboardSession(
         runCatching { fillPage.hide() }.onFailure { error -> Log.e(TAG, "fill page teardown crashed", error) }
         runCatching { service.unregisterReceiver(runCommandNowReceiver) }.onFailure { error -> Log.e(TAG, "run-command receiver teardown crashed", error) }
         settingsScope.cancel()
+        runCatching { haptics.release() }
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         handler.removeCallbacksAndMessages(selectionSyncToken)
@@ -797,6 +816,7 @@ internal class KeyboardSession(
     private fun reportPersonalWordSaveResult(saved: Boolean) {
         if (saved) return
         Log.e(TAG, "personal dictionary save failed")
+        haptics.play(HapticEvent.REFUSAL)
         runCatching {
             android.widget.Toast.makeText(service, "Personal dictionary: save failed", android.widget.Toast.LENGTH_SHORT).show()
         }.onFailure { error -> Log.e(TAG, "personal dictionary save-failed toast crashed", error) }
@@ -963,6 +983,9 @@ internal class KeyboardSession(
         quickLauncher.executor = commandExecutor
         tapHapticUseSystem = settings.feedback.tapHapticUseSystem
         tapHapticDurationMs = settings.feedback.tapHapticDurationMs
+        haptics.keyHaptics = settings.feedback.keyHaptics
+        haptics.keyStrength = settings.feedback.keyHapticStrength
+        haptics.eventHaptics = settings.feedback.eventHaptics
         // spec: expansion-clipboard-pickers-launcher.md SS9.1: "rebuilt whenever ... changes".
         if (settings.feedback.typingSoundMode != typingSoundMode || settings.feedback.typingSoundOutputMode != typingSoundOutputMode) {
             typingSoundMode = settings.feedback.typingSoundMode
@@ -1929,6 +1952,9 @@ internal class KeyboardSession(
         if (stroke.edge == KeyEdge.DOWN && TypingSounds.shouldPlay(typingSoundMode, stroke.key, stroke.repeatCount, editableFieldActive = true)) {
             typingSoundPlayer?.play(SoundGroup.forKey(stroke.key))
         }
+        // keys-and-modifiers.md SS13.5: the key tick goes first, before any work, so it lands with
+        // the finger; a stronger event this keystroke turns out to have replaces it below.
+        if (stroke.edge == KeyEdge.DOWN && HapticLanguage.keyTickApplies(stroke.key, stroke.repeatCount)) haptics.play(HapticEvent.KEY)
         // Always-on timing of the one path the user feels. Two clock reads and a comparison cost
         // nothing; a keystroke that took long enough to be noticed says where it went. The
         // maintainer could out-type this keyboard (2026-09-27) and guessing at the cause twice
@@ -1957,7 +1983,13 @@ internal class KeyboardSession(
         if (stroke.key == KeyId.Modifier(ModifierKey.SYM)) pipeline.fillPresence = fillPresenceNow()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val tPipeline = System.nanoTime()
-        val consumed = applyResult(ic, result, readout, keyTypes = event?.typedCharacter())
+        collectingHaptic = true
+        collectedHaptic = null
+        val consumed = try {
+            applyResult(ic, result, readout, keyTypes = event?.typedCharacter())
+        } finally {
+            collectingHaptic = false
+        }
         // spec expansion-clipboard-pickers-launcher.md SS4.7: a letter that just typed an emoji
         // which takes tones (an Emoji page key, a Sym chord) arms the hold that opens the chooser.
         if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key is KeyId.Letter) {
@@ -1982,18 +2014,29 @@ internal class KeyboardSession(
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
         result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
         // spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on; none when it turns off."
-        if (result.navModeTransition == NavModeTransition.ENTERED) performHaptic(NAV_MODE_HAPTIC_MS)
+        var strokeHaptic = collectedHaptic
+        if (result.navModeTransition == NavModeTransition.ENTERED) strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticEvent.NAV_MODE)
         // spec trackpad-caret-nav.md SS5.5's `native_ctrl` row, "with no field": nav mode's Ctrl
         // is a latch, not a physical hold, so the raw stroke carries no Ctrl meta bit for the app
         // to see; this synthesizes the real combo instead of the bare letter that used to reach it.
         result.forwardAsCtrlCombo?.let { key -> runCatching { sendCtrlCombo(key, event, withShift = stroke.meta.shift && currentFieldKind == FieldKind.RAW_MODE_APP) }.onFailure { error -> Log.e(TAG, "Ctrl combo synth crashed", error) } }
         result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
         // layers-sym-alt.md SS5.2: Sym in an app whose text box just went away is meant for that box.
-        if (result.symWantsTheField) runCatching { Toast.makeText(service, SymFieldBounce.TAP_THE_BOX, Toast.LENGTH_SHORT).show() }
+        if (result.symWantsTheField) {
+            strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticEvent.REFUSAL)
+            runCatching { Toast.makeText(service, SymFieldBounce.TAP_THE_BOX, Toast.LENGTH_SHORT).show() }
+        }
         if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
         // A Sym release that opens or closes a page has no ops, but the strip must follow it
         // (status-bar.md 3.5: it collapses under a page), and before the panel is placed.
         val symPageChanged = pipeline.currentSymPage != symPageBefore
+        // keys-and-modifiers.md SS13.5: what a modifier press did to the modifier state, what Sym
+        // did to the pages, and whatever the edit itself asked for; the strongest plays.
+        if (stroke.key is KeyId.Modifier) {
+            strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticLanguage.modifierChange(glyphBefore.modifierLevels(), pipeline.modifierGlyphInput().modifierLevels()))
+        }
+        if (symPageChanged) strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticLanguage.symChange(symPageBefore, pipeline.currentSymPage))
+        strokeHaptic?.let(haptics::play)
         if (symPageChanged) refreshCandidatesStrip()
         syncSymPanels()
         // spec SS2.4: the lookup is "scheduled, coalesced to one run 24 ms after the last request: after every hardware key release that is not a pure modifier".
@@ -2158,6 +2201,7 @@ internal class KeyboardSession(
             if (before == committed) ic.deleteSurroundingText(committed.length, 0)
             ic.commitText(form, 1)
             ic.endBatchEdit()
+            haptics.play(HapticEvent.PICK)
             noteFieldEditedDuringDictation()
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "skin tone replace crashed", error) }
@@ -2789,6 +2833,13 @@ internal class KeyboardSession(
         }.onFailure { error -> Log.e(TAG, "trackpad replay (down+up) crashed", error) }
     }
 
+    /** keys-and-modifiers.md SS13.5: the latching levels only; a physical hold is not a level. */
+    private fun ModifierGlyphInput.modifierLevels(): ModifierLevels = ModifierLevels(
+        shift = ModifierLevels.of(locked = capsLockOn, oneShot = shiftOneShotArmed),
+        alt = ModifierLevels.of(locked = altLatched, oneShot = altOneShotArmed),
+        ctrl = ModifierLevels.of(locked = ctrlLatchedNotNavMode, oneShot = ctrlOneShotArmed),
+    )
+
     private fun onLongPressTick() {
         runCatching {
             val ic = service.currentInputConnection ?: return@runCatching
@@ -2796,6 +2847,8 @@ internal class KeyboardSession(
             val readout = ic.readEditorState(nowMs, wholeDocument = false, fallbackCursorAbsolute = lastReportedSelStart)
             val result = pipeline.checkLongPressTick(nowMs, readout.snapshot) ?: return@runCatching
             applyResult(ic, result, readout)
+            // keys-and-modifiers.md SS13.5: a long press that fired (its character, or the chooser) is felt.
+            if (result.ops.isNotEmpty() || result.variationChoice != null) haptics.play(HapticEvent.LONG_PRESS)
             // layers-sym-alt.md SS8.4: the key is still held, so the chooser's pick keys work at once.
             result.variationChoice?.let { choice ->
                 if (variationChooserEnabled) variationChooser.open(choice.key, choice.choices, choice.committed)
@@ -2815,6 +2868,7 @@ internal class KeyboardSession(
         val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = false, fallbackCursorAbsolute = lastReportedSelStart)
         val result = pipeline.replaceVariation(previous, picked, readout.snapshot) ?: return@runCatching false
         applyResult(ic, result, readout)
+        haptics.play(HapticEvent.PICK)
         refreshCandidatesStrip()
         true
     }.getOrElse { error ->
@@ -2849,7 +2903,7 @@ internal class KeyboardSession(
                 windowStartOffset = readout.documentStartOffset,
                 cursorAbsolute = readout.cursorAbsolute,
                 sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
-                haptic = ::performHaptic,
+                haptic = ::onEditorHaptic,
                 dispatchMediaKey = ::dispatchMediaKey,
                 typeAsKeys = characterDelivery(
                     altLayerStroke = result.altLayerStroke,
@@ -2931,7 +2985,17 @@ internal class KeyboardSession(
             is EnterIntent.Swallow, EnterIntent.Decline -> false
         }
 
-    /** spec: text-input.md's several "trigger a haptic on replacement" rules. Provisional: the real duration/style is a theme setting (status-bar.md SS9), not wired yet (no `:settings` module). */
+    /**
+     * text-input.md's "trigger a haptic on replacement" rules and Backspace's undo, as the haptic
+     * language's CORRECTION and CORRECTION_UNDONE (keys-and-modifiers.md SS13.5): held for the
+     * keystroke's own event while [processKeyStroke] applies a result, played at once otherwise.
+     */
+    private fun onEditorHaptic(undo: Boolean) {
+        val event = if (undo) HapticEvent.CORRECTION_UNDONE else HapticEvent.CORRECTION
+        if (collectingHaptic) collectedHaptic = HapticLanguage.stronger(collectedHaptic, event) else haptics.play(event)
+    }
+
+    /** The strip's own fixed pulses (status-bar.md SS6.1, expansion-clipboard-pickers-launcher.md SS9.2), outside the haptic language. */
     private fun performHaptic(durationMs: Long = HAPTIC_DURATION_MS) {
         runCatching { vibrator?.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)) }
     }
@@ -2961,7 +3025,10 @@ internal class KeyboardSession(
             }.onFailure { error -> Log.e(TAG, "dictation trigger crashed", error) }
             // spec: keys-and-modifiers.md SS4.4: the Sym hold "launches the assistant already listening"; "if no assistant is available... a toast".
             KeyCommands.LAUNCH_ASSISTANT -> runCatching {
-                if (!startVoiceAssistant()) android.widget.Toast.makeText(service, brobata.physiboard.core.actions.commands.CommandFailure.NO_VOICE_ASSISTANT, android.widget.Toast.LENGTH_SHORT).show()
+                if (!startVoiceAssistant()) {
+                    haptics.play(HapticEvent.REFUSAL)
+                    android.widget.Toast.makeText(service, brobata.physiboard.core.actions.commands.CommandFailure.NO_VOICE_ASSISTANT, android.widget.Toast.LENGTH_SHORT).show()
+                }
             }.onFailure { error -> Log.e(TAG, "assistant launch crashed", error) }
             // spec keys-and-modifiers.md SS7.5: the three layout-switch chords, once `:core:keys`
             // has already decided one fires (LayerResolver.Context.canSwitchLayout).
@@ -3502,9 +3569,6 @@ internal class KeyboardSession(
 
         /** spec: status-bar.md SS6.1, "undo and redo give the 25 ms haptic instead". */
         const val STRIP_FIXED_HAPTIC_MS = 25L
-
-        /** spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on". */
-        const val NAV_MODE_HAPTIC_MS = 70L
 
         /** spec: text-input.md SS2's one unified 240-character read. */
         const val OWN_SHOW_REQUEST_WINDOW_MS = 1_000L

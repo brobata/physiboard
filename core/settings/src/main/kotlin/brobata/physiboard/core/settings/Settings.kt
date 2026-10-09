@@ -1,6 +1,7 @@
 package brobata.physiboard.core.settings
 
 import brobata.physiboard.core.actions.emoji.SkinTone
+import brobata.physiboard.core.actions.feedback.HapticIntensity
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
@@ -750,6 +751,12 @@ data class FeedbackPrefs(
     val tapHapticDurationMs: Long = 25,
     val typingSoundMode: TypingSoundMode = TypingSoundMode.OFF,
     val typingSoundOutputMode: TypingSoundOutputMode = TypingSoundOutputMode.MEDIA,
+    /** `key_haptics` (3.2): a tick on every ordinary key down. Off: the Titan's keys already click under the finger (keys-and-modifiers.md SS13.5). */
+    val keyHaptics: Boolean = false,
+    /** `key_haptic_strength` (3.2): how firm that tick is. */
+    val keyHapticStrength: HapticIntensity = HapticIntensity.LIGHT,
+    /** `event_haptics` (3.2): the rest of the haptic language, in the keyboard and in this app (SS13.5). */
+    val eventHaptics: Boolean = true,
 )
 
 /** `typing_sound_output_mode`. spec: settings-catalog.md SS2.13; "anything else reads as `media`". */

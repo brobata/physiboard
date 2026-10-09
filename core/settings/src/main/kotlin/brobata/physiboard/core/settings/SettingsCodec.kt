@@ -1,6 +1,7 @@
 package brobata.physiboard.core.settings
 
 import brobata.physiboard.core.actions.emoji.SkinTone
+import brobata.physiboard.core.actions.feedback.HapticIntensity
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
@@ -210,6 +211,9 @@ object SettingsKeys {
     const val TAP_HAPTIC_DURATION = "tap_haptic_duration_ms"
     const val TYPING_SOUND_MODE = "typing_sound_mode"
     const val TYPING_SOUND_OUTPUT_MODE = "typing_sound_output_mode"
+    const val KEY_HAPTICS = "key_haptics"
+    const val KEY_HAPTIC_STRENGTH = "key_haptic_strength"
+    const val EVENT_HAPTICS = "event_haptics"
 
     // SS2.17 privacy (3.0's own rows)
     const val PRIVATE_MODE = "private_mode"
@@ -821,6 +825,9 @@ object SettingsCodec {
         put(SettingsKeys.TAP_HAPTIC_DURATION, f.tapHapticDurationMs.toString())
         put(SettingsKeys.TYPING_SOUND_MODE, f.typingSoundMode.storedValue)
         put(SettingsKeys.TYPING_SOUND_OUTPUT_MODE, f.typingSoundOutputMode.storedValue)
+        put(SettingsKeys.KEY_HAPTICS, f.keyHaptics.toString())
+        put(SettingsKeys.KEY_HAPTIC_STRENGTH, f.keyHapticStrength.storedValue)
+        put(SettingsKeys.EVENT_HAPTICS, f.eventHaptics.toString())
     }
 
     private fun readFeedback(r: FlatReader): FeedbackPrefs {
@@ -830,6 +837,9 @@ object SettingsCodec {
             tapHapticDurationMs = r.long(SettingsKeys.TAP_HAPTIC_DURATION, d.tapHapticDurationMs, 5L..80L),
             typingSoundMode = TypingSoundMode.fromStored(r.string(SettingsKeys.TYPING_SOUND_MODE)),
             typingSoundOutputMode = TypingSoundOutputMode.fromStored(r.string(SettingsKeys.TYPING_SOUND_OUTPUT_MODE)),
+            keyHaptics = r.bool(SettingsKeys.KEY_HAPTICS, d.keyHaptics),
+            keyHapticStrength = HapticIntensity.fromStored(r.string(SettingsKeys.KEY_HAPTIC_STRENGTH)) ?: d.keyHapticStrength,
+            eventHaptics = r.bool(SettingsKeys.EVENT_HAPTICS, d.eventHaptics),
         )
     }
 

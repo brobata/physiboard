@@ -73,7 +73,7 @@ class BackspaceTest {
         val memory = AutocorrectMemory().afterReplacement("teh", "the")
         val decision = Backspace.decide(hasSelection = false, shiftHeld = false, altActive = false, noAlternatives, charsBeforeCursor = 4, memory, undoTextBeforeCursor = "the ")
         val undo = (decision as Backspace.Decision.Undo).result
-        assertEquals(listOf(EditorOp.DeleteSurrounding(4, 0), EditorOp.CommitText("teh")), undo.ops)
+        assertEquals(listOf(EditorOp.DeleteSurrounding(4, 0), EditorOp.CommitText("teh"), EditorOp.HapticUndo), undo.ops)
         assertEquals(true, undo.memory.isRejected("teh"))
         assertEquals("teh", undo.addWordCandidate)
     }

@@ -63,8 +63,11 @@ sealed class EditorOp {
      */
     object SendSpaceKeyFallback : EditorOp()
 
-    /** Fires the keyboard's haptic feedback: every autocorrect commit and strip tap does this. */
+    /** Fires the keyboard's correction haptic: every autocorrect commit and strip tap does this (keys-and-modifiers.md SS13.5, `CORRECTION`). */
     object Haptic : EditorOp()
+
+    /** Fires the haptic for a correction Backspace just undid, distinct from [Haptic] (keys-and-modifiers.md SS13.5, `CORRECTION_UNDONE`). */
+    object HapticUndo : EditorOp()
 
     /**
      * Deliberately does nothing to the field: the physical key (or its software equivalent) should

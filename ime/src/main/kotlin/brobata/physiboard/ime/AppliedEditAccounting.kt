@@ -30,7 +30,7 @@ internal object AppliedEditAccounting {
             // spec: keys-and-modifiers.md SS7.3: a DPAD/Tab/Escape send, a copy/paste/cut/undo or a
             // media key acts on the app's own document (or nothing at all), never through this
             // keyboard's own text window, so it is not "our" text change for this accounting.
-            is EditorOp.SetComposingRegion, is EditorOp.SetSelection, EditorOp.FinishComposing, EditorOp.Haptic, EditorOp.PassThroughKey,
+            is EditorOp.SetComposingRegion, is EditorOp.SetSelection, EditorOp.FinishComposing, EditorOp.Haptic, EditorOp.HapticUndo, EditorOp.PassThroughKey,
             is EditorOp.SendKey, is EditorOp.PerformEditorAction, is EditorOp.DispatchMediaKey,
             -> false
         }
@@ -92,7 +92,7 @@ internal object AppliedEditAccounting {
                 EditorOp.FinishComposing -> composingStart = null
                 is EditorOp.SetSelection -> cursor = windowStartOffset + op.start
                 EditorOp.SendSpaceKeyFallback -> cursor += 1
-                EditorOp.Haptic, EditorOp.PassThroughKey,
+                EditorOp.Haptic, EditorOp.HapticUndo, EditorOp.PassThroughKey,
                 is EditorOp.SendKey, is EditorOp.PerformEditorAction, is EditorOp.DispatchMediaKey,
                 -> Unit
             }

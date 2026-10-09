@@ -101,7 +101,8 @@ internal fun InputConnection.applyEditorOps(
     windowStartOffset: Int,
     cursorAbsolute: Int,
     sendSpaceKeyFallback: () -> Unit,
-    haptic: () -> Unit,
+    /** keys-and-modifiers.md SS13.5: true for [EditorOp.HapticUndo], false for [EditorOp.Haptic]. */
+    haptic: (undo: Boolean) -> Unit,
     dispatchMediaKey: (EditEffect) -> Unit = {},
     typeAsKeys: ((Char) -> Boolean)? = null,
 ) {
@@ -128,7 +129,8 @@ internal fun InputConnection.applyEditorOps(
                 }
                 is EditorOp.SetSelection -> setSelection(windowStartOffset + op.start, windowStartOffset + op.end)
                 EditorOp.SendSpaceKeyFallback -> sendSpaceKeyFallback()
-                EditorOp.Haptic -> haptic()
+                EditorOp.Haptic -> haptic(false)
+                EditorOp.HapticUndo -> haptic(true)
                 EditorOp.PassThroughKey -> Unit // KeyboardPipeline never lets this reach here alone; see toPipelineResult.
                 is EditorOp.SendKey -> sendEffectKeyEvent(op.effect, op.withShift, op.withCtrl)
                 is EditorOp.PerformEditorAction -> performContextMenuAction(EFFECT_TO_MENU_ID[op.effect] ?: continue)
