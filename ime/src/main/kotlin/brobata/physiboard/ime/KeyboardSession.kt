@@ -1352,10 +1352,10 @@ internal class KeyboardSession(
         when (decision) {
             ModifierHoldPolicy.Decision.ACQUIRE -> {
                 handler.removeCallbacks(modifierHoldReleaseRunnable)
-                // A hold dictation already has is the system's "shown" already; no second request.
-                val alreadyShown = shownHold.isHeld
                 shownHold.acquire(ShownHoldOwner.MODIFIER_ICON)
-                if (!alreadyShown) requestOwnShow()
+                // Asked even when dictation already holds: an app may have hidden the keyboard
+                // under the session, and the request is idempotent for the system.
+                requestOwnShow()
             }
             ModifierHoldPolicy.Decision.REASSERT -> {
                 handler.removeCallbacks(modifierHoldReleaseRunnable)
