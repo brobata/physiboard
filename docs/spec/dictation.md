@@ -123,7 +123,7 @@ a fresh one (D20).
 | Any key other than a modifier goes down, with `dictation_stop_on_typing` on (default) | immediate end, recognizer cancelled; the key then does its usual work (a letter types, Enter sends, Backspace deletes) | committed as shown, so what the user saw is what the key acts on |
 | The silence limit (6.4) | graceful stop | committed |
 | The 10-minute session cap (6.4) | graceful stop | committed |
-| Another app takes audio focus for good (6.7) | immediate end | committed |
+| A phone call rings or is answered (6.7) | immediate end | committed |
 | The app empties the field itself: a send button. Seen as the caret at 0 with nothing before or after it, or the same app's field restarting empty, in a field this session has put text into (finished or still composing) and that has since reported a caret past 0; never in a field that cannot hold a composing region (a terminal empties its box after every character). Checked again, by reading the field, before any result is applied over a composing partial, whatever the phase | immediate end, recognizer cancelled; nothing the engine says afterwards lands (the sent words went with the message) | cleared (nothing is there) |
 | The field has text but no longer holds the composing partial at the caret (read before a result is applied) | the utterance is dead: that result and every later one of it write nothing (7.4); the session goes on, or ends if it was stopping | nothing re-inserted |
 | Real error (6.6) | session ends; message | committed |
@@ -392,7 +392,10 @@ last words still land:
   limit is measured from the last of those, or from the session start. The engine's beginning of
   speech does NOT count: its voice detector fires on any sound (music, a room, breathing; the
   Titan log of 2026-10-07 shows it every half second), and counting it meant the limit never
-  ran out (amended 2026-10-07). So a 20 s think between two sentences never ends a
+  ran out (amended 2026-10-07). Before the first words the limit is measured from the start
+  cue rather than the trigger (users start talking at the cue, and a cue that waited for a
+  car's microphone, 6.10, must not have spent the allowance), and on a car or Bluetooth route
+  it is at least 6 s until the first words arrive (6.10). So a 20 s think between two sentences never ends a
   session with the setting at 0, and ends it only with the setting at 20 s or below.
 - **Session cap**: 10 minutes after the start, whatever is heard.
 
@@ -435,6 +438,7 @@ For every engine error the rules are tried top to bottom; the first match wins.
 | 2 | segmented refusal (6.3) | re-issue plain; latch; log line |
 | 3 | quiet error (7 or 6) | commit the partial; re-listen at once, or after 500 ms if it came within 700 ms of the request and brought no words; the fifth fast failure in a row ends the session with "Speech recognition error." (6.2) |
 | 4 | busy (8) | retry after 300 ms; the fifth in a row ends the session with "Speech recognition error." |
+| 4b | audio (3) | commit the partial; listen again after 300 ms; counted with the fast failures, the fifth in a row ends the session with "Speech recognition error." On a phone the recording fails when its input route changes under it (a Bluetooth microphone coming or going, 6.10), which is not the end of the session |
 | 5 | language (12 or 13) | per 4.3: once online, or end with the pack message |
 | 6 | anything else | commit the partial; end the session with the message below |
 
@@ -461,9 +465,30 @@ With the keyboard's request underneath, the engine's own request takes focus fro
 (a transient loss the keyboard ignores) and hands it back to the keyboard when it ends, so the
 player stays paused for the whole session and resumes once, at the stop cue.
 
-A **permanent** loss (`AUDIOFOCUS_LOSS`: a call, a video the user started) ends the session at
-once, committing the words on screen. A failed focus request (during a call, for instance) is
-logged and the session goes on without it.
+What ends the session is a **phone call**, not a focus loss as such: any loss while the audio
+mode says a call is ringing or running (`MODE_RINGTONE`, `MODE_IN_CALL`, `MODE_CALL_SCREENING`),
+or the mode changing to one of those (`AudioManager.addOnModeChangedListener`), ends it at once
+with the words on screen committed (a call already running when the session starts is only
+traced: that session was started on purpose). Telecom takes **transient** focus for the ringtone and the
+call, so the earlier rule (end on a permanent loss only) never saw a call at all.
+`MODE_IN_COMMUNICATION` is not a call here: a recognizer recording over a Bluetooth headset can
+set it.
+
+A **permanent** loss with no call is a media app taking the audio back while the user is still
+talking. In a car this is common: Spotify asks for focus again on its own, and a head unit sends
+"play" to the phone when its hands-free link drops, which makes the player take focus. The
+earlier rule ("Another app takes audio focus for good: immediate end") turned that into the
+"it cuts me off in the car" report (2026-10-09). Now the session goes on: the first such loss
+in a session is answered by taking the focus again (log line "another app took the audio
+mid-session; taking it back once"), so the player pauses again and the engine's per-request
+focus keeps returning to the keyboard rather than to the player; a second one is left alone
+("another app took the audio again; listening on without it"), the music plays, and the
+recognizer copes with it. No tug of war, and **the music is resumed exactly once**: by the
+keyboard's single release at the end when the keyboard still holds the focus, by the player
+itself when it took it for good, never both. A loss while the session is already stopping only
+records that nothing is held. A failed focus request is traced and the session goes on without
+it. The request keeps usage media, content type speech; whether Android Auto maps it better as
+`USAGE_ASSISTANT` is open until an in-car trace shows how the projection treats it.
 
 ### 6.8 The microphone and the keyboard window
 
@@ -526,6 +551,64 @@ release log stripping leaves alone): the event (a result as its text length and 
 never the words), the text operations applied (compose/finish/commit with lengths), the effects
 and the phase. Two callbacks carrying the same text have the same hash; that is what the
 2026-10-07 investigations needed and the engine's own log could not say.
+
+### 6.10 The car: Bluetooth, Android Auto and music
+
+The maintainer, 2026-10-09: "I was having issues in the car with Audible/Spotify playing:
+cutting off or not starting correctly." The truck connects over Bluetooth (hands-free and
+media) and, when it works, Android Auto over USB. Three things differ there, and the keyboard
+handles each without touching the audio routing itself.
+
+**Which microphone.** The recognizer records with its own audio source (Google's service uses
+voice recognition); the platform's audio policy picks the input device. A connected hands-free
+device does not take the recording by itself: the policy moves voice recognition to the
+Bluetooth microphone only once a Bluetooth SCO link is up for communication (an app's
+`setCommunicationDevice`, or the older `startBluetoothSco`). Google's own "record through
+Bluetooth headsets" option, a call, or Android Auto can bring that link up; the link takes
+about a second and is silence until it is up, and the head unit usually mutes the media stream
+while it is open. The keyboard **never** starts SCO, never sets a communication device and
+never asks for a route: the recognizer's input is the policy's choice, and fighting Android
+Auto or a head unit for the microphone would only make it worse.
+
+**The start cue waits for the actual route.** At the trigger, if a Bluetooth microphone is
+connected (an input of type `TYPE_BLUETOOTH_SCO` is listed) or SCO is already connecting, the
+cue is held: the engine's first audio report is remembered, and the cue plays when the first
+recording the system reports (`AudioManager.AudioRecordingCallback`, its input device) is on
+another microphone (the phone's own: at once), or when the SCO link reports itself connected
+(`ACTION_SCO_AUDIO_STATE_UPDATED`), disconnected or failed, or after 2.5 s at most (log line
+"the input route did not settle in time; cueing anyway"). The 300 ms fallback of 6.1 defers to
+this wait. Words arriving before the route settles end the wait with no start cue (a buzz
+in the middle of a sentence helps nobody); the stop cue still plays at the end. A stop during
+the wait drops it. With no Bluetooth microphone connected nothing waits. Anything the engine reports
+while the route comes up is handled as usual (a silent first request's "no speech" is
+re-listened).
+
+**The first words come later.** With a car or Bluetooth route at the trigger (the phone in car
+mode, which Android Auto is expected to turn on, the trace's `route=` shows it, or any
+Bluetooth audio device connected), the silence limit
+before the first words is at least 6 s from the cue; after the first words it is the setting
+again. The 2.5 s default could end a session before a slow first partial arrived.
+
+**The route changes mid-session.** A SCO link coming up or going away under a running recording
+can fail it with an audio error: 6.6 rule 4b keeps the words and listens again.
+
+**Assistant and Android Auto.** A steering-wheel press or "Hey Google" can hold the recognizer
+or the microphone. A busy recognizer is retried (6.6 rule 4); a recording the system silences
+for another capture shows in the trace as `SILENCED`, and the session runs into its silence
+limit as with any silence. Car mode and projection change no other rule.
+
+**The trace.** While a session exists the keyboard watches, and writes to
+`PhysiBoardDictationTrace` (6.9), lines starting `audio`: at the start the route class, every
+input and output device type, the communication device, the SCO state, the audio mode and
+media playback (`music=` active, number of players, number playing media); every change of the
+device list, of the SCO state, of the mode and of playback; every recording the system reports,
+as its audio source, input device type and whether it is silenced; every focus change of the
+session's own request, with its likely source (`call`, `recognizer` for a transient loss within
+400 ms of a request, `media` when music is playing, `returned` for a gain, else `other`), the
+time since the last request and the mode; every focus request with its result. Device types,
+states and counts only: no audio, no words, no other app's identity (the platform anonymises
+other apps' recordings and players for a keyboard anyway). No permission is needed for any of
+it.
 
 ## 7. Text insertion
 
@@ -865,6 +948,7 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | D23 | 2026-10-07 17:09, Chrome tab: at every request `W/Bundle: Key android.speech.extras.SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS expected Integer but value was a java.lang.Long. The default value 0 was returned` (stack: `Intent.getIntExtra` from `GoogleTTSRecognitionService.onStartListening`) then `E/RecognitionServiceInten: EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS is not set with positive value; ignoring EXTRA_SEGMENTED_SESSION`; `applicationDomain: AMBIENT_ONESHOT` on every request; no `App op 27` line; the offline engine ran (`Offline recognizer`, en-US pack v3072); each request ended at the first ~1 s pause (`SODA session stopped due to: MIC_END_OF_DATA` after 4.3 and 5.4 s) and the next began ~40 ms later. The third request (29.515) ran 10 020 ms of audio with `onStartOfSpeech` at 31.833 and ended with `Final recognition has been created. Size: 0` and NO_SPEECH_DETECTED, with no partial ever reported; a Chrome field re-attach (`SHOW_SOFT_INPUT` + `ATTACH_NEW_INPUT`, 35.47) and the keyboard's own show request fell inside it, and nothing on the keyboard's side cancelled, stopped or restarted the request (its focus held from 19.524 to 42.046). The engine's `SodaDetectionHandler#connect: enableConcurrency: true`. | scratchpad `third.log` lines 28235 to 30755 |
 | D24 | 2026-10-07 17:21, PersaLink, the first build sending the lengths as ints: `applicationDomain: AMBIENT_CONTINUOUS`; one request from 17.940 ran across every pause with `onStartOfSpeech`/`onEndOfSpeech` pairs and `#handlePartialResult` throughout; finals created with text at 30.643 (131 bytes), 37.185 (60) and 48.987 (128), of which only the first and third reached `#handleFinalResult`/`#onResults` (31.027, 49.024; a third delivery at 52.043); `onSegmentResults` never. The keyboard's `StartListening` after the 31.027 result produced no `onStartListening` at all (ignored by the service) but had set the latch. Messages, 17:24 (screenshot): mid-sentence capitals at every result start, the last sentence re-inserted into the compose box after a send, the microphone indicator still on. | scratchpad `fourth.log` lines 36070 to 40857; the screenshot |
 | D25 | 2026-10-07 19:58, Messages, build ec0b3a2b (trace `PhysiBoardDictationTrace`): session 2 composed partials only (no finished segment); Bugle `Preparing to send DraftData` at 21.629 and `Draft text field onTextChanged ... null, null` at 21.661 (the box emptied) with no keyboard reaction, since the cleared rule counted finished words only; Fn at 22.934 (`StopListening`); the stop's result at 22.973 `segment len=47 ... ops=[compose48,finish]` typed the sent words into the empty box. At 19:59:01.735 a stop press, the session ended at 01.802, and a new session started at 02.341 from the same press's trailing repeats (a repeat gap wide enough to read as a new press once the session was gone). | scratchpad `trace5.log`, `fifth.log` |
+| D26 | AOSP's audio policy routes `AUDIO_SOURCE_VOICE_RECOGNITION` to a Bluetooth SCO microphone only while the communication route is SCO (`AudioDeviceBroker` sets the record force-use with it); otherwise the built-in microphone, a wired or USB headset. Telecom's ringtone and call focus is transient. `AudioRecordingConfiguration` for another app's recording keeps its input device and `isClientSilenced` while anonymising the app. Not yet observed in the truck: the first in-car trace settles which microphone the recognizer gets there and how Android Auto treats the keyboard's focus. | Android reference (`AudioManager`, `AudioRecordingConfiguration`, `AudioDeviceInfo`); AOSP `AudioDeviceBroker`, audio policy `Engine::getDeviceForInputSource` |
 | D22 | 2026-10-07 16:30, PersaLink (Chrome WebAPK, strip collapsed to a 0 by 0 window, `InputDispatcher ... info.frame: (2, 1200, 2, 1200)`): at each PhysiBoard request (16:30:27.548, 37.330, 48.977, 58.759) audioserver logged `App op 27 missing, silencing record AttributionSourceState{... packageName: com.google.android.tts ... next: ...}` within ~15 ms, the engine heard nothing, and `appops get brobata.physiboard.dev3 RECORD_AUDIO` showed `Uid mode: foreground` with a fresh `rejectTime`. `dumpsys input_method` read `mVisibleBound=false`, `dumpsys activity processes` `curProcState=16 curCapability=--------` with one IME connection (`!FG IMPB SLTA !VIS`, flags 0x40880005); later, with Chrome having shown the keyboard, `mVisibleBound=true`, `curProcState=5` and a second connection `FGS LACT UI CAPS` (flags 0x2c001001). The 16:28:43 session in Messages (Messages had sent `SHOW_SOFT_INPUT fromUser true`) was not silenced and reached `#onResults withSpeech: true`; the 16:31:11 session was Chrome's own Web Speech, not the keyboard's. | scratchpad `dictation-evidence-2.log`; the read-only `dumpsys`/`appops` queries of the same day; AOSP `InputMethodBindingController.IME_VISIBLE_BIND_FLAGS`, `InputMethodManagerService.showCurrentInputLocked`/`hideCurrentInputLocked`, `AppOpsUidStateTrackerImpl.evalModeInternal` |
 
 ## 15. Edge cases, quirks, known bugs
@@ -886,7 +970,10 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | Offline pack missing, private mode off | the same session goes online once, silently | 4.3 |
 | Offline pack missing, private mode on | toast about the pack; session ends | private mode never goes online |
 | Audible or another player with focus | pauses at the trigger, resumes at the stop cue | 6.7 |
-| A phone call starts mid-dictation | the session ends, words on screen committed | permanent focus loss |
+| Spotify (or the head unit's "play") takes the audio back mid-session | the session listens on; the music pauses again once; a second time it plays on; it is resumed once in all | 6.7 |
+| A phone call rings or starts mid-dictation | the session ends, words on screen committed | 6.7: the call, by audio mode |
+| A hands-free head unit is connected | the start cue waits until the recording's microphone is known (at most 2.5 s); 6 s before the first words | 6.10 |
+| The Bluetooth microphone comes or goes mid-session | an audio error is retried; the words on screen stay | 6.6 rule 4b |
 | Raw-mode app or password field | no capitalisation of partials or finals; spacing still applies | capitalisation is the only field-gated step |
 | No input connection when a result arrives | the words are dropped silently and the session continues | writes skip when there is no connection |
 | App blinks its field off and on while dictating | session continues | the 500 ms editor-gone grace is cancelled by the new field |
@@ -938,7 +1025,7 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | quiet stop | Fn, then a quiet error | ends silently |
 | key | key down with a partial | committed; cancel; ends; a late segment is ignored |
 | key off | stop-on-typing off, key down, user edit, segment | session runs on; the segment writes nothing |
-| focus | trigger | `AcquireAudioFocus` before `StartListening`; permanent loss ends the session; setting off touches no focus |
+| focus | trigger | `AcquireAudioFocus` before `StartListening`; a loss during a call ends the session; setting off touches no focus |
 | cue | ready without audio | cue 300 ms later; never twice |
 | cue 2 | start failed before audio | no stop cue; focus back; message |
 | early Fn | trigger twice before ready | second ends the session; one request issued |
@@ -958,6 +1045,12 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | A2 | first utterance still composing; the app empties the box; Fn; the late final (and the same with the stop already requested; and with the field changed rather than emptied) | nothing re-inserted; the terminal-mode order commits once, at the stop |
 | C | Enter with a partial on screen | the partial is committed, the session ends with cancel, focus and hold released; a late final writes nothing |
 | 15 s | a 12 s pause; then 15 s of silence | the pause survives; the silence stops the session |
+| car 1 | a media app takes focus for good mid-session, twice | session alive; one `AcquireAudioFocus` after the first, none after the second; words land; the player resumed once (`CarAudioScenariosTest`) |
+| car 2 | route settling; first audio at 40 ms; settled at 1.5 s | no cue until 1.5 s; no stop before the first words at 4.5 s; they land |
+| car 3 | route never settles | cue at 2.5 s with the log line; silence counted from the cue |
+| car 4 | audio error mid-session with a partial | partial committed; re-listen after 300 ms; the next words land; five in a row end with the message |
+| car 5 | car mode, busy twice, settle, focus bounced, the car's "play" | words land; no message; the player resumed once |
+| car 6 | a call (by mode, or a loss during one) | ends at once, words kept |
 
 Plus the text tests kept from before (capitalisation, spacing, the frozen context, the session
 echo, direct commit, deleted words never typed back) and the cue table.
@@ -976,6 +1069,8 @@ echo, direct commit, deleted words never typed back) and the cue table.
 | `dictation_end_silence_ms` | drop | replaced by `dictation_stop_after_silence_ms`, default never |
 | Prefer offline | new | faster, private, and the only path that punctuates on this phone (D15) |
 | Session-long audio focus | new | one pause and one resume per session instead of one per request (D14) |
+| End on any permanent focus loss | drop | a media app or head unit taking the audio back cut sessions off in the car; a call ends it instead (6.7) |
+| Car route handling and the audio trace | new | 6.10 |
 | Typing stops dictation | new | the stop that needs no second thought |
 | Start cue at ready | drop | tied to the open microphone instead (first audio report) |
 | Status bar icon while listening | new | the strip may be hidden; the icon needs no permission |
@@ -1007,6 +1102,9 @@ echo, direct commit, deleted words never typed back) and the cue table.
   DictationEngineLifecycleTest.kt, DictationEngineRequiredScenariosTest.kt, DictationEndingsTest.kt
 - ime/src/main/kotlin/brobata/physiboard/ime/DictationController.kt (recognizer, request, audio
   focus, cues, permission)
+- ime/src/main/kotlin/brobata/physiboard/ime/DictationAudioWatch.kt (routes, SCO, recordings,
+  playback, mode, the `audio` trace lines)
+- core/speech/src/test/kotlin/brobata/physiboard/core/speech/CarAudioScenariosTest.kt
 - ime/src/main/kotlin/brobata/physiboard/ime/KeyboardSession.kt (the Fn burst command, the key
   hook, the status icon, private mode)
 - ime/src/main/AndroidManifest.xml (`<queries>` for recognition services)
