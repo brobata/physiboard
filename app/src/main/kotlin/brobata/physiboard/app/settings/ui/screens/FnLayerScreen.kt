@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.FnLayerMappingStore
 import brobata.physiboard.app.settings.ui.ButtonRow
+import brobata.physiboard.app.settings.ui.InfoText
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
@@ -87,82 +88,57 @@ fun FnLayerScreen(onBack: () -> Unit) {
         }
     }
 
-    SettingsScreenScaffold(title = "Fn Layer", onBack = onBack) {
+    SettingsScreenScaffold(title = "Fn layer", onBack = onBack) {
         RowList {
+            plainItem {
+                InfoText("Fn with a letter moves the cursor, selects and edits, like the arrow keys and Ctrl shortcuts on a computer. Tap a letter below to change what it does.")
+            }
+            header("Fn key")
             item {
-                Text(
-                    "Fn Layer turns the physical Fn key into arrow-key and Ctrl-shortcut navigation. Tap a letter below to change what Fn and that letter do.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(16.dp),
+                ButtonRow(
+                    label = "Set Fn key to Ctrl",
+                    description = message ?: if (enabled) "Fn is set to Ctrl." else "The phone can turn the Fn key into Ctrl. A restart may be needed.",
+                    buttonText = if (working) "Working…" else if (enabled) "Undo" else "Set",
+                    enabled = !working,
+                    onClick = {
+                        working = true
+                        scope.launch(Dispatchers.IO) {
+                            val outcome = if (enabled) remap.resetToDefault() else remap.apply()
+                            enabled = remap.isEnabled()
+                            message = outcomeMessage(outcome)
+                            working = false
+                        }
+                    },
                 )
             }
-            item {
-                Card(modifier = Modifier.padding(16.dp)) {
-                    androidx.compose.foundation.layout.Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Set Fn key to Ctrl", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            if (enabled) "Fn is set to Ctrl ✓" else "The vendor layer can synthesize Ctrl out of the Fn key. A reboot may be needed.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
-                        if (!enabled) {
-                            TextButton(
-                                onClick = {
-                                    working = true
-                                    scope.launch(Dispatchers.IO) {
-                                        val outcome = remap.apply()
-                                        enabled = remap.isEnabled()
-                                        message = outcomeMessage(outcome)
-                                        working = false
-                                    }
-                                },
-                                enabled = !working,
-                            ) { Text(if (working) "Working…" else "Set Fn → Ctrl") }
-                        } else {
-                            TextButton(
-                                onClick = {
-                                    working = true
-                                    scope.launch(Dispatchers.IO) {
-                                        val outcome = remap.resetToDefault()
-                                        enabled = remap.isEnabled()
-                                        message = outcomeMessage(outcome)
-                                        working = false
-                                    }
-                                },
-                                enabled = !working,
-                            ) { Text(if (working) "Working…" else "Reset Fn key to default") }
-                        }
-                    }
-                }
-            }
+            header("Fn layer")
             item {
                 SwitchRow(
-                    label = "Enable Fn Layer",
+                    label = "Fn layer",
                     checked = keys.navModeEnabled,
                     onCheckedChange = { checked -> controller.update { it.copy(keys = it.keys.copy(navModeEnabled = checked)) } },
                 )
             }
             item {
                 SwitchRow(
-                    label = "Ctrl-hold navigation",
+                    label = "Holding Ctrl works like Fn",
+                    description = "A held Ctrl uses the keys below instead of sending Ctrl shortcuts to the app.",
                     checked = keys.navModeCtrlHoldEnabled,
                     onCheckedChange = { checked -> controller.update { it.copy(keys = it.keys.copy(navModeCtrlHoldEnabled = checked)) } },
                 )
             }
             item {
                 SwitchRow(
-                    label = "Layout-aware app Ctrl shortcuts",
+                    label = "Ctrl shortcuts follow the layout",
+                    description = "On QWERTZ, Ctrl with the Y key sends Ctrl+Z.",
                     checked = keys.layoutAwareCtrlShortcuts,
                     onCheckedChange = { checked -> controller.update { it.copy(keys = it.keys.copy(layoutAwareCtrlShortcuts = checked)) } },
                 )
             }
             if (keys.navModeEnabled) {
+                header("Keys")
                 item {
-                    Text(
-                        "Note: Modifying Fn Layer keys also affects Ctrl+key combinations in text fields.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                    InfoText("Changing a key here also changes Ctrl with that key in text boxes.")
                 }
                 item {
                     FnLayerKeyGrid(mappings = mappings, onKeyTapped = { letter -> editingLetter = letter })
@@ -184,10 +160,24 @@ fun FnLayerScreen(onBack: () -> Unit) {
                 }
             }
             item {
+                // This used to reset every key setting (long press, accent lists, the bounce
+                // filter) to its default from the Fn layer's own screen, with no warning; it now
+                // resets only the switches on this screen.
                 ButtonRow(
-                    label = "Revert to Default",
-                    buttonText = "Revert",
-                    onClick = { controller.update { it.copy(keys = KeyPrefs()) } },
+                    label = "Reset these switches",
+                    buttonText = "Reset",
+                    onClick = {
+                        val defaults = KeyPrefs()
+                        controller.update {
+                            it.copy(
+                                keys = it.keys.copy(
+                                    navModeEnabled = defaults.navModeEnabled,
+                                    navModeCtrlHoldEnabled = defaults.navModeCtrlHoldEnabled,
+                                    layoutAwareCtrlShortcuts = defaults.layoutAwareCtrlShortcuts,
+                                ),
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -318,5 +308,5 @@ private fun keycodeNameToControlKey(name: String): ControlKey? = when (name) {
 private fun outcomeMessage(outcome: RevertOutcome): String? = when (outcome) {
     RevertOutcome.SUCCESS -> null
     RevertOutcome.FAILED -> "Could not change the Fn key setting."
-    RevertOutcome.NEEDS_PERMISSION -> "Pair wireless debugging first, from T2E Tools."
+    RevertOutcome.NEEDS_PERMISSION -> "Pair wireless debugging first, from Titan tools."
 }

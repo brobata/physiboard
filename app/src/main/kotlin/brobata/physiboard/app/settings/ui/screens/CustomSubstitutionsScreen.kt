@@ -32,6 +32,7 @@ import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
+import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.core.settings.CorrectionPrefs
 import brobata.physiboard.core.settings.SubstitutionSet
@@ -50,7 +51,7 @@ fun CustomSubstitutionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     val codes = (correction.customSubstitutions.keys + correction.textReplacementLanguages).distinct().sorted()
 
     SettingsScreenScaffold(
-        title = "Text Replacements",
+        title = "Text replacements",
         onBack = onBack,
         trailingAction = {
             IconButton(onClick = { adding = true }, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {
@@ -58,13 +59,25 @@ fun CustomSubstitutionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             }
         },
     ) {
-        if (codes.isEmpty()) EmptyState(Icons.Outlined.FindReplace, "No custom substitutions yet. Tap + to add a language, then its replacements.")
         RowList {
+            item {
+                SwitchRow(
+                    "Use text replacements",
+                    description = "Apply saved rules like \"ca → ça\" when you press Space or Enter.",
+                    checked = correction.textReplacementsEnabled,
+                    onCheckedChange = { checked -> controller.update { it.copy(correction = it.correction.copy(textReplacementsEnabled = checked)) } },
+                )
+            }
+            if (codes.isEmpty()) {
+                plainItem { EmptyState(Icons.Outlined.FindReplace, "No replacements of your own yet. Tap + to add a language, then its replacements.") }
+            } else {
+                header("Your replacements")
+            }
             items(codes.size) { index ->
                 val code = codes[index]
                 val set = correction.customSubstitutions[code]
                 val name = set?.displayName?.takeIf { it.isNotBlank() } ?: code
-                NavigateRow(name, "${set?.rules?.size ?: 0} custom substitutions", icon = Icons.Outlined.Language) { onOpen(code) }
+                NavigateRow(name, icon = Icons.Outlined.Language, value = "${set?.rules?.size ?: 0}") { onOpen(code) }
             }
         }
     }

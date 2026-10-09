@@ -14,8 +14,6 @@ import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.outlined.Gavel
 import androidx.compose.material.icons.outlined.Gif
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,20 +21,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import brobata.physiboard.app.BuildConfig
-import brobata.physiboard.app.R
-import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.ExpandableSection
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.PhysiBoardType
-import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsCard
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.app.shell.DeviceDetectionAndroid
 import brobata.physiboard.app.shell.openInBrowser
-import brobata.physiboard.core.shell.AppLocale
 import brobata.physiboard.core.shell.BugReportContext
 import brobata.physiboard.core.shell.BugReportUrl
 
@@ -47,12 +41,9 @@ import brobata.physiboard.core.shell.BugReportUrl
  * one sentence the task's licensing note allows, and nothing else here mentions it.
  */
 @Composable
-fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (String) -> Unit) {
+fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val model = remember { DeviceDetectionAndroid.classify() }
-    val appLanguageTag = LocalSettingsController.current.current.value.languages.appLanguageTag
-    val appLanguageDescription = AppLocale.resolve(appLanguageTag)?.let { AppLocale.nativeName(it) }
-        ?: stringResource(R.string.app_language_system_default)
 
     SettingsScreenScaffold(title = "About", onBack = onBack) {
         Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.l, vertical = Spacing.s)) {
@@ -60,7 +51,7 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (Str
                 Column(modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m)) {
                     Text("physiboard:~$ about", style = PhysiBoardType.prompt, color = MaterialTheme.colorScheme.primary)
                     Text("PhysiBoard", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Spacing.s))
-                    Text("Ver. ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
                     Text("Device: ${Build.BRAND} ${Build.MODEL}", style = MaterialTheme.typography.bodyMedium)
                     Text(
                         "PhysiBoard succeeds Pastiera, the maintainer's earlier keyboard for the Titan 2 Elite, as a clean-room rewrite.",
@@ -71,7 +62,7 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (Str
                 }
             }
 
-            SectionHeader("Help", inset = false)
+            SectionHeader("Get in touch", inset = false)
             SettingsCard {
 
                 NavigateRow(
@@ -103,8 +94,8 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (Str
 
             }
 
-            SectionHeader("Licences and credits", inset = false)
             SettingsCard {
+                ExpandableSection("Licences and credits") {
                 NavigateRow(
                     label = "Licence",
                     description = "GPL-3.0, with a commercial licence available",
@@ -146,25 +137,10 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (Str
                     onClick = { openInBrowser(context, "https://tatoeba.org") },
                     icon = Icons.Outlined.FormatQuote,
                 )
+                }
 
             }
 
-            SectionHeader("App", inset = false)
-            SettingsCard {
-                NavigateRow(
-                    label = stringResource(R.string.app_language_title),
-                    description = appLanguageDescription,
-                    onClick = { onNavigate(Routes.APP_LANGUAGE) },
-                    icon = Icons.Outlined.Language,
-                )
-
-                NavigateRow(
-                    label = "Show Tutorial",
-                    description = "Review the introductory tutorial",
-                    onClick = onShowTutorial,
-                    icon = Icons.Outlined.School,
-                )
-            }
         }
     }
 }

@@ -34,11 +34,12 @@ fun SoundHapticsScreen(onBack: () -> Unit) {
     val dictation = settings.dictation
     val context = LocalContext.current
 
-    SettingsScreenScaffold(title = "Sound & Haptics", onBack = onBack) {
+    SettingsScreenScaffold(title = "Sound & haptics", onBack = onBack) {
         RowList {
+            header("Typing")
             item {
                 SingleChoiceDropdownRow(
-                    label = "Typing Sounds",
+                    label = "Key sounds",
                     options = listOf(TypingSoundMode.OFF, TypingSoundMode.CLICK, TypingSoundMode.TYPEWRITER),
                     optionLabel = ::typingSoundModeLabel,
                     selected = feedback.typingSoundMode,
@@ -55,7 +56,7 @@ fun SoundHapticsScreen(onBack: () -> Unit) {
             if (!feedback.tapHapticUseSystem) {
                 item {
                     IntRangeRow(
-                        label = "Custom vibration",
+                        label = "Vibration length",
                         value = feedback.tapHapticDurationMs.toInt(),
                         range = IntClosedRange(5, 80),
                         valueLabel = { "$it ms" },
@@ -63,9 +64,10 @@ fun SoundHapticsScreen(onBack: () -> Unit) {
                     )
                 }
             }
+            header("Dictation")
             item {
                 SwitchRow(
-                    "Vibrate on dictation start/stop",
+                    "Vibrate when dictation starts and stops",
                     checked = dictation.haptics,
                     onCheckedChange = { checked -> controller.update { it.copy(dictation = it.dictation.copy(haptics = checked)) } },
                 )

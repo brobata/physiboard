@@ -47,6 +47,10 @@ import brobata.physiboard.app.settings.ui.AboutExpander
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.EmojiPickerDialog
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import androidx.compose.material.icons.outlined.ContentPaste
+import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.Summaries
+import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -84,9 +88,11 @@ fun CustomizeSymKeyboardScreen(
     returnAfterPicker: Boolean = false,
     onBack: () -> Unit,
     onFinishActivity: () -> Unit,
+    onNavigate: (String) -> Unit = {},
 ) {
     val controller = LocalSettingsController.current
     val symPages = controller.current.value.symPages
+    val clipboardHistoryOn = controller.current.value.expansion.clipboardHistoryEnabled
     val keys = controller.current.value.keys
     val context = LocalContext.current
 
@@ -132,9 +138,9 @@ fun CustomizeSymKeyboardScreen(
 
     val page = editingPage
     if (page == null) {
-        SettingsScreenScaffold(title = "Customize SYM Keyboard", onBack = { leaveNormally(onBack) }) {
+        SettingsScreenScaffold(title = "Sym pages", onBack = { leaveNormally(onBack) }) {
             RowList {
-                header("Sym pages")
+                header("Pages")
                 item {
                     // layers-sym-alt.md SS4.7: Fill joins the cycle only when it has something, so it is not a fixed step.
                     val steps = symPages.pages.order.filter { it != SymPage.FILL && enabledFor(symPages.pages, it) }.map { displayName(it, symPages.customPages) }
@@ -165,7 +171,36 @@ fun CustomizeSymKeyboardScreen(
                         onEdit = if (entry == SymPage.EMOJI || entry == SymPage.SYMBOLS || customIndex(entry) != null) ({ editingPage = entry }) else null,
                     )
                 }
-                header("Fill page: one-time codes")
+                header("Emoji")
+                item {
+                    // expansion-clipboard-pickers-launcher.md SS4.3: kaomoji only on request.
+                    SwitchRow(
+                        label = "Kaomoji on the Emoji page",
+                        description = "Adds a button on the Emoji page that switches to text faces like (^_^), and a K row in the chooser. Off: the Emoji page only ever shows emoji.",
+                        checked = symPages.kaomojiEnabled,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(kaomojiEnabled = checked)) } },
+                    )
+                }
+                item {
+                    SwitchRow(
+                        label = "Larger emoji picker",
+                        description = "About 1.5 times taller; the other pages keep their height.",
+                        checked = symPages.emojiPickerExpandedHeight,
+                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(emojiPickerExpandedHeight = checked)) } },
+                    )
+                }
+                item {
+                    // spec: expansion-clipboard-pickers-launcher.md SS4.7.
+                    SingleChoiceDropdownRow(
+                        label = "Default skin tone",
+                        description = "Emoji that come in skin tones are typed in this one, from the Emoji page, Sym chords, the emoji picker and its recents. Hold an emoji to pick another tone.",
+                        options = SkinTone.entries,
+                        optionLabel = ::skinToneLabel,
+                        selected = symPages.defaultSkinTone,
+                        onSelect = { tone -> controller.update { it.copy(symPages = it.symPages.copy(defaultSkinTone = tone)) } },
+                    )
+                }
+                header("Fill page")
                 item {
                     // layers-sym-alt.md SS4.7, app-shell.md SS31.6.
                     SwitchRow(
@@ -205,15 +240,7 @@ fun CustomizeSymKeyboardScreen(
                         text = "The logins show first when you press Sym in a login box. Android only hands these to a keyboard that shows an on-screen keyboard, so PhysiBoard has to raise an empty one while you are in a login box, and while this is on the password manager's own drop-down list does not appear.",
                     )
                 }
-                item {
-                    // expansion-clipboard-pickers-launcher.md SS4.3: kaomoji only on request.
-                    SwitchRow(
-                        label = "Kaomoji on the Emoji page",
-                        description = "Adds a button on the Emoji page that switches to text faces like (^_^), and a K row in the chooser. Off: the Emoji page only ever shows emoji.",
-                        checked = symPages.kaomojiEnabled,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(kaomojiEnabled = checked)) } },
-                    )
-                }
+                header("Sym key")
                 item {
                     // spec SS5.10: the chooser that opens any page, enabled or not.
                     SwitchRow(
@@ -223,7 +250,6 @@ fun CustomizeSymKeyboardScreen(
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(doubleTapChooser = checked)) } },
                     )
                 }
-                header("SYM behaviour and display")
                 item {
                     SwitchRow(
                         label = "Sym+C/V/X/A: copy, paste, cut, select all",
@@ -233,39 +259,27 @@ fun CustomizeSymKeyboardScreen(
                 }
                 item {
                     SwitchRow(
-                        label = "Auto-Close SYM Layout",
+                        label = "Close Sym after typing a character",
                         checked = symPages.autoClose,
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoClose = checked)) } },
                     )
                 }
                 item {
                     SwitchRow(
-                        label = "Also close after on-screen SYM keys",
+                        label = "Also after tapping a key on screen",
                         checked = symPages.autoCloseOnTouch,
                         enabled = symPages.autoClose,
                         onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(autoCloseOnTouch = checked)) } },
                     )
                 }
-                header("Larger emoji picker")
+                header("Clipboard")
                 item {
-                    SwitchRow(
-                        label = "Larger emoji picker",
-                        description = "Use about 1.5x height for the emoji search page; other SYM pages keep their normal height.",
-                        checked = symPages.emojiPickerExpandedHeight,
-                        onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(emojiPickerExpandedHeight = checked)) } },
-                    )
-                }
-                header("Emoji skin tone")
-                item {
-                    // spec: expansion-clipboard-pickers-launcher.md SS4.7.
-                    SingleChoiceDropdownRow(
-                        label = "Default skin tone",
-                        description = "Emoji that come in skin tones are typed in this one, from the Emoji page, Sym chords, the emoji picker and its recents. Hold an emoji to pick another tone.",
-                        options = SkinTone.entries,
-                        optionLabel = ::skinToneLabel,
-                        selected = symPages.defaultSkinTone,
-                        onSelect = { tone -> controller.update { it.copy(symPages = it.symPages.copy(defaultSkinTone = tone)) } },
-                    )
+                    NavigateRow(
+                        "Clipboard history",
+                        "Keep what you copy on the Clipboard page",
+                        icon = Icons.Outlined.ContentPaste,
+                        value = if (clipboardHistoryOn) "On" else "Off",
+                    ) { onNavigate(Routes.CLIPBOARD_HISTORY) }
                 }
             }
         }
@@ -446,7 +460,7 @@ private fun List<CustomSymPage>.withPage(index: Int, change: (CustomSymPage) -> 
     List(CustomSymPage.COUNT) { i -> getOrElse(i) { CustomSymPage() }.let { if (i == index) change(it) else it } }
 
 /** Whether "PhysiBoard one-time codes" has notification access (layers-sym-alt.md SS4.7). */
-private fun oneTimeCodeAccessGranted(context: Context): Boolean = runCatching {
+internal fun oneTimeCodeAccessGranted(context: Context): Boolean = runCatching {
     context.getSystemService(NotificationManager::class.java)?.isNotificationListenerAccessGranted(ComponentName(context, OneTimeCodeListenerService::class.java)) ?: false
 }.getOrDefault(false)
 
@@ -454,7 +468,7 @@ private fun oneTimeCodeAccessGranted(context: Context): Boolean = runCatching {
  * Android's own page for this one listener (Android 11 and later), else the list of every app
  * with notification access. app-shell.md SS31.6.
  */
-private fun openNotificationAccess(context: Context) {
+internal fun openNotificationAccess(context: Context) {
     val component = ComponentName(context, OneTimeCodeListenerService::class.java).flattenToString()
     val detail = Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
         .putExtra(AndroidSettings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, component)
@@ -471,17 +485,7 @@ private fun letterForKeyCode(keyCode: Int): Char? {
     return 'A' + (keyCode - a)
 }
 
-private fun enabledFor(pages: SymPagesConfig, page: SymPage): Boolean = when (page) {
-    SymPage.EMOJI -> pages.emojiEnabled
-    SymPage.SYMBOLS -> pages.symbolsEnabled
-    SymPage.CLIPBOARD -> pages.clipboardEnabled
-    SymPage.EMOJI_PICKER -> pages.emojiPickerEnabled
-    SymPage.GIF -> pages.gifEnabled
-    SymPage.CUSTOM_1 -> pages.custom1Enabled
-    SymPage.CUSTOM_2 -> pages.custom2Enabled
-    SymPage.CUSTOM_3 -> pages.custom3Enabled
-    SymPage.FILL -> pages.fillEnabled
-}
+private fun enabledFor(pages: SymPagesConfig, page: SymPage): Boolean = Summaries.isEnabled(pages, page)
 
 private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean): SymPagesConfig = when (page) {
     SymPage.EMOJI -> pages.copy(emojiEnabled = checked)
@@ -495,18 +499,7 @@ private fun withEnabled(pages: SymPagesConfig, page: SymPage, checked: Boolean):
     SymPage.FILL -> pages.copy(fillEnabled = checked)
 }
 
-private fun displayName(page: SymPage, customPages: List<CustomSymPage>): String = when (page) {
-    SymPage.EMOJI -> "Emoji keys"
-    SymPage.SYMBOLS -> "Symbols"
-    SymPage.CLIPBOARD -> "Clipboard"
-    SymPage.EMOJI_PICKER -> "Emoji"
-    SymPage.GIF -> "GIFs"
-    SymPage.FILL -> "Fill"
-    SymPage.CUSTOM_1, SymPage.CUSTOM_2, SymPage.CUSTOM_3 -> {
-        val index = customIndex(page)!!
-        customPages.getOrNull(index)?.name?.trim()?.ifEmpty { null } ?: defaultCustomName(index)
-    }
-}
+private fun displayName(page: SymPage, customPages: List<CustomSymPage>): String = Summaries.symPageName(page, customPages)
 
 /**
  * spec SS5.9: "a kind label ('Key layer' or 'Panel')": pages 1 and 2 remap the letter keys, the

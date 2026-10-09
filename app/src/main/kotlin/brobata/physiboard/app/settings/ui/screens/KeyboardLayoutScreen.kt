@@ -140,7 +140,8 @@ fun KeyboardLayoutScreen(onBack: () -> Unit, onView: (String) -> Unit) {
         RowList {
             item {
                 SwitchRow(
-                    "Automatic Layout Mapping",
+                    "Follow the language",
+                    description = "Use the layout that goes with the language you type in. Picking a layout below turns this off.",
                     checked = languages.layoutAutoByLocale,
                     onCheckedChange = { checked -> set { p -> p.copy(layoutAutoByLocale = checked) } },
                 )

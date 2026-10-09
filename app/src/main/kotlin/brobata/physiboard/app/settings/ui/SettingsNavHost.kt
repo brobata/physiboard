@@ -1,7 +1,5 @@
 package brobata.physiboard.app.settings.ui
 
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -13,6 +11,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import brobata.physiboard.app.settings.ui.screens.AboutScreen
+import brobata.physiboard.app.settings.ui.screens.AppsScreen
+import brobata.physiboard.app.settings.ui.screens.BackupScreen
+import brobata.physiboard.app.settings.ui.screens.HelpScreen
+import brobata.physiboard.app.settings.ui.screens.KeysScreen
+import brobata.physiboard.app.settings.ui.screens.LookScreen
+import brobata.physiboard.app.settings.ui.screens.ThemeColorsScreen
+import brobata.physiboard.app.settings.ui.screens.ThemeScreen
+import brobata.physiboard.app.settings.ui.screens.TypingScreen
 import brobata.physiboard.app.settings.ui.screens.AppLanguageScreen
 import brobata.physiboard.app.settings.ui.screens.AppPickerScreen
 import brobata.physiboard.app.settings.ui.screens.AutoCorrectionScreen
@@ -22,21 +28,14 @@ import brobata.physiboard.app.settings.ui.screens.SetupScreen
 import brobata.physiboard.app.settings.ui.screens.StatusScreen
 import brobata.physiboard.app.settings.ui.screens.WhatsNewScreen
 import brobata.physiboard.app.settings.ui.screens.EnterKeyBehaviourScreen
-import brobata.physiboard.app.settings.ui.screens.ExtrasHubScreen
 import brobata.physiboard.app.settings.ui.screens.FnLayerScreen
 import brobata.physiboard.app.settings.ui.screens.InputLanguagesScreen
-import brobata.physiboard.app.settings.ui.screens.KeyboardHubScreen
-import brobata.physiboard.app.settings.ui.screens.PlaceholderScreen
 import brobata.physiboard.app.settings.ui.screens.PunctuationSpacingScreen
 import brobata.physiboard.app.settings.ui.screens.QuickLauncherScreen
 import brobata.physiboard.app.settings.ui.screens.ScreenTrackpadScreen
-import brobata.physiboard.app.settings.ui.screens.SettingsRootScreen
-import brobata.physiboard.app.settings.ui.screens.SmartFeaturesScreen
 import brobata.physiboard.app.settings.ui.screens.LongPressScreen
 import brobata.physiboard.app.settings.ui.screens.CustomizeVariationsScreen
 import brobata.physiboard.app.settings.ui.screens.SoundHapticsScreen
-import brobata.physiboard.app.settings.ui.screens.StatusBarThemeScreen
-import brobata.physiboard.app.settings.ui.screens.StripThemeScreen
 import brobata.physiboard.app.settings.ui.screens.T2EToolsScreen
 import brobata.physiboard.app.settings.ui.screens.TestFieldScreen
 import brobata.physiboard.app.settings.ui.screens.TextExpansionScreen
@@ -68,11 +67,10 @@ import brobata.physiboard.app.settings.ui.screens.CustomizeSymKeyboardScreen
 
 /**
  * The whole settings app as one push/pop stack (settings-catalog.md SS9.1, "a push/pop stack
- * inside one activity"). [Routes.HOME] is now the real home (app-shell.md SS6); [startDestination]
- * lets the caller (`MainActivity`) route to [Routes.SETUP] or [Routes.WHATS_NEW] instead on a cold
- * start (SS3). [Routes.SETTINGS] still carries "T2E Tools", "Keyboard" and "Extras" as ordinary
- * rows alongside "About", "Diagnostics" and "Updates" (SS9), which is the settings-catalog's
- * intended shape, not a stand-in.
+ * inside one activity"). [Routes.HOME] is the home screen and the category index (app-shell.md
+ * SS6); [startDestination] lets the caller (`MainActivity`) route to [Routes.SETUP] or
+ * [Routes.WHATS_NEW] instead on a cold start (SS3). The index's categories and the screens each
+ * one opens are in docs/plans/settings-reorganization.md.
  */
 @Composable
 fun SettingsApp(startDestination: String = Routes.HOME) {
@@ -90,9 +88,11 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         // uniformly to every push/pop here rather than only Home's own outgoing edge: the screen
         // being pushed slides in from the right over a static predecessor, and the screen being
         // popped slides back out to the right to reveal a static predecessor underneath.
+        // The screen underneath drifts a fifth of the way the other way as the new one covers it
+        // (and back on pop), so the stack reads as depth rather than a flat swap.
         enterTransition = { slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
-        exitTransition = { ExitTransition.None },
-        popEnterTransition = { EnterTransition.None },
+        exitTransition = { slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth / 5 } },
+        popEnterTransition = { slideInHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth / 5 } },
         popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
     ) {
         composable(Routes.HOME) { HomeScreen(onNavigate = ::navigate) }
@@ -103,23 +103,27 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
             WhatsNewScreen(onDone = { navController.navigate(Routes.HOME) { popUpTo(0) } })
         }
         composable(Routes.STATUS) { StatusScreen(onBack = ::back) }
-        composable(Routes.ABOUT) {
-            AboutScreen(
+        composable(Routes.ABOUT) { AboutScreen(onBack = ::back) }
+        composable(Routes.HELP) {
+            HelpScreen(
                 onBack = ::back,
+                onNavigate = ::navigate,
                 onShowTutorial = {
                     // spec: SS3, "the row resets tutorial_completed to false and opens the setup screen directly."
                     controller.update { it.copy(shell = it.shell.copy(tutorialCompleted = false)) }
                     navController.navigate(Routes.SETUP)
                 },
-                onNavigate = ::navigate,
             )
         }
+        composable(Routes.BACKUP) { BackupScreen(onBack = ::back) }
         composable(Routes.DIAGNOSTICS) { DiagnosticsScreen(onBack = ::back) }
         composable(Routes.APP_LANGUAGE) { AppLanguageScreen(onBack = ::back) }
-        composable(Routes.SETTINGS) { SettingsRootScreen(onNavigate = ::navigate) }
+        // The category screens of the home index.
+        composable(Routes.TYPING) { TypingScreen(onBack = ::back, onNavigate = ::navigate) }
+        composable(Routes.KEYS) { KeysScreen(onBack = ::back, onNavigate = ::navigate) }
+        composable(Routes.APPS) { AppsScreen(onBack = ::back, onNavigate = ::navigate) }
+        composable(Routes.LOOK) { LookScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.T2E_TOOLS) { T2EToolsScreen(onBack = ::back, onNavigate = ::navigate) }
-        composable(Routes.KEYBOARD) { KeyboardHubScreen(onBack = ::back, onNavigate = ::navigate) }
-        composable(Routes.EXTRAS) { ExtrasHubScreen(onBack = ::back, onNavigate = ::navigate) }
 
         // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
         composable(Routes.SMART_BACKLIGHT) { SmartBacklightScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
@@ -136,18 +140,11 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
 
         composable(Routes.SCREEN_TRACKPAD) { ScreenTrackpadScreen(onBack = ::back) }
         composable(Routes.FN_LAYER) { FnLayerScreen(onBack = ::back) }
-        composable(Routes.SMART_FEATURES) {
-            SmartFeaturesScreen(
-                onBack = ::back,
-                onNavigateFnLayer = { navigate(Routes.FN_LAYER) },
-                onNavigatePunctuationSpacing = { navigate(Routes.PUNCTUATION_SPACING) },
-            )
-        }
         composable(Routes.PUNCTUATION_SPACING) { PunctuationSpacingScreen(onBack = ::back) }
         composable(Routes.AUTO_CORRECTION) { AutoCorrectionScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.VOICE) { VoiceScreen(onBack = ::back) }
-        composable(Routes.STATUS_BAR_THEME) { StatusBarThemeScreen(onBack = ::back, onNavigate = ::navigate) }
-        composable(Routes.CUSTOMIZE_COLORS) { StripThemeScreen(onBack = ::back) }
+        composable(Routes.THEME) { ThemeScreen(onBack = ::back, onNavigate = ::navigate) }
+        composable(Routes.CUSTOMIZE_COLORS) { ThemeColorsScreen(onBack = ::back) }
         composable(Routes.SOUND_HAPTICS) { SoundHapticsScreen(onBack = ::back) }
         composable(Routes.LONG_PRESS) { LongPressScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.CUSTOMIZE_VARIATIONS) { CustomizeVariationsScreen(onBack = ::back) }
@@ -157,8 +154,7 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         composable(Routes.INPUT_LANGUAGES) { InputLanguagesScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.TEXT_EXPANSION) { TextExpansionScreen(onBack = ::back, onNavigate = ::navigate) }
 
-        // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.2-9.4: the list editors
-        // this module's feature work adds.
+        // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.2-9.4: the list editors.
         composable(Routes.PERSONAL_DICTIONARY) { PersonalDictionaryScreen(onBack = ::back) }
         composable(Routes.INSTALLED_DICTIONARIES) { InstalledDictionariesScreen(onBack = ::back) }
         composable(Routes.INPUT_STYLES) { InputStylesScreen(onBack = ::back) }
@@ -202,12 +198,6 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         ) { entry ->
             AppPickerScreen(kind = entry.arguments?.getString("kind").orEmpty(), onBack = ::back)
         }
-        composable(
-            Routes.PLACEHOLDER_PATTERN,
-            arguments = listOf(navArgument("title") { type = NavType.StringType }),
-        ) { entry ->
-            PlaceholderScreen(title = entry.arguments?.getString("title").orEmpty(), onBack = ::back)
-        }
 
         // layers-sym-alt.md SS5.9: "Customize SYM Keyboard"; the query args are only non-default
         // when the keyboard itself opened this screen (SS5.8's intent extras).
@@ -228,6 +218,7 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
                 returnAfterPicker = entry.arguments?.getBoolean("returnAfterPicker") ?: false,
                 onBack = ::back,
                 onFinishActivity = { (context as? android.app.Activity)?.finish() },
+                onNavigate = ::navigate,
             )
         }
     }

@@ -32,12 +32,16 @@ fun TextExpansionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
         RowList {
             item {
                 SwitchRow(
-                    "Enable snippets",
-                    description = "Expand global text snippets after a shared prefix.",
+                    "Expand snippets",
+                    description = "Type the prefix and a shortcut, like !addr, to get the text you saved.",
                     checked = expansion.snippetsEnabled,
                     onCheckedChange = { set { p -> p.copy(snippetsEnabled = it) } },
                 )
             }
+            item {
+                NavigateRow("Snippets", "Your shortcuts and the text they expand to", icon = Icons.AutoMirrored.Outlined.TextSnippet, value = "${expansion.snippets.size}") { onNavigate(Routes.MANAGE_SNIPPETS) }
+            }
+            header("How it expands")
             item {
                 TextFieldRow(
                     label = "Snippet prefix",
@@ -80,9 +84,6 @@ fun TextExpansionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
                     checked = expansion.acceptWithEnter,
                     onCheckedChange = { set { p -> p.copy(acceptWithEnter = it) } },
                 )
-            }
-            item {
-                NavigateRow("Manage snippets", "Add global shortcuts and multiline replacement text.", icon = Icons.AutoMirrored.Outlined.TextSnippet) { onNavigate(Routes.MANAGE_SNIPPETS) }
             }
             item {
                 SwitchRow(

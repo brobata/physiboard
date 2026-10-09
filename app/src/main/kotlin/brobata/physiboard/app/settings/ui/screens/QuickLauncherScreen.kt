@@ -46,7 +46,7 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
     val shortcuts = LauncherShortcuts.parse(launcher.assignedKeysJson).applyDefault(defaultAlreadyAssigned = launcher.assignedKeysJson.isNotBlank())
     var showRankingHelp by remember { mutableStateOf(false) }
 
-    SettingsScreenScaffold(title = "PhysiBoard-QuickLauncher", onBack = onBack) {
+    SettingsScreenScaffold(title = "Quick launcher", onBack = onBack) {
         RowList {
             item {
                 Text(

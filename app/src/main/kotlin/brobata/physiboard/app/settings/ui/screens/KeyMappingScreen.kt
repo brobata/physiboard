@@ -105,5 +105,5 @@ private fun routeFor(id: String): String = when (id) {
     KeyMappingInventory.ROUTE_FN_LAYER -> Routes.FN_LAYER
     KeyMappingInventory.ROUTE_VOICE -> Routes.VOICE
     KeyMappingInventory.ROUTE_SCREEN_TRACKPAD -> Routes.SCREEN_TRACKPAD
-    else -> Routes.SETTINGS
+    else -> Routes.KEYS
 }

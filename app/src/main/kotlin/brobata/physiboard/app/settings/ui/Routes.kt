@@ -5,20 +5,28 @@ package brobata.physiboard.app.settings.ui
  * catalogue screen it renders (settings-catalog.md SS9.2, "the map"). Kept as plain strings (no
  * nav-compose type-safety codegen) so the search catalogue in [SearchCatalog] can point at a
  * route by name without a dependency cycle.
+ *
+ * Home is the category index (app-shell.md SS6). Each category either opens its one screen
+ * directly ([AUTO_CORRECTION], [INPUT_LANGUAGES], [LONG_PRESS], [CUSTOMIZE_SYM_KEYBOARD],
+ * [VOICE], [PRIVACY], [T2E_TOOLS], [ABOUT]) or a small category screen of its own ([TYPING],
+ * [KEYS], [APPS], [LOOK], [BACKUP], [HELP]) that gathers the screens that belong together.
  */
 object Routes {
-    const val SETTINGS = "settings"
-    const val T2E_TOOLS = "t2e_tools"
-    const val KEYBOARD = "keyboard"
-    const val EXTRAS = "extras"
+    // The category screens of the home index (docs/plans/settings-reorganization.md).
+    const val TYPING = "typing"
+    const val KEYS = "keys"
+    const val APPS = "apps"
+    const val LOOK = "look"
+    const val BACKUP = "backup"
+    const val HELP = "help"
 
+    const val T2E_TOOLS = "t2e_tools"
     const val SCREEN_TRACKPAD = "screen_trackpad"
     const val FN_LAYER = "fn_layer"
-    const val SMART_FEATURES = "smart_features"
     const val PUNCTUATION_SPACING = "punctuation_spacing"
     const val AUTO_CORRECTION = "auto_correction"
     const val VOICE = "voice"
-    const val STATUS_BAR_THEME = "status_bar_theme"
+    const val THEME = "theme"
     const val CUSTOMIZE_COLORS = "customize_colors"
     const val SOUND_HAPTICS = "sound_haptics"
     const val ENTER_KEY_BEHAVIOUR = "enter_key_behaviour"
@@ -98,16 +106,14 @@ object Routes {
     /** `app_picker/{kind}`; see [PerAppListKind]. */
     fun appPicker(kind: String) = "app_picker/$kind"
     const val APP_PICKER_PATTERN = "app_picker/{kind}"
-
-    /** `placeholder/{title}`; the stub for a feature another agent is building under `:ime`/`:device:privileged`. */
-    fun placeholder(title: String) = "placeholder/${android.net.Uri.encode(title)}"
-    const val PLACEHOLDER_PATTERN = "placeholder/{title}"
 }
 
-/** The four per-app lists the store holds (rebuild-from-scratch.md: "the dip list" is [TEXT_BOX_UNDER_BAR]'s catalogue name). */
+/**
+ * The per-app lists a screen offers. The store also holds the strip's app list and "the dip list"
+ * (`status_bar_apps`, `app_keyboard_nudge_packages`); both only ever applied to the suggestion
+ * strip, which is gone (c61c240), so no screen offers them. They stay in the store and in backups.
+ */
 object PerAppListKind {
     const val EXACT_TYPING = "exact_typing"
-    const val TEXT_BOX_UNDER_BAR = "text_box_under_bar"
-    const val STATUS_BAR_APPS = "status_bar_apps"
     const val ENTER_OVERRIDES = "enter_overrides"
 }

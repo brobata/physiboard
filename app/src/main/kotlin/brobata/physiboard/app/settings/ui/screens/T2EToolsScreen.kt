@@ -6,10 +6,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.KeyboardCommandKey
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,26 +15,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import brobata.physiboard.app.settings.ui.DeviceSetupCard
 import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.Summaries
+import brobata.physiboard.core.settings.DevicePrefs
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
-import brobata.physiboard.app.settings.ui.SettingsSearchField
 import brobata.physiboard.app.settings.ui.Spacing
 
 /**
- * "T2E Tools" (settings-catalog.md SS9.2, broker-privileged-toolbox.md SS3). The device setup
+ * "Titan tools", formerly "T2E Tools" (settings-catalog.md SS9.2, broker-privileged-toolbox.md
+ * SS3): the tools that change the phone rather than the keyboard. The screen trackpad and key
+ * mapping moved to Keys & shortcuts, since they are about keys. The device setup
  * card is the hub's one home for pairing (device-backlight-ring.md SS11 Keep/Drop); every other
  * screen's "Set up pairing" link routes back here rather than re-embedding it.
  */
 @Composable
 fun T2EToolsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
-    SettingsScreenScaffold(title = "T2E Tools", onBack = onBack) {
-        SettingsSearchField(onSettingsRoot = false, onNavigate = onNavigate)
+    val device = LocalSettingsController.current.current.value.device
+    SettingsScreenScaffold(title = "Titan tools", onBack = onBack) {
         RowList {
             plainItem {
                 Column {
                     Text(
-                        "Titan-specific tools. These change the phone itself rather than the keyboard, so anything here that outlives an uninstall can be undone with Reset device settings to stock.",
+                        "These change the phone itself, not the keyboard. Anything that would outlive an uninstall is undone by Reset device settings to stock, in Backup & restore.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = Spacing.l + Spacing.xs, vertical = Spacing.s),
@@ -45,17 +47,18 @@ fun T2EToolsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 }
             }
             header("Tools")
-            t2eToolsRows(onNavigate)
+            t2eToolsRows(device, onNavigate)
         }
     }
 }
 
-private fun LazyListScope.t2eToolsRows(onNavigate: (String) -> Unit) {
+private fun LazyListScope.t2eToolsRows(device: DevicePrefs, onNavigate: (String) -> Unit) {
     item {
         NavigateRow(
             label = "Smart keyboard backlight",
             description = "Keep the keyboard lit in the dark, past the 30s limit",
             onClick = { onNavigate(Routes.SMART_BACKLIGHT) },
+            value = Summaries.onOff(device.smartBacklightEnabled),
             icon = Icons.Outlined.Lightbulb,
         )
     }
@@ -88,23 +91,8 @@ private fun LazyListScope.t2eToolsRows(onNavigate: (String) -> Unit) {
             label = "Notification ring",
             description = "A glow around the camera hole while the screen is off",
             onClick = { onNavigate(Routes.NOTIFICATION_RING) },
+            value = Summaries.onOff(device.ringEnabled),
             icon = Icons.Outlined.NotificationsActive,
-        )
-    }
-    item {
-        NavigateRow(
-            label = "Screen trackpad",
-            description = "Hold a key and swipe anywhere on the screen to move the cursor",
-            onClick = { onNavigate(Routes.SCREEN_TRACKPAD) },
-            icon = Icons.Outlined.TouchApp,
-        )
-    }
-    item {
-        NavigateRow(
-            label = "Key mapping",
-            description = "What every key does, in the firmware and in PhysiBoard",
-            onClick = { onNavigate(Routes.KEY_MAPPING) },
-            icon = Icons.Outlined.KeyboardCommandKey,
         )
     }
 }

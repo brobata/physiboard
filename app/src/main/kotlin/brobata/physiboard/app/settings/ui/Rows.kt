@@ -1,6 +1,14 @@
 package brobata.physiboard.app.settings.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
@@ -26,7 +35,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -47,7 +55,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -59,6 +68,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -81,12 +92,13 @@ val MinTouchTarget = 48.dp
 val RowMinHeight = 56.dp
 
 /**
- * The screen chrome every hub and sub-screen shares (app-shell.md SS22.1, "the settings screens
- * share one top bar"): inset below the status bar and out of the cutout, the page's own
- * background so the cards below are the only raised surfaces, a back arrow with content
- * description "Back", the title in the mono headline style, and trailing actions in the same
- * full-contrast colour as the arrow. Content scrolls in a [LazyColumn] so a screen with more rows
- * than the Titan's 1200 px tall panel can hold is still fully reachable by DPAD.
+ * The screen chrome every settings screen shares (app-shell.md SS22.1, "the settings screens
+ * share one top bar"): a medium top bar whose large title collapses into the bar as the content
+ * scrolls (the large-title pattern the maintainer's other apps use), inset below the status bar
+ * and out of the cutout, the page's own background so the cards below are the only raised
+ * surfaces, a back arrow with content description "Back", the title in the mono headline style,
+ * and trailing actions in the same full-contrast colour as the arrow. The collapse is driven by
+ * nested scrolling, so it follows whichever list or column the screen scrolls.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,18 +108,13 @@ fun SettingsScreenScaffold(
     trailingAction: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
+            MediumTopAppBar(
+                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack, modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget)) {
@@ -116,8 +123,10 @@ fun SettingsScreenScaffold(
                     }
                 },
                 actions = { trailingAction?.invoke() },
-                colors = TopAppBarDefaults.topAppBarColors(
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.mediumTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
                     // The default muted tint made "Add", "Import" and "Reset" look disabled next
                     // to the full-contrast back arrow.
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface,
@@ -159,7 +168,7 @@ fun RowList(content: SettingsListScope.() -> Unit) {
 
 /** The receiver of [RowList]: a [LazyListScope] that also knows about section headers and full-width items. */
 interface SettingsListScope : LazyListScope {
-    /** A section label between two cards (settings-catalog.md SS9.2's bold labels: "Capitalization", "Advanced", ...). */
+    /** A section label between two cards (settings-catalog.md SS9.2's bold labels: "Capitalization", "Advanced", ...). A blank [text] only splits the cards. */
     fun header(text: String)
 
     /** An item drawn full width, outside any card. */
@@ -261,9 +270,13 @@ private fun CardSegment(top: Boolean, bottom: Boolean, marginTop: Dp, content: @
     }
 }
 
-/** A section label between two cards. */
+/** A section label between two cards; a blank label is only the gap, for cards that need no name. */
 @Composable
 private fun CardBreak(text: String, first: Boolean) {
+    if (text.isBlank()) {
+        Spacer(modifier = Modifier.height(if (first) Spacing.xs else Spacing.m))
+        return
+    }
     SectionLabel(text, modifier = Modifier.padding(start = Spacing.l + Spacing.xs, end = Spacing.l, top = if (first) Spacing.s else Spacing.xl, bottom = Spacing.s))
 }
 
@@ -355,20 +368,52 @@ fun EmptyState(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * The leading icon of a navigable row: a small rounded tile in the raised surface tone with the
- * glyph in the accent colour, so a column of them reads like a row of keycaps.
+ * The leading icon of a navigable row: a small rounded tile with the glyph in an accent colour,
+ * so a column of them reads like a row of keycaps. A [CategoryTint] gives the tile its own hue
+ * (the home index, where each category has one so the eye finds it again); without one the tile
+ * is the raised surface tone and the glyph the app's accent.
  */
 @Composable
-fun KeycapIcon(icon: ImageVector, modifier: Modifier = Modifier, size: Dp = 36.dp, iconSize: Dp = 20.dp, tint: Color = MaterialTheme.colorScheme.primary) {
+fun KeycapIcon(
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    size: Dp = 36.dp,
+    iconSize: Dp = 20.dp,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    category: CategoryTint? = null,
+) {
+    val dark = isSystemInDarkTheme()
+    val glyph = category?.glyph(dark) ?: tint
+    val fill = category?.let { it.glyph(dark).copy(alpha = if (dark) 0.18f else 0.12f) } ?: MaterialTheme.colorScheme.surfaceContainerHighest
     Box(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(fill),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(iconSize))
+        Icon(icon, contentDescription = null, tint = glyph, modifier = Modifier.size(iconSize))
     }
+}
+
+/**
+ * The hues the home index gives its categories. Each glyph colour keeps at least 3:1 against its
+ * own tile on the card (WCAG's floor for a non-text graphic): the 300-400 steps on the dark theme,
+ * the 700 steps on the light one.
+ */
+enum class CategoryTint(private val onDark: Long, private val onLight: Long) {
+    AMBER(0xFFFBBF24, 0xFFB45309),
+    SKY(0xFF38BDF8, 0xFF0369A1),
+    EMERALD(0xFF34D399, 0xFF047857),
+    VIOLET(0xFFA78BFA, 0xFF6D28D9),
+    ROSE(0xFFFB7185, 0xFFBE123C),
+    TEAL(0xFF2DD4BF, 0xFF0F766E),
+    ORANGE(0xFFFB923C, 0xFFC2410C),
+    INDIGO(0xFF818CF8, 0xFF4338CA),
+    SLATE(0xFF94A3B8, 0xFF475569);
+
+    fun glyph(dark: Boolean): Color = Color(if (dark) onDark else onLight)
 }
 
 /** The label plus description block every row type shares, left of its control. */
@@ -424,12 +469,25 @@ fun SwitchRow(
 
 /**
  * A row that only navigates to another screen (the catalogue's "send to another screen" row):
- * a keycap icon, the label and description, and a chevron. [icon] is required in spirit: every
- * navigable row carries one (app-shell.md SS22.1); it is nullable only for rows whose label is
- * itself a glyph (a letter in Customize Variations).
+ * a keycap icon, the label and description, the current value as trailing text when the screen
+ * behind it has one ("On", "2.5 s", "Slate Light"), and a chevron. [icon] is required in spirit:
+ * every navigable row carries one (app-shell.md SS22.1); it is nullable only for rows whose label
+ * is itself a glyph (a letter in Customize Variations). [destructive] draws the label in the
+ * error colour for the few rows that throw something away (reset, delete), understated rather
+ * than a red button.
  */
 @Composable
-fun NavigateRow(label: String, description: String? = null, icon: ImageVector? = null, enabled: Boolean = true, onClick: () -> Unit) {
+fun NavigateRow(
+    label: String,
+    description: String? = null,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    value: String? = null,
+    category: CategoryTint? = null,
+    destructive: Boolean = false,
+    showChevron: Boolean = true,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -439,10 +497,83 @@ fun NavigateRow(label: String, description: String? = null, icon: ImageVector? =
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            KeycapIcon(icon)
+            KeycapIcon(
+                icon,
+                category = category,
+                tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+            )
             Spacer(modifier = Modifier.width(Spacing.l))
         }
-        RowLabel(label, description, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = when {
+                    !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+                    destructive -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+            )
+            if (description != null) {
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+        if (value != null) {
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier.padding(start = Spacing.m).widthIn(max = 180.dp),
+            )
+        }
+        if (showChevron) {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Spacing.s),
+            )
+        }
+    }
+}
+
+/**
+ * A home-index row (the settings standard's "category row"): a tinted keycap, the category's
+ * name and a one-line summary of where its settings stand now ("Autocorrect on · mix-ups off"),
+ * then a chevron. The summary is one line so every row is the same height and the index scans
+ * as a list rather than a page of prose.
+ */
+@Composable
+fun CategoryRow(label: String, summary: String, icon: ImageVector, tint: CategoryTint, attention: Boolean = false, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 64.dp)
+            .clickableRow(true, onClick)
+            .padding(horizontal = Spacing.l, vertical = Spacing.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        KeycapIcon(icon, size = 40.dp, iconSize = 22.dp, category = tint)
+        Spacer(modifier = Modifier.width(Spacing.l))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (attention) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
@@ -666,6 +797,7 @@ fun ButtonRow(label: String, description: String? = null, buttonText: String, on
 @Composable
 fun ExpandableSection(title: String, initiallyExpanded: Boolean = false, content: @Composable () -> Unit) {
     var expanded by remember { mutableStateOf(initiallyExpanded) }
+    val chevronTurn by animateFloatAsState(if (expanded) 180f else 0f, animationSpec = tween(200), label = "expander_chevron")
     Column {
         Row(
             modifier = Modifier
@@ -677,12 +809,15 @@ fun ExpandableSection(title: String, initiallyExpanded: Boolean = false, content
         ) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
             Icon(
-                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                Icons.Filled.ExpandMore,
                 contentDescription = if (expanded) "Collapse" else "Expand",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.rotate(chevronTurn),
             )
         }
-        if (expanded) content()
+        AnimatedVisibility(visible = expanded, enter = expandVertically(tween(220)) + fadeIn(tween(220)), exit = shrinkVertically(tween(180)) + fadeOut(tween(120))) {
+            Column { content() }
+        }
     }
 }
 

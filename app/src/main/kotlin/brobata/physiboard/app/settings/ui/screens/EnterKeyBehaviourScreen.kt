@@ -33,7 +33,7 @@ fun EnterKeyBehaviourScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val perApp = controller.current.value.perApp
     val context = LocalContext.current
 
-    SettingsScreenScaffold(title = "Enter key behaviour", onBack = onBack) {
+    SettingsScreenScaffold(title = "Enter key", onBack = onBack) {
         RowList {
             item {
                 SwitchRow(

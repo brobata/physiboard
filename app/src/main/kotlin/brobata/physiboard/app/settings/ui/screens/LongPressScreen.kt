@@ -36,7 +36,7 @@ import brobata.physiboard.core.keys.LongPressMode
 fun LongPressScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val controller = LocalSettingsController.current
     val keys = controller.current.value.keys
-    SettingsScreenScaffold(title = "Long press", onBack = onBack) {
+    SettingsScreenScaffold(title = "Long press & accents", onBack = onBack) {
         RowList {
             header("Long press types")
             item {

@@ -14,15 +14,12 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,22 +28,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.EmojiSymbols
 import androidx.compose.material.icons.outlined.Handyman
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.KeyboardCommandKey
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SettingsBackupRestore
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Spellcheck
 import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.ToggleOn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -61,6 +67,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,15 +78,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import brobata.physiboard.app.BuildConfig
 import brobata.physiboard.app.PhysiBoardApplication
-import brobata.physiboard.app.settings.ui.KeycapIcon
+import brobata.physiboard.app.settings.ui.CategoryRow
+import brobata.physiboard.app.settings.ui.CategoryTint
+import brobata.physiboard.app.settings.ui.EmptyState
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.PhysiBoardColors
 import brobata.physiboard.app.settings.ui.PhysiBoardType
 import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.RowList
+import brobata.physiboard.app.settings.ui.SearchCatalog
+import brobata.physiboard.app.settings.ui.SearchPill
+import brobata.physiboard.app.settings.ui.SettingsListScope
 import brobata.physiboard.app.settings.ui.Spacing
+import brobata.physiboard.app.settings.ui.Summaries
 import brobata.physiboard.app.settings.ui.rememberReducedMotion
 import brobata.physiboard.app.shell.AutoUpdateCheckOnCreate
 import brobata.physiboard.app.shell.DeviceDetectionAndroid
@@ -87,7 +101,7 @@ import brobata.physiboard.app.shell.ImeComponent
 import brobata.physiboard.app.shell.ImeProbeAndroid
 import brobata.physiboard.app.shell.UpdateFoundDialog
 import brobata.physiboard.app.shell.rememberUpdateCheckState
-import brobata.physiboard.core.settings.StripThemePresets
+import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.shell.GithubChecks
 import brobata.physiboard.core.shell.ImeProbeResult
 import brobata.physiboard.core.shell.TitanModel
@@ -95,9 +109,12 @@ import brobata.physiboard.device.privileged.broker.BrokerVerdict
 import kotlinx.coroutines.delay
 
 /**
- * The home screen the launcher icon draws once setup is done (app-shell.md SS6): an action
- * surface, not a settings list. It shows only what needs attention (a setup or update card, or
- * the all-clear line) and a grid of six tiles.
+ * The home screen the launcher icon draws once setup is done (app-shell.md SS6): the terminal
+ * header, one status card that says whether PhysiBoard is ready (or the one thing that needs
+ * doing), the settings search, and the category index. Each index row shows its category's
+ * icon, name and a live one-line summary of where its settings stand ([Summaries]), the settings
+ * standard the maintainer's other apps share: a category index into detail screens, with the
+ * rows drawn at once and nothing to wait for.
  */
 @Composable
 fun HomeScreen(onNavigate: (String) -> Unit) {
@@ -139,34 +156,43 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     var showUntestedNotice by remember {
         mutableStateOf(!settings.shell.untestedDeviceNoticeSeen && DeviceDetectionAndroid.classify() == TitanModel.TITAN_2)
     }
+    var query by rememberSaveable { mutableStateOf("") }
+    val results = remember(query) { SearchCatalog.search(query) }
+    val brokerLabel = brokerTileLabel(brokerVerdict)
 
     Column(modifier = Modifier.fillMaxSize()) {
         HomeHeader()
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                .padding(16.dp),
-        ) {
-            HomeActionCard(probe, updateState, onNavigate)
-            val brokerLabel = brokerTileLabel(brokerVerdict)
-            val ready = probe.enabled && probe.selected
-            val activeTheme = settings.statusBar.theme
-            val themeName = StripThemePresets.ALL.firstOrNull { it.theme == activeTheme }?.name
-                ?: settings.statusBar.savedThemes.firstOrNull { it.theme == activeTheme }?.name
-                ?: "Custom colours"
-            HomeTileRow(
-                { HomeTile("T2E Tools", Icons.Outlined.Handyman, status = brokerLabel ?: "Backlight, ring, keys", attention = brokerLabel != null, modifier = it) { onNavigate(Routes.T2E_TOOLS) } },
-                { HomeTile("Keyboard", Icons.Outlined.Keyboard, status = "Typing, correction, Sym", modifier = it) { onNavigate(Routes.KEYBOARD) } },
-            )
-            HomeTileRow(
-                { HomeTile("Theme", Icons.Outlined.Palette, status = themeName, modifier = it) { onNavigate(Routes.STATUS_BAR_THEME) } },
-                { HomeTile("Status", Icons.Outlined.CheckCircle, status = if (ready) "all good" else "needs setup", attention = !ready, modifier = it) { onNavigate(Routes.STATUS) } },
-            )
-            HomeTileRow(
-                { HomeTile("Extras", Icons.Outlined.Extension, status = "Launcher, languages", modifier = it) { onNavigate(Routes.EXTRAS) } },
-                { HomeTile("Settings", Icons.Outlined.Settings, status = "Backup, privacy, about", modifier = it) { onNavigate(Routes.SETTINGS) } },
-            )
+        Box(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+            RowList {
+                plainItem(key = "status") { HomeStatusCard(probe, updateState, brokerLabel, onNavigate) }
+                plainItem(key = "search") {
+                    SearchPill(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = "Search settings…",
+                        modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.s),
+                    )
+                }
+                if (query.isNotBlank()) {
+                    if (results.isEmpty()) {
+                        plainItem(key = "no_results") { EmptyState(Icons.Filled.SearchOff, "No settings match “$query”. Try a shorter word.") }
+                    } else {
+                        header("")
+                        items(results, key = { "result:${it.title}" }) { entry ->
+                            NavigateRow(
+                                label = entry.title,
+                                description = if (entry.screenTitle != entry.title) "In ${entry.screenTitle}" else null,
+                                icon = Icons.Filled.Search,
+                            ) {
+                                query = ""
+                                onNavigate(entry.route)
+                            }
+                        }
+                    }
+                } else {
+                    homeIndex(settings, brokerLabel, onNavigate)
+                }
+            }
         }
     }
 
@@ -197,6 +223,40 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
 }
 
 /**
+ * The category index (docs/plans/settings-reorganization.md): four cards, from what changes
+ * every sentence to what is touched once. A category with one screen opens it directly; the rest
+ * open a small screen that gathers theirs.
+ */
+private fun SettingsListScope.homeIndex(settings: Settings, brokerLabel: String?, onNavigate: (String) -> Unit) {
+    header("")
+    item { CategoryRow("Typing", Summaries.typing(settings), Icons.Outlined.TextFields, CategoryTint.AMBER) { onNavigate(Routes.TYPING) } }
+    item { CategoryRow("Autocorrect & words", Summaries.autocorrect(settings), Icons.Outlined.Spellcheck, CategoryTint.EMERALD) { onNavigate(Routes.AUTO_CORRECTION) } }
+    item { CategoryRow("Languages & layouts", Summaries.languages(settings), Icons.Outlined.Language, CategoryTint.SKY) { onNavigate(Routes.INPUT_LANGUAGES) } }
+    header("")
+    item { CategoryRow("Long press & accents", Summaries.longPress(settings), Icons.Outlined.Timer, CategoryTint.VIOLET) { onNavigate(Routes.LONG_PRESS) } }
+    item { CategoryRow("Sym pages", Summaries.symPages(settings), Icons.Outlined.EmojiSymbols, CategoryTint.ORANGE) { onNavigate(Routes.CUSTOMIZE_SYM_KEYBOARD) } }
+    item { CategoryRow("Voice", Summaries.voice(settings), Icons.Outlined.Mic, CategoryTint.ROSE) { onNavigate(Routes.VOICE) } }
+    item { CategoryRow("Keys & shortcuts", Summaries.keys(settings), Icons.Outlined.KeyboardCommandKey, CategoryTint.INDIGO) { onNavigate(Routes.KEYS) } }
+    item { CategoryRow("Apps", Summaries.apps(settings), Icons.Outlined.Apps, CategoryTint.TEAL) { onNavigate(Routes.APPS) } }
+    header("")
+    item { CategoryRow("Look & feel", Summaries.look(settings), Icons.Outlined.Palette, CategoryTint.AMBER) { onNavigate(Routes.LOOK) } }
+    item { CategoryRow("Privacy", Summaries.privacy(settings), Icons.Outlined.Shield, CategoryTint.EMERALD) { onNavigate(Routes.PRIVACY) } }
+    item {
+        CategoryRow(
+            "Titan tools",
+            brokerLabel?.let { "Titan tools $it" } ?: "Backlight, notification ring, screen",
+            Icons.Outlined.Handyman,
+            CategoryTint.SKY,
+            attention = brokerLabel != null,
+        ) { onNavigate(Routes.T2E_TOOLS) }
+    }
+    header("")
+    item { CategoryRow("Backup & restore", "Save your settings to a file, or reset them", Icons.Outlined.SettingsBackupRestore, CategoryTint.SLATE) { onNavigate(Routes.BACKUP) } }
+    item { CategoryRow("Help", "Status check, test field, diagnostics", Icons.AutoMirrored.Outlined.HelpOutline, CategoryTint.SLATE) { onNavigate(Routes.HELP) } }
+    item { CategoryRow("About", "Version ${BuildConfig.VERSION_NAME}", Icons.Outlined.Info, CategoryTint.SLATE) { onNavigate(Routes.ABOUT) } }
+}
+
+/**
  * The terminal header (app-shell.md SS22.1): an Ink band, regardless of the app's own light or
  * dark theme, with a 2 dp amber hairline along its top, `physiboard:~$` in bold 18 sp amber and a
  * 10x20 dp amber block cursor fading every 600 ms (held static under reduced motion). The prompt
@@ -215,7 +275,7 @@ private fun HomeHeader() {
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 .padding(top = 2.dp)
-                .padding(vertical = 20.dp, horizontal = 16.dp),
+                .padding(vertical = 14.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("physiboard:~$", style = PhysiBoardType.prompt, color = PhysiBoardColors.SignalAmber)
@@ -252,8 +312,12 @@ fun TerminalCursor(modifier: Modifier = Modifier, periodMillis: Int = 600) {
     Box(modifier = modifier.size(width = 10.dp, height = 20.dp).alpha(alpha).background(PhysiBoardColors.SignalAmber))
 }
 
+/**
+ * The one status card (app-shell.md SS6.2): the thing that needs doing, in the accent's container
+ * colour, or a calm "ready" card that opens the full status check. Only one is ever shown.
+ */
 @Composable
-private fun HomeActionCard(probe: ImeProbeResult, updateState: brobata.physiboard.app.shell.UpdateCheckState, onNavigate: (String) -> Unit) {
+private fun HomeStatusCard(probe: ImeProbeResult, updateState: brobata.physiboard.app.shell.UpdateCheckState, brokerLabel: String?, onNavigate: (String) -> Unit) {
     val context = LocalContext.current
     when {
         !probe.enabled -> ActionCard("Enable PhysiBoard", "Turn it on in system keyboard settings", Icons.Outlined.ToggleOn) {
@@ -266,16 +330,14 @@ private fun HomeActionCard(probe: ImeProbeResult, updateState: brobata.physiboar
             val release = updateState.foundRelease!!
             ActionCard("Update available", "Version ${release.tag} is ready to install", Icons.Outlined.SystemUpdate) { updateState.reopenDialog() }
         }
-        else -> Text(
-            "✓ all set",
-            color = MaterialTheme.colorScheme.primary,
-            style = PhysiBoardType.prompt,
-            modifier = Modifier.padding(start = Spacing.xs, top = Spacing.xs, bottom = Spacing.l),
+        else -> ReadyCard(
+            subtitle = if (brokerLabel == null) "PhysiBoard is your keyboard" else "PhysiBoard is your keyboard · Titan tools $brokerLabel",
+            onClick = { onNavigate(Routes.STATUS) },
         )
     }
 }
 
-/** The one thing that needs doing, in the accent's container colour so it stands apart from the tiles. */
+/** The one thing that needs doing, in the accent's container colour so it stands apart from the index. */
 @Composable
 private fun ActionCard(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
     Card(
@@ -285,7 +347,7 @@ private fun ActionCard(title: String, subtitle: String, icon: ImageVector, onCli
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ),
-        modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.l),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
     ) {
         Row(modifier = Modifier.padding(Spacing.l), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -301,62 +363,38 @@ private fun ActionCard(title: String, subtitle: String, icon: ImageVector, onCli
     }
 }
 
-/** Two tiles side by side, stretched to the taller one's height. */
+/** All clear: a quiet card on the page's own surface, a green check and one line, tappable for the details. */
 @Composable
-private fun HomeTileRow(left: @Composable (Modifier) -> Unit, right: @Composable (Modifier) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(bottom = Spacing.m),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-    ) {
-        left(Modifier.weight(1f).fillMaxHeight())
-        right(Modifier.weight(1f).fillMaxHeight())
-    }
-}
-
-/**
- * A home tile (app-shell.md SS6.4): a keycap icon, the name, and one line of status. A tile that
- * needs attention shows its status in the accent colour with the amber dot.
- */
-@Composable
-private fun HomeTile(label: String, icon: ImageVector, status: String, attention: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun ReadyCard(subtitle: String, onClick: () -> Unit) {
+    val dark = isSystemInDarkTheme()
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = modifier,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.padding(Spacing.l)) {
-                KeycapIcon(icon, size = 40.dp, iconSize = 22.dp)
-                Spacer(modifier = Modifier.height(Spacing.m))
-                Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    status,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (attention) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+        Row(modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.CheckCircle,
+                contentDescription = null,
+                tint = CategoryTint.EMERALD.glyph(dark),
+                modifier = Modifier.size(28.dp),
+            )
+            Column(modifier = Modifier.weight(1f).padding(horizontal = Spacing.l)) {
+                Text("Ready to type", style = MaterialTheme.typography.titleMedium)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            if (attention) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(Spacing.m)
-                        .size(9.dp)
-                        .background(color = PhysiBoardColors.SignalAmber, shape = CircleShape),
-                )
-            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 /**
- * What the T2E tile says under its name when the broker is not usable. Every verdict used to read
+ * What the Titan tools row says when the broker is not usable. Every verdict used to read
  * "needs pairing", which sent the maintainer to re-pair a pairing that was intact: theirs was
  * [BrokerVerdict.WIRELESS_DEBUGGING_OFF], which Android causes by itself after a restart and which
- * the screen behind this tile already describes correctly (2026-09-29). Null means nothing is
- * wrong and the tile shows no warning dot.
+ * the screen behind this row already describes correctly (2026-09-29). Null means nothing is
+ * wrong and the row shows no warning.
  */
 private fun brokerTileLabel(verdict: BrokerVerdict?): String? = when (verdict) {
     null, BrokerVerdict.OK -> null

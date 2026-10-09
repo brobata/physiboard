@@ -31,7 +31,7 @@ import brobata.physiboard.core.settings.StatusBarPrefs
 
 /**
  * "Saved themes" (status-bar.md SS9.2, `keyboard_theme_saved_themes`): apply or delete a theme the
- * user saved from [StripThemeScreen]'s "Save theme" action. Names compare case-insensitively on
+ * user saved from [ThemeColorsScreen]'s "Save as…" action. Names compare case-insensitively on
  * delete (settings-catalog.md SS2.6).
  */
 @Composable
@@ -45,7 +45,7 @@ fun SavedThemesScreen(onBack: () -> Unit) {
     SettingsScreenScaffold(title = "Saved themes", onBack = onBack) {
         RowList {
             if (statusBar.savedThemes.isEmpty()) {
-                plainItem { EmptyState(Icons.Outlined.Bookmarks, "No saved themes yet. Use \"Save theme\" on Customize colors.") }
+                plainItem { EmptyState(Icons.Outlined.Bookmarks, "No saved themes yet. Use \"Save as…\" on Colours.") }
             }
             items(statusBar.savedThemes, key = { it.name.lowercase() }) { named ->
                 Row(

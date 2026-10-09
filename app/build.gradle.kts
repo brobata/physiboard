@@ -107,8 +107,8 @@ dependencies {
     // The app shell as plain Kotlin (app-shell.md): update checker, what's-new note, launch
     // routing, first-run steps, the debug capture store, the backup codec.
     implementation(project(":core:shell"))
-    // status-bar.md SS9.4/SS6.3: the settings Reset button reuses `:core:strip`'s own
-    // `ButtonSlots.reset()` rather than re-deriving the slot defaults locally.
+    // layers-sym-alt.md SS5.7: the Theme preview draws the Symbols page from `:core:strip`'s own
+    // `SymGridLayout`, so it matches the keyboard's grid key for key.
     implementation(project(":core:strip"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -137,6 +137,15 @@ dependencies {
     // app-shell.md SS13.7: the daily background update check, a periodic job constrained to a
     // connected network. Scheduled/cancelled from PhysiBoardApplication only; :ime never touches it.
     implementation(libs.androidx.work.runtime.ktx)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+    testLogging { events("failed") }
 }
 
 /*

@@ -127,7 +127,7 @@ fun SetupScreen(onComplete: () -> Unit) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Hold Fn to talk (dictation)", modifier = Modifier.padding(vertical = 4.dp))
                             Text("Backlight can light the dark (one-time setup)", modifier = Modifier.padding(vertical = 4.dp))
-                            Text("Everything else lives in the Settings tile", modifier = Modifier.padding(vertical = 4.dp))
+                            Text("Everything else is on the home screen, by category", modifier = Modifier.padding(vertical = 4.dp))
                             Button(onClick = { completeSetup(controller, onComplete) }, modifier = Modifier.padding(top = 12.dp)) { Text("Done") }
                         }
                     }

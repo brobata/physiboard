@@ -11,7 +11,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import brobata.physiboard.app.settings.ui.ButtonRow
+import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.ColorFieldRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.RowList
@@ -77,16 +80,17 @@ fun ThemeLayoutOverrideEditScreen(index: Int, onBack: () -> Unit) {
             item { ColorFieldRow("Key outlines", theme.divider) { v -> theme = theme.copy(divider = v) } }
             item { ColorFieldRow("Text and icons", theme.textAndIcons) { v -> theme = theme.copy(textAndIcons = v) } }
             item { ColorFieldRow("Accent", theme.accent) { v -> theme = theme.copy(accent = v) } }
-            header("Status strip (switched off)")
-            item { ColorFieldRow("LED inactive", theme.ledInactive) { v -> theme = theme.copy(ledInactive = v) } }
-            item { ColorFieldRow("LED active", theme.ledActive) { v -> theme = theme.copy(ledActive = v) } }
-            item { ColorFieldRow("LED locked", theme.ledLocked) { v -> theme = theme.copy(ledLocked = v) } }
+            // The LED colours only ever painted the suggestion strip, which is gone; they are kept
+            // in the stored override (the copy above carries them) but not offered.
+            header("")
             item { ButtonRow(label = "Save", buttonText = "Save", onClick = ::save) }
             if (existing != null) {
                 item {
-                    ButtonRow(
+                    NavigateRow(
                         label = "Delete this override",
-                        buttonText = "Delete",
+                        icon = Icons.Outlined.Delete,
+                        destructive = true,
+                        showChevron = false,
                         onClick = {
                             controller.update { s -> s.copy(statusBar = s.statusBar.copy(layoutOverrides = s.statusBar.layoutOverrides.filterIndexed { i, _ -> i != index })) }
                             onBack()

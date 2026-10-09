@@ -2283,7 +2283,7 @@ internal class KeyboardSession(
         override val emptyNote: String
             get() = when {
                 !otpFromNotifications -> "Nothing to fill here. One-time codes from notifications are switched off in PhysiBoard settings."
-                !notificationAccessGranted() -> "Nothing to fill here. To see one-time codes from your messages and mail here, give PhysiBoard notification access in its settings (Customize SYM Keyboard)."
+                !notificationAccessGranted() -> "Nothing to fill here. To see one-time codes from your messages and mail here, give PhysiBoard notification access in its settings (Privacy, or Sym pages)."
                 else -> "Nothing to fill here. One-time codes from your notifications show here for 10 minutes."
             }
     }

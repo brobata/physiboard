@@ -4,7 +4,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.FindReplace
 import androidx.compose.material.icons.outlined.Spellcheck
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -15,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import brobata.physiboard.app.settings.ui.ExpandableSection
 import brobata.physiboard.app.settings.ui.IntClosedRange
 import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
@@ -27,10 +27,14 @@ import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.settings.CorrectionPrefs
 
 /**
- * "Auto-correction" (settings-catalog.md SS9.2, autocorrect-suggestions.md). "Manage text
- * replacements" (per-language substitution lists) and "Personal dictionary" (backed by
- * `:core:dict`'s `UserWordStore`, not a row in this typed schema) both navigate to their own list
- * editors. "Edit Type Ranking" (`use_edit_type_ranking`) is dropped from [CorrectionPrefs] for 3.0.
+ * "Autocorrect & words" (formerly "Auto-correction"; settings-catalog.md SS9.2,
+ * autocorrect-suggestions.md): the corrections PhysiBoard makes to whole words, then the word
+ * lists it corrects with (the personal dictionary, the per-language text replacements, Android's
+ * spell checker), then the two tuning knobs, collapsed. "Text replacements" now carries its own
+ * switch on its own screen; this row shows whether it is on. "Suggestions while typing"
+ * (`suggestions_enabled`) has no row any more: it only ever filled the suggestion strip, which
+ * is gone (c61c240); the key stays for backups. "Edit Type Ranking" (`use_edit_type_ranking`)
+ * is dropped from [CorrectionPrefs] for 3.0.
  */
 @Composable
 fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
@@ -50,58 +54,66 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    SettingsScreenScaffold(title = "Auto-correction", onBack = onBack) {
+    SettingsScreenScaffold(title = "Autocorrect & words", onBack = onBack) {
         RowList {
-            item {
-                SwitchRow("Text replacements", checked = correction.textReplacementsEnabled, onCheckedChange = { set { p -> p.copy(textReplacementsEnabled = it) } })
-            }
-            item {
-                NavigateRow("Manage text replacements", "Custom substitutions per language", icon = Icons.Outlined.FindReplace) { onNavigate(Routes.CUSTOM_SUBSTITUTIONS) }
-            }
-            item {
-                NavigateRow("Personal dictionary", "Words you've added, plus the built-in favourites", icon = Icons.AutoMirrored.Outlined.MenuBook) { onNavigate(Routes.PERSONAL_DICTIONARY) }
-            }
-            item {
-                SwitchRow("Automatic correction", checked = correction.autoReplaceOnSpaceEnter, onCheckedChange = { set { p -> p.copy(autoReplaceOnSpaceEnter = it) } })
-            }
-            item {
-                IntRangeRow(
-                    label = "Maximum correction distance",
-                    value = correction.maxAutoReplaceDistance,
-                    range = IntClosedRange(0, 3),
-                    valueLabel = { if (it == 0) "Off" else it.toString() },
-                    onValueChange = { value -> set { p -> p.copy(maxAutoReplaceDistance = value) } },
-                )
-            }
-            item {
-                SwitchRow("Suggestions while typing", checked = correction.suggestionsEnabled, onCheckedChange = { set { p -> p.copy(suggestionsEnabled = it) } })
-            }
+            header("Autocorrect")
             item {
                 SwitchRow(
-                    "Accent & spelling marks",
-                    description = "Lets a correction add a missing apostrophe or accent, so dont can become don't.",
-                    checked = correction.accentMatching,
-                    onCheckedChange = { set { p -> p.copy(accentMatching = it) } },
+                    "Fix typos",
+                    description = "A misspelled word is corrected when you press Space or Enter. Backspace right after puts back what you typed.",
+                    checked = correction.autoReplaceOnSpaceEnter,
+                    onCheckedChange = { set { p -> p.copy(autoReplaceOnSpaceEnter = it) } },
                 )
-            }
-            item {
-                SwitchRow(
-                    "Keyboard Proximity Ranking",
-                    description = "Ranks corrections by how close the keys are. English, which reads the sentence, always weighs the Titan's key distances; this switch is for the other languages.",
-                    checked = correction.useKeyboardProximity,
-                    onCheckedChange = { set { p -> p.copy(useKeyboardProximity = it) } },
-                )
-            }
-            item {
-                NavigateRow("System spell checker", SpellCheckerSettings.description(spellChecker), icon = Icons.Outlined.Spellcheck) { SpellCheckerSettings.open(context) }
             }
             item {
                 SwitchRow(
                     "Fix mixed-up words",
-                    description = "Fixes a real word typed for its twin \u2014 its/it's, your/you're, their/there, then/than \u2014 by reading the words on both sides. Backspace right after puts back what you typed.",
+                    description = "its/it's, your/you're, their/there, then/than, by reading the words on both sides.",
                     checked = correction.fixWordMixups,
                     onCheckedChange = { set { p -> p.copy(fixWordMixups = it) } },
                 )
+            }
+            item {
+                SwitchRow(
+                    "Add missing apostrophes and accents",
+                    description = "So dont becomes don't.",
+                    checked = correction.accentMatching,
+                    onCheckedChange = { set { p -> p.copy(accentMatching = it) } },
+                )
+            }
+            header("Words")
+            item {
+                NavigateRow("Personal dictionary", "Words you've added, plus the built-in favourites", icon = Icons.AutoMirrored.Outlined.MenuBook) { onNavigate(Routes.PERSONAL_DICTIONARY) }
+            }
+            item {
+                NavigateRow(
+                    "Text replacements",
+                    "Your own rules, per language",
+                    icon = Icons.Outlined.FindReplace,
+                    value = if (correction.textReplacementsEnabled) "On" else "Off",
+                ) { onNavigate(Routes.CUSTOM_SUBSTITUTIONS) }
+            }
+            item {
+                NavigateRow("System spell checker", SpellCheckerSettings.description(spellChecker), icon = Icons.Outlined.Spellcheck) { SpellCheckerSettings.open(context) }
+            }
+            header("")
+            item {
+                ExpandableSection("Fine-tuning") {
+                    IntRangeRow(
+                        label = "How far a correction may reach",
+                        description = "The most letters a correction may change. Off corrects nothing but missing apostrophes and accents.",
+                        value = correction.maxAutoReplaceDistance,
+                        range = IntClosedRange(0, 3),
+                        valueLabel = { if (it == 0) "Off" else if (it == 1) "1 letter" else "$it letters" },
+                        onValueChange = { value -> set { p -> p.copy(maxAutoReplaceDistance = value) } },
+                    )
+                    SwitchRow(
+                        "Weigh nearby keys",
+                        description = "Prefer corrections that are a slip to a neighbouring key. English always does; this is for the other languages.",
+                        checked = correction.useKeyboardProximity,
+                        onCheckedChange = { set { p -> p.copy(useKeyboardProximity = it) } },
+                    )
+                }
             }
         }
     }
