@@ -22,9 +22,9 @@ import brobata.physiboard.app.R
 
 /**
  * The shell's one visual identity (app-shell.md SS22.1): Material 3 with dynamic colour disabled,
- * dark or light following the system, the terminal palette, and JetBrains Mono throughout
- * (regular, medium and bold, vendored as `res/font/jetbrains_mono_*.ttf` under the SIL Open Font
- * License; see LICENSING.md).
+ * dark or light following the system, the terminal palette, JetBrains Mono for titles and the
+ * prompt and Inter for reading (both vendored under `res/font`, SIL Open Font License; see
+ * LICENSING.md).
  */
 object PhysiBoardColors {
     val Ink = Color(0xFF0F172A)
@@ -41,6 +41,13 @@ object PhysiBoardColors {
      */
     val Slate400 = Color(0xFF94A3B8)
     val ErrorDark = Color(0xFFEF4444)
+
+    /**
+     * Amber dark enough to be text on the light theme. Signal Amber is about 2:1 on white, so
+     * section labels and text buttons in amber were unreadable there; this is about 5:1 on
+     * Cloud and white, and stays the primary colour of the light theme only.
+     */
+    val AmberDeep = Color(0xFFB45309)
     val ErrorLight = Color(0xFFDC2626)
 }
 
@@ -59,8 +66,11 @@ private val PhysiBoardDarkColors = darkColorScheme(
     inversePrimary = Color(0xFFB45309),
     secondary = PhysiBoardColors.Sky,
     onSecondary = PhysiBoardColors.Ink,
-    secondaryContainer = Color(0xFF0C4A6E),
-    onSecondaryContainer = Color(0xFFBAE6FD),
+    // Tonal buttons, selected chips and slider tracks fill with secondaryContainer. Sky's deep
+    // blue there put a second accent beside the amber one on every screen; the amber container
+    // keeps one accent family.
+    secondaryContainer = Color(0xFF78350F),
+    onSecondaryContainer = Color(0xFFFDE68A),
     tertiary = PhysiBoardColors.SignalAmber,
     onTertiary = PhysiBoardColors.Ink,
     tertiaryContainer = Color(0xFF78350F),
@@ -81,7 +91,9 @@ private val PhysiBoardDarkColors = darkColorScheme(
     surfaceTint = PhysiBoardColors.SignalAmber,
     inverseSurface = PhysiBoardColors.Cloud,
     inverseOnSurface = PhysiBoardColors.Ink,
-    outline = PhysiBoardColors.Slate500,
+    // Slate500 is only about 3:1 on a card (Slate), the floor for a switch's or field's border;
+    // Slate400 keeps the off switch and the text fields clearly outlined.
+    outline = PhysiBoardColors.Slate400,
     outlineVariant = Color(0xFF334155),
     error = PhysiBoardColors.ErrorDark,
     onError = PhysiBoardColors.Ink,
@@ -90,17 +102,17 @@ private val PhysiBoardDarkColors = darkColorScheme(
 )
 
 private val PhysiBoardLightColors = lightColorScheme(
-    primary = PhysiBoardColors.SignalAmber,
-    onPrimary = PhysiBoardColors.Ink,
+    primary = PhysiBoardColors.AmberDeep,
+    onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFFEF3C7),
     onPrimaryContainer = Color(0xFF78350F),
     inversePrimary = Color(0xFFFBBF24),
     secondary = PhysiBoardColors.Sky,
     onSecondary = PhysiBoardColors.Ink,
-    secondaryContainer = Color(0xFFE0F2FE),
-    onSecondaryContainer = Color(0xFF0C4A6E),
-    tertiary = PhysiBoardColors.SignalAmber,
-    onTertiary = PhysiBoardColors.Ink,
+    secondaryContainer = Color(0xFFFEF3C7),
+    onSecondaryContainer = Color(0xFF78350F),
+    tertiary = PhysiBoardColors.AmberDeep,
+    onTertiary = Color(0xFFFFFFFF),
     tertiaryContainer = Color(0xFFFEF3C7),
     onTertiaryContainer = Color(0xFF78350F),
     background = PhysiBoardColors.Cloud,
@@ -119,7 +131,7 @@ private val PhysiBoardLightColors = lightColorScheme(
     surfaceContainerHighest = Color(0xFFE2E8F0),
     surfaceVariant = Color(0xFFE2E8F0),
     onSurfaceVariant = PhysiBoardColors.Slate500,
-    surfaceTint = PhysiBoardColors.SignalAmber,
+    surfaceTint = PhysiBoardColors.AmberDeep,
     inverseSurface = PhysiBoardColors.Ink,
     inverseOnSurface = PhysiBoardColors.Cloud,
     outline = PhysiBoardColors.Slate500,
@@ -131,9 +143,9 @@ private val PhysiBoardLightColors = lightColorScheme(
 )
 
 /**
- * JetBrains Mono, vendored under `res/font` (SIL OFL 1.1). Only the three weights app-shell.md
- * SS22.1 names are shipped; Compose's own weight matching picks Bold for a style that asks for
- * SemiBold (the settings top bar's heading), which is the closest of the three.
+ * JetBrains Mono, vendored under `res/font` (SIL OFL 1.1). The brand face (app-shell.md SS22.1):
+ * screen and dialog titles, section labels and the `physiboard:~$` prompts. Compose's weight
+ * matching picks Bold for a style that asks for SemiBold, the closest of the three shipped.
  */
 private val jetBrainsMono = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
@@ -141,43 +153,86 @@ private val jetBrainsMono = FontFamily(
     Font(R.font.jetbrains_mono_bold, FontWeight.Bold),
 )
 
-private val PhysiBoardTypography = Typography().let { base ->
-    Typography(
-        displayLarge = base.displayLarge.copy(fontFamily = jetBrainsMono),
-        displayMedium = base.displayMedium.copy(fontFamily = jetBrainsMono),
-        displaySmall = base.displaySmall.copy(fontFamily = jetBrainsMono),
-        headlineLarge = base.headlineLarge.copy(fontFamily = jetBrainsMono),
-        headlineMedium = base.headlineMedium.copy(fontFamily = jetBrainsMono),
-        headlineSmall = base.headlineSmall.copy(fontFamily = jetBrainsMono, fontWeight = FontWeight.SemiBold),
-        titleLarge = base.titleLarge.copy(fontFamily = jetBrainsMono),
-        titleMedium = base.titleMedium.copy(fontFamily = jetBrainsMono, fontWeight = FontWeight.Medium),
-        titleSmall = base.titleSmall.copy(fontFamily = jetBrainsMono, fontWeight = FontWeight.Medium),
-        bodyLarge = base.bodyLarge.copy(fontFamily = jetBrainsMono),
-        bodyMedium = base.bodyMedium.copy(fontFamily = jetBrainsMono),
-        bodySmall = base.bodySmall.copy(fontFamily = jetBrainsMono),
-        labelLarge = base.labelLarge.copy(fontFamily = jetBrainsMono, fontWeight = FontWeight.Medium),
-        labelMedium = base.labelMedium.copy(fontFamily = jetBrainsMono),
-        labelSmall = base.labelSmall.copy(fontFamily = jetBrainsMono),
-    )
+/**
+ * Inter, vendored under `res/font` (SIL OFL 1.1, `third_party/licenses/OFL-1.1-Inter.txt`). The
+ * reading face (app-shell.md SS22.1): row titles, descriptions, dialog bodies and buttons, where a
+ * monospace line ran a third wider and wrapped where it did not need to.
+ */
+private val inter = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+)
+
+private fun mono(size: Int, line: Int, weight: FontWeight = FontWeight.Bold) =
+    TextStyle(fontFamily = jetBrainsMono, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = 0.sp)
+
+private fun sans(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, tracking: Double = 0.0) =
+    TextStyle(fontFamily = inter, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.sp)
+
+/**
+ * The one type scale (app-shell.md SS22.1). Display, headline and title-large are JetBrains Mono:
+ * the top bar's screen title and every dialog title (Material draws those in headline-small) keep
+ * the terminal voice. Everything a person reads through, title-medium down, is Inter. Screens use
+ * these roles and [PhysiBoardType], never a font size of their own.
+ */
+private val PhysiBoardTypography = Typography(
+    displayLarge = mono(48, 56),
+    displayMedium = mono(40, 48),
+    displaySmall = mono(32, 40),
+    headlineLarge = mono(28, 36),
+    headlineMedium = mono(24, 32),
+    headlineSmall = mono(21, 28),
+    titleLarge = mono(19, 26),
+    titleMedium = sans(16, 22, FontWeight.SemiBold),
+    titleSmall = sans(14, 20, FontWeight.SemiBold),
+    bodyLarge = sans(16, 23),
+    bodyMedium = sans(14, 20),
+    bodySmall = sans(13, 18),
+    labelLarge = sans(14, 20, FontWeight.SemiBold, 0.1),
+    labelMedium = sans(12, 16, FontWeight.Medium, 0.2),
+    labelSmall = sans(11, 16, FontWeight.Medium, 0.3),
+)
+
+/** Brand roles Material's scale has no slot for. */
+object PhysiBoardType {
+    /** The `physiboard:~$` prompt on Home, Setup and What's new (SS22.1: bold 18 sp amber). */
+    val prompt: TextStyle = mono(18, 24)
+
+    /** The label above each group of settings cards: mono, in the accent colour, sentence case. */
+    val sectionLabel: TextStyle = mono(13, 18)
+
+    /** Log lines, key-event dumps and report text on Diagnostics: mono so the columns line up. */
+    val code: TextStyle = mono(12, 17, FontWeight.Normal)
+
+    /** A single character or emoji shown as itself (picker cells, key tiles). */
+    val glyph: TextStyle = sans(22, 28)
+}
+
+/** Spacing steps every screen picks from, so gaps line up from screen to screen. */
+object Spacing {
+    val xs = 4.dp
+    val s = 8.dp
+    val m = 12.dp
+    val l = 16.dp
+    val xl = 24.dp
 }
 
 /**
- * Sharper, more rectangular corners than Material's own defaults, applied once here so every
- * card, button, chip, dialog and text field reads as one "terminal panel" family instead of the
- * soft, fully-rounded default look (a "designer's eye" pass item 6 asked for, not named by
- * app-shell.md SS22.1 itself).
+ * Rounded, but by role: small parts (chips, fields) stay tight, cards take 16 dp and dialogs 28 dp,
+ * so a dialog reads as a layer above the cards rather than one more of them.
  */
 private val PhysiBoardShapes = Shapes(
-    extraSmall = RoundedCornerShape(2.dp),
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(6.dp),
-    large = RoundedCornerShape(8.dp),
-    extraLarge = RoundedCornerShape(12.dp),
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 /** The terminal-header monospace style shared by Home and the setup/what's-new pages (SS22.1). */
 val TerminalPromptStyle: TextStyle
-    @Composable get() = TextStyle(fontFamily = jetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+    @Composable get() = PhysiBoardType.prompt
 
 /**
  * True when the system's animator duration scale is 0 ("reduced motion" / developer setting
