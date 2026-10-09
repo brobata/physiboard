@@ -632,9 +632,11 @@ and is laid out for what the theme still colours, the Sym pages and the panels b
    button and accent colours; the active one outlined and tagged "Active".
 2. "Keyboard UI Preview": the Symbols Sym page drawn in the active theme, following the live
    grid (layers-sym-alt.md SS5.7): the Titan's three left-aligned rows with their blanks, letter
-   keys in `suggestion` with a 1 dp `divider` outline and 6 dp corners, each key's letter small
-   at its top-left and its character centred in `text_and_icons`, the pencil and globe and the
-   close button in `status_bar_button`, all on `background`. The characters are the user's own
+   keys in `suggestion` with a 1 dp `divider` outline and the 4 dp keycap corners, each key's
+   letter small in mono at its top-left and its character centred in the glyph face, in
+   `text_and_icons`, the pencil, globe and close button drawn with the keyboard's own icons in
+   `status_bar_button`, all on `background` in a 6 dp pane (amended 2026-10-09 with the panel
+   skin, app-shell.md SS22.5). The characters are the user's own
    Symbols page when they edited it, else the shipped one. There is no suggestion row, Shift
    chip, LED row or viewport slider any more.
 3. Rows "Customize colors", "Saved themes", "Layout overrides".
@@ -651,9 +653,9 @@ and is laid out for what the theme still colours, the Sym pages and the panels b
 | `background` | Background | Behind the Sym pages, emoji picker and clipboard | page and panel backgrounds |
 | `suggestion` | Keys | Sym page keys, search fields, clips and GIF cards | Sym grid keys, emoji picker search field and skin-tone cells, clipboard items, GIF cards |
 | `status_bar_button` | Buttons | Pencil, globe, close and the panels' tool buttons | Sym grid pencil/globe, close buttons, emoji picker mode and tab buttons, clipboard and page-chooser buttons |
-| `divider` | Key outlines | The edge around keys, cards and the selected tab | 1 dp key and card strokes |
+| `divider` | Key outlines | The edge around keys, cards and the selected tab | 1 dp key and card strokes, the 1 dp rule along each panel's top edge (the selected tab's outline is the accent since 2026-10-09) |
 | `text_and_icons` | Text and icons | Characters, labels and icons | all panel text and glyphs |
-| `accent` | Accent | The selected emoji tab, pinned clips and Clear all | emoji picker selected tab, pinned clip fill, clipboard "Clear all" |
+| `accent` | Accent | The selected emoji tab, pinned clips and Clear all | emoji picker selected tab, pinned clip wash and outline, clipboard "Clear all", a pressed key's wash and outline, the `#` of panel titles, the `$` of search prompts and their outline while typing, the Sym chooser's key letters |
 
 Under a "Status strip" header, collapsed in "Strip LEDs, corners and height": "LED inactive",
 "LED active", "LED locked", "Strip key corners" (`key_corner_radius_ratio`), "Strip button

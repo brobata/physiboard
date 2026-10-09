@@ -648,7 +648,7 @@ the user leaves an update uninstalled and undismissed, the notification is re-po
 Channel `pastiera_update_channel`, name "PhysiBoard Updates", description "Notifications about
 new PhysiBoard versions", default importance, badge on, no light, vibration pattern 0/50 ms, no
 sound. Notification id 2, title "PhysiBoard - New update available", text "A new version of
-PhysiBoard is available (<tag>)", the keycap silhouette as small icon, default priority,
+PhysiBoard is available (<tag>)", the mark (`pb_ic_mark`, SS22.4) as small icon, default priority,
 category status, public visibility, auto-cancel. Tapping opens, in a browser with a new cleared
 task, the APK asset URL when there is one, else the release page, else the releases list. It
 does not open the app and does not mark the release dismissed.
@@ -736,8 +736,9 @@ report row.
 | `physiboard_notification_ring` | ring channel | high | 41 | the notification ring (ring document) | full-screen intent, alarm category |
 | `adb_pairing` | pairing channel | high, silent, no badge, no bubbles | vendored service's own | the pairing service while armed (4.5) | shows the pairing-code entry |
 
-All app-posted notifications use the single-colour keycap silhouette as small icon (change
-record 2.0.2). The nav-mode channel is deleted and recreated whenever its creation runs, which
+All app-posted notifications use the mark, the single-colour keycap with the `>_` prompt cut
+into its face (`pb_ic_mark`, SS22.4; change record 2.0.2 introduced the keycap), as small icon,
+except the notification ring's, which is the ring icon (`pb_ic_ring`, a dot inside a ring). The nav-mode channel is deleted and recreated whenever its creation runs, which
 nothing does in 2.x; the update channel is created (idempotently) right before each update
 notification.
 
@@ -832,6 +833,14 @@ that exist in the source but have no path from any screen:
 Since 3.1 the settings app keeps the modern structure (category index, detail screens,
 summaries, collapsing titles, panes, 48 dp targets) and wears it as a terminal: JetBrains Mono
 is the voice of the chrome, Inter is kept only for the sentences a person reads through.
+
+The design system this skin belongs to, shared with the keyboard's panels, the launcher icon and
+the splash, is written down in `docs/design/design-system.md` (colour, type, spacing, corners,
+borders, icons, motion, haptics, copy). Its numbers live in one place, the `:design` module's
+`DesignTokens` (pure Kotlin, contrast pairs pinned by a test), with the two typefaces and the
+icon family beside it; the settings theme below reads its palette, spacing and corners from
+there. Where this section and that document differ, this section describes the settings app and
+the document the system.
 
 **Palette.** Every activity uses one theme: Material 3 with dynamic colour disabled, dark or
 light following the system. Ink `#0F172A` (dark page), Pane `#111B2E` (dark pane fill, the
@@ -963,6 +972,70 @@ non-blank; blank or absent means the system locale. Because it is applied at act
 a language change takes effect when the screen is recreated. Options: system default, then
 `en`, `it`, `de`, `es`, `fr`, `pl`, `ru`, `uk`, `vi`, `hy`.
 
+### 22.4 Identity: the launcher icon, the splash and the small icons
+
+**The mark** is a Titan keycap seen face on, its skirt and its dished face, with a terminal
+prompt (`>_`) in Signal Amber on the face: "a physical keyboard that is also a terminal".
+
+- **Launcher icon** (`@mipmap/ic_launcher`, `ic_launcher_round`): an adaptive icon, every layer a
+  vector in `:design`. Background `pb_launcher_background`, flat Ink. Foreground
+  `pb_launcher_foreground`, the cap (skirt `#334155`, face `#1E293B`) and the prompt in Signal
+  Amber (8.3:1 on Ink), inside the 66 dp safe zone so any mask keeps the whole cap. Monochrome
+  `pb_launcher_monochrome` (Android 13 themed icons): the mark's silhouette, the cap's bezel with
+  the prompt in it, scaled into the safe zone. The round icon is the same layers.
+- **The sideload build** (`brobata.physiboard.dev3`) uses `pb_launcher_foreground_dev`: the same
+  cap, lifted and at 90 %, over a Sky (`#38BDF8`) pill reading DEV in Ink; its app label and its
+  keyboard's name in the input-method picker are "PhysiBoard Dev" (`src/sideload/res`). Its
+  themed icon stays the plain mark; the label tells the two apart there. Release and debug keep
+  the plain mark and "PhysiBoard".
+- **Small icons**, from the same family (24 dp, white, tinted by the system): `pb_ic_mark` (every
+  notification, SS16), `pb_ic_ring` (the notification ring), `pb_ic_backlight` (the Keyboard
+  light Quick Settings tile: the keycap with light rising off it).
+
+**Splash.** MainActivity starts on `Theme.PhysiBoard.Starting` (AndroidX core-splashscreen on
+the platform's Android 12 splash): the foreground mark on an Ink disc, centred on the page colour
+(Cloud in light mode, Ink in dark), then `Theme.PhysiBoard`. The splash is held until launch
+routing (SS3) has picked the first screen, and never longer than 1500 ms, so the app never
+flashes an empty page between the splash and its first screen. The window background before
+Compose draws is the page colour too.
+
+### 22.5 The keyboard's panels wear the same skin
+
+Every surface the keyboard draws (the Sym key pages and My pages, the emoji, kaomoji and
+symbol picker, the GIF page, the clipboard, the Fill page, the Sym page chooser, the accent and
+skin-tone bars, the expansion popup, the quick launcher, the trackpad hint and the caret badge)
+uses the design system (`docs/design/design-system.md`, "Panels"); `:ime`'s `PanelSkin` builds
+it. The colours stay the user's keyboard theme (status-bar.md SS9.4: Background, Keys, Buttons,
+Key outlines, Text and icons, Accent); the skin decides only type, borders, corners, spacing,
+icons and motion. Nothing about what a panel holds or does changed (amended 2026-10-09):
+
+- **Type.** JetBrains Mono for every label, key letter, tab, chip, button, field and title;
+  Inter for what is read through (a clip's text, status lines, the codes' source lines) and for
+  a character shown as itself (Sym page characters, symbol and kaomoji cells, accent tiles).
+  Emoji draw in the system's emoji font. The keyboard loads both faces off the main thread when
+  it starts, so the first Sym page never waits on the disk.
+- **Surfaces.** A panel is the theme's Background with a 1 dp Key-outline rule along its top
+  edge. Keycaps and chrome keys are 4 dp with a 1 dp Key-outline stroke; cards, clips, GIF tiles
+  and popups 6 dp; fields 2 dp. Pressed, a key or card takes the accent at 25 % over its fill
+  and an accent outline, and dips to 94 % before springing back.
+- **Titles and fields.** A panel's title is a shell comment, `# clipboard history`: `#` in the
+  accent, the words lower-cased in the text colour at 72 %, read aloud as the plain title and
+  marked a heading. A search field is a prompt: `$` in the accent, the hint lower-cased ending in
+  `_`, a 1 dp outline that turns the accent while hardware keys go into it.
+- **Close.** Every panel's close button is the same: the shared close icon (a line X) on a
+  36 by 32 dp chrome key, read as "Close". The Sym page's pencil, globe and search keys and the
+  picker's search toggle are the shared edit, globe and search icons.
+- **Theme-less surfaces** (the expansion popup, the quick launcher sheet, the trackpad hint)
+  wear the design scheme for the system's light or dark mode: pane, hairline, accent.
+- **Motion.** A panel rises 28 dp into place on a spring (stiffness 600, damping ratio 0.86, no
+  visible bounce) while fading in over 140 ms; it closes by dropping 16 dp and fading over
+  140 ms, taking no touches from the moment it starts to go. A panel swapped for another in
+  place (the Sym key stepping pages, the accent bar reopening, the Fill page redrawing for a new
+  response) fades in over 110 ms instead. The expansion popup, redrawn on every highlight move,
+  never animates. With the system's animator duration scale at 0 nothing moves at all.
+- **Insets.** The Titan's rounded-corner insets (SS4 of status-bar.md, `BottomOverlay`) are
+  unchanged: the panel's own background fills the padding they add.
+
 ## 23. Build configuration as behavior
 
 ### 23.1 Identity
@@ -988,9 +1061,11 @@ a language change takes effect when the screen is recreated. Options: system def
 |---|---|---|---|---|---|
 | debug | `brobata.physiboard` | PhysiBoard | none | kept | debug key |
 | release | `brobata.physiboard` | PhysiBoard | R8 minify and resource shrink, optimize defaults | every level below error stripped (23.5) | the release key |
-| sideload | `brobata.physiboard.sideload` | "PhysiBoard (sideload)" for app and IME | same as release | kept | the release key |
+| sideload | `brobata.physiboard.dev3` | "PhysiBoard Dev" for app and IME, with the DEV launcher icon (SS22.4) | none (it starts from debug) | kept | the debug key |
 
-The sideload type exists so the release R8 pipeline can be exercised on the maintainer's own
+In 3.x the sideload type starts from debug and installs as `brobata.physiboard.dev3`, so it
+sits beside both the release app and the 2.x test build (the row above, amended 2026-10-09);
+the 2.x reasoning follows. The sideload type exists so the release R8 pipeline can be exercised on the maintainer's own
 phone without touching the daily driver's data or IME registration: a different application id
 installs side by side, appears as a second keyboard in the picker, and keeps logs for
 debugging. CI builds it on every push to catch ProGuard breakage before release day.

@@ -43,6 +43,9 @@ a spec is filled from device evidence and added here, never from reading old sou
 | `app-shell.md` | Onboarding, tutorial, diagnostics, update checker, about, notifications, build and release configuration |
 | `test-corpus.md` | Key sequences recorded on the Titan with expected text |
 
+The design system (colour, type, spacing, corners, icons, motion, copy) is not a behaviour spec
+and lives beside it: `docs/design/design-system.md`.
+
 ## Amendments
 
 Places where a fix changed behaviour and the spec was updated to match, rather than the other way
@@ -69,3 +72,4 @@ around.
 | `dictation.md` | 2, 3, 5, 6.3, 6.4, 6.9, 7.1, 7.3, 7.5, 12.1, 13, 14, 15, 16, 17 | The lengths go to Google as ints (D23), which gives its continuous session (D24): finals are ordinary results, so a continuation probe replaces the restart; the engine's segment-start capital is undone mid-sentence; a final that is not the partial's own commits the partial first; a re-worded late final is an echo; the app emptying the field ends the session; an Fn press stops a running session; the always-on trace; the silence limit defaults to 15 s with five choices. | this change |
 | `settings-catalog.md` | 2.8, 12 | `dictation_stop_after_silence_ms` default 15000, five choices. | this change |
 | `layers-sym-alt.md`, `text-input.md`, `app-shell.md`, `trackpad-caret-nav.md`, `settings-catalog.md` | 1, 4.1, 4.2, 4.7, 5.9, 5.10, 11 (D15), 12, 14, 15; 3.1; 31.6; 4.2; 2.5, search | The Fill page (`fill`, page 10): one-time codes read from notifications (memory only, 10 minutes, `otp_from_notifications`) and a password manager's inline suggestions (experimental, `fill_inline_suggestions`, off); in the cycle only while it has something, first in a code or login field; the chooser's F; the caret badge's FILL cue; one-time code field detection; notification access and its privacy and store notes. | this change |
+| `app-shell.md`, `layers-sym-alt.md`, `expansion-clipboard-pickers-launcher.md`, `status-bar.md`, `trackpad-caret-nav.md`, `device-backlight-ring.md` | 16, 22.1, 22.4, 22.5, 23.2; 5.7; 2.5, 3.5, 4.3, 4.4, 4.5; 9.4; 2.5, 4.3; 2.2, 5.6 | The keyboard's panels wear the settings app's skin (mono type, hairlines, 4 dp keys, shared icons, spring open and close); the launcher icon, themed icon, splash, DEV icon and "PhysiBoard Dev" label; the notification and tile icons; docs/design/design-system.md. | this change |

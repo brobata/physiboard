@@ -71,7 +71,9 @@ no light-sensor control in the shipped app (see section 4 for what was tried).
 
 ### 2.2 The Quick Settings tile
 
-A Quick Settings tile labelled **Keyboard light** (bulb icon) toggles the master switch.
+A Quick Settings tile labelled **Keyboard light** toggles the master switch. Its icon is the
+backlight keycap (`pb_ic_backlight`: a keycap with light rising off it, from the shared icon
+family, docs/design/design-system.md; amended 2026-10-09 from a bulb).
 
 Behavior:
 
@@ -349,7 +351,7 @@ So:
 2. Otherwise a channel `physiboard_notification_ring` ("Notification ring", description "Used
    only to turn the screen on for the ring. Silent, and dismissed on its own.") is created
    once with high importance, no sound, no vibration, no lights, no badge; and notification id
-   41 is posted on it: bulb icon, title "Notification ring", text "Turning the screen on for a
+   41 is posted on it: the ring icon (`pb_ic_ring`, a dot inside a ring), title "Notification ring", text "Turning the screen on for a
    notification", priority high, category alarm, group-alert-all (setting "silent" on the
    notification itself would mark it alert-suppressed and SystemUI refuses full-screen launches
    for those), auto-cancel, timeout 15000 ms, full-screen intent pointing at the ring activity

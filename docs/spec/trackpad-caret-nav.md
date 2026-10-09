@@ -143,9 +143,9 @@ With `screen_trackpad_show_hint` on (default true) a small pill is drawn inside 
 | Property | Value |
 |---|---|
 | Position | top centre, 56 dp below the top of the screen |
-| Text | white, 13 sp |
-| Padding | 14 dp horizontal, 7 dp vertical |
-| Background | rounded 20 dp, colour argb(200, 20, 20, 20) |
+| Text | JetBrains Mono medium, 13 sp, the design scheme's text colour (amended 2026-10-09, app-shell.md SS22.5) |
+| Padding | 12 dp horizontal, 8 dp vertical |
+| Background | rounded 6 dp, the design scheme's pane colour at alpha 235 with a 1 dp accent hairline; the scheme follows the system's light or dark mode |
 | Text, hold mode | "✥ Cursor" |
 | Text, sticky mode | "✥ Cursor · tap to exit" |
 | Text, Shift active | "⇧ Select" (either mode) |
@@ -479,7 +479,7 @@ Sym page is open (layers-sym-alt.md section 4.7): the cue that Sym will open the
 
 | Quantity | Value |
 |---|---|
-| Glyph height (words and arrow) | 11 sp |
+| Glyph height (words and arrow) | 11 sp, JetBrains Mono bold (amended 2026-10-09, app-shell.md SS22.5) |
 | ⌥ point size | 1.3 times the glyph height (symbol glyphs sit small in their em box) |
 | Gap between items | 4 dp |
 | Halo | white at alpha 225, stroked outward, stroke width 2 times 1.1 dp, round joins, drawn before the fill |
