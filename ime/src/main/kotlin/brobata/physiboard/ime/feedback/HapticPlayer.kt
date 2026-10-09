@@ -50,7 +50,7 @@ class HapticPlayer(context: Context) {
 
     @Volatile var keyStrength: HapticIntensity = HapticIntensity.LIGHT
 
-    @Volatile var eventHaptics: Boolean = true
+    @Volatile var eventHaptics: Boolean = false
 
     @Volatile private var systemHapticsOn: Boolean = readSystemHaptics()
 

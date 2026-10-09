@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 8 sets the Sym pages to Emoji, Symbols, GIFs. */
-    const val CURRENT_VERSION: Int = 8
+    /** The baseline version this build ships with; version 9 switches the event vibrations off. */
+    const val CURRENT_VERSION: Int = 9
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -75,6 +75,10 @@ object SettingsBaseline {
             SettingsKeys.SYM_PAGES_CONFIG to JsonRows.encode(StoredValues.symPagesConfig(SYM_PAGES_V8)),
             SettingsKeys.EMOJI_PICKER_KAOMOJI to "false",
         ),
+        // Version 9, 2026-10-09: the haptic language's events (Shift, Sym, picks, autocorrect,
+        // the settings app's ticks) off, by the maintainer's choice; the dev build had stored
+        // them on. Dictation's cues are their own setting and keep buzzing.
+        9 to mapOf(SettingsKeys.EVENT_HAPTICS to "false"),
     )
 
     /**

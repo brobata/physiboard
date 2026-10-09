@@ -362,7 +362,7 @@ Never edited by the user.
 | `tap_haptic_duration_ms` | long 5 to 80 | 25 | | Custom pulse length when the above is off | "Vibration length: N ms" |
 | `key_haptics` | boolean | false | | 3.2: a tick on every ordinary key down (keys-and-modifiers.md 13.5) | Look & feel > Sound & haptics > Vibration > "Vibrate on every key" |
 | `key_haptic_strength` | string `light`, `standard`, `strong`; anything else reads as `light` | `light` | | 3.2: which tick | "Key vibration strength" chips Light / Standard / Strong (only while the row above is on; each chip plays its tick) |
-| `event_haptics` | boolean | true | | 3.2: the rest of the haptic language, in the keyboard and this app | "Feedback vibrations" |
+| `event_haptics` | boolean | false | | 3.2: the rest of the haptic language, in the keyboard and this app | "Feedback vibrations" |
 
 ### 2.14 On-screen keyboard (drop for 3.0)
 

@@ -755,8 +755,12 @@ data class FeedbackPrefs(
     val keyHaptics: Boolean = false,
     /** `key_haptic_strength` (3.2): how firm that tick is. */
     val keyHapticStrength: HapticIntensity = HapticIntensity.LIGHT,
-    /** `event_haptics` (3.2): the rest of the haptic language, in the keyboard and in this app (SS13.5). */
-    val eventHaptics: Boolean = true,
+    /**
+     * `event_haptics` (3.2): the rest of the haptic language, in the keyboard and in this app
+     * (SS13.5). Off by default (maintainer, 2026-10-09: "I don't love vibrate on Shift and
+     * stuff"); dictation's start and stop cues are a separate setting and still buzz.
+     */
+    val eventHaptics: Boolean = false,
 )
 
 /** `typing_sound_output_mode`. spec: settings-catalog.md SS2.13; "anything else reads as `media`". */

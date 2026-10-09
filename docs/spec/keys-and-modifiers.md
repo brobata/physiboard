@@ -989,7 +989,7 @@ except nav mode's 70 ms pulse (D16).
 read as on when unreadable, followed through a content observer, never read per key) silences
 everything. Then `KEY` follows `key_haptics` (default off: the Titan's keys already click under
 the finger), with `key_haptic_strength` choosing its row; every other event follows
-`event_haptics` (default on). The suggestion-tap rows (`tap_haptic_use_system`,
+`event_haptics` (default off, the maintainer's choice 2026-10-09; dictation's cues are separate and still buzz). The suggestion-tap rows (`tap_haptic_use_system`,
 `tap_haptic_duration_ms`, expansion-clipboard-pickers-launcher.md 9.2) keep their own pulses.
 Every effect goes through plain `Vibrator.vibrate` with no audio attributes, for the same reason
 the dictation cues do (D5 there): notification-class vibration is muted with the phone's
@@ -1099,7 +1099,7 @@ and Space to the screen trackpad screen. Keys nobody can change say so.
 | `clear_alt_on_space` | boolean | true | Space/Enter clear Alt | Smart Features | Release Alt with Space |
 | `key_haptics` | boolean | false | 3.2: the `KEY` tick of section 13.5 | Look & feel > Sound & haptics | Vibrate on every key |
 | `key_haptic_strength` | string: `light`, `standard`, `strong` | `light` | 3.2: which row of the `KEY` tick plays | Sound & haptics (only while the row above is on) | Key vibration strength |
-| `event_haptics` | boolean | true | 3.2: every other event of section 13.5, in the keyboard and the settings app | Sound & haptics | Feedback vibrations |
+| `event_haptics` | boolean | false | 3.2: every other event of section 13.5, in the keyboard and the settings app | Sound & haptics | Feedback vibrations |
 | `alt_latch_stays_on_space` | boolean | false | an Alt latch survives Space/Enter | none | none |
 | `ctrl_latch_stays_on_space` | boolean | false | a Ctrl latch survives Ctrl+Space (with `ctrl_tap_latches`) | none | none |
 | `shift_tap_latches` | boolean | false | single Shift tap toggles caps lock | none | none |
