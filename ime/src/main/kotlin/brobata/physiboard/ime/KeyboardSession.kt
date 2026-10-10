@@ -166,6 +166,7 @@ import brobata.physiboard.ime.actions.SymPageChooserController
 import brobata.physiboard.ime.actions.VariationChooserController
 import brobata.physiboard.ime.actions.TypingSoundPlayer
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
+import brobata.physiboard.ime.pointer.CaretOnScreen
 import brobata.physiboard.ime.pointer.KeyboardSwipeController
 import brobata.physiboard.ime.pointer.TrackpadOverlayController
 import brobata.physiboard.core.actions.fill.FieldFacts
@@ -1655,7 +1656,8 @@ internal class KeyboardSession(
                 hasVisibleRegion = info.insertionMarkerFlags and CursorAnchorInfo.FLAG_HAS_VISIBLE_REGION != 0,
             )
             lastCaretGeometry = if (CaretUsability.isUsable(report)) {
-                CaretGeometry(leftPx = report.horizontalPx!!, topPx = report.topPx!!, bottomPx = report.bottomPx!!)
+                // The marker is in the editor's coordinates; the badge is placed on the screen.
+                CaretOnScreen.map(report, info.matrix)
             } else {
                 null
             }

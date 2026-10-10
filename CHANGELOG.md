@@ -15,6 +15,9 @@ go missing.
   It shipped off in 3.0 and 3.1 while it was being proven; updating turns it on once, and
   turning it off again afterwards sticks.
 
+- The Shift, Alt, Ctrl and Sym badge shows beside the cursor again. It had been placed from the
+  text box's own corner instead of the screen's, so in most apps it sat far from where you type.
+
 **Setting up**
 - A fresh install opens on three short pages: turn PhysiBoard on, make it your keyboard, and the
   optional extras (accessibility service, display over other apps, spell checking). Each page

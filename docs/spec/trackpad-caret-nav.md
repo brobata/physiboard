@@ -509,7 +509,9 @@ picked while a field is open takes effect on the very next key press.
 ### 4.4 Where it is placed
 
 From the editor's insertion marker (caret) in screen pixels, with line height = caret bottom
-minus caret top:
+minus caret top. The editor reports the marker in its own coordinates; the report's matrix
+(`CursorAnchorInfo.getMatrix()`) maps x, top and bottom onto the screen first. Until 3.2 that
+step was missing, so a text box low on the screen put the badge near the top.
 
 1. x = caret x + 4 dp. The badge starts just right of the caret, in the empty space the cursor
    is about to move into; centring it put half a glyph over the last letter typed.
