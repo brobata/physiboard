@@ -3,11 +3,58 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
-## 3.1.0 (unreleased)
+## 3.1.0 (2026-10-09)
 
-- A Fill page on Sym: one-time codes from your notifications, typed with one key, held in memory
-  for ten minutes and never stored or sent. Needs notification access.
-- Password manager suggestions on the Fill page, experimental and off.
+A new look for everything PhysiBoard draws, settings that are easy to find, Backspace that works
+the moment a messaging app opens, and your Shift, Caps and Sym indicators back in the status bar.
+
+<!-- /card -->
+
+**A new look**
+- Settings redesigned: home is a status card, the Titan toolbox, search, and a short list of
+  categories, each showing its current state at a glance ("Autocorrect on · mix-ups off").
+- A terminal skin over a modern layout: every screen is a prompt (`physiboard:~/voice$`), clean
+  panes, rounded switches, and easy-to-read descriptions. Long explanations fold behind "About …"
+  so the controls get the screen.
+- The keyboard's own panels (Sym pages, emoji, GIFs, clipboard, the accent bar, the quick
+  launcher) wear the same skin and spring open and closed.
+- A new keycap icon, a themed icon for Android's icon styles, and a matching splash screen.
+- Swipe back to preview the screen underneath; resets and deletions happen at once with "Undo";
+  settings remember where you were.
+
+**Typing**
+- Backspace works as soon as a messaging app opens, before you tap the box.
+- An optional accessibility service focuses the text box when you start typing (the cursor shows
+  up) and makes Fn and Sym shortcuts work with no text box, on the home screen or in the camera.
+  Home tells you when it's off; turn it on yourself or with one tap if Titan tools are paired.
+- Hold Sym and an assigned key to change or remove its shortcut; a tap still launches.
+- Spell checking turns on by itself once you pair Titan tools (unless you've chosen another spell
+  checker); "Reset device settings to stock" undoes it.
+
+**Indicators and feel**
+- Shift, Caps lock, Alt, Ctrl, Sym and nav mode show in the status bar again, each with its own
+  icon, including one-press and locked versions.
+- Feedback vibrations are off by default; turn them on in Sound & haptics. Dictation still buzzes
+  when the mic is live.
+
+**Dictation**
+- In the car: Spotify or Audible taking the audio back, or the head unit pressing play, no longer
+  cuts you off; only a phone call ends a session. The start waits for a Bluetooth or car
+  microphone to be live, and your music resumes exactly once when you stop.
+
+**Titan toolbox**
+- The keyboard backlight, notification ring and screen density get a featured card on home with
+  their live state, and pairing is one tap away.
+
+**One-time codes (new)**
+- A Fill page on Sym: verification codes from your notifications, typed with one key, held in
+  memory for ten minutes and never stored or sent. Grant notification access in Privacy to use it.
+
+**Fixes**
+- Panels that need "Display over other apps" open that switch for you instead of just saying so.
+- The quick launcher sheet now actually appears; Fn layer "Revert to default" no longer wipes your
+  other key settings without asking.
+- Dozens of layout fixes: no clipped dialogs, readable grey text, full-width key grids.
 
 ## 3.0.0 (2026-10-08)
 
