@@ -36,6 +36,11 @@ object UserWordFileCodec {
      * discarding the other side's edit with no conflict signal to either writer. A plain JVM
      * object is enough since this codec is pure Kotlin with no coroutine dispatcher of its own to
      * coordinate through.
+     *
+     * Holding it for the write alone was not enough: a writer that read the file earlier (the
+     * screen's list, the keyboard's in-memory store) still wrote over a change made since. Every
+     * write now goes through [updatePersonal] or [updateDefaults], which hold it from the read to
+     * the write. It guards [DEFAULT_WORDS_FILE_NAME] the same way.
      */
     object PersonalDictionaryFileLock
 
@@ -132,6 +137,35 @@ object UserWordFileCodec {
             val frequency = (obj["f"] as? JsonPrimitive)?.intOrNull ?: 1
             WordFrequency(word, frequency)
         }
+    }
+
+    /**
+     * One change to the personal word file: read it (and the default-word file, so [transform]
+     * sees the whole store), apply [transform], write the personal tier back, all inside
+     * [PersonalDictionaryFileLock]. Every writer goes through here, so none of them writes a copy
+     * read before another writer's change: each change is applied to what the file holds at that
+     * moment. The caller supplies the file reads and the write, which keeps this module free of
+     * any file system. Returns the store written, or null when the write failed.
+     */
+    fun updatePersonal(
+        readPersonal: () -> String?,
+        readDefaults: () -> String?,
+        writePersonal: (String) -> Boolean,
+        transform: (UserWordStore) -> UserWordStore,
+    ): UserWordStore? = synchronized(PersonalDictionaryFileLock) {
+        val current = UserWordStore.of(decodeDefaultWords(readDefaults()), decodePersonalWords(readPersonal()))
+        val updated = transform(current)
+        if (writePersonal(encodePersonalWords(updated.personalWords()))) updated else null
+    }
+
+    /** [updatePersonal]'s counterpart for [DEFAULT_WORDS_FILE_NAME], under the same lock. Returns the list written, or null when the write failed. */
+    fun updateDefaults(
+        readDefaults: () -> String?,
+        writeDefaults: (String) -> Boolean,
+        transform: (List<WordFrequency>) -> List<WordFrequency>,
+    ): List<WordFrequency>? = synchronized(PersonalDictionaryFileLock) {
+        val updated = transform(decodeDefaultWords(readDefaults()))
+        if (writeDefaults(encodeDefaultWords(updated))) updated else null
     }
 
     private fun parseArray(text: String?): JsonArray? {

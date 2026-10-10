@@ -3,6 +3,7 @@ package brobata.physiboard.app.settings
 import brobata.physiboard.app.settings.ui.DictionaryUndo
 import brobata.physiboard.core.dict.PersonalWord
 import brobata.physiboard.core.dict.UserWordFileCodec
+import brobata.physiboard.core.dict.WordFrequency
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -37,6 +38,37 @@ class PersonalWordFileUpdateTest {
         val result = updatePersonalFile(personalFile, defaultFile) { DictionaryUndo.restorePersonal(it, removed) }
         assertNotNull(result)
         assertEquals(setOf(PersonalWord("titan", 2, 500), removed), UserWordFileCodec.decodePersonalWords(personalFile.readText()).toSet())
+    }
+
+    @Test
+    fun `the screen's delete, add and rename keep a word the keyboard saved after the screen opened`() {
+        write(PersonalWord("titan", 2, 500), PersonalWord("teh", 1, 100))
+        // The screen read the file when it opened; then the keyboard saved "physiboard".
+        val screenCopy = UserWordFileCodec.decodePersonalWords(personalFile.readText())
+        write(*(screenCopy + PersonalWord("physiboard", 1, 2_000)).toTypedArray())
+
+        updatePersonalFile(personalFile, defaultFile) { it.withPersonalWordRemoved("teh") }
+        assertEquals(setOf("titan", "physiboard"), stored())
+        updatePersonalFile(personalFile, defaultFile) { it.withPersonalWordAdded("brobata", 3_000) }
+        assertEquals(setOf("titan", "physiboard", "brobata"), stored())
+        val result = updatePersonalFile(personalFile, defaultFile) { it.withPersonalWordRenamed("titan", "Titan") }
+        assertEquals(setOf("Titan", "physiboard", "brobata"), stored())
+        assertEquals(setOf("Titan", "physiboard", "brobata"), result?.personalWords()?.map { it.word }?.toSet(), "the screen's list comes from the file")
+    }
+
+    @Test
+    fun `undoing a deleted default word keeps a default word edited meanwhile`() {
+        val words = listOf(WordFrequency("haha", 1), WordFrequency("lol", 1), WordFrequency("brb", 1))
+        defaultFile.writeText(UserWordFileCodec.encodeDefaultWords(words))
+        fun update(transform: (List<WordFrequency>) -> List<WordFrequency>) =
+            UserWordFileCodec.updateDefaults({ defaultFile.readText() }, { defaultFile.writeText(it); true }, transform)
+
+        update { list -> list.filterNot { it.word == "lol" } }
+        // Renamed by hand before Undo was tapped.
+        update { list -> list.map { if (it.word == "brb") it.copy(word = "BRB") else it } }
+        update { DictionaryUndo.restoreDefault(it, WordFrequency("lol", 1), 1) }
+
+        assertEquals(listOf("haha", "lol", "BRB"), UserWordFileCodec.decodeDefaultWords(defaultFile.readText()).map { it.word })
     }
 
     @Test

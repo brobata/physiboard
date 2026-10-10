@@ -30,26 +30,14 @@ class UserWordFileStore(private val context: Context) {
         UserWordStore.of(defaults, personal)
     }
 
-    /** Persists [store]'s personal tier, then sends the package-internal update broadcast (SS6.1). */
-    suspend fun savePersonal(store: UserWordStore): Boolean = withContext(Dispatchers.IO) {
-        // `:ime`'s `UserWordFileLoader` (the strip's own add/delete-word path) writes this
-        // identical file from an independent thread in the same process (no `android:process`
-        // split); [UserWordFileCodec.PersonalDictionaryFileLock] is what keeps the two writes from
-        // silently discarding one another.
-        val ok = synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
-            writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(store.personalWords()))
-        }
-        if (ok) notifyUpdated()
-        ok
-    }
-
     /**
-     * Reads the file, applies [transform] and writes the result back, all under
-     * [UserWordFileCodec.PersonalDictionaryFileLock], so this write never discards a keyboard save
-     * that landed before it. A `load()` followed by [savePersonal] holds the lock only for the
-     * write, so a keyboard save landing between the two was lost. (The keyboard's own save still
-     * writes its in-memory list without reading the file; that side is not covered here.)
-     * Returns the new store, or null when the write failed.
+     * Applies [transform] to the personal words as the file holds them now and writes the result,
+     * then sends the package-internal update broadcast (SS6.1). `:ime`'s `UserWordFileLoader`
+     * writes this same file from another thread of the same process; both go through
+     * [UserWordFileCodec.updatePersonal], which holds the lock from the read to the write, so
+     * neither writes over a word the other saved. There is deliberately no "save this whole
+     * list": a list read earlier is a stale copy. Returns the store written, or null when the
+     * write failed.
      */
     suspend fun updatePersonal(transform: (UserWordStore) -> UserWordStore): UserWordStore? = withContext(Dispatchers.IO) {
         ensureDefaultsFileExists()
@@ -58,16 +46,17 @@ class UserWordFileStore(private val context: Context) {
         updated
     }
 
-    /** Persists an edited default-word list (SS6.3: "Renaming or deleting a default word edits `user_defaults.json`"). */
-    suspend fun saveDefaults(words: List<WordFrequency>): Boolean = withContext(Dispatchers.IO) {
-        val ok = writeAtomically(defaultFile, UserWordFileCodec.encodeDefaultWords(words))
-        if (ok) notifyUpdated()
-        ok
+    /** The same for the default words (SS6.3: "Renaming or deleting a default word edits `user_defaults.json`"). */
+    suspend fun updateDefaults(transform: (List<WordFrequency>) -> List<WordFrequency>): List<WordFrequency>? = withContext(Dispatchers.IO) {
+        ensureDefaultsFileExists()
+        val updated = UserWordFileCodec.updateDefaults({ readOrNull(defaultFile) }, { writeAtomically(defaultFile, it) }, transform)
+        if (updated != null) notifyUpdated()
+        updated
     }
 
-    private fun ensureDefaultsFileExists() {
-        if (defaultFile.exists()) return
-        val assetBytes = runCatching { context.assets.open(UserWordFileCodec.DEFAULT_WORDS_ASSET_PATH).use { it.readBytes() } }.getOrNull() ?: return
+    private fun ensureDefaultsFileExists() = synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
+        if (defaultFile.exists()) return@synchronized
+        val assetBytes = runCatching { context.assets.open(UserWordFileCodec.DEFAULT_WORDS_ASSET_PATH).use { it.readBytes() } }.getOrNull() ?: return@synchronized
         runCatching { defaultFile.writeBytes(assetBytes) }
     }
 
@@ -85,14 +74,7 @@ class UserWordFileStore(private val context: Context) {
 
 /** [UserWordFileStore.updatePersonal]'s file work, apart from [Context] so it is tested on the JVM. */
 internal fun updatePersonalFile(personalFile: File, defaultFile: File, transform: (UserWordStore) -> UserWordStore): UserWordStore? =
-    synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
-        val current = UserWordStore.of(
-            UserWordFileCodec.decodeDefaultWords(readOrNull(defaultFile)),
-            UserWordFileCodec.decodePersonalWords(readOrNull(personalFile)),
-        )
-        val updated = transform(current)
-        if (writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(updated.personalWords()))) updated else null
-    }
+    UserWordFileCodec.updatePersonal({ readOrNull(personalFile) }, { readOrNull(defaultFile) }, { writeAtomically(personalFile, it) }, transform)
 
 private fun readOrNull(file: File): String? = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
 

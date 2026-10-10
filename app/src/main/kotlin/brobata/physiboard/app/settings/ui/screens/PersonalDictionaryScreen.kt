@@ -40,7 +40,11 @@ import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordFrequency
 import brobata.physiboard.core.dict.isValidNewDictionaryWord
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * "Personal dictionary" (autocorrect-suggestions.md SS6.3, dictionaries-languages.md SS7): list,
@@ -64,14 +68,32 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) { store = fileStore.load() }
 
-    fun persist(newStore: UserWordStore) {
-        store = newStore
-        scope.launch { fileStore.savePersonal(newStore) }
+    // Every edit is a change applied to the file as it is now, not this screen's copy written
+    // over it: the list was read when the screen opened, and the keyboard may have saved a word
+    // since. The list shows the change at once, then what the file holds after the write. The
+    // writes run one at a time in the order they were made and finish even when the screen is
+    // closed straight after (or, for Undo, when another snackbar replaces this one). The file's
+    // contents replace the list only after the last queued write, so an edit still waiting to be
+    // written never blinks back out of the list.
+    val writes = remember { Mutex() }
+    val queuedWrites = remember { intArrayOf(0) }
+
+    suspend fun write(block: suspend () -> UserWordStore?) = withContext(NonCancellable) {
+        queuedWrites[0]++
+        writes.withLock {
+            val written = try { block() } finally { queuedWrites[0]-- }
+            if (written != null && queuedWrites[0] == 0) store = written
+        }
     }
 
-    fun persistDefaults(words: List<WordFrequency>) {
-        store = UserWordStore.of(words, store.personalWords())
-        scope.launch { fileStore.saveDefaults(words) }
+    fun persist(change: (UserWordStore) -> UserWordStore) {
+        store = change(store)
+        scope.launch(NonCancellable) { write { fileStore.updatePersonal(change) } }
+    }
+
+    fun persistDefaults(change: (List<WordFrequency>) -> List<WordFrequency>) {
+        store = UserWordStore.of(change(store.defaultWords()), store.personalWords())
+        scope.launch(NonCancellable) { write { fileStore.updateDefaults(change)?.let { UserWordStore.of(it, store.personalWords()) } } }
     }
 
     val rows = remember(store, query) {
@@ -105,29 +127,30 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
                     Text(row.word, modifier = Modifier.weight(1f))
                     IconButton(onClick = { editing = row }) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
                     // app-shell.md SS22.4: deleted at once; Undo puts the word back exactly (its
-                    // count and last use, or its place among the default words). The restore reads
-                    // the file again, so a word added in the meantime is kept; the personal
-                    // restore reads and writes under the keyboard writer's lock, so a word the
-                    // keyboard saves while it runs is kept too.
+                    // count and last use, or its place among the default words). Like every edit
+                    // here, the restore is applied to the file as it is now, so a word added in
+                    // the meantime, here or by the keyboard, is kept.
                     IconButton(onClick = {
+                        val word = row.word
                         if (row.isPersonal) {
-                            val removed = store.personalWords().firstOrNull { it.word == row.word }
-                            persist(store.withPersonalWordRemoved(row.word))
+                            val removed = store.personalWords().firstOrNull { it.word == word }
+                            persist { it.withPersonalWordRemoved(word) }
                             if (removed != null) {
-                                undo?.offer("dictionary-${row.word}", "Deleted “${row.word}”") {
-                                    fileStore.updatePersonal { DictionaryUndo.restorePersonal(it, removed) }?.let { store = it }
+                                undo?.offer("dictionary-$word", "Deleted “$word”") {
+                                    write { fileStore.updatePersonal { DictionaryUndo.restorePersonal(it, removed) } }
                                 }
                             }
                         } else {
                             val defaults = store.defaultWords()
-                            val index = defaults.indexOfFirst { it.word == row.word }
-                            persistDefaults(defaults.filterNot { it.word == row.word })
+                            val index = defaults.indexOfFirst { it.word == word }
+                            persistDefaults { words -> words.filterNot { it.word == word } }
                             if (index >= 0) {
                                 val removed = defaults[index]
-                                undo?.offer("dictionary-${row.word}", "Deleted “${row.word}”") {
-                                    val current = fileStore.load()
-                                    val words = DictionaryUndo.restoreDefault(current.defaultWords(), removed, index)
-                                    if (fileStore.saveDefaults(words)) store = UserWordStore.of(words, current.personalWords())
+                                undo?.offer("dictionary-$word", "Deleted “$word”") {
+                                    write {
+                                        fileStore.updateDefaults { DictionaryUndo.restoreDefault(it, removed, index) }
+                                            ?.let { words -> UserWordStore.of(words, store.personalWords()) }
+                                    }
                                 }
                             }
                         }
@@ -143,7 +166,8 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
             initialText = "",
             onDismiss = { showAddDialog = false },
             onSave = { newWord ->
-                persist(store.withPersonalWordAdded(newWord, System.currentTimeMillis()))
+                val now = System.currentTimeMillis()
+                persist { it.withPersonalWordAdded(newWord, now) }
                 showAddDialog = false
             },
         )
@@ -155,10 +179,11 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
             initialText = row.word,
             onDismiss = { editing = null },
             onSave = { newWord ->
+                val oldWord = row.word
                 if (row.isPersonal) {
-                    persist(store.withPersonalWordRenamed(row.word, newWord))
+                    persist { it.withPersonalWordRenamed(oldWord, newWord) }
                 } else {
-                    persistDefaults(store.defaultWords().map { if (it.word == row.word) it.copy(word = newWord) else it })
+                    persistDefaults { words -> words.map { if (it.word == oldWord) it.copy(word = newWord) else it } }
                 }
                 editing = null
             },
