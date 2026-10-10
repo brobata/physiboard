@@ -259,6 +259,7 @@ internal class DictationController(
         session = null
         abandonAudioFocus()
         audioWatch.stop()
+        DictationTrace.sessionEnded()
     }
 
     // -----------------------------------------------------------------------------------------
@@ -303,6 +304,8 @@ internal class DictationController(
             translated.ops
         }
         val wroteCleanly = runCatching { currentInputConnection()?.applyDictationTextOps(textOps) }.isSuccess
+        // spec SS6.9: the trace latches whether this session is private when it starts.
+        if (!wasActive && session != null) DictationTrace.sessionStarted()
         DictationTrace.dispatched(event, textOps, outcome.effects, session)
         outcome.effects.forEach(::applyEffect)
         // A recognizer kept between sessions goes stale: Android unbinds the remote speech
@@ -327,7 +330,10 @@ internal class DictationController(
             val route = sessionRoute
             handler.postAtFrontOfQueue { if (session != null) audioWatch.start(route) }
         }
-        if (wasActive && session == null) audioWatch.stop()
+        if (wasActive && session == null) {
+            audioWatch.stop()
+            DictationTrace.sessionEnded()
+        }
         if (!wroteCleanly) onEditorRejectedInsert()
     }
 

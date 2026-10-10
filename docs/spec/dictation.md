@@ -566,6 +566,17 @@ stored private-mode setting has been read (app-shell.md SS31). The switch is the
 silences the keyboard's own diagnostic trail, and it is set before dictation hears that private
 mode turned on, so not even that line is written.
 
+Whether a session is private is decided for the whole session, not line by line. The trace
+latches it when the session starts (private if learning is off in the field it starts in) and
+again whenever learning turns off while it runs (private mode switched on, or the user moves to
+a field that asks for no personalized learning); once private, the session stays private until
+it ends, its last `audio` line included. This matters because the keyboard forgets a closing
+field's "no personalized learning" flag the moment the field closes, while the session lives on
+through the editor-gone grace window (`EDITOR_GONE_GRACE_MS`): without the latch, the
+`EditorFieldClosed` line and every partial, segment and final result still arriving from an
+incognito tab would be written. A session that never was private is traced as usual, and the
+next session starts its own decision afresh.
+
 ### 6.10 The car: Bluetooth, Android Auto and music
 
 The maintainer, 2026-10-09: "I was having issues in the car with Audible/Spotify playing:

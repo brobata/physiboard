@@ -22,24 +22,61 @@ import java.security.MessageDigest
  * so two callbacks carrying the same text can be told apart from two carrying different text,
  * which is what the 2026-10-07 investigations needed. Nothing at all is written while learning
  * is off ([privateNow]: private mode, or a field that asks for no personalized learning, the
- * same gate as [DiagnosticLog]). The cost is one string per callback, nothing on the key path.
+ * same gate as [DiagnosticLog]), nor for the rest of a session that was private at any point
+ * ([sessionPrivate]). The cost is one string per callback, nothing on the key path.
  */
 internal object DictationTrace {
     const val TAG = "PhysiBoardDictationTrace"
 
-    /** app-shell.md SS31: set with [DiagnosticLog.privateNow] from the keyboard's privacy state; while true nothing is logged. */
+    /**
+     * app-shell.md SS31: set with [DiagnosticLog.privateNow] from the keyboard's privacy state;
+     * while true nothing is logged. Turning it on while a session runs also makes that session
+     * private ([sessionPrivate]) for the rest of its life.
+     */
     @Volatile
     var privateNow: Boolean = false
+        set(value) {
+            field = value
+            if (value && sessionOpen) sessionPrivate = true
+        }
+
+    /** A dictation session is running, between [sessionStarted] and [sessionEnded]. */
+    @Volatile
+    private var sessionOpen: Boolean = false
+
+    /**
+     * spec SS6.9: the running session is private. Latched from [privateNow] when the session
+     * starts and whenever [privateNow] turns on while it runs; cleared only when the session
+     * ends. A session started in a field that asks for no personalized learning stays silent
+     * after that field closes: the keyboard clears the field's flag when it closes, but the
+     * session lives on through the editor-gone grace window and its last results still arrive.
+     */
+    @Volatile
+    private var sessionPrivate: Boolean = false
+
+    private val silent: Boolean get() = privateNow || sessionPrivate
+
+    /** Called by [DictationController] when a session comes into being, before its first line. */
+    fun sessionStarted() {
+        sessionOpen = true
+        sessionPrivate = privateNow
+    }
+
+    /** Called by [DictationController] once a session is gone and its last line (audio stop included) is written or withheld. */
+    fun sessionEnded() {
+        sessionOpen = false
+        sessionPrivate = false
+    }
 
     fun dispatched(event: DictationEvent, ops: List<DictationTextOp>, effects: List<DictationEffect>, session: DictationSession?) {
-        if (privateNow) return
+        if (silent) return
         val line = line(event, ops, effects, session) ?: return
         Log.println(Log.INFO, TAG, line)
     }
 
     /** spec SS6.9, SS6.10: one line about the audio around the session (routes, focus, recordings, playback, mode). Types and counts only. */
     fun audio(line: String) {
-        if (privateNow) return
+        if (silent) return
         Log.println(Log.INFO, TAG, line)
     }
 

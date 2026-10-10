@@ -29,11 +29,13 @@ class DictationTraceTest {
     @Before
     fun clear() {
         ShadowLog.clear()
+        DictationTrace.sessionEnded()
         DictationTrace.privateNow = false
     }
 
     @After
     fun reset() {
+        DictationTrace.sessionEnded()
         DictationTrace.privateNow = false
     }
 
@@ -57,6 +59,41 @@ class DictationTraceTest {
         DictationTrace.privateNow = false
         DictationTrace.dispatched(DictationEvent.KeyDown, emptyList(), emptyList(), null)
         assertEquals(1, traced().size)
+    }
+
+    @Test
+    fun `a session started in a field that asks for no learning stays silent after the field closes`() {
+        // KeyboardSession's order: the field's flag is pushed (private), dictation starts, the
+        // field closes and the flag is cleared BEFORE the controller hears EditorFieldClosed;
+        // the session lives on through the grace window and its results still arrive.
+        DictationTrace.privateNow = true
+        DictationTrace.sessionStarted()
+        DictationTrace.dispatched(DictationEvent.Trigger("com.example.chat", "secret", SessionAudioRoute.LOCAL), emptyList(), emptyList(), null)
+        DictationTrace.privateNow = false
+        DictationTrace.dispatched(DictationEvent.EditorFieldClosed, emptyList(), emptyList(), null)
+        DictationTrace.dispatched(DictationEvent.PartialResult("meet me"), emptyList(), emptyList(), null)
+        DictationTrace.dispatched(DictationEvent.SegmentResult("meet me at noon"), listOf(DictationTextOp.CommitText("meet me at noon")), emptyList(), null)
+        DictationTrace.dispatched(DictationEvent.FinalResult("meet me at noon"), emptyList(), listOf(DictationEffect.StopListening), null)
+        DictationTrace.audio("audio stop music=false players=0 media=0")
+        DictationTrace.sessionEnded()
+        assertEquals(emptyList<String>(), traced())
+
+        // The next session, in an ordinary field, is traced again.
+        DictationTrace.sessionStarted()
+        DictationTrace.dispatched(DictationEvent.ReadyForSpeech, emptyList(), emptyList(), null)
+        assertEquals(1, traced().size)
+    }
+
+    @Test
+    fun `private mode turned on mid-session silences the session even after it turns off again`() {
+        DictationTrace.sessionStarted()
+        DictationTrace.dispatched(DictationEvent.ReadyForSpeech, emptyList(), emptyList(), null)
+        DictationTrace.privateNow = true
+        DictationTrace.privateNow = false
+        DictationTrace.dispatched(DictationEvent.PartialResult("meet me"), emptyList(), emptyList(), null)
+        DictationTrace.audio("audio stop music=false players=0 media=0")
+        assertEquals("only the line from before private mode", 1, traced().size)
+        DictationTrace.sessionEnded()
     }
 
     @Test
