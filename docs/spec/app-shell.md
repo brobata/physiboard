@@ -645,7 +645,7 @@ so on a shipped phone it never produces output.
 | home screen created (6.5) | yes | dialog, plus the "Update available" card |
 | settings screen created (9) | yes | dialog |
 | "Updates" row tapped (9) | no | dialog, or a toast |
-| background job, every 24 h (13.7) | yes | notification |
+| background job, every 6 h (13.7; every 24 h before 3.3) | yes | notification, or nothing when the updater takes the release on (32.2) |
 
 Every trigger first checks "GitHub checks allowed"; when not allowed the check reports "no
 update" without touching the network.
@@ -693,15 +693,19 @@ Title "New update available", message "Version <tag> is available on GitHub." (t
 shown as-is, `v` included). Buttons: "Open GitHub" opens the release page URL, or
 `https://github.com/brobata/physiboard/releases` when none, in a browser (new task); "Later"
 adds the tag to `dismissed_releases`; "Download APK", present only when an APK asset was found,
-opens the asset URL in a browser (new task). The app never downloads or installs the APK itself;
-the browser and the system installer do it. Dismissing the dialog by tapping outside or Back
+opens the asset URL in a browser (new task). Before 3.3 the app never downloaded or installed the
+APK itself; from 3.3 the updater may (section 32), and once it holds the checked APK for this
+release "Download APK" becomes "Install now", with one line about what happens next (32.8). Dismissing the dialog by tapping outside or Back
 records nothing, so it will appear again on the next open.
 
 ### 13.7 The background job
 
 When the home screen is created and GitHub checks are allowed, a periodic job named
 `pastiera_update_check` is enqueued with a 24-hour period, a "connected network" constraint,
-and keep-if-existing policy (so the period is not reset by every launch). When checks are not
+and keep-if-existing policy (so the period is not reset by every launch). 3.3: the period is 6
+hours, enqueued at every process start with update-if-existing policy, which moves a phone that has
+3.2's daily job to the new period without restarting its schedule (32.7); a found release goes to
+the updater first, and the notification below is posted only when it declines (32.2). When checks are not
 allowed the job is cancelled instead. The job runs the same check (ignore dismissed = true)
 and blocks for up to 30 s waiting for the result; no result within 30 s asks the scheduler to
 retry with its default backoff. A result without an update completes silently. A result with
@@ -797,7 +801,7 @@ report row.
 
 | Channel id | Name | Importance | Id | Posted by | Content and tap |
 |---|---|---|---|---|---|
-| `pastiera_update_channel` | "PhysiBoard Updates" | default, badge, vibrate 0/50, silent | 2 | the daily job (13.8) | update available; opens the APK or release page in a browser |
+| `pastiera_update_channel` | "PhysiBoard Updates" | default, badge, vibrate 0/50, silent | 2 | the background job (13.8); the updater (32.3) | update available, opens the APK or release page in a browser; or (3.3) "PhysiBoard X.Y.Z is ready", opens Android's installer for it |
 | `physiboard_reselect_channel` | "Setup needed" | high, badge | 3 | package-replaced receiver (17) | "Pick PhysiBoard again"; opens the home screen |
 | `pastiera_nav_mode_channel` | "PhysiBoard Fn Layer" | default, no badge, no light, vibrate 0/50, silent | 1 | nobody in 2.x; the Fn layer only vibrates 70 ms and cancels id 1 defensively | none |
 | `physiboard_notification_ring` | ring channel | high | 41 | the notification ring (ring document) | full-screen intent, alarm category |
@@ -856,6 +860,9 @@ is passed.
 | `android.intent.action.MY_PACKAGE_REPLACED` | manifest receiver | section 17 |
 | `android.view.InputMethod` | service filter | the IME; settings activity declared in `res/xml/method.xml`, next-IME switching supported, subtypes en_US, it_IT, fr_FR, de_DE, pl_PL, da_DK, no_NO and more, each with `noSuggestions=true` |
 | `android.settings.ADB_WIRELESS_SETTINGS` | fired, with fallback | 4.8 |
+| `brobata.physiboard.action.UPDATE_INSTALL_STATUS` | non-exported receiver, reached only through the PendingIntent handed to PhysiBoard's own install session | Android's answer to a background install (32.3) |
+| `brobata.physiboard.action.UPDATE_INSTALL_STATUS_INTERACTIVE` | action on the non-exported install activity, same | Android's answer to an install the user started (32.3) |
+| `android.settings.MANAGE_UNKNOWN_APP_SOURCES` with `package:<application id>` | fired | Help's "Allow PhysiBoard to install its updates" (32.8) |
 
 The settings activity is exported because Android's own settings launch it as the IME's
 settings screen; its only inputs are the extras above, matched against those constants.
@@ -1188,7 +1195,11 @@ icons and motion. Nothing about what a panel holds or does changed (amended 2026
 - Version code 20007 and version name `2.0.7` as defaults; a CI or release run overrides them
   with the Gradle properties `PHYSIBOARD_VERSION_CODE` and `PHYSIBOARD_VERSION_NAME` (the
   `PASTIERA_` spellings are accepted as fallbacks). The convention is code = major × 10000 +
-  minor × 100 + patch.
+  minor × 100 + patch. 3.x keeps the numbers in the app build file and, from 3.3, reads the two
+  `PHYSIBOARD_` properties as overrides again (no `PASTIERA_` fallback), so a test can build one
+  copy a version apart; only the maintainer changes the numbers themselves.
+- 3.3: a build flag for installing a release APK (section 32.1): on in release, off in debug and
+  sideload, and on in a debug build only with `-PPHYSIBOARD_AUTO_UPDATE_TEST=true`.
 
 ### 23.2 Build types
 
@@ -1314,6 +1325,7 @@ locales.
 | `privileged_<step>_ok`, `_reason`, `_at` for backlight, overlay_grant, notification_ring, ring_backlight | boolean, string, long | absent | the last outcome of each privileged step, printed in the export (10.6) | internal | none |
 | `privileged_backlight_device_value`, `_at` | string, long | absent | the backlight value last read from the device, printed in the export | internal | none |
 | `private_mode` (3.0) | boolean | false | private mode: no learning, no network (31) | Privacy; the "Private mode" command | "Private mode" |
+| `update_mode` (3.3) | string `install`, `ask`, `off`; anything else reads as `install` | `install` | how a newer release reaches the phone (32) | Help | "Updates" |
 
 Values written once by the first-run defaults (section 2, step 3), for the record:
 `auto_capitalize_first_letter` true, `fn_long_press_speech` true, `dictation_haptics` true,
@@ -1346,6 +1358,9 @@ emoji picker on, order emoji_picker, symbols, clipboard, emoji), and an
 | D6 | The Do Not Disturb / Bedtime state (`zen_mode` != 0) can hide the pairing-code notification, so the setup card warns about it. | Setup card comment and string |
 | D7 | Unihertz's Android 16 firmware has a gesture-navigation settings page reachable by the action `com.android.settings.GESTURE_NAVIGATION_SETTINGS` with fragment argument `:settings:fragment_args_key` = `agui_hide_ime_caption_bar`, which hides the IME caption bar. | The dead tutorial page's constants (21) |
 | D8 | The screen is near-square and short; the first-run pages pin Skip and Next below a scrolling page (3.2; 3.0 scrolled its buttons into view after 360 ms), tiles wrap two per row, and window size is read from the window rather than the display. | Comments in the setup and window-size code |
+| D9 | A GitHub release file at `github.com/brobata/physiboard/releases/download/...` answers 302 to `release-assets.githubusercontent.com` with a signed query (2026-10-10); it used to answer with `objects.githubusercontent.com`. | `curl -I` of the v3.2.0 checksum asset, 2026-10-10; the emulator download in D10's run fetched v3.2.0 through it |
+| D10 | Android 14 (emulator image, API 34): a self-update session asking for no user action, with UPDATE_PACKAGES_WITHOUT_USER_ACTION held, answers "pending user action" while "Install unknown apps" is not allowed for the app, and installs silently once it is; the installer of record becomes the app itself. From the foreground without the grant, Android shows "For your security, your phone currently isn't allowed to install unknown apps from this source"; allowing it in Settings and going back did not resume that session. | Emulator `titan2elite`, 2026-10-10: two debug builds 3.1.90 and 3.3.0 signed with the same key; screenshots and logs in the 3.3 auto-update notes |
+| D11 | `cmd package install -r -S <size>` over the broker's `exec:` stream installs without any grant; an 82 MB APK took about 12 s in 4096-byte writes; the installer of record becomes none (the shell). The process running the install is ended by it, and the background job runs again in the new process. | Same emulator run, paired through Wireless debugging |
 
 ## 28. Edge cases, quirks and known bugs
 
@@ -1508,6 +1523,7 @@ one gate, which reads `private_mode` from the store at the moment of the request
 | Purpose | Who asks | Refused |
 |---|---|---|
 | update check | the four triggers of section 13.1 | "no update"; the "Updates" row toasts "Private mode is on, so PhysiBoard makes no network requests." |
+| update download (3.3) | the updater's download job (32.2) | nothing is sent; the job ends and the next check tries again |
 | dictionary list | Installed dictionaries screen (dictionaries-languages.md section 5.2) | installed files still listed; the reason as a snackbar, or as the screen's error when nothing is installed |
 | dictionary download | the same screen's download button (section 5.3) | snackbar with the reason; nothing written |
 | GIF search | the GIF page's trending and search lists (layers-sym-alt.md section 4.5) | the page shows the reason in place of results |
@@ -1627,7 +1643,190 @@ your phone only to find one-time sign-in codes, keeps a found code in memory for
 minutes, and never stores or sends notification content." The inline-suggestions switch reads
 no data at all: the suggestions are drawn by the password manager.
 
-## 32. Provenance
+## 32. Automatic updates (3.3)
+
+New in 3.3. PhysiBoard is installed by sideload only, so without this most phones stayed on the
+version they were first given. One setting, `update_mode` (settings catalog section 2.18), decides
+how far the updater goes once the checker (section 13) has found a newer release.
+
+### 32.1 Who may install
+
+The updater downloads and installs only when all of these hold; otherwise every mode behaves as
+"Off":
+
+- The application id is `brobata.physiboard`. The sideload build (`brobata.physiboard.dev3`) never
+  does, and could not anyway: the release APK is another package signed with another key.
+- The build's own flag allows it. It is on in the release build and off in the debug and sideload
+  builds; a debug build may be given it for an emulator test by building with the Gradle property
+  `PHYSIBOARD_AUTO_UPDATE_TEST=true` (never the sideload build). The version of such a test build is
+  set with `PHYSIBOARD_VERSION_CODE` and `PHYSIBOARD_VERSION_NAME` (23.1).
+- GitHub checks are allowed (section 1: not an F-Droid install).
+
+| `update_mode` | Label | What happens to a newer release |
+|---|---|---|
+| `install` (default) | "Install automatically" | downloaded and checked (32.2, 32.3), then installed the next time the screen has been off for 2 minutes with no dictation running (32.4) |
+| `ask` | "Download and ask me" | downloaded and checked, then the notification "PhysiBoard X.Y.Z is ready" asks; tapping it installs |
+| `off` | "Off" | the 3.2 behaviour, unchanged: the dialog on open, the "Update available" card, the background notification that opens the release in the browser |
+
+There was no update setting before 3.3, so there is nothing to migrate: a store or a backup without
+the row reads as `install`. A 3.2 build restoring a 3.3 backup skips the unknown row and counts it
+as skipped.
+
+### 32.2 Download
+
+A found release is taken on only when it carries both `physiboard-<version>.apk` and
+`physiboard-<version>.apk.sha256` by exactly those names (version = tag without its `v`, a plain
+number such as `3.3.0`; a tag like `v3.3.0-rc1` is never downloaded), both at
+`https://github.com/brobata/physiboard/releases/download/<tag>/<name>` with no query. Otherwise
+the release is announced as in 3.2. Every trigger of section 13.1 that finds a release hands it to
+the updater; the background job then posts nothing itself unless the updater declined it.
+
+The download is one background job at a time, `physiboard_update_download`, kept if one is already
+queued, with two constraints: an **unmetered network** and storage not low. Unmetered because a
+keyboard should not spend mobile data unasked; a 3.2 release APK is 10.9 MB and Wi-Fi comes round
+daily on almost every phone, so the cost is a delay of hours at most, and "Check for updates"
+still shows the release at once with its browser download. The checksum file is read first (at
+most 4096 bytes), then the APK is streamed to `no_backup/updates/download.part` with its SHA-256
+computed on the way in, capped at 100 MB. A network failure is retried with the scheduler's
+backoff, four attempts in all, then left to the next check. Private mode refuses both requests
+before anything is sent (31.2, purpose "update download"); the job then simply ends.
+
+A release whose APK is already downloaded and checked, or any older release, is not downloaded
+again; a newer one replaces the waiting file once it has passed its own checks.
+
+### 32.3 Checks, then the install routes
+
+The downloaded file must pass, in this order, or it is deleted at once:
+
+1. its SHA-256 equals the digest in the release's `.sha256` file (64 hex digits; a file name after
+   it, if any, must be the APK's own name);
+2. Android can read it as an app;
+3. its package name is the running app's;
+4. its version code is higher than the running app's (equal or lower is refused: no reinstall, no
+   downgrade);
+5. the set of certificates that signed it equals, exactly, the set that signed the running app (the
+   current signers, not a rotated key's history; reading them makes Android verify the APK's
+   signature over its contents).
+
+A refused release is remembered (`refusedTag`, 32.6), announced the 3.2 way so the user can still
+get it from the release page, and never downloaded again; the next release is tried normally. The
+same five checks run again immediately before every install, against the app as installed at that
+moment, and the bytes written into Android's installer are hashed again on the way and must still
+match.
+
+Routes, best first, each tried only while the screen is still off:
+
+1. **Titan tools.** When a pairing is stored and Wireless debugging is on, the broker runs
+   `cmd package install -r -S <size>` through the `exec:` service and writes the APK to its standard
+   input from the private file (broker-privileged-toolbox.md section 6 applies: the lock, the
+   discovery, the key). Nothing is ever made readable to the shell or any other app, and only the
+   size, a number, goes into the line. Only a line reading `Success` counts; the read timeout is
+   120 000 ms per read because `pm` answers only after verifying and optimising the APK. The
+   install ends this process before the answer can arrive (D11).
+2. **Android's installer.** A session asking for no user action. Android allows that for an app
+   updating itself when it holds UPDATE_PACKAGES_WITHOUT_USER_ACTION and the user has allowed it to
+   install apps ("Install unknown apps", the REQUEST_INSTALL_PACKAGES grant); then it installs
+   silently and PhysiBoard becomes the installer of record (D10). Without the grant Android answers
+   "needs the user": the session is abandoned and the route falls through.
+3. **The notification.** "PhysiBoard X.Y.Z is ready" / "Tap to install it. The keyboard restarts
+   for a moment." on the update channel, id 2 (it replaces the "new update available" one). Tapping
+   it runs the checks again and starts a session from the foreground; when Android needs the user
+   it shows its own dialog, and without the grant that dialog is Android's "For your security, your
+   phone currently isn't allowed to install unknown apps from this source" with a Settings button.
+   A user who allows it there returns to nothing installed and taps the notification or "Install
+   now" again (D10).
+
+Android's answers to a session: installed (the file is deleted by the new version, 32.6); needs the
+user (route 3); cancelled or out of storage (the file is kept for another try); anything else (the
+release is refused as above, toast "Android refused the update. It was deleted; the release page
+has it." when the user started it).
+
+### 32.4 When it installs
+
+Installing replaces PhysiBoard, which ends its process and the keyboard with it; Android binds the
+new version's keyboard at once, so typing resumes, but a word in progress or a dictation would be
+lost. "Install automatically" therefore installs only while nobody can be typing:
+
+- The screen going off starts a 2 minute wait (`physiboard_update_install`, restarted by each
+  screen-off); the screen coming on cancels it. The watch lives in the app's process, which is
+  alive whenever PhysiBoard is the keyboard. A download that finishes while the screen is already
+  off starts the same wait, and so does a process start that finds a checked update waiting,
+  without disturbing a wait or an install already under way.
+- At the end of the wait every condition is read again: the setting, the installed version, the
+  screen (still off), and dictation. A dictation session running with the screen off is looked at
+  again after 5 minutes. The keyboard window is not a separate condition: with the screen off
+  nothing can be typed in it.
+- After the update the what's-new note shows on the next open (section 5), as for any update.
+
+"Download and ask me", the ready notification and the update dialog's "Install now" install when
+the user says so, screen on; the toast "Installing PhysiBoard X.Y.Z. The keyboard restarts for a
+moment." says what is about to happen.
+
+### 32.5 What leaves the phone, and where it comes from
+
+- Requests: one GET for the checksum and one for the APK, each a plain GET with no body and no
+  header beyond what Android's HTTP client always sends, through the network gate (31.2).
+- Hosts: `github.com`, then whatever GitHub redirects to, which must be `objects.githubusercontent.com`
+  or `release-assets.githubusercontent.com` (D9). Every hop must be https on port 443 with no user
+  name in the address; redirects are not followed by the HTTP client but checked one by one before
+  each is requested, at most 5. Anything else ends the download as refused.
+- The ADB broker installs over the phone's own loopback only (broker-privileged-toolbox.md section 2).
+
+### 32.6 Where the file lives
+
+`no_backup/updates/` in PhysiBoard's own data: `download.part` while downloading, then
+`physiboard-<version>.apk`, and `record.json` (the checked update's tag, version code, SHA-256 and
+file name, and the last refused tag). App data is private to the app, and the files are created
+readable by their owner only, so no other app can read or replace the APK between the check and the
+install; "no_backup" keeps it out of auto backup, device transfer and PhysiBoard's own backup. A
+record naming any file that is not `physiboard-<digits and dots>.apk` is ignored. Every process
+start deletes a waiting update the installed app has caught up with (the one just installed), and
+cancels its notification.
+
+### 32.7 How soon a release is noticed
+
+The background check (13.7) runs every 6 hours instead of every 24, with the connected-network
+constraint; the period is applied to a phone that already has 3.2's daily job without restarting
+its schedule. Opening the app or its settings still checks at once (6.5, 9). A release is therefore
+noticed within 6 hours on a connected phone, downloaded at the next unmetered connection, and
+installed at the next 2 minutes of screen-off.
+
+### 32.8 Where it shows
+
+- Help: "Updates" chips under "Check for updates", "Install automatically" / "Download and ask me" /
+  "Off", with one sentence for the chosen mode: "New versions download on Wi-Fi and install while
+  your screen is off, so they never interrupt your typing." / "New versions download on Wi-Fi, then
+  a notification asks you to install them." / "PhysiBoard only tells you when a new version is
+  out." Shown only when this build may install (32.1).
+- Help: "Allow PhysiBoard to install its updates" ("Android asks once whether PhysiBoard may install
+  apps. It only ever installs its own updates."), opening Android's "Install unknown apps" page for
+  PhysiBoard. Shown only while the mode is not Off and the grant is missing, re-read on every return
+  to the screen; it is a row, never a prompt or a notification.
+- The update dialog (13.6) adds one line when the updater has taken the release on: "PhysiBoard
+  downloads it on Wi-Fi and installs it by itself the next time your screen is off." (install, not
+  yet downloaded), "It is downloaded and checked, and installs by itself the next time your screen
+  is off." (install, downloaded), "PhysiBoard downloads it on Wi-Fi and lets you know when it is
+  ready to install." (ask), "It is downloaded and checked, ready to install." (ask, downloaded). When
+  the checked APK for that release is waiting, "Download APK" becomes "Install now".
+
+### 32.9 Test cases
+
+| # | Situation | Expected |
+|---|---|---|
+| U1 | release v3.3.0 with `physiboard-3.3.0.apk` and its `.sha256` on this repository's downloads, mode install | downloaded |
+| U2 | the same release without the `.sha256`, or its APK on another repository or tag, or plain http, or a tag `v3.3.0-rc1` | announced only |
+| U3 | mode off, or a sideload or debug build, or an F-Droid install | announced only |
+| U4 | redirect to `release-assets.githubusercontent.com` / `objects.githubusercontent.com` / `example.com` / `http://objects.githubusercontent.com` | followed / followed / refused / refused |
+| U5 | checksum file `<hex>  physiboard-3.1.0.apk` for `physiboard-3.2.0.apk` | refused |
+| U6 | APK hash differs from the checksum; not an APK; other package; same or lower version code; unsigned; other signer set, or one extra signer | each refused and deleted, release announced, not downloaded again |
+| U7 | screen on / screen off and dictating / screen off and idle | wait / look again in 5 min / install |
+| U8 | Titan tools paired and Wireless debugging on | installed through the broker; else Android's installer; else the ready notification |
+| U9 | a waiting v3.3.0 and a found v3.2.0 | v3.2.0 not downloaded |
+| U10 | a waiting v3.3.0 and a refused v3.3.1 | v3.3.0 kept |
+| U11 | a record naming `../shared_prefs/x.xml` | nothing waiting |
+| U12 | `update_mode` absent, `sometimes`, ` off ` | install, install, off; the row goes out in a backup and comes back |
+
+## 33. Provenance
 
 - app/src/main/java/brobata/physiboard/MainActivity.kt
 - app/src/main/java/brobata/physiboard/OnboardingScreen.kt

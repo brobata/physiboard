@@ -61,6 +61,13 @@ name ends in `.apk` (case-insensitive) as the download. A release left in draft,
 pre-release, or without an `.apk` asset is invisible to every installed copy's update check even
 though the page itself is public.
 
+Since 3.3, installed copies also update themselves (app-shell.md SS32). For that the two assets
+must be named exactly `physiboard-<version>.apk` and `physiboard-<version>.apk.sha256` (version =
+the tag without its `v`), the `.sha256` must be `sha256sum`'s output for that file name, and the
+APK must be signed with the same key as every earlier release. A release that breaks any of these
+is never installed automatically: it is only announced, as before, and a copy that downloaded it
+deletes it.
+
 ## What is not automated yet
 
 3.0 has no `scripts/build-release.sh` counterpart yet: every step above is run by hand. If that
