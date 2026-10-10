@@ -51,8 +51,8 @@ android {
         applicationId = "brobata.physiboard"
         minSdk = 31
         targetSdk = 36
-        versionCode = 30200
-        versionName = "3.2.0"
+        versionCode = 30300
+        versionName = "3.3.0"
         // app-shell.md SS23.1 (D3): the phone this ships to is arm64 only, same as the embedded
         // ADB library; an x86 or armeabi-v7a build would carry native code that silently never runs.
         ndk { abiFilters += "arm64-v8a" }
