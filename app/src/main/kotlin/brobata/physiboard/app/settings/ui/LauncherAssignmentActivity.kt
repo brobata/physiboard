@@ -100,15 +100,18 @@ class LauncherAssignmentActivity : ComponentActivity() {
                 // hardware key press and must not stall the main thread while it does (2026-09-25
                 // review); the assignment is read into state and every write runs in the scope.
                 val scope = rememberCoroutineScope()
+                // Read the way the keyboard reads it (ImeSettings): with the Space default applied, so a
+                // fresh install's Space shows the quick launcher it really runs, and can be removed.
                 val existing by produceState<ShortcutEntry?>(initialValue = null, keycode) {
-                    value = LauncherShortcuts.parse(store.current().launcher.assignedKeysJson)[keycode]
+                    val json = store.current().launcher.assignedKeysJson
+                    value = LauncherShortcuts.parse(json).applyDefault(defaultAlreadyAssigned = json.isNotBlank()).shortcuts[keycode]
                 }
                 AssignmentSheetContent(
                     keyLabel = AssignableKeys.label(keycode),
                     keycode = keycode,
                     commands = AssignmentSheet.candidates(catalog.build()),
                     catalog = catalog,
-                    hasAssignment = existing != null,
+                    current = existing,
                     onClose = { finishWith(Activity.RESULT_CANCELED) },
                     onRemove = {
                         scope.launch {
@@ -175,7 +178,7 @@ private fun AssignmentSheetContent(
     keycode: Int,
     commands: List<Command>,
     catalog: AndroidCommandCatalog,
-    hasAssignment: Boolean,
+    current: ShortcutEntry?,
     onClose: () -> Unit,
     onRemove: () -> Unit,
     onChoose: (Command) -> Unit,
@@ -199,11 +202,16 @@ private fun AssignmentSheetContent(
                     AssistChip(onClick = {}, label = { Text(keyLabel) })
                     IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "Close") }
                 }
+                // spec SS6.4: what the key does now, so holding an assigned key (SS6.2 D) shows what
+                // a choice replaces and what "Remove" takes away.
+                if (current != null) {
+                    Text(AssignmentSheet.currentLabel(current), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     IconButton(onClick = { searching = !searching }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
                     FilterChip(colors = terminalChipColors(), selected = source == null, onClick = { source = null }, label = { Text(AssignmentSheet.ALL_CHIP) })
                     sources.forEach { s -> FilterChip(colors = terminalChipColors(), selected = source == s, onClick = { source = s }, label = { Text(s.label) }) }
-                    if (hasAssignment) FilterChip(colors = terminalChipColors(), selected = false, onClick = onRemove, label = { Text(AssignmentSheet.REMOVE_CHIP, color = MaterialTheme.colorScheme.error) })
+                    if (current != null) FilterChip(colors = terminalChipColors(), selected = false, onClick = onRemove, label = { Text(AssignmentSheet.REMOVE_CHIP, color = MaterialTheme.colorScheme.error) })
                 }
                 if (searching) {
                     OutlinedTextField(value = query, onValueChange = { query = it }, placeholder = { Text(AssignmentSheet.SEARCH_HINT) }, singleLine = true, modifier = Modifier.fillMaxWidth())

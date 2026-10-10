@@ -891,4 +891,6 @@ restoring there.
 keys-and-modifiers.md 15.1: while the keyboard has no text box, the keys it answers with no text
 box (Sym shortcuts, the quick launcher, the Fn layer, home screen keys) also work in windows
 Android sends the keyboard nothing for, by the keyboard's own code; every other key goes on to
-the app untouched, and no key is ever handled twice.
+the app untouched, and no key is ever handled twice. That includes tap or hold on a launcher key
+(expansion-clipboard-pickers-launcher.md 6.2 D): the same press tracking decides, the keyboard's
+own timer opens the sheet, and the repeats and release are consumed like the press.

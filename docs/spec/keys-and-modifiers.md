@@ -286,8 +286,10 @@ the setting off these four chords fall through to section 4.3.
 Still in an editable field, in this order:
 
 1. If `power_shortcuts_enabled` (default true) and the key has an assigned launcher shortcut
-   (`expansion-clipboard-pickers-launcher.md`), the chord is marked used and the shortcut runs;
-   consumed when the shortcut handled it.
+   (`expansion-clipboard-pickers-launcher.md`), the chord is marked used and the key is consumed.
+   3.2: the shortcut runs on the key's release when it was a tap; held to
+   `long_press_threshold` it opens that key's assignment sheet instead (that document's 6.2 D).
+   Its repeats and release are consumed, so no chord symbol is typed.
 2. Otherwise, for any key that is not Sym and not a pure modifier, with repeat count 0, the
    chord is marked used and the key is looked up in the current Sym page (when the Device, Emoji
    or Symbols page is open) or the user's preferred chord page (when no page is open). Shift for
@@ -657,7 +659,8 @@ path so the selection is deleted.
 
 The system repeats a held key about every 50 ms after 400 ms (D6). PhysiBoard treats repeats
 (repeat count above 0) as follows: the bounce and accidental-press filters ignore them; modifier
-keys and Sym ignore them; multi-tap keys consume them (holding a multi-tap key must not churn
+keys and Sym ignore them; a held launcher key consumes them (expansion-clipboard-pickers-launcher.md
+6.2 D); multi-tap keys consume them (holding a multi-tap key must not churn
 through its variants); the Fn burst counts them; a key with a pending long press consumes them
 (the timer decides the outcome, not the repeats); Enter repeats after a consumed Alt+Enter are
 consumed; everything else re-enters the normal path on every repeat, so a held letter types
@@ -1050,12 +1053,15 @@ With no editable field the keyboard is mostly transparent. On key-down, in order
 4. Without a Ctrl latch, a key with Sym meta that is assigned to the quick launcher: run it as
    a power shortcut if that mode is on, else as a launcher shortcut.
 5. Without a Ctrl latch, with power shortcut mode on, a letter, Enter, Backspace or Space runs
-   the assigned shortcut and ends the mode.
+   the assigned shortcut and ends the mode. (3.2: in steps 4 to 6 an assigned key runs on its
+   release, or opens its sheet when held to `long_press_threshold`; its repeats and release are
+   consumed. expansion-clipboard-pickers-launcher.md 6.2 D.)
 6. Without a Ctrl latch, with `launcher_shortcuts_enabled` (default false) and the foreground
    app being a launcher, a letter, Enter, Backspace or Space runs the assigned launcher shortcut.
 7. Otherwise pass to app.
 
-Key-up: Back passes; nav mode keys as above; otherwise pass.
+Key-up: Back passes; the release of a key steps 4 to 6 took is consumed (and runs a tapped
+assignment); nav mode keys as above; otherwise pass.
 
 ### 15.1 Where Android sends the keyboard nothing: the accessibility service (3.2)
 

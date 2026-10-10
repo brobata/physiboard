@@ -50,7 +50,8 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
         RowList {
             item {
                 Text(
-                    "These settings share one launcher-key assignment list. Choose where PhysiBoard should listen for those assigned keys.",
+                    "These settings share one launcher-key assignment list. Choose where PhysiBoard should listen for those assigned keys. " +
+                        "Tap an assigned key to launch it; hold it to change or remove what it opens.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -70,7 +71,7 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
             item {
                 SwitchRow(
                     "SYM key shortcuts",
-                    description = "Hold SYM with one of your assigned keys to launch an app or action. The keys are set below, in Assigned launcher keys.",
+                    description = "Hold SYM and tap one of your assigned keys to launch an app or action. Hold SYM and hold the key to change or remove it. The keys are also set below, in Assigned launcher keys.",
                     checked = launcher.symShortcutsEnabled,
                     onCheckedChange = { set { p -> p.copy(symShortcutsEnabled = it) } },
                 )
@@ -78,7 +79,7 @@ fun QuickLauncherScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
             item {
                 NavigateRow(
                     "Assigned launcher keys",
-                    "Tap a key to assign or replace a command. Assigned keys are shared by both trigger modes." +
+                    "Tap a key to assign or replace a command. Anywhere else, hold SYM and hold an assigned key to change or remove it. Assigned keys are shared by both trigger modes." +
                         (shortcuts.shortcuts.quickLauncherKeycode?.let { " Quick launcher is currently assigned to ${brobata.physiboard.core.actions.launcher.AssignableKeys.label(it)}." } ?: ""),
                     icon = Icons.Outlined.KeyboardAlt,
                 ) { onNavigate(Routes.ASSIGNED_LAUNCHER_KEYS) }

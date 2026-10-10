@@ -72,7 +72,11 @@ obtained through the broker (section 2.9).
 | `sym` | KEYCODE_SYM or raw keycode 63 (the Titan's Sym, D3) |
 
 A Space down that already carries Ctrl or Alt in its meta state is never a trigger: Ctrl+Space
-and Alt+Space go straight down the normal pipeline (language switching and the like).
+and Alt+Space go straight down the normal pipeline (language switching and the like). 3.2: nor
+is a Space under Sym (Sym held, the Sym meta bit, or the Sym-armed launcher mode waiting for its
+key): Sym+Space is a launcher chord, and holding it opens Space's assignment sheet
+(expansion-clipboard-pickers-launcher.md 6.2 D), which the trackpad's 250 ms hold would
+otherwise take first.
 
 Choosing Sym as the trigger disables "hold Sym for the assistant": the 600 ms Sym hold timer
 is never armed while the trackpad is enabled and set to Sym (changelog 1.0.7, "the hold is

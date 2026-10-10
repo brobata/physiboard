@@ -909,6 +909,10 @@ screen and power shortcut paths, which accept only those 29.
 
 ### 6.2 The three ways an assigned key fires
 
+"Runs" in A, B and C below means: the key is this feature's from its down, and what it does is
+decided by D, tap or hold (3.2): a tap runs the assignment on the release, a hold opens the
+assignment sheet for that key.
+
 **A. On the home screen** (`launcher_shortcuts_enabled`, default off). With no editable field
 focused, no Ctrl latch active, the foreground package being one that answers the HOME intent
 (the list is queried once per service lifetime and cached), and the pressed key one of the 29:
@@ -941,6 +945,45 @@ The home screen path additionally requires `launcher_shortcuts_enabled`; the pow
 paths do not, so with the defaults (home screen off, power shortcuts on) an assigned key works
 via Sym everywhere and does nothing bare.
 
+**D. Tap or hold (3.2).** The maintainer asked how to reset a key once an app is chosen for it
+(2026-10-09); before this, reassigning or removing one meant Settings > Keys & shortcuts > Quick
+launcher > Assigned launcher keys. Wherever A, B or C takes an *assigned* key (Sym-armed, Sym
+held in or out of a text field, a bare home-screen key, and the same keys handed over by the
+accessibility service, keys-and-modifiers.md 15.1), its down is consumed and does nothing yet:
+
+- Released before `long_press_threshold` (keys-and-modifiers.md 8.3, default 500 ms, clamped 50
+  to 1000; the same hold time every other long press uses): a **tap**. The assignment runs on the
+  release itself (section 6.3), not after a timer, so a tap costs no more delay than the key's own
+  travel. The quick launcher opens on the release too.
+- Still down at the threshold: a **hold**. The assignment sheet (section 6.4) opens for that
+  key, naming what the key does now ("Now: WhatsApp") with the red "Remove" chip, and a command
+  chosen there is assigned without being run. A release that arrives at or after the threshold
+  before the timer ran counts as a hold as well.
+- The quick launcher's key (Space by default) follows the same rule: a tap opens or closes the
+  quick launcher, a hold opens Space's sheet, where the quick launcher can be moved to another
+  key or removed (section 6.1: it is never re-added once removed).
+- Auto-repeats of the key (the system starts them at about 400 ms) are consumed: they never run
+  the assignment, never type a Sym chord symbol, and never open the sheet twice (a repeat that
+  arrives past the threshold before the timer opens the sheet, once). The release is consumed in
+  every case, so a field never receives a stray letter and an app never sees a release whose
+  press it did not see (the accessibility service's own rule, 15.1, then holds too).
+- An *unassigned* key keeps its behaviour: outside a text field its sheet opens on the down
+  (choosing then also runs the command); in a text field it falls through to the Sym chord. Its
+  repeats and release are consumed like an assigned key's when the sheet opened.
+- A new field starting while the key is down drops what the press would have done (its release
+  may have gone to the old window, and a timer must not open the sheet later); its repeats and
+  release are still swallowed if they come. A fresh down of the same key forgets an old press
+  whose release never came.
+- Haptics: none by default. With `event_haptics` on, the hold that opens the sheet plays the
+  `LONG_PRESS` event (keys-and-modifiers.md 13.5); a tap plays nothing beyond the key tick.
+- With the screen trackpad on Space (its baseline), a Space under Sym (held, or the Sym-armed
+  mode waiting) is a Sym chord and never the trackpad trigger (trackpad-caret-nav.md 2.2), or
+  the trackpad's 250 ms hold would take Sym+Space before this hold could.
+
+The decision is `:core:actions` `LauncherPressTiming` (the router's `LauncherKeyRouter` still
+decides whether the key is this feature's); `KeyboardPipeline` tracks the presses and both the
+keyboard's own keys and the accessibility service's go through it; `:ime` owns only the timer.
+
 ### 6.3 What runs
 
 The entry's `commandId` is resolved against the live command catalog (so an app that was
@@ -959,7 +1002,11 @@ modal bottom sheet, at most 75% of the window height, with a 40 dp drag handle. 
 area outside closes it. Content:
 
 - Header: "Shortcut" and a chip with the key's name (`Q`..`M`, `⌫`, `␣`, `⏎`, or "Key 62" for
-  anything else) and a close icon.
+  anything else) and a close icon. 3.2: when the key holds an assignment, a line under the header
+  names it, "Now: " plus the entry's title (else its app name, its package, or "PhysiBoard
+  QuickLauncher" for a legacy quick launcher entry). The assignment is read as the keyboard reads
+  it, with the Space default applied (section 6.1), so a fresh install's Space shows its quick
+  launcher and offers "Remove".
 - A filter row: a search toggle (magnifier) which reveals a rounded "Search commands..." field
   (focused 100 ms after the sheet expands), then chips "All" plus one per command source present
   ("Apps", "PhysiBoard", "App actions", "Device control", "Navigation"), then, when the key
@@ -977,9 +1024,10 @@ subtitle or any search token contains the query (case-insensitive). Empty states
 found", or "No results for "query"".
 
 Choosing a command writes the entry (type `command`, all fields from the command) and returns
-result code 1 ("assigned"); when the sheet was opened by a key press (not from settings) the
-command also runs immediately, so an unassigned key pressed on the home screen both assigns and
-launches. "Remove" deletes the entry and returns result code 2 ("removed"). Opened from the
+result code 1 ("assigned"); when the sheet was opened by pressing an unassigned key (not from
+settings) the command also runs immediately, so an unassigned key pressed on the home screen
+both assigns and launches. A sheet opened by holding an assigned key (6.2 D) is started with
+"skip launch": it only reassigns or removes. "Remove" deletes the entry and returns result code 2 ("removed"). Opened from the
 settings screen the sheet is started with the "skip launch" extra and only assigns. The intent
 extras are `key_code` (int) and `skip_launch` (boolean).
 
@@ -988,17 +1036,26 @@ extras are `key_code` (int) and `skip_launch` (boolean).
 Keys & shortcuts > "Quick launcher" (3.1, formerly Extras > "PhysiBoard-QuickLauncher"; also reachable from the home screen's status
 card and the tutorial) opens a hub titled "Quick launcher" with the intro "These
 settings share one launcher-key assignment list. Choose where PhysiBoard should listen for
-those assigned keys.", the blocked-default hint when it applies, and:
+those assigned keys. Tap an assigned key to launch it; hold it to change or remove what it
+opens.", the blocked-default hint when it applies, and:
 
 1. "Homescreen shortcuts" switch, tagged "Experimental" ("Listen for your assigned keys on the
    Android home screen. The keys themselves are set below, in Assigned launcher keys.").
-2. "SYM key shortcuts" switch ("Hold SYM with one of your assigned keys to launch an app or
-   action. The keys are set below, in Assigned launcher keys.").
+2. "SYM key shortcuts" switch ("Hold SYM and tap one of your assigned keys to launch an app or
+   action. Hold SYM and hold the key to change or remove it. The keys are also set below, in
+   Assigned launcher keys.").
 3. "Behaviour" row ("Launcher provider, search/ranking rules, and SYM+Space from text fields.")
    opening the quick launcher behaviour screen (section 7.8).
 4. "Appearance" row opening the quick launcher appearance screen.
-5. "Assigned launcher keys" row ("Tap a key to assign or replace a command. Assigned keys are
-   shared by both trigger modes." or "... Quick launcher is currently assigned to ␣.").
+5. "Assigned launcher keys" row ("Tap a key to assign or replace a command. Anywhere else, hold
+   SYM and hold an assigned key to change or remove it. Assigned keys are shared by both trigger
+   modes." or "... Quick launcher is currently assigned to ␣.").
+
+The assigned keys screen's help text reads "Tap a key to assign or replace a command. Assigned
+keys are shared by both trigger modes. Away from this screen, hold SYM and hold an assigned key
+to change or remove it; a quick tap launches it.", then the quick launcher sentence when it
+applies. Search finds both screens under "hold", "reassign", "change", "remove", "reset",
+"unassign" and "clear".
 
 The assigned keys screen draws a fixed QWERTY grid of square keys in three rows: `Q W E R T Y U
 I O P`, `A S D F G H J K L ⌫`, `Z X C V ␣ B N M ⏎`, the second and third rows centered. A key
@@ -1425,7 +1482,11 @@ The tutorial's "Typing sounds (gimmick)" page offers the same three modes with a
 | Space already assigned to an app before 2.0 | The quick launcher is not auto-assigned; a hint appears in settings | the default never overwrites |
 | Remove the quick launcher from every key | It is not re-added | `quick_launcher_default_assigned` stays true |
 | Backup restored with a shortcut on a non-letter key (say F1) | Stored but never fires | only the 29 keys are checked |
-| Assign from a key press on the home screen | The chosen command runs immediately as well | launch is skipped only from the settings screen |
+| Assign from a key press on the home screen | The chosen command runs immediately as well | launch is skipped from the settings screen and from a hold (6.2 D) |
+| Hold Sym and hold an assigned key | Its sheet opens at `long_press_threshold`, naming the current assignment, with "Remove"; nothing launches | 6.2 D |
+| Hold Sym and tap an assigned key | It launches on the release | 6.2 D; no timer on a tap |
+| Hold Sym+Space with the screen trackpad on Space | Space's sheet opens; the trackpad does not | a Space under Sym is a chord, trackpad-caret-nav.md 2.2 |
+| Assigned key held in a text field with Sym held | Nothing typed, not even on auto-repeat; the sheet opens once | the press's repeats and release are the feature's |
 | App uninstalled after assignment | The key stops resolving; on the home screen path the plain package launch also fails; the assignments screen deletes the entry on its next open | live catalog resolution |
 | Quick launcher open, press its own key with Sym held | Closes on release | toggle on key up |
 | Quick launcher open, plain Sym tap | Not consumed; the keyboard's Sym handling applies | tested |
@@ -1541,6 +1602,14 @@ Each case is an input sequence and the expected outcome, written so a JVM test c
 | T87 | key chooser open | Back; or Space | closed, no change, Back consumed; or closed and a space typed |
 | T88 | symbol search | `right arrow`; `arrow right`; `sum`; `U+2192`; `§` | → then ⇒; the same; ∑; →; § |
 | T89 | kaomoji search | `table flip`; `lenny face`; `shrug`; `idk` | (╯°□°)╯︵ ┻━┻ first; ( ͡° ͜ʖ ͡°) first; ¯\_(ツ)_/¯ first; includes ¯\_(ツ)_/¯ |
+| T90 | tap (6.2 D), threshold 500 | assigned Q down at 1000, up at 1120 | nothing on the down; the assignment runs on the up |
+| T91 | hold | assigned Q down at 1000; timer at 1499, 1500; up at 1900 | nothing at 1499; the sheet for Q at 1500 (launch skipped); nothing on the up |
+| T92 | repeats | assigned Q held, repeats at 1400, 1450, 1500, 1550... | none launches; the sheet opens once, at the first event at or past 1500 |
+| T93 | late release | assigned Q down at 1000, up at 1600 before the timer ran | the sheet, not a launch |
+| T94 | unassigned | Q (no assignment) down outside a field | the sheet on the down, as before; repeats and up consumed, nothing more |
+| T95 | quick launcher key | Space = quick launcher: tap; hold | the quick launcher on the up; Space's sheet at the threshold |
+| T96 | pipeline, text field | Sym down, assigned Q down, repeats, timer, Q up, Sym up | every Q event consumed with no edit; the sheet once; no Sym page opens; the next plain Q types `q` |
+| T97 | pipeline, no text box, no connection (accessibility, 15.1) | Sym tap, Space down, timer, repeat, Space up | Space's sheet once; repeat and up consumed; a tap instead runs the quick launcher on the up |
 
 ## 13. Keep / Drop for 3.0
 

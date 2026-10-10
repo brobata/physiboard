@@ -78,7 +78,8 @@ fun AssignedLauncherKeysScreen(onBack: () -> Unit) {
     SettingsScreenScaffold(title = "Assigned launcher keys", onBack = onBack) {
         Column(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                "Tap a key to assign or replace a command. Assigned keys are shared by both trigger modes." +
+                "Tap a key to assign or replace a command. Assigned keys are shared by both trigger modes. " +
+                    "Away from this screen, hold SYM and hold an assigned key to change or remove it; a quick tap launches it." +
                     (shortcuts.quickLauncherKeycode?.let { " Quick launcher is currently assigned to ${AssignableKeys.label(it)}." } ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

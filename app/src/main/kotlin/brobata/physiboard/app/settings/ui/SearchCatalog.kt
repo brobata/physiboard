@@ -103,8 +103,8 @@ object SearchCatalog {
         SearchEntry("Accessibility service", KEYS, Routes.ACCESSIBILITY_SERVICE, "accessibility service restricted settings no text box camera everywhere"),
         SearchEntry("Fn shortcuts everywhere", "Accessibility service", Routes.ACCESSIBILITY_SERVICE, "fn sym shortcuts launcher home camera video settings no text box field accessibility"),
         SearchEntry("Focus the text box when I start typing", "Accessibility service", Routes.ACCESSIBILITY_SERVICE, "focus cursor caret messages backspace box tap select accessibility"),
-        SearchEntry("Quick launcher", KEYS, Routes.QUICK_LAUNCHER, "quick launcher apps shortcut launch search"),
-        SearchEntry("Assigned launcher keys", "Quick launcher", Routes.ASSIGNED_LAUNCHER_KEYS, "launcher key assign shortcut sym space app command"),
+        SearchEntry("Quick launcher", KEYS, Routes.QUICK_LAUNCHER, "quick launcher apps shortcut launch search hold reassign change remove reset unassign clear"),
+        SearchEntry("Assigned launcher keys", "Quick launcher", Routes.ASSIGNED_LAUNCHER_KEYS, "launcher key assign shortcut sym space app command hold reassign change remove reset unassign clear"),
         SearchEntry("QuickLauncher entries", "Quick launcher", Routes.QUICK_LAUNCHER_ENTRIES, "quick launcher sources apps device control navigation"),
         SearchEntry("Customize entries", "Quick launcher", Routes.CUSTOMIZE_ENTRIES, "favorites favourites hidden alias search color colour quick launcher"),
         // Apps.
