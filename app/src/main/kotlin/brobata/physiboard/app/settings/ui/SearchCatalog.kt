@@ -49,6 +49,7 @@ object SearchCatalog {
         SearchEntry("More punctuation", TYPING, Routes.TYPING, "smart quotes curly apostrophe dash hyphen comma space guillemets"),
         SearchEntry("Spaces around punctuation", TYPING, Routes.PUNCTUATION_SPACING, "punctuation spacing space before after remove"),
         SearchEntry("Backspace deletes forward", TYPING, Routes.TYPING, "backspace delete forward shift alt line start"),
+        SearchEntry("Alt + Backspace", TYPING, Routes.TYPING, "alt backspace delete line whole line start of line clear row forward character"),
         SearchEntry("Space or Enter releases Alt", TYPING, Routes.TYPING, "alt release space latch one-shot"),
         SearchEntry("Text expansion", "Text expansion", Routes.TEXT_EXPANSION, "snippet abbreviation expand shortcut"),
         SearchEntry("Snippets", "Text expansion", Routes.MANAGE_SNIPPETS, "snippet shortcut replacement expand abbreviation manage"),

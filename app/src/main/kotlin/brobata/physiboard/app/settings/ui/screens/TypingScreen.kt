@@ -13,6 +13,7 @@ import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SingleChoiceDropdownRow
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.settings.TypingPrefs
 import brobata.physiboard.core.text.DashStyle
 import brobata.physiboard.core.text.SmartQuoteStyle
@@ -109,10 +110,14 @@ fun TypingScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 )
             }
             item {
-                SwitchRow(
-                    "Alt + Backspace deletes forward",
-                    checked = typing.altBackspaceDeletesForward,
-                    onCheckedChange = { set { p -> p.copy(altBackspaceDeletesForward = it) } },
+                SingleChoiceDropdownRow(
+                    label = "Alt + Backspace",
+                    description = "With Alt held, tapped or locked. Deleting to the start of the line keeps the line break; " +
+                        "press again to join the line to the one above.",
+                    options = AltBackspaceAction.entries,
+                    optionLabel = ::altBackspaceLabel,
+                    selected = typing.altBackspace,
+                    onSelect = { action -> set { p -> p.copy(altBackspace = action) } },
                 )
             }
             item {
@@ -143,6 +148,12 @@ fun TypingScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             }
         }
     }
+}
+
+private fun altBackspaceLabel(action: AltBackspaceAction): String = when (action) {
+    AltBackspaceAction.DELETE_CHARACTER -> "Delete one character"
+    AltBackspaceAction.DELETE_TO_LINE_START -> "Delete to the start of the line"
+    AltBackspaceAction.DELETE_FORWARD -> "Delete forward"
 }
 
 private fun smartQuoteStyleLabel(style: SmartQuoteStyle): String = when (style) {
