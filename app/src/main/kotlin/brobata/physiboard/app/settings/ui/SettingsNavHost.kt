@@ -89,7 +89,6 @@ import brobata.physiboard.app.settings.ui.screens.CustomizeSymKeyboardScreen
 @Composable
 fun SettingsApp(startDestination: String = Routes.HOME) {
     val navController: NavHostController = rememberNavController()
-    val controller = LocalSettingsController.current
     fun navigate(route: String) { navController.navigate(route) }
     fun back() { navController.popBackStack() }
 
@@ -129,8 +128,8 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
                         onBack = ::back,
                         onNavigate = ::navigate,
                         onShowTutorial = {
-                            // spec: SS3, "the row resets tutorial_completed to false and opens the setup screen directly."
-                            controller.update { it.copy(shell = it.shell.copy(tutorialCompleted = false)) }
+                            // spec: SS3. Opens the first-run pages directly and leaves tutorial_completed as
+                            // it is (3.2): backing out of a review must not make the launcher open them later.
                             navController.navigate(Routes.SETUP)
                         },
                     )

@@ -147,8 +147,8 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         }
     }
 
-    // spec: SS4.4, the one-time POST_NOTIFICATIONS prompt, ignored, once per home screen creation.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { /* SS4.4: the answer is ignored */ }
+    // spec: SS4.7, the one-time POST_NOTIFICATIONS prompt, ignored, once per home screen creation.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { /* SS4.7: the answer is ignored */ }
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
@@ -279,7 +279,15 @@ private fun SettingsListScope.homeIndex(settings: Settings, onNavigate: (String)
  * status-bar scrim (black 30% dark theme, white 20% light) sits over just the status-bar strip.
  */
 @Composable
-private fun HomeHeader() {
+private fun HomeHeader() = TerminalHeader()
+
+/**
+ * The header Home draws, shared with the first-run pages (SS4): `physiboard:~$`, then [command]
+ * when given (`physiboard:~$ setup`), the breathing cursor, and [trailing] at the far end (the
+ * first-run step counter).
+ */
+@Composable
+internal fun TerminalHeader(command: String? = null, cursorPeriodMillis: Int = 600, trailing: (@Composable () -> Unit)? = null) {
     // The prompt sits on the page itself (2026-10-09, the maintainer: the dark band read as a
     // separate, darker title on the light theme), set off by the same 1 dp amber rule the panes
     // use, so the header belongs to the skin in both themes.
@@ -293,8 +301,11 @@ private fun HomeHeader() {
                 .padding(vertical = 14.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
-            Text("physiboard:~$", style = PhysiBoardType.prompt, color = accent)
-            TerminalCursor(modifier = Modifier.padding(start = 6.dp, bottom = 4.dp))
+            Text(if (command == null) "physiboard:~$" else "physiboard:~$ $command", style = PhysiBoardType.prompt, color = accent)
+            TerminalCursor(modifier = Modifier.padding(start = 6.dp, bottom = 4.dp), periodMillis = cursorPeriodMillis)
+            if (trailing != null) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.BottomEnd) { trailing() }
+            }
         }
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(accent.copy(alpha = 0.45f)))
     }
