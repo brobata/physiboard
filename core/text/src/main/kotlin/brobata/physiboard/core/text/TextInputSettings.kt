@@ -1,5 +1,7 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.keys.AltBackspaceAction
+
 /** Which dash character "Hyphen to dash" inserts. spec: text-input.md SS6.8, `spaced_hyphen_dash_style`. */
 enum class DashStyle(val char: Char) { EN_DASH('–'), EM_DASH('—') }
 
@@ -55,7 +57,7 @@ data class SpacingSettings(
  */
 data class BackspaceSettings(
     val shiftBackspaceDeletesForward: Boolean = false,
-    val altBackspaceDeletesForward: Boolean = false,
+    val altBackspace: AltBackspaceAction = AltBackspaceAction.DELETE_CHARACTER,
     val backspaceAtStartDeletesForward: Boolean = false,
 )
 

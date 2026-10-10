@@ -2124,7 +2124,12 @@ internal class KeyboardSession(
         val readout = if (readsNothing) {
             EditorReadout(EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs), documentStartOffset = 0, cursorAbsolute = lastReportedSelStart)
         } else {
-            ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
+            ic.readEditorState(
+                stroke.timeMs,
+                wholeDocument = pipeline.needsWholeDocument(stroke),
+                fallbackCursorAbsolute = lastReportedSelStart,
+                textBeforeWindow = pipeline.textBeforeWindow(stroke),
+            )
         }
         val tRead = System.nanoTime()
         val glyphBefore = pipeline.modifierGlyphInput()

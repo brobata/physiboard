@@ -86,9 +86,10 @@ sealed class EditorOp {
      * SS5.5. [withShift] is "Shift meta is added when Shift is active" for the eight
      * selection-aware navigation keys; [withCtrl] is [EditEffect.PAGE_START]/[EditEffect.PAGE_END]'s
      * own "Ctrl+Home / Ctrl+End", distinct from [EditEffect.LINE_HOME]/[EditEffect.LINE_END]'s plain
-     * Home/End.
+     * Home/End. [withAlt] is Alt+Backspace's line delete in a Terminal mode app, where the app
+     * gets the real Alt+Backspace key ([EditEffect.DELETE_TO_LINE_START] names the Backspace key).
      */
-    data class SendKey(val effect: EditEffect, val withShift: Boolean = false, val withCtrl: Boolean = false) : EditorOp()
+    data class SendKey(val effect: EditEffect, val withShift: Boolean = false, val withCtrl: Boolean = false, val withAlt: Boolean = false) : EditorOp()
 
     /** Performs the editor's own copy/paste/cut/undo, the same action a long-press toolbar offers. spec: keys-and-modifiers.md SS7.3. */
     data class PerformEditorAction(val effect: EditEffect) : EditorOp()

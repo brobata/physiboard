@@ -1,5 +1,6 @@
 package brobata.physiboard.core.shell
 
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.settings.SettingsCodec
@@ -306,5 +307,25 @@ class BackupCodecTest {
         assertEquals(0, outcome.skippedCount)
         assertEquals(changed.keys, outcome.settings.keys)
         assertEquals(changed.symPages, outcome.settings.symPages)
+    }
+
+    @Test
+    fun `the Alt+Backspace choice goes out in a backup and comes back through a restore`() {
+        val line = Settings().let { it.copy(typing = it.typing.copy(altBackspace = AltBackspaceAction.DELETE_TO_LINE_START)) }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", line))!!
+        assertEquals("line", entries[SettingsKeys.ALT_BACKSPACE_DELETE])
+        val outcome = BackupRestore.restore(Settings(), BackupFile(meta, entries))
+        assertEquals(0, outcome.skippedCount)
+        assertEquals(AltBackspaceAction.DELETE_TO_LINE_START, outcome.settings.typing.altBackspace)
+    }
+
+    @Test
+    fun `a backup made when the row was a switch restores forward delete as forward`() {
+        val current = Settings().let { it.copy(typing = it.typing.copy(altBackspace = AltBackspaceAction.DELETE_TO_LINE_START)) }
+        val on = BackupRestore.restore(current, BackupFile(meta, mapOf(SettingsKeys.ALT_BACKSPACE_DELETE to "true")))
+        assertEquals(1, on.appliedCount)
+        assertEquals(AltBackspaceAction.DELETE_FORWARD, on.settings.typing.altBackspace)
+        val off = BackupRestore.restore(current, BackupFile(meta, mapOf(SettingsKeys.ALT_BACKSPACE_DELETE to "false")))
+        assertEquals(AltBackspaceAction.DELETE_CHARACTER, off.settings.typing.altBackspace)
     }
 }

@@ -3,6 +3,7 @@ package brobata.physiboard.core.settings
 import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.feedback.HapticIntensity
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
 import brobata.physiboard.core.pointer.keyboardswipe.TrackpadGestureProvider
@@ -317,7 +318,7 @@ object SettingsCodec {
         put(SettingsKeys.DOUBLE_SPACE_PERIOD, t.doubleSpaceToPeriod.toString())
         put(SettingsKeys.CLEAR_ALT_ON_SPACE, t.clearAltOnSpace.toString())
         put(SettingsKeys.SHIFT_BACKSPACE_DELETE, t.shiftBackspaceDeletesForward.toString())
-        put(SettingsKeys.ALT_BACKSPACE_DELETE, t.altBackspaceDeletesForward.toString())
+        put(SettingsKeys.ALT_BACKSPACE_DELETE, StoredValues.altBackspace(t.altBackspace))
         put(SettingsKeys.BACKSPACE_AT_START_DELETE, t.backspaceAtStartDeletesForward.toString())
         put(SettingsKeys.AUTO_SPACE_PUNCTUATION, t.removeSpaceBefore)
         put(SettingsKeys.SPACE_AFTER_PUNCTUATION, t.spaceBeforeNextText)
@@ -340,7 +341,7 @@ object SettingsCodec {
             doubleSpaceToPeriod = r.bool(SettingsKeys.DOUBLE_SPACE_PERIOD, d.doubleSpaceToPeriod),
             clearAltOnSpace = r.bool(SettingsKeys.CLEAR_ALT_ON_SPACE, d.clearAltOnSpace),
             shiftBackspaceDeletesForward = r.bool(SettingsKeys.SHIFT_BACKSPACE_DELETE, d.shiftBackspaceDeletesForward),
-            altBackspaceDeletesForward = r.bool(SettingsKeys.ALT_BACKSPACE_DELETE, d.altBackspaceDeletesForward),
+            altBackspace = StoredValues.altBackspace(r.string(SettingsKeys.ALT_BACKSPACE_DELETE)),
             backspaceAtStartDeletesForward = r.bool(SettingsKeys.BACKSPACE_AT_START_DELETE, d.backspaceAtStartDeletesForward),
             removeSpaceBefore = StoredValues.punctuationSubset(r.string(SettingsKeys.AUTO_SPACE_PUNCTUATION)),
             spaceBeforeNextText = StoredValues.punctuationSubset(r.string(SettingsKeys.SPACE_AFTER_PUNCTUATION)),
@@ -958,6 +959,23 @@ internal object StoredValues {
     }
 
     fun dashStyle(stored: String?): DashStyle = if (stored == "em_dash") DashStyle.EM_DASH else DashStyle.EN_DASH
+
+    /**
+     * `alt_backspace_delete` was a boolean until 3.2 (true: delete forward). The row kept its key
+     * and became a choice, so a store, a backup or a 2.x import that says `true` still reads as
+     * forward and `false` as one character; nothing has to be migrated.
+     */
+    fun altBackspace(v: AltBackspaceAction): String = when (v) {
+        AltBackspaceAction.DELETE_CHARACTER -> "character"
+        AltBackspaceAction.DELETE_TO_LINE_START -> "line"
+        AltBackspaceAction.DELETE_FORWARD -> "forward"
+    }
+
+    fun altBackspace(stored: String?): AltBackspaceAction = when (stored?.trim()?.lowercase()) {
+        "line" -> AltBackspaceAction.DELETE_TO_LINE_START
+        "forward", "true" -> AltBackspaceAction.DELETE_FORWARD
+        else -> AltBackspaceAction.DELETE_CHARACTER
+    }
 
     fun smartQuoteStyle(v: SmartQuoteStyle): String = when (v) {
         SmartQuoteStyle.GERMAN_GUILLEMETS -> "german_guillemets"

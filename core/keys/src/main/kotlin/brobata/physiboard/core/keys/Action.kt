@@ -74,6 +74,8 @@ enum class EditEffect {
     DELETE_CHAR_FORWARD,
     DELETE_WORD_BACKWARD,
     DELETE_SELECTION_OR_WORD_BACKWARD,
+    /** Alt+Backspace with `alt_backspace_delete` = `line`: from the caret back to the start of its line. spec: keys-and-modifiers.md SS7.7. */
+    DELETE_TO_LINE_START,
     NEWLINE,
     CURSOR_UP, CURSOR_DOWN, CURSOR_LEFT, CURSOR_RIGHT, CURSOR_CENTER,
     MOVE_WORD_LEFT, MOVE_WORD_RIGHT,
@@ -84,4 +86,19 @@ enum class EditEffect {
     TAB, ESCAPE,
     COPY, PASTE, CUT, UNDO, SELECT_ALL,
     MEDIA_PLAY_PAUSE, MEDIA_PREVIOUS, MEDIA_NEXT,
+}
+
+/**
+ * What Alt+Backspace does: the `alt_backspace_delete` choice. spec: keys-and-modifiers.md SS7.7,
+ * settings-catalog.md SS2.1.
+ */
+enum class AltBackspaceAction {
+    /** Alt changes nothing: one character before the caret goes, as with Backspace alone. */
+    DELETE_CHARACTER,
+
+    /** Everything from the caret back to the start of its line; at a line start, the line break before it. */
+    DELETE_TO_LINE_START,
+
+    /** The character after the caret. */
+    DELETE_FORWARD,
 }

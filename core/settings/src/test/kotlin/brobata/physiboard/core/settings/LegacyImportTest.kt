@@ -1,5 +1,6 @@
 package brobata.physiboard.core.settings
 
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.pointer.trackpad.ActivationMode
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
 import brobata.physiboard.core.text.EnterBehavior
@@ -20,6 +21,14 @@ class LegacyImportTest {
         val r = import()
         assertEquals(Settings(), r.settings)
         assertTrue(r.carried.isEmpty() && r.ignored.isEmpty())
+    }
+
+    @Test
+    fun `a 2x Alt+Backspace forward delete imports as the forward choice`() {
+        val r = import("alt_backspace_delete" to true)
+        assertEquals(AltBackspaceAction.DELETE_FORWARD, r.settings.typing.altBackspace)
+        assertEquals(setOf("alt_backspace_delete"), r.carried)
+        assertEquals(AltBackspaceAction.DELETE_CHARACTER, import("alt_backspace_delete" to false).settings.typing.altBackspace)
     }
 
     @Test
