@@ -36,8 +36,19 @@ object NotificationRingLifecycle {
     /** spec: SS5.7.1 point 4 ("at most the last 3"). */
     const val MAX_ICONS = 3
 
-    fun onNotificationPosted(state: RingSessionState, source: RingSource, screenInteractive: Boolean, pocketCovered: Boolean): RingArrivalDecision {
-        if (state.sources.isNotEmpty()) {
+    /**
+     * [ringOnScreen] is true when a ring screen is up or on its way even with nothing in it: the
+     * charging clock (SS5.11.2) shows with no notifications waiting, and a notification landing
+     * on it joins it rather than being skipped because the screen is on.
+     */
+    fun onNotificationPosted(
+        state: RingSessionState,
+        source: RingSource,
+        screenInteractive: Boolean,
+        pocketCovered: Boolean,
+        ringOnScreen: Boolean = state.sources.isNotEmpty(),
+    ): RingArrivalDecision {
+        if (ringOnScreen) {
             val updated = state.sources.filterNot { it.notificationKey == source.notificationKey } + source
             return RingArrivalDecision.UpdateExisting(updated)
         }
@@ -62,9 +73,13 @@ object NotificationRingLifecycle {
      * spec: SS5.7 "Ending": touch, a key down, screen off and unlock all finish the ring outright;
      * expiry on a real ring only releases keep-screen-on so the phone's own timeout ends it dark
      * to dark, but on a demo ring (SS5.7.6) expiry finishes it directly.
+     *
+     * [chargingHold] (SS5.11.2): while the charging clock holds the screen, expiry releases
+     * nothing and the last notification going away only puts the glow out; the clock stays.
      */
-    fun onEndTrigger(trigger: RingEndTrigger, isDemoMode: Boolean): RingEndDecision = when (trigger) {
-        RingEndTrigger.TIMER_EXPIRY -> RingEndDecision(finishes = isDemoMode, releasesKeepScreenOn = true)
+    fun onEndTrigger(trigger: RingEndTrigger, isDemoMode: Boolean, chargingHold: Boolean = false): RingEndDecision = when (trigger) {
+        RingEndTrigger.TIMER_EXPIRY -> RingEndDecision(finishes = isDemoMode, releasesKeepScreenOn = !chargingHold)
+        RingEndTrigger.LAST_SOURCE_REMOVED -> RingEndDecision(finishes = !chargingHold, releasesKeepScreenOn = !chargingHold)
         else -> RingEndDecision(finishes = true, releasesKeepScreenOn = true)
     }
 }
