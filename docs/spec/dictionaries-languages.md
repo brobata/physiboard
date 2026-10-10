@@ -496,6 +496,18 @@ What this document adds:
   to `files/user_defaults.json` on the first load that finds it absent, and read from the copy
   from then on. If neither is readable the list is empty. A default word's `f` defaults to 1
   when missing.
+- **Writing the two files.** The Personal dictionary screen (its add, rename, delete and Undo),
+  Add substitution's "add to dictionary" and the keyboard's own add or delete of a word all
+  write `personal_dictionary.json`; the screen and the keyboard's default-word merge write
+  `user_defaults.json`. Every write is one change applied to the file as it is at that moment,
+  read and written under one lock shared by the app and the keyboard (they run in one
+  process), never a list read earlier written over it: the screen's list is the one it read
+  when it opened, and the keyboard's is the one it last loaded, and either can be older than
+  the file. The screen's writes run one at a time in the order they were made, and the list
+  then shows what the file holds. On the keyboard's side, a read of the files that is running
+  or starts while one of its own saves is pending does not land, since it may have missed that
+  save; once the last save lands the files are read again. No file is read or written on the
+  key path: saves and reads run on their own threads.
 
 ## 8. Keyboard languages: subtypes and input styles
 

@@ -83,6 +83,8 @@ internal class SharedDictionaries private constructor(context: Context) {
     // Main thread only from here down.
     private val inFlight = mutableMapOf<LanguageCode, Int>()
     private var userWordLoads = 0
+    /** Keyboard saves of the personal word file not yet landed ([editUserWords]); no read lands meanwhile. */
+    private var pendingUserWordSaves = 0
     private var systemWordLoads = 0
     private var systemWordsWatched = false
     private val listeners = LinkedHashSet<() -> Unit>()
@@ -166,12 +168,31 @@ internal class SharedDictionaries private constructor(context: Context) {
     fun reloadUserWords() = onMain {
         val load = ++userWordLoads
         userWordLoader.loadAsync { store ->
-            if (load == userWordLoads) publish(snapshot.copy(userWords = store))
+            if (load == userWordLoads && pendingUserWordSaves == 0) publish(snapshot.copy(userWords = store))
         }
     }
 
-    /** An edit the keyboard made itself (a word added or deleted from the strip), in memory at once. */
-    fun setUserWords(store: UserWordStore) = onMain { publish(snapshot.copy(userWords = store)) }
+    /**
+     * An edit the keyboard makes itself (a word added from the strip, or deleted): [change] is
+     * applied in memory at once, then saved to the file ([UserWordFileLoader.savePersonalAsync]
+     * applies it to the file's current contents). [onResult] (main thread) says whether the save
+     * landed.
+     *
+     * A read of the files that is running, or starts, before the save has landed may have missed
+     * this edit, and landing after it would undo the edit in memory; so no read lands while a save
+     * is pending, and once the last one has landed the files are read again, which brings in this
+     * edit together with anything the dropped reads carried (a word the settings screen saved).
+     */
+    fun editUserWords(change: (UserWordStore) -> UserWordStore, onResult: (Boolean) -> Unit) = onMain {
+        userWordLoads++
+        publish(snapshot.copy(userWords = change(snapshot.userWords ?: UserWordStore.empty())))
+        pendingUserWordSaves++
+        userWordLoader.savePersonalAsync(change) { saved ->
+            pendingUserWordSaves--
+            if (pendingUserWordSaves == 0) reloadUserWords()
+            onResult(saved)
+        }
+    }
 
     /** Reads Android's user dictionary unless already read, and watches it from then on. */
     fun requestSystemWords() = onMain {

@@ -660,8 +660,7 @@ internal class KeyboardSession(
     // spec dictionaries-languages.md SS7: the default and personal user words, loaded once at
     // startup and reloaded whenever the Personal Dictionary screen (or the strip's own add-word,
     // via [persistAddedWord]) changes them. `:core:text`'s `TextInputResources.userWords` is the
-    // only consumer; [UserWordFileLoader] only supplies the files and the background thread.
-    private val userWordLoader = UserWordFileLoader(service, handler)
+    // only consumer; [SharedDictionaries] reads and saves the files.
     private val userWordStore: UserWordStore get() = shared.snapshot.userWords ?: UserWordStore.empty()
 
     /**
@@ -831,9 +830,8 @@ internal class KeyboardSession(
      * keystroke, and durable across a process restart.
      */
     private fun persistAddedWord(word: String) {
-        val updated = userWordStore.withPersonalWordAdded(word, System.currentTimeMillis())
-        shared.setUserWords(updated)
-        userWordLoader.savePersonalAsync(updated.personalWords(), ::reportPersonalWordSaveResult)
+        val now = System.currentTimeMillis()
+        shared.editUserWords({ it.withPersonalWordAdded(word, now) }, ::reportPersonalWordSaveResult)
     }
 
     /**
@@ -894,9 +892,7 @@ internal class KeyboardSession(
      * (SS4, SS5) is [KeyboardPipeline.forgetWordAsNextWordEverywhere].
      */
     private fun deletePersonalWord(word: String) {
-        val updated = userWordStore.withPersonalWordRemoved(word)
-        shared.setUserWords(updated)
-        userWordLoader.savePersonalAsync(updated.personalWords(), ::reportPersonalWordSaveResult)
+        shared.editUserWords({ it.withPersonalWordRemoved(word) }, ::reportPersonalWordSaveResult)
         pipeline.forgetWordAsNextWordEverywhere(word)
         ngramLoader.forgetEverywhereAsync(word)
     }

@@ -154,8 +154,8 @@ class SpellCheckerServiceTest {
     fun `a personal word added later is known at once`() {
         val text = "we use blorptastic daily"
         assertTrue(entry(check(text), text, "blorptastic").has(SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO))
-        val words = checkNotNull(shared.snapshot.userWords).withPersonalWordAdded("blorptastic", 0L)
-        shared.setUserWords(words)
+        checkNotNull(shared.snapshot.userWords)
+        shared.editUserWords({ it.withPersonalWordAdded("blorptastic", 0L) }) {}
         assertTrue(entry(check(text), text, "blorptastic").has(SuggestionsInfo.RESULT_ATTR_IN_THE_DICTIONARY))
     }
 }

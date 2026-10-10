@@ -2,11 +2,11 @@ package brobata.physiboard.ime
 
 import android.content.Context
 import android.os.Handler
-import brobata.physiboard.core.dict.PersonalWord
 import brobata.physiboard.core.dict.UserWordFileCodec
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordFrequency
 import java.io.File
+import java.util.concurrent.Executors
 
 /**
  * Reads, and persists an addition to, the two files the Personal Dictionary screen and the
@@ -40,26 +40,38 @@ internal class UserWordFileLoader(
 
     /**
      * spec SS7: a word added from the strip is a real personal word, not just typed text; this
-     * writes [personalWords] (the caller's already-updated [UserWordStore.personalWords]) back to
+     * applies [change] (the same edit the caller already made to its in-memory store) to
      * `personal_dictionary.json` so it survives a process restart and shows on the Personal
-     * Dictionary screen. The in-memory store is updated by the caller immediately; this call only
-     * makes that change durable. [onResult] (main thread) reports whether the write succeeded, the
-     * same "save failed" surfacing SS6.3 asks for on the Personal Dictionary screen's own edits, so
-     * a caller here is not left believing an addition survived a process restart when the file
+     * Dictionary screen. [onResult] (main thread) reports whether the write succeeded, the same
+     * "save failed" surfacing SS6.3 asks for on the Personal Dictionary screen's own edits, so a
+     * caller here is not left believing an addition survived a process restart when the file
      * write actually failed (a full disk, a revoked permission, ...).
+     *
+     * The change is applied to the file as it is at the moment of writing, never the caller's
+     * in-memory list written over it: that list can be older than the file (the Personal
+     * Dictionary screen saved a word and the reload its broadcast started has not landed yet),
+     * and writing it would erase that word. `:app`'s `UserWordFileStore` goes through the same
+     * [UserWordFileCodec.updatePersonal], which holds the shared lock from the read to the write.
+     * Saves run one at a time on one thread, in the order they were asked for, so a word added
+     * and then deleted at once is deleted, not added back by a save that overtook the delete.
      */
-    fun savePersonalAsync(personalWords: List<PersonalWord>, onResult: (Boolean) -> Unit = {}) {
-        Thread({
-            // spec dictionaries-languages.md SS7: `:app`'s `UserWordFileStore` (the Personal
-            // Dictionary screen's own edits) writes this identical file from an independent
-            // thread in the same process; [UserWordFileCodec.PersonalDictionaryFileLock] is what
-            // keeps the two writes from silently discarding one another.
-            val ok = synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
-                runCatching { writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(personalWords)) }.getOrDefault(false)
-            }
+    fun savePersonalAsync(change: (UserWordStore) -> UserWordStore, onResult: (Boolean) -> Unit = {}) {
+        saves.execute {
+            val ok = runCatching { updatePersonal(change) != null }.getOrDefault(false)
             mainHandler.post { onResult(ok) }
-        }, "physiboard-userwords-save").apply { isDaemon = true }.start()
+        }
     }
+
+    private val saves = Executors.newSingleThreadExecutor { task -> Thread(task, "physiboard-userwords-save").apply { isDaemon = true } }
+
+    /** [savePersonalAsync]'s work on the calling thread; the store written, or null when the write failed. */
+    internal fun updatePersonal(change: (UserWordStore) -> UserWordStore): UserWordStore? =
+        UserWordFileCodec.updatePersonal(
+            readPersonal = { readOrNull(personalFile) },
+            readDefaults = { readOrNull(defaultFile) },
+            writePersonal = { text -> runCatching { writeAtomically(personalFile, text) }.getOrDefault(false) },
+            transform = change,
+        )
 
     /**
      * Seeds `user_defaults.json` from the asset, and on a later run adds whatever default words
@@ -69,7 +81,13 @@ internal class UserWordFileLoader(
      * being corrected away (2026-09-29). Words they deleted stay deleted, which is what
      * `user_defaults_seeded.json` is for; see [UserWordFileCodec.DEFAULT_WORDS_SEEDED_FILE_NAME].
      */
-    private fun ensureDefaultsFileCurrent() {
+    private fun ensureDefaultsFileCurrent() = synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
+        // The same lock as every other write of these files: this merge reads the default-word
+        // file and writes it back, and the Personal Dictionary screen edits the same file.
+        mergeAssetDefaults()
+    }
+
+    private fun mergeAssetDefaults() {
         val assetText = runCatching {
             context.assets.open(UserWordFileCodec.DEFAULT_WORDS_ASSET_PATH).use { it.readBytes().decodeToString() }
         }.getOrNull() ?: return
