@@ -514,6 +514,15 @@ Backspace a text edit rather than a key event). With the optional accessibility 
 first key typed into such a field also asks the service to focus the box, as a tap would, and to
 put the cursor back where it was (`accessibility_focus_field`, per-app-behavior.md 16.2).
 
+A Backspace or forward delete pressed with Ctrl, Alt or Meta held (on the event's meta state;
+Shift and the lock keys do not count) is not taken this way: it goes to the app's window as the
+real key, as it did before 3.2, because Android's own fields act on it themselves. Ctrl+Backspace
+deletes the word before the cursor and Alt+Backspace the line under it there; a one-character
+text edit took both away in 3.2.0. A tapped or latched Ctrl or Alt puts no meta on the event and
+is the keyboard's to resolve (Ctrl+Backspace's own word delete, section 8; Alt+Backspace,
+`keys-and-modifiers.md` 7.7). The keyboard does not predict where the cursor lands after such a
+key: the app's report is taken as it comes.
+
 ## 9. Auto-capitalization
 
 Auto-cap never types an uppercase letter by itself. It requests a Shift one-shot; the next

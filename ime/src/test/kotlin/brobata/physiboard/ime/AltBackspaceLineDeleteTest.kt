@@ -46,6 +46,9 @@ class AltBackspaceLineDeleteTest {
         val pipeline = KeyboardPipeline(layout = ImeSettings.layout(TitanLayouts.titan2EliteQwerty(), settings), settings = ImeSettings.keyboardSettings(settings))
         val box = Editor(initial)
         private val router = EditingKeyRouter()
+
+        /** Key events nobody consumed: they go to the app's window, as onKeyDown returning false does. */
+        val window = mutableListOf<KeyEvent>()
         private val terminalMode = field.kind == FieldKind.RAW_MODE_APP
         private var clock = 1_000L
         private var altHeld = false
@@ -67,9 +70,14 @@ class AltBackspaceLineDeleteTest {
             box.applyEditorOps(result.ops, reads?.documentStartOffset ?: 0, reads?.cursorAbsolute ?: 0, sendSpaceKeyFallback = {}, haptic = {})
             if (key !is KeyId.Control) return result.consumed
             val action = if (edge == KeyEdge.DOWN) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP
-            val metaState = if (meta.alt) KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON else 0
+            var metaState = 0
+            if (meta.alt) metaState = metaState or KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+            if (meta.ctrl) metaState = metaState or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+            if (meta.shift) metaState = metaState or KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
             val event = KeyEvent(clock, clock, action, KeyEvent.KEYCODE_DEL, 0, metaState)
-            return result.consumed || router.route(box, event, editableField = true, terminalMode = terminalMode)
+            val consumed = result.consumed || router.route(box, event, editableField = true, terminalMode = terminalMode)
+            if (!consumed) window += event
+            return consumed
         }
 
         fun backspace(meta: ModifierFlags = ModifierFlags(alt = altHeld)) {
@@ -99,6 +107,8 @@ class AltBackspaceLineDeleteTest {
         phone.altBackspace()
         assertEquals("Dear Sam,\n", phone.box.text.toString())
         assertEquals(listOf(LINE_DELETE_WINDOW), phone.box.beforeReads)
+        // The press is the keyboard's; only its release, which edits nothing, goes on as every consumed key's does.
+        assertEquals("the keyboard's own delete wins", emptyList<Int>(), phone.window.filter { it.action == KeyEvent.ACTION_DOWN }.map { it.keyCode })
     }
 
     @Test
@@ -128,16 +138,32 @@ class AltBackspaceLineDeleteTest {
     @Test
     fun `a selection is deleted, nothing else`() {
         val phone = Phone("one\ntwo three").apply { box.select(4, 7) }
-        phone.altBackspace()
+        phone.tapAlt()
+        phone.backspace()
         assertEquals("one\n three", phone.box.text.toString())
     }
 
     @Test
     fun `an empty field still gets the key, for a chip field that deletes on it`() {
         val phone = Phone("")
-        phone.altBackspace()
+        phone.tapAlt()
+        phone.backspace()
         assertEquals("", phone.box.text.toString())
         assertEquals(listOf(KeyEvent.KEYCODE_DEL), phone.box.received.filter { it.action == KeyEvent.ACTION_DOWN }.map { it.keyCode })
+    }
+
+    @Test
+    fun `with Alt held, a press the keyboard does not delete itself reaches the app as Alt+Backspace`() {
+        // A selection, an empty field, a field with no document read: the app's own Alt+Backspace
+        // (Android's fields delete the selection, or the line) rather than a one-character edit.
+        for (phone in listOf(Phone("one\ntwo three").apply { box.select(4, 7) }, Phone(""), Phone("one\ntwo").apply { box.extractable = false })) {
+            val before = phone.box.text.toString()
+            phone.altBackspace()
+            assertEquals(before, phone.box.text.toString())
+            val downs = phone.window.filter { it.action == KeyEvent.ACTION_DOWN }
+            assertEquals(1, downs.size)
+            assertTrue(downs.single().keyCode == KeyEvent.KEYCODE_DEL && downs.single().isAltPressed)
+        }
     }
 
     @Test
@@ -170,20 +196,37 @@ class AltBackspaceLineDeleteTest {
     @Test
     fun `an editor that will not hand over the document gets an ordinary Backspace`() {
         val phone = Phone("one\ntwo").apply { box.extractable = false }
-        phone.altBackspace()
+        phone.tapAlt()
+        phone.backspace()
         assertEquals("one\ntw", phone.box.text.toString())
     }
 
     @Test
-    fun `by default Alt+Backspace deletes one character and reads the usual window`() {
+    fun `by default a held Alt+Backspace goes to the app as the real key, which deletes the line itself`() {
         val phone = Phone("one\ntwo", choice = AltBackspaceAction.DELETE_CHARACTER)
         phone.altBackspace()
-        assertEquals("one\ntw", phone.box.text.toString())
+        assertEquals("one\ntwo", phone.box.text.toString())
+        assertEquals(listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP), phone.window.map { it.action })
+        assertTrue(phone.window.all { it.keyCode == KeyEvent.KEYCODE_DEL && it.isAltPressed })
         assertEquals(TEXT_BEFORE_CURSOR_WINDOW, phone.box.beforeReads.first())
     }
 
     @Test
+    fun `by default a tapped Alt then Backspace deletes one character as a text edit`() {
+        val phone = Phone("one\ntwo", choice = AltBackspaceAction.DELETE_CHARACTER)
+        phone.tapAlt()
+        phone.backspace()
+        assertEquals("one\ntw", phone.box.text.toString())
+        assertEquals(emptyList<KeyEvent>(), phone.window)
+    }
+
+    @Test
     fun `Shift+Backspace and Ctrl+Backspace do what they do without the line choice`() {
+        // Held Ctrl reaches the app as the real key (its word delete); Shift is an ordinary Backspace.
+        val ctrlOnly = Phone("one\ntwo three")
+        ctrlOnly.backspace(ModifierFlags(ctrl = true))
+        assertEquals("one\ntwo three", ctrlOnly.box.text.toString())
+        assertTrue(ctrlOnly.window.isNotEmpty() && ctrlOnly.window.all { it.isCtrlPressed })
         for (meta in listOf(ModifierFlags(shift = true), ModifierFlags(ctrl = true), ModifierFlags(ctrl = true, alt = true))) {
             val line = Phone("one\ntwo three")
             val plain = Phone("one\ntwo three", choice = AltBackspaceAction.DELETE_CHARACTER)
@@ -191,6 +234,7 @@ class AltBackspaceLineDeleteTest {
             plain.backspace(meta)
             assertEquals(meta.toString(), plain.box.text.toString(), line.box.text.toString())
             assertEquals(meta.toString(), plain.box.received.map { it.keyCode to it.metaState }, line.box.received.map { it.keyCode to it.metaState })
+            assertEquals(meta.toString(), plain.window.map { it.keyCode to it.metaState }, line.window.map { it.keyCode to it.metaState })
         }
     }
 

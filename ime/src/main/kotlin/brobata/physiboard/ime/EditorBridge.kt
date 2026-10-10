@@ -465,8 +465,11 @@ internal fun fillFieldFacts(info: EditorInfo?): FieldFacts? {
  *   web field that answers "" to every read) keep working.
  *
  * A press handled one way has its release handled the same way (a text edit has no release to
- * send). Never in a terminal-mode app (its keys keep their exact hardware path, section 4.6) or
- * without an editable field. Enter already goes through the connection (per-app-behavior.md
+ * send). A press with Ctrl, Alt or Meta held is the app's to handle, as it was before this router
+ * existed: Android's own fields delete a word on Ctrl+Backspace and the line on Alt+Backspace,
+ * which a one-character text edit would take away. Shift and the lock keys do not count (Shift
+ * held while selecting still deletes the selection here). Never in a terminal-mode app (its keys
+ * keep their exact hardware path, section 4.6) or without an editable field. Enter already goes through the connection (per-app-behavior.md
  * SS3.4); Tab and the arrows stay on the window's path, since they also move focus between views.
  */
 internal class EditingKeyRouter {
@@ -482,7 +485,7 @@ internal class EditingKeyRouter {
         if (code != KeyEvent.KEYCODE_DEL && code != KeyEvent.KEYCODE_FORWARD_DEL) return false
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
-                if (!editableField || terminalMode) return false
+                if (!editableField || terminalMode || event.metaState and APP_HANDLED_MODIFIERS != 0) return false
                 val road = deleteAsText(connection, backward = code == KeyEvent.KEYCODE_DEL)
                 if (road == null) {
                     // Nothing to delete as text on that side, or no answer: the key itself, through the connection.
@@ -539,5 +542,8 @@ internal class EditingKeyRouter {
     private companion object {
         /** Enough text to hold the longest emoji sequence in front of the cursor. */
         const val GRAPHEME_WINDOW = 32
+
+        /** Modifiers that make Backspace or Delete a different command in the app (word or line delete). */
+        const val APP_HANDLED_MODIFIERS = KeyEvent.META_CTRL_MASK or KeyEvent.META_ALT_MASK or KeyEvent.META_META_MASK
     }
 }

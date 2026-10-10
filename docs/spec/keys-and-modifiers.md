@@ -652,8 +652,10 @@ applies decides the press:
 | `alt_backspace_delete` = `line` | Alt active (meta, latch or one-shot) and Ctrl not active in any form | delete from the caret back to the start of its line (below) |
 | `backspace_at_start_delete` (false) | no Shift meta, no Alt, and no text before the caret | delete the character after the caret |
 
-`alt_backspace_delete` is a choice of three: `character` (the default: Alt changes nothing and
-Backspace deletes one character), `line` and `forward`. It ships at `character` because it
+`alt_backspace_delete` is a choice of three: `character` (the default: the keyboard leaves
+Alt+Backspace alone; with Alt held the app gets the real Alt+Backspace key, which Android's own
+fields take as "delete the line", and with Alt tapped or locked one character is deleted), `line`
+and `forward`. With `line` or `forward` the keyboard's own delete wins over the app's. It ships at `character` because it
 changes what Backspace does, and nothing that does ships on before it has been used on the
 phone. A store or backup written through 3.2.0, when the row was a switch, holds `true` (read as
 `forward`) or `false` (read as `character`); no migration runs.
@@ -685,7 +687,8 @@ lines, so it works on the text's own lines, and only behind the caret, the same 
 shell. Typing at the end of a line that fits on one row of the screen, the two agree.
 
 It falls back to an ordinary Backspace (the selection, or one character, or the key itself for
-a field that acts on it, text-input.md 8.1) when the app gives no document read (the selection
+a field that acts on it, text-input.md 8.1; with Alt held, the app gets the real Alt+Backspace
+key, which Android's own fields answer by deleting the selection or the line) when the app gives no document read (the selection
 cannot be known), when the reads cannot be trusted (`text-input.md` section 2), when there is a
 selection, or when there is nothing before the caret. The deferred-space debt, the auto-space
 flag and the autocorrect undo memory are cleared, and the tracked word is re-read from what is

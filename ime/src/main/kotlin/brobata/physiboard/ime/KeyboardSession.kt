@@ -2160,7 +2160,12 @@ internal class KeyboardSession(
         }
         val tApply = System.nanoTime()
         if (result.appMayEditField && stroke.edge == KeyEdge.DOWN && !AppliedEditAccounting.movesCursor(result.ops)) {
-            AppliedEditAccounting.expectedCursorAfterPassThrough(stroke.key, readout.cursorAbsolute, hasSelection = !lastReportedSelectionCollapsed)?.let { expected ->
+            AppliedEditAccounting.expectedCursorAfterPassThrough(
+                stroke.key,
+                readout.cursorAbsolute,
+                hasSelection = !lastReportedSelectionCollapsed,
+                ctrlOrAltHeld = stroke.meta.ctrl || stroke.meta.alt,
+            )?.let { expected ->
                 ownEdit = OwnEditExpectation(selStart = expected, expiresAtMs = SystemClock.uptimeMillis() + OwnEditExpectation.SETTLE_WINDOW_MS)
             }
         }

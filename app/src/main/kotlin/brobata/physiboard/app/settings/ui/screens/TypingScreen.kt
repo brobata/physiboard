@@ -112,7 +112,8 @@ fun TypingScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             item {
                 SingleChoiceDropdownRow(
                     label = "Alt + Backspace",
-                    description = "With Alt held, tapped or locked. Deleting to the start of the line keeps the line break; " +
+                    description = "With Alt held, tapped or locked. With one character, a held Alt + Backspace is left to the app, " +
+                        "and many apps delete the line themselves. Deleting to the start of the line keeps the line break; " +
                         "press again to join the line to the one above.",
                     options = AltBackspaceAction.entries,
                     optionLabel = ::altBackspaceLabel,

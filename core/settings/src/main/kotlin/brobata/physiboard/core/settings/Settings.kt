@@ -78,7 +78,7 @@ data class TypingPrefs(
     val clearAltOnSpace: Boolean = true,
     val shiftBackspaceDeletesForward: Boolean = false,
     /**
-     * `alt_backspace_delete`: what Alt+Backspace does. One character (Alt changes nothing) by
+     * `alt_backspace_delete`: what Alt+Backspace does. Left alone (one character, or the app's own) by
      * default, because anything that changes what Backspace does ships off until it has been
      * used on the phone (keys-and-modifiers.md SS7.7).
      */

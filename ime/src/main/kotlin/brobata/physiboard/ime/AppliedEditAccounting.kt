@@ -57,9 +57,13 @@ internal object AppliedEditAccounting {
      * the app's report of that edit is recognised as the keyboard's own consequence: taken as an
      * external move, a web field's "cursor 0, no text" answer after a Backspace (Titan,
      * 2026-09-25) re-armed the start-of-text capital and the next letter came out upper-case.
+     *
+     * [ctrlOrAltHeld]: the key reaches the app with Ctrl or Alt on it, which Android's fields take
+     * as a word or line delete, so where the cursor lands is not known and the app's report is
+     * taken as it comes.
      */
-    fun expectedCursorAfterPassThrough(key: KeyId, cursorAbsolute: Int, hasSelection: Boolean): Int? {
-        if (hasSelection || key !is KeyId.Control) return null
+    fun expectedCursorAfterPassThrough(key: KeyId, cursorAbsolute: Int, hasSelection: Boolean, ctrlOrAltHeld: Boolean = false): Int? {
+        if (hasSelection || ctrlOrAltHeld || key !is KeyId.Control) return null
         return when (key.key) {
             ControlKey.BACKSPACE -> (cursorAbsolute - 1).coerceAtLeast(0)
             ControlKey.FORWARD_DELETE -> cursorAbsolute.coerceAtLeast(0)

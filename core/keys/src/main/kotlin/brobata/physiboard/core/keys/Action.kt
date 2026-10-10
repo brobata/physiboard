@@ -93,7 +93,7 @@ enum class EditEffect {
  * settings-catalog.md SS2.1.
  */
 enum class AltBackspaceAction {
-    /** Alt changes nothing: one character before the caret goes, as with Backspace alone. */
+    /** The keyboard leaves it alone: a tapped or locked Alt deletes one character, a held one reaches the app as the real key. */
     DELETE_CHARACTER,
 
     /** Everything from the caret back to the start of its line; at a line start, the line break before it. */

@@ -99,5 +99,7 @@ class AppliedEditAccountingTest {
         assertEquals(5, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Control(ControlKey.FORWARD_DELETE), 5, hasSelection = false))
         assertEquals(null, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Control(ControlKey.BACKSPACE), 5, hasSelection = true))
         assertEquals(null, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Letter('X'), 5, hasSelection = false))
+        // Ctrl or Alt held: the app deletes a word or a line, so where the cursor lands is its business.
+        assertEquals(null, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Control(ControlKey.BACKSPACE), 5, hasSelection = false, ctrlOrAltHeld = true))
     }
 }
