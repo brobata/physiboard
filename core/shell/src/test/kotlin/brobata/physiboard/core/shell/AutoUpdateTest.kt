@@ -203,6 +203,16 @@ class AutoUpdateTest {
             AutoUpdatePolicy.onFound(UpdateMode.INSTALL_AUTOMATICALLY, true, release(assets = emptyList()), UpdateRecord()),
             "nothing to download",
         )
+        val waiting = UpdateRecord(PendingUpdate("v3.3.0", 30300, sha, "physiboard-3.3.0.apk"))
+        assertEquals(
+            AutoUpdatePolicy.Found.AlreadyReady,
+            AutoUpdatePolicy.onFound(UpdateMode.INSTALL_AUTOMATICALLY, true, release("v3.2.0"), waiting),
+            "an older release (one pulled from GitHub) never replaces a newer download",
+        )
+        assertIs<AutoUpdatePolicy.Found.Download>(
+            AutoUpdatePolicy.onFound(UpdateMode.INSTALL_AUTOMATICALLY, true, release("v3.3.1"), waiting),
+            "a newer release replaces the waiting one",
+        )
     }
 
     @Test

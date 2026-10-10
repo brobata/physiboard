@@ -214,7 +214,9 @@ object AutoUpdatePolicy {
     fun onFound(mode: UpdateMode, buildMayInstall: Boolean, release: ResolvedRelease, record: UpdateRecord): Found {
         if (mode == UpdateMode.OFF || !buildMayInstall) return Found.Announce
         if (record.refusedTag == release.tag) return Found.Announce
-        if (record.ready?.tag == release.tag) return Found.AlreadyReady
+        val ready = record.ready
+        // The one already downloaded is this release, or (a release pulled from GitHub) a newer one.
+        if (ready != null && VersionComparison.compare(release.tag, ready.tag) != VersionComparisonResult.NEWER) return Found.AlreadyReady
         val assets = UpdateAssetSelection.select(release) ?: return Found.Announce
         return Found.Download(assets)
     }
