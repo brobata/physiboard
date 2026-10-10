@@ -122,12 +122,12 @@ class UserWordFileCodecTest {
     fun `a damaged or unreadable default-word file is left as it is and the change reports failure`() {
         for (read in listOf<() -> String?>({ """[{"w":"haha","f":1}""" }, { throw java.io.IOException("unreadable") })) {
             var writes = 0
-            val result = UserWordFileCodec.updateDefaults(read, { writes++; true }) { it + WordFrequency("lol", 1) }
+            val result = UserWordFileCodec.updateDefaults(read, { null }, { writes++; true }) { it + WordFrequency("lol", 1) }
             assertEquals(null, result)
             assertEquals(0, writes)
         }
-        val fresh = UserWordFileCodec.updateDefaults({ null }, { true }) { it + WordFrequency("lol", 1) }
-        assertEquals(listOf("lol"), fresh?.map { it.word })
+        val fresh = UserWordFileCodec.updateDefaults({ null }, { null }, { true }) { it + WordFrequency("lol", 1) }
+        assertEquals(listOf("lol"), fresh?.defaultWords()?.map { it.word })
     }
 
     @Test

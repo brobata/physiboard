@@ -98,7 +98,7 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
 
     fun persistDefaults(change: (List<WordFrequency>) -> List<WordFrequency>) {
         store = UserWordStore.of(change(store.defaultWords()), store.personalWords())
-        scope.launch(NonCancellable) { write { fileStore.updateDefaults(change)?.let { UserWordStore.of(it, store.personalWords()) } } }
+        scope.launch(NonCancellable) { write { fileStore.updateDefaults(change) } }
     }
 
     val rows = remember(store, query) {
@@ -152,10 +152,7 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
                             if (index >= 0) {
                                 val removed = defaults[index]
                                 undo?.offer("dictionary-$word", "Deleted “$word”") {
-                                    write {
-                                        fileStore.updateDefaults { DictionaryUndo.restoreDefault(it, removed, index) }
-                                            ?.let { words -> UserWordStore.of(words, store.personalWords()) }
-                                    }
+                                    write { fileStore.updateDefaults { DictionaryUndo.restoreDefault(it, removed, index) } }
                                 }
                             }
                         }

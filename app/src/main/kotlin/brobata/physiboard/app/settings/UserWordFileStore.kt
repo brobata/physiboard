@@ -46,10 +46,14 @@ class UserWordFileStore(private val context: Context) {
         updated
     }
 
-    /** The same for the default words (SS6.3: "Renaming or deleting a default word edits `user_defaults.json`"). */
-    suspend fun updateDefaults(transform: (List<WordFrequency>) -> List<WordFrequency>): List<WordFrequency>? = withContext(Dispatchers.IO) {
+    /**
+     * The same for the default words (SS6.3: "Renaming or deleting a default word edits
+     * `user_defaults.json`"). Returns both tiers as the files hold them once the write landed,
+     * read under the lock, or null when nothing was written.
+     */
+    suspend fun updateDefaults(transform: (List<WordFrequency>) -> List<WordFrequency>): UserWordStore? = withContext(Dispatchers.IO) {
         ensureDefaultsFileExists()
-        val updated = UserWordFileCodec.updateDefaults({ readIfPresent(defaultFile) }, { writeAtomically(defaultFile, it) }, transform)
+        val updated = updateDefaultsFile(defaultFile, personalFile, transform)
         if (updated != null) notifyUpdated()
         updated
     }
@@ -71,6 +75,10 @@ class UserWordFileStore(private val context: Context) {
         const val ACTION_USER_DICTIONARY_UPDATED: String = DictionaryBroadcastActions.USER_DICTIONARY_UPDATED
     }
 }
+
+/** [UserWordFileStore.updateDefaults]'s file work, apart from [Context] so it is tested on the JVM. */
+internal fun updateDefaultsFile(defaultFile: File, personalFile: File, transform: (List<WordFrequency>) -> List<WordFrequency>): UserWordStore? =
+    UserWordFileCodec.updateDefaults({ readIfPresent(defaultFile) }, { readIfPresent(personalFile) }, { writeAtomically(defaultFile, it) }, transform)
 
 /** [UserWordFileStore.updatePersonal]'s file work, apart from [Context] so it is tested on the JVM. */
 internal fun updatePersonalFile(personalFile: File, defaultFile: File, transform: (UserWordStore) -> UserWordStore): UserWordStore? =

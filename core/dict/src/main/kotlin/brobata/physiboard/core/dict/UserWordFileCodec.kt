@@ -172,17 +172,23 @@ object UserWordFileCodec {
     /**
      * [updatePersonal]'s counterpart for [DEFAULT_WORDS_FILE_NAME], under the same lock, with the
      * same rule for a file that cannot be read or is not a word list: nothing is written and the
-     * result is null. Returns the list written, or null when nothing was written.
+     * result is null. On success it returns the whole store: the default words written, with the
+     * personal words read from [readPersonal] under the same lock, so a caller showing the list
+     * pairs the new default words with the personal words as the file holds them now, not an
+     * older copy of its own (a personal file that cannot be read counts as empty here, since it
+     * is only read). Returns null when nothing was written.
      */
     fun updateDefaults(
         readDefaults: () -> String?,
+        readPersonal: () -> String?,
         writeDefaults: (String) -> Boolean,
         transform: (List<WordFrequency>) -> List<WordFrequency>,
-    ): List<WordFrequency>? = synchronized(PersonalDictionaryFileLock) {
+    ): UserWordStore? = synchronized(PersonalDictionaryFileLock) {
         val defaultsText = runCatching { readDefaults() }.getOrElse { return null }
         if (isUnreadableList(defaultsText)) return null
         val updated = transform(decodeDefaultWords(defaultsText))
-        if (writeDefaults(encodeDefaultWords(updated))) updated else null
+        if (!writeDefaults(encodeDefaultWords(updated))) return null
+        UserWordStore.of(updated, decodePersonalWords(runCatching { readPersonal() }.getOrNull()))
     }
 
     /**

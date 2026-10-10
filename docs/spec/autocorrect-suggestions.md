@@ -361,6 +361,10 @@ is. Nothing is written and the edit reports "Personal dictionary: save failed" (
 this screen and from the keyboard); the screen then shows what the files hold. A file that is
 a valid array with a damaged entry is read without that entry, as before.
 
+After each edit lands, the list shows both tiers as the files hold them, read under the same
+lock as the write: a default-word edit (or its Undo) brings back the personal words as they are
+now, including any the keyboard saved while the screen was open, not the screen's older copy.
+
 ## 7. Boundary handling
 
 ### 7.1 Which keys are boundaries

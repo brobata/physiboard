@@ -62,7 +62,7 @@ class PersonalWordFileUpdateTest {
         val words = listOf(WordFrequency("haha", 1), WordFrequency("lol", 1), WordFrequency("brb", 1))
         defaultFile.writeText(UserWordFileCodec.encodeDefaultWords(words))
         fun update(transform: (List<WordFrequency>) -> List<WordFrequency>) =
-            UserWordFileCodec.updateDefaults({ defaultFile.readText() }, { defaultFile.writeText(it); true }, transform)
+            updateDefaultsFile(defaultFile, personalFile, transform)
 
         update { list -> list.filterNot { it.word == "lol" } }
         // Renamed by hand before Undo was tapped.
@@ -95,6 +95,19 @@ class PersonalWordFileUpdateTest {
         undo.join(5_000)
 
         assertEquals(setOf("titan", "brobata", "physiboard"), stored())
+    }
+
+    @Test
+    fun `a default-word edit returns the personal words as the file holds them now`() {
+        defaultFile.writeText(UserWordFileCodec.encodeDefaultWords(listOf(WordFrequency("haha", 1), WordFrequency("lol", 1))))
+        write(PersonalWord("titan", 2, 500))
+        // The screen read both files when it opened; then the keyboard saved "physiboard".
+        write(PersonalWord("titan", 2, 500), PersonalWord("physiboard", 1, 2_000))
+
+        val result = updateDefaultsFile(defaultFile, personalFile) { list -> list.filterNot { it.word == "lol" } }
+
+        assertEquals(listOf("haha"), result?.defaultWords()?.map { it.word })
+        assertEquals(setOf("titan", "physiboard"), result?.personalWords()?.map { it.word }?.toSet(), "the screen's list comes from the file, not its own older copy")
     }
 
     @Test
