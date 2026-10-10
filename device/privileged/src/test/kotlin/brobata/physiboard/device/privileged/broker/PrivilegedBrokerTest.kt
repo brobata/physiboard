@@ -249,6 +249,12 @@ class PrivilegedBrokerTest {
     }
 
     @Test
+    fun `an install stopped before it starts is a failure`() {
+        transport.responses[PackageInstallLine.command(8)] = "Success\n"
+        assertIs<ShellResult.Failed>(broker.installApk(apk(ByteArray(8)), shouldContinue = { false }))
+    }
+
+    @Test
     fun `pm's answer is read line by line`() {
         assertTrue(PackageInstallLine.succeeded("Performing Streamed Install\nSuccess\n"))
         assertFalse(PackageInstallLine.succeeded("Failure [INSTALL_FAILED_VERSION_DOWNGRADE]"))

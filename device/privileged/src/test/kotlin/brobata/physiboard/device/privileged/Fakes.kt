@@ -86,7 +86,8 @@ class FakeAdbTransport(
     /** Every streamed command, with the bytes it was given. */
     val execs = mutableListOf<Pair<String, ByteArray>>()
 
-    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int): String {
+    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, shouldContinue: () -> Boolean): String {
+        if (!shouldContinue()) throw IllegalStateException("stopped after 0 of $size bytes")
         val bytes = ByteArray(size.toInt())
         var read = 0
         while (read < bytes.size) {

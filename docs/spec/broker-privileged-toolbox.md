@@ -259,8 +259,10 @@ constantly (it is the IME), which is why outcomes are also persisted (section 8)
 
 3.3 adds one streamed command, used only by the automatic updater (app-shell.md section 32.3):
 `cmd package install -r -S <size>` through the `exec:` service, with PhysiBoard's own downloaded
-and checked APK written to its standard input from the app's private files in 4096-byte writes,
-each waiting for the phone's acknowledgement. It runs under the same lock and discovery as every
+and checked APK written to its standard input from the app's private files in writes of the size
+the phone announces when the connection opens (at most 256 KiB), each waiting for the phone's
+acknowledgement; before each write the caller is asked whether to go on (the updater stops when
+the screen comes on, closing the stream short so nothing installs). It runs under the same lock and discovery as every
 line; only the size, a number, goes into the command; the read timeout is 120 000 ms per read
 instead of 10 000, since `pm` answers only after verifying and optimising the APK; and only a line
 reading `Success` counts as done. Installing PhysiBoard's own package ends the process that is

@@ -86,7 +86,9 @@ object UpdateDownloader {
     } catch (e: NetworkBlockedException) {
         Result.Blocked(e.message ?: "Offline")
     } catch (e: InvalidHopException) {
-        Result.Invalid(e.message ?: "redirected somewhere not allowed")
+        // Not a refusal of the release: GitHub has moved its file servers before (D9), and a
+        // release refused for that would never reach any phone. The next check tries again.
+        Result.Failed(e.message ?: "redirected somewhere not allowed")
     } catch (e: Exception) {
         Result.Failed(e.message ?: e::class.simpleName ?: "network error")
     }

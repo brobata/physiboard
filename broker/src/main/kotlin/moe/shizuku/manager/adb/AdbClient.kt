@@ -47,6 +47,9 @@ class AdbClient(private val host: String, private val port: Int, private val key
 
     private var useTls = false
 
+    /** PhysiBoard addition: the largest payload the phone accepts, from its CNXN reply. */
+    private var peerMaxData = A_MAXDATA
+
     private lateinit var tlsSocket: SSLSocket
     private lateinit var tlsInputStream: DataInputStream
     private lateinit var tlsOutputStream: DataOutputStream
@@ -96,6 +99,7 @@ class AdbClient(private val host: String, private val port: Int, private val key
         }
 
         if (message.command != A_CNXN) error("not A_CNXN")
+        peerMaxData = message.arg1.coerceIn(A_MAXDATA, 256 * 1024)
     }
 
     fun shellCommand(command: String, listener: ((ByteArray) -> Unit)?) {
@@ -133,12 +137,21 @@ class AdbClient(private val host: String, private val port: Int, private val key
 
     /**
      * Added by PhysiBoard (see broker/NOTICE): opens [service] (an `exec:` line) and writes [size]
-     * bytes of [input] to its standard input, one [A_MAXDATA] payload per write, waiting for the
-     * phone's OKAY after each as the version-1 protocol requires. Everything the command writes
-     * back is handed to [listener]. [readTimeoutMs] replaces the per-read timeout for this call,
-     * since the command (an install) may stay quiet for longer than a shell line does.
+     * bytes of [input] to its standard input, one payload of the phone's announced size (at most
+     * 256 KiB) per write, waiting for the phone's OKAY after each as the version-1 protocol
+     * requires. Everything the command writes back is handed to [listener]. [readTimeoutMs]
+     * replaces the per-read timeout for this call, since the command (an install) may stay quiet
+     * for longer than a shell line does. [shouldContinue] is asked before every write; when it
+     * answers false the stream is closed short, so the command fails instead of running.
      */
-    fun execWithInput(service: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, listener: (ByteArray) -> Unit) {
+    fun execWithInput(
+        service: String,
+        input: java.io.InputStream,
+        size: Long,
+        readTimeoutMs: Int,
+        shouldContinue: () -> Boolean,
+        listener: (ByteArray) -> Unit,
+    ) {
         val localId = 2
         socket.soTimeout = readTimeoutMs
         if (useTls) tlsSocket.soTimeout = readTimeoutMs
@@ -150,10 +163,14 @@ class AdbClient(private val host: String, private val port: Int, private val key
         }
         if (message.command != A_OKAY) error("not A_OKAY or A_CLSE")
         val remoteId = message.arg0
-        val buffer = ByteArray(A_MAXDATA)
+        val buffer = ByteArray(peerMaxData)
         var sent = 0L
         var closed = false
         while (sent < size && !closed) {
+            if (!shouldContinue()) {
+                write(A_CLSE, localId, remoteId)
+                error("stopped after $sent of $size bytes")
+            }
             val wanted = minOf(buffer.size.toLong(), size - sent).toInt()
             val n = input.read(buffer, 0, wanted)
             if (n < 0) error("input ended after $sent of $size bytes")

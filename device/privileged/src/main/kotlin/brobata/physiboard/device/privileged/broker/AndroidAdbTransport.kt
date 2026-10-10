@@ -68,12 +68,12 @@ class AndroidAdbTransport(private val context: Context) : AdbTransport {
         }
     }
 
-    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int): String {
+    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, shouldContinue: () -> Boolean): String {
         val key = loadStoredKey()
         AdbClient(LOOPBACK, port, key).use { client ->
             client.connect()
             val output = ByteArrayOutputStream()
-            client.execWithInput("exec:$command", input, size, readTimeoutMs) { bytes -> output.write(bytes) }
+            client.execWithInput("exec:$command", input, size, readTimeoutMs, shouldContinue) { bytes -> output.write(bytes) }
             return String(output.toByteArray(), Charsets.UTF_8)
         }
     }

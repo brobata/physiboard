@@ -55,9 +55,13 @@ class UpdateStore(context: Context) {
         true
     }
 
-    /** Forgets the downloaded update (installed, superseded, or no longer wanted) and deletes its file. */
+    /**
+     * Forgets the downloaded update (installed, superseded, or no longer wanted) and deletes its file.
+     * A download in progress is left alone: only the download job owns `download.part`, and deleting
+     * it under that job would make a good newer release look broken and be refused for good.
+     */
     fun discardReady() = synchronized(LOCK) {
-        deleteFiles(includingPartial = true)
+        deleteFiles(includingPartial = false)
         val record = read()
         if (record.ready != null) write(record.copy(ready = null))
     }

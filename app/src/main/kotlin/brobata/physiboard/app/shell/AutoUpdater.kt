@@ -67,9 +67,9 @@ object AutoUpdater {
     /**
      * Every check that found [release] calls this. True when the updater took it on (a download
      * started, or it is already downloaded); false when the release should only be announced, the
-     * 3.2 way.
+     * 3.2 way. [background] is true for the six-hourly check, which re-posts "ready" in ask mode.
      */
-    suspend fun releaseFound(context: Context, release: ResolvedRelease): Boolean = withContext(Dispatchers.IO) {
+    suspend fun releaseFound(context: Context, release: ResolvedRelease, background: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         val app = context.applicationContext
         val store = UpdateStore(app)
         val record = store.read()
@@ -80,7 +80,9 @@ object AutoUpdater {
                 true
             }
             AutoUpdatePolicy.Found.AlreadyReady -> {
-                record.ready?.let { onReady(app, it, freshlyDownloaded = false) }
+                // From the background check, "Download and ask me" asks again, as 3.2 re-announced a
+                // release on every daily check; a swiped notification is not the end of it.
+                record.ready?.let { onReady(app, it, freshlyDownloaded = background) }
                 true
             }
         }
@@ -225,12 +227,16 @@ object AutoUpdater {
             when (route) {
                 Route.BROKER -> {
                     Log.i(TAG, "installing ${ready.tag} through Titan tools")
-                    when (val result = broker.installApk(apk)) {
+                    // The stream is closed short the moment the screen comes on, so pm installs nothing.
+                    when (val result = broker.installApk(apk) { !isInteractive(context) }) {
                         is ShellResult.Ok -> return
                         is ShellResult.Failed -> Log.w(TAG, "Titan tools could not install ${ready.tag}: ${result.message}")
                     }
                 }
                 Route.SESSION -> {
+                    // D10: without "Install unknown apps" Android always asks the user; go straight
+                    // to the notification instead of a session that can only be abandoned.
+                    if (!context.packageManager.canRequestPackageInstalls()) continue
                     Log.i(TAG, "installing ${ready.tag} through Android's installer")
                     val committed = runCatching { SessionInstaller.commit(context, apk, ready.sha256, backgroundStatusTarget(context)) }
                         .onFailure { Log.w(TAG, "Android's installer could not take ${ready.tag}", it) }

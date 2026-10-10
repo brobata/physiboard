@@ -1196,8 +1196,9 @@ icons and motion. Nothing about what a panel holds or does changed (amended 2026
   with the Gradle properties `PHYSIBOARD_VERSION_CODE` and `PHYSIBOARD_VERSION_NAME` (the
   `PASTIERA_` spellings are accepted as fallbacks). The convention is code = major × 10000 +
   minor × 100 + patch. 3.x keeps the numbers in the app build file and, from 3.3, reads the two
-  `PHYSIBOARD_` properties as overrides again (no `PASTIERA_` fallback), so a test can build one
-  copy a version apart; only the maintainer changes the numbers themselves.
+  `PHYSIBOARD_` properties as overrides for the debug build only (no `PASTIERA_` fallback), so a
+  test can build one copy a version apart and a stray property can never ship a release; only the
+  maintainer changes the numbers themselves.
 - 3.3: a build flag for installing a release APK (section 32.1): on in release, off in debug and
   sideload, and on in a debug build only with `-PPHYSIBOARD_AUTO_UPDATE_TEST=true`.
 
@@ -1360,7 +1361,7 @@ emoji picker on, order emoji_picker, symbols, clipboard, emoji), and an
 | D8 | The screen is near-square and short; the first-run pages pin Skip and Next below a scrolling page (3.2; 3.0 scrolled its buttons into view after 360 ms), tiles wrap two per row, and window size is read from the window rather than the display. | Comments in the setup and window-size code |
 | D9 | A GitHub release file at `github.com/brobata/physiboard/releases/download/...` answers 302 to `release-assets.githubusercontent.com` with a signed query (2026-10-10); it used to answer with `objects.githubusercontent.com`. | `curl -I` of the v3.2.0 checksum asset, 2026-10-10; the emulator download in D10's run fetched v3.2.0 through it |
 | D10 | Android 14 (emulator image, API 34): a self-update session asking for no user action, with UPDATE_PACKAGES_WITHOUT_USER_ACTION held, answers "pending user action" while "Install unknown apps" is not allowed for the app, and installs silently once it is; the installer of record becomes the app itself. From the foreground without the grant, Android shows "For your security, your phone currently isn't allowed to install unknown apps from this source"; allowing it in Settings and going back did not resume that session. | Emulator `titan2elite`, 2026-10-10: two debug builds 3.1.90 and 3.3.0 signed with the same key; screenshots and logs in the 3.3 auto-update notes |
-| D11 | `cmd package install -r -S <size>` over the broker's `exec:` stream installs without any grant; an 82 MB APK took about 12 s in 4096-byte writes; the installer of record becomes none (the shell). The process running the install is ended by it, and the background job runs again in the new process. | Same emulator run, paired through Wireless debugging |
+| D11 | `cmd package install -r -S <size>` over the broker's `exec:` stream installs without any grant; an 82 MB APK took about 12 s in 4096-byte writes; in writes of the size the phone announces (capped at 256 KiB) the whole install, discovery and both checks included, ended about 13 s after the 2-minute wait; the installer of record becomes none (the shell). The process running the install is ended by it, and the background job runs again in the new process. | Same emulator run, paired through Wireless debugging |
 
 ## 28. Edge cases, quirks and known bugs
 
@@ -1689,7 +1690,9 @@ still shows the release at once with its browser download. The checksum file is 
 most 4096 bytes), then the APK is streamed to `no_backup/updates/download.part` with its SHA-256
 computed on the way in, capped at 100 MB. A network failure is retried with the scheduler's
 backoff, four attempts in all, then left to the next check. Private mode refuses both requests
-before anything is sent (31.2, purpose "update download"); the job then simply ends.
+before anything is sent (31.2, purpose "update download"); the job then simply ends. A redirect to
+a host that is not allowed (32.5) counts as a network failure, not as a refusal of the release, so
+a GitHub host change can never block a release for good.
 
 A release whose APK is already downloaded and checked, or any older release, is not downloaded
 again; a newer one replaces the waiting file once it has passed its own checks.
@@ -1720,14 +1723,16 @@ Routes, best first, each tried only while the screen is still off:
    `cmd package install -r -S <size>` through the `exec:` service and writes the APK to its standard
    input from the private file (broker-privileged-toolbox.md section 6 applies: the lock, the
    discovery, the key). Nothing is ever made readable to the shell or any other app, and only the
-   size, a number, goes into the line. Only a line reading `Success` counts; the read timeout is
+   size, a number, goes into the line. Before every write the screen is read again; if it has come
+   on, the stream is closed short and `pm` installs nothing. Only a line reading `Success` counts; the read timeout is
    120 000 ms per read because `pm` answers only after verifying and optimising the APK. The
    install ends this process before the answer can arrive (D11).
 2. **Android's installer.** A session asking for no user action. Android allows that for an app
    updating itself when it holds UPDATE_PACKAGES_WITHOUT_USER_ACTION and the user has allowed it to
    install apps ("Install unknown apps", the REQUEST_INSTALL_PACKAGES grant); then it installs
    silently and PhysiBoard becomes the installer of record (D10). Without the grant Android answers
-   "needs the user": the session is abandoned and the route falls through.
+   "needs the user": so without the grant this route is skipped, and when Android still answers
+   that, the session is abandoned and the route falls through.
 3. **The notification.** "PhysiBoard X.Y.Z is ready" / "Tap to install it. The keyboard restarts
    for a moment." on the update channel, id 2 (it replaces the "new update available" one). Tapping
    it runs the checks again and starts a session from the foreground; when Android needs the user
@@ -1758,6 +1763,9 @@ lost. "Install automatically" therefore installs only while nobody can be typing
   nothing can be typed in it.
 - After the update the what's-new note shows on the next open (section 5), as for any update.
 
+In "Download and ask me" the six-hourly check posts the ready notification again while the update
+waits, as 3.2 re-announced a release daily; swiping it away is not the end of it.
+
 "Download and ask me", the ready notification and the update dialog's "Install now" install when
 the user says so, screen on; the toast "Installing PhysiBoard X.Y.Z. The keyboard restarts for a
 moment." says what is about to happen.
@@ -1781,7 +1789,8 @@ readable by their owner only, so no other app can read or replace the APK betwee
 install; "no_backup" keeps it out of auto backup, device transfer and PhysiBoard's own backup. A
 record naming any file that is not `physiboard-<digits and dots>.apk` is ignored. Every process
 start deletes a waiting update the installed app has caught up with (the one just installed), and
-cancels its notification.
+cancels its notification. Deleting a waiting update never touches `download.part`, which belongs to
+a download that may be running at that moment.
 
 ### 32.7 How soon a release is noticed
 
@@ -1820,6 +1829,7 @@ installed at the next 2 minutes of screen-off.
 | U5 | checksum file `<hex>  physiboard-3.1.0.apk` for `physiboard-3.2.0.apk` | refused |
 | U6 | APK hash differs from the checksum; not an APK; other package; same or lower version code; unsigned; other signer set, or one extra signer | each refused and deleted, release announced, not downloaded again |
 | U7 | screen on / screen off and dictating / screen off and idle | wait / look again in 5 min / install |
+| U7a | the screen comes on while Titan tools stream the APK | the stream is closed short; nothing installs |
 | U8 | Titan tools paired and Wireless debugging on | installed through the broker; else Android's installer; else the ready notification |
 | U9 | a waiting v3.3.0 and a found v3.2.0 | v3.2.0 not downloaded |
 | U10 | a waiting v3.3.0 and a refused v3.3.1 | v3.3.0 kept |

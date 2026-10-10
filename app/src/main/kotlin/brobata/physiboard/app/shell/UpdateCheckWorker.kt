@@ -39,7 +39,7 @@ class UpdateCheckWorker(appContext: Context, params: WorkerParameters) : Corouti
         } ?: return Result.retry()
 
         // spec: SS13.7, "a result without an update completes silently."
-        if (result is UpdateCheckResult.Update && !AutoUpdater.releaseFound(applicationContext, result.release)) {
+        if (result is UpdateCheckResult.Update && !AutoUpdater.releaseFound(applicationContext, result.release, background = true)) {
             UpdateNotifications.announce(applicationContext, result.release)
         }
         return Result.success()

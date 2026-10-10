@@ -28,9 +28,10 @@ if (!releaseSigningReady) {
 }
 
 /*
- * app-shell.md SS23.1: a test run may build a copy under another version (two copies one version
- * apart, to try an update on the emulator) without touching the numbers below, which only the
- * maintainer changes.
+ * app-shell.md SS23.1: a test run may build a debug copy under another version (two copies one
+ * version apart, to try an update on the emulator) without touching the numbers below, which only
+ * the maintainer changes. Debug only: a stray property can never ship a release with a version code
+ * every later release would fall below.
  */
 val versionCodeOverride = providers.gradleProperty("PHYSIBOARD_VERSION_CODE").orNull?.toIntOrNull()
 val versionNameOverride = providers.gradleProperty("PHYSIBOARD_VERSION_NAME").orNull?.takeIf { it.isNotBlank() }
@@ -50,8 +51,8 @@ android {
         applicationId = "brobata.physiboard"
         minSdk = 31
         targetSdk = 36
-        versionCode = versionCodeOverride ?: 30200
-        versionName = versionNameOverride ?: "3.2.0"
+        versionCode = 30200
+        versionName = "3.2.0"
         // app-shell.md SS23.1 (D3): the phone this ships to is arm64 only, same as the embedded
         // ADB library; an x86 or armeabi-v7a build would carry native code that silently never runs.
         ndk { abiFilters += "arm64-v8a" }
@@ -114,6 +115,15 @@ android {
         // BuildConfig.VERSION_NAME feeds the launch-routing decision and the update checker
         // (app-shell.md SS3, SS13): the app shell needs the live version name, not a duplicate copy.
         buildConfig = true
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.outputs.forEach { output ->
+            versionCodeOverride?.let { output.versionCode.set(it) }
+            versionNameOverride?.let { output.versionName.set(it) }
+        }
     }
 }
 
