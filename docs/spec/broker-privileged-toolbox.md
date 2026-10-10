@@ -257,6 +257,17 @@ rotates on every toggle and reboot (and, on a charge-only supply, about once a s
 The last error and last result live only in memory; the process that holds them restarts
 constantly (it is the IME), which is why outcomes are also persisted (section 8).
 
+3.3 adds one streamed command, used only by the automatic updater (app-shell.md section 32.3):
+`cmd package install -r -S <size>` through the `exec:` service, with PhysiBoard's own downloaded
+and checked APK written to its standard input from the app's private files in writes of the size
+the phone announces when the connection opens (at most 256 KiB), each waiting for the phone's
+acknowledgement; before each write the caller is asked whether to go on (the updater stops when
+the screen comes on, closing the stream short so nothing installs). It runs under the same lock and discovery as every
+line; only the size, a number, goes into the command; the read timeout is 120 000 ms per read
+instead of 10 000, since `pm` answers only after verifying and optimising the APK; and only a line
+reading `Success` counts as done. Installing PhysiBoard's own package ends the process that is
+running the command. The vendored client gained the one method this needs (broker/NOTICE).
+
 ## 7. The privileged setup pass
 
 One pass applies everything the enabled features need. It runs, with a reason string for the
@@ -372,6 +383,7 @@ for `system`, `WRITE_SECURE_SETTINGS` for `global`/`secure` once granted); "brok
 | secure | `one_handed_enabled` | 1, or deleted | System tweaks | broker | no: stock is unset |
 | window manager | display density override | any value in the safe range, or reset | Screen density | broker (`wm density N` / `wm density reset`) | the revert is always "reset", never a number |
 | package manager | per-user enabled/installed state of catalog packages | disabled / uninstalled for user 0 | Remove bloat | broker | yes: the removal journal (section 12.6) |
+| package manager | PhysiBoard's own installed version (3.3) | the downloaded release APK, after the checks of app-shell.md 32.3 | the automatic updater, with the screen off | broker, else Android's installer | no: an update is not undone; the previous APK is not kept |
 | secure | `selected_spell_checker`, `selected_spell_checker_subtype`, `spell_checker_enabled` | this build's spell checker, 0, 1 | `auto_select_spell_checker`: PhysiBoard as the phone's spell checker, once (section 7 step 5) | broker | yes: `spell_checker_prev_captured`, `spell_checker_prev_selected`, `_enabled`, `_subtype` (null = unset) |
 | secure | `enabled_accessibility_services`, `accessibility_enabled` | this build's accessibility service appended to the list (every other entry kept, in place), 1 | "Turn on with pairing" on the Accessibility service screen (per-app-behavior.md section 16): offered only when the service is off and a pairing is stored, run only on the user's tap, never by the setup pass. The list is read first (`settings get secure enabled_accessibility_services; settings get secure accessibility_enabled`); an entry that is not a plain `package/class` refuses the write ("Another app's accessibility entry looks unusual"), so another app's service can never be lost. Outcome is the re-read of both rows | broker | no: the revert removes only PhysiBoard's entry (section 10 step 7) |
 | app ops and grants | `SYSTEM_ALERT_WINDOW`, `USE_FULL_SCREEN_INTENT`, `POST_NOTIFICATION` for the app; notification listener allow-list; `WRITE_SECURE_SETTINGS` runtime grant | allow / granted | trackpad overlay, notification ring, ring backlight | broker | no |

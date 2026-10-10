@@ -29,6 +29,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- app-shell.md SS4.4: the home screen's one-time POST_NOTIFICATIONS prompt on Android 13+. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- app-shell.md SS32.3: PhysiBoard installs its own update through Android's installer. The
+         first lets it open an install session at all (Android shows it as "Install unknown apps");
+         the second lets an update of PhysiBoard itself go in without a confirmation tap. Neither
+         lets it install any other app without the user confirming in Android's own dialog. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <!-- app-shell.md SS22.2: enableOnBackInvokedCallback opts every activity into Android 14's
          predictive back, so the back swipe previews the screen underneath (the NavHost scrubs its
@@ -84,6 +90,22 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- app-shell.md SS32.4: "Install now", from the ready notification or the update dialog.
+             Draws nothing; it waits for Android's installer to answer and shows its confirmation
+             when one is needed. -->
+        <activity
+            android:name="brobata.physiboard.app.shell.InstallUpdateActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity="" />
+
+        <!-- app-shell.md SS32.3: Android's answer to a background install session. -->
+        <receiver
+            android:name="brobata.physiboard.app.shell.UpdateInstallReceiver"
+            android:exported="false" />
 
         <!-- app-shell.md SS10.5: the debug report's file share, cache path `debug-reports/`. -->
         <provider

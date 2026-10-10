@@ -257,6 +257,7 @@ internal class DictationController(
         runCatching { recognizer?.destroy() }
         recognizer = null
         session = null
+        KeyboardActivity.dictationActive = false
         abandonAudioFocus()
         audioWatch.stop()
         DictationTrace.sessionEnded()
@@ -289,6 +290,7 @@ internal class DictationController(
         }
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
         session = outcome.session
+        KeyboardActivity.dictationActive = isActive
         if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
         if (wasActive && session == null && event == DictationEvent.FieldClearedByApp) runCatching { onEndedByApp?.invoke() }
         outcome.newSegmentedRefusalLatch?.let { segmentedRefusalLatch = it }

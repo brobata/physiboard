@@ -46,6 +46,7 @@ class SearchCatalogTest {
         assertTrue(SearchCatalog.search("smart features").any { it.route == Routes.TYPING })
         assertTrue(SearchCatalog.search("camera").any { it.route == Routes.ACCESSIBILITY_SERVICE })
         assertTrue(SearchCatalog.search("cursor").any { it.title == "Focus the text box when I start typing" })
+        assertTrue(SearchCatalog.search("auto-update").any { it.title == "Updates" && it.route == Routes.HELP })
         assertEquals(emptyList(), SearchCatalog.search("   "))
     }
 }

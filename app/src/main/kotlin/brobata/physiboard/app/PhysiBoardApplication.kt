@@ -7,6 +7,7 @@ import brobata.physiboard.app.settings.SettingsStore
 import brobata.physiboard.app.settings.ui.AppPackageChangeMonitor
 import brobata.physiboard.app.shell.AppDebugCaptureStore
 import brobata.physiboard.app.shell.AppLocaleApplier
+import brobata.physiboard.app.shell.AutoUpdater
 import brobata.physiboard.app.shell.GatedHttp
 import brobata.physiboard.app.shell.GatedHttpFetcher
 import brobata.physiboard.app.shell.UpdateCheckScheduler
@@ -118,6 +119,9 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
         // process start, from the one component that runs whether the launcher activity or the
         // keyboard service brought this process up, and never from `:ime` itself.
         scheduleUpdateCheck()
+        // app-shell.md SS32: tidy up after an update that just installed, and watch the screen for a
+        // downloaded one waiting to install.
+        AutoUpdater.onProcessStart(this, scope)
         // per-app-behavior.md SS7: the installed-app cache and launcher-shortcut cleanup react to
         // Android's own package-change broadcasts for as long as this process is alive.
         AppPackageChangeMonitor(settingsStore, scope).register(this)

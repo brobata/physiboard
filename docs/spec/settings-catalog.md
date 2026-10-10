@@ -416,12 +416,25 @@ and restore like every other row.
 
 | Key | Type | Code default | Baseline | What it changes | Screen and label |
 |---|---|---|---|---|---|
-| `private_mode` | boolean; anything else reads as false | false | | Private mode: the keyboard learns nothing (no personal words, no next-word pairs, no clipboard history capture, no recent emoji, no debug capture of typed text) and PhysiBoard makes no network request at all, until it is switched off. Also flipped by the "Private mode" command (`physiboard.toggle_private_mode`) from a key | Settings > Privacy > "Private mode": "PhysiBoard remembers nothing you type and makes no network requests.", with the full text under "About private mode": "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no network requests: no update checks and no dictionary downloads. Dictation is done by your phone's speech service, which may still go online …" |
+| `private_mode` | boolean; anything else reads as false | false | | Private mode: the keyboard learns nothing (no personal words, no next-word pairs, no clipboard history capture, no recent emoji, no debug capture of typed text) and PhysiBoard makes no network request at all, until it is switched off. Also flipped by the "Private mode" command (`physiboard.toggle_private_mode`) from a key | Settings > Privacy > "Private mode": "PhysiBoard remembers nothing you type and makes no network requests.", with the full text under "About private mode": "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no network requests: no update checks, no update downloads and no dictionary downloads. Dictation is done by your phone's speech service, which may still go online …" |
 | `clean_links` | boolean; anything else reads as true | true | | Clean links: tracking parameters and redirect wrappers are removed from links in clipboard text the keyboard stores or pastes itself | Settings > Privacy > "Clean links": "Remove tracking from links you paste from the clipboard panel.", with the full text under "About clean links": "Remove tracking from links you copy and paste from the clipboard panel, such as utm_source, fbclid or a YouTube share code, and open up Google and Facebook redirect links to the real address. …" |
 
 `clean_links` defaults on although it is new behaviour: it never intercepts Space, Enter, Shift or
 Backspace, it only rewrites clipboard text the keyboard itself keeps or pastes, and what it removes
 is a fixed, tested list.
+
+### 2.18 Updates (3.3 addition; app-shell.md section 32)
+
+New in 3.3; no earlier row existed, so a 3.2 store and a 3.2 backup read as the default and the
+2.x import never carries it. The row travels in backups and restores like every other row.
+
+| Key | Type | Code default | Baseline | What it changes | Screen and label |
+|---|---|---|---|---|---|
+| `update_mode` | string `install`, `ask` or `off`, trimmed; anything else reads as `install` | `install` | | How a newer GitHub release reaches the phone: `install` downloads it on an unmetered network, checks it and installs it after the screen has been off for 2 minutes with no dictation running; `ask` downloads and checks it, then a notification asks; `off` only announces it, as 3.2 did. Only the release build installs anything (app-shell.md 32.1) | Help > "Updates" chips "Install automatically" / "Download and ask me" / "Off", with the sentence "New versions download on Wi-Fi and install while your screen is off, so they never interrupt your typing." / "New versions download on Wi-Fi, then a notification asks you to install them." / "PhysiBoard only tells you when a new version is out."; shown only in a build that may install. Beside it, while the mode is not Off and Android's "Install unknown apps" is not allowed for PhysiBoard: "Allow PhysiBoard to install its updates" ("Android asks once whether PhysiBoard may install apps. It only ever installs its own updates.") |
+
+`install` is the default although it changes what 3.2 did: PhysiBoard has no store to update it,
+an update is checked five ways before anything installs it, and the install waits for the screen
+to be off, so it can never interrupt typing.
 
 ## 3. Value shapes
 
@@ -837,6 +850,7 @@ description is the screen title.
 | Text box under the bar | Text box under the bar | Text box under the bar | teams hidden covered text box compose field under bar inset blink |
 | Private mode (3.0) | Privacy | Privacy | private privacy incognito offline learn learning history network |
 | Clean links (3.0) | Privacy | Privacy | clean links tracking utm fbclid gclid url redirect copy paste clipboard privacy |
+| Updates (3.3) | Help | Help | updates automatic auto-update install download wifi new version ask notification off unknown apps |
 | My Sym pages (3.0) | Customize SYM Keyboard | Customize SYM Keyboard | my page own custom sym layer extra symbols characters keys personal |
 | Fill page (3.0) | Customize SYM Keyboard | Customize SYM Keyboard | fill autofill one-time code otp sms verification 2fa login password sym page |
 | One-time codes from notifications (3.0) | Customize SYM Keyboard | Customize SYM Keyboard | otp one-time code verification sms text message email 2fa two-factor notifications fill |
@@ -885,7 +899,7 @@ current state and a chevron. A category with one screen opens it; the others ope
 | Privacy | "Private mode off · clean links on" | Privacy: Private mode, Clean links, Notification access for codes |
 | Titan tools (3.1: the featured "Titan toolbox" pane under the status card, not an index row; app-shell.md SS6.4a) | the toolbox's status listing: `adb`, `backlight`, `ring`, `density` | Titan tools (formerly T2E Tools): pairing card, smart backlight, remove bloat, screen density, system tweaks, notification ring |
 | Backup & restore | "Save your settings to a file, or reset them" | Backup & restore: Back up now, Restore from a file; Start over: Reset device settings to stock, Reset all settings |
-| Help | "Status check, test field, diagnostics" | Help: Status check, Test field, Diagnostics, Show the tutorial, Check for updates (GitHub installs only) |
+| Help | "Status check, test field, diagnostics" | Help: Status check, Test field, Diagnostics, Show the tutorial, Check for updates (GitHub installs only), Updates and Allow PhysiBoard to install its updates (3.3, release build only; section 2.18) |
 | About | "Version <name>" | About: version card, Report a problem, Support, Licences and credits (collapsed) |
 
 Every screen has a collapsing large-title bar (the title starts large under the back arrow and

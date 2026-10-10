@@ -13,7 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import brobata.physiboard.core.settings.UpdateMode
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.core.shell.NetworkDecision
 import brobata.physiboard.core.shell.NetworkPurpose
@@ -32,6 +35,14 @@ class UpdateCheckState {
 
     /** spec: SS6.3: "a found update both shows the dialog at once and leaves the card on the page." Outlives the dialog being dismissed outside/Back (SS13.6). */
     var foundRelease by mutableStateOf<ResolvedRelease?>(null)
+        internal set
+
+    /** The tag of a release already downloaded and checked (app-shell.md SS32.4), which turns "Download APK" into "Install now". */
+    var readyTag by mutableStateOf<String?>(null)
+        internal set
+
+    /** Whether the updater took the found release on (it is downloading or downloaded); only then does the dialog say what happens next. */
+    var updaterTookIt by mutableStateOf(false)
         internal set
 
     /** Whether [UpdateFoundDialog] is currently drawn; tapping the home "Update available" card reopens it (SS6.3) without re-running the check. */
@@ -54,6 +65,7 @@ fun rememberUpdateCheckState(): UpdateCheckState = remember { UpdateCheckState()
  * manual row: private mode refused the check (SS31.2).
  */
 suspend fun runUpdateCheck(
+    context: Context,
     state: UpdateCheckState,
     installedVersionName: String,
     dismissedReleases: Set<String>,
@@ -73,6 +85,10 @@ suspend fun runUpdateCheck(
     try {
         when (val result = GithubUpdateClient.check(installedVersionName, dismissedReleases, ignoreDismissedReleases)) {
             is UpdateCheckResult.Update -> {
+                // app-shell.md SS32: a found release also starts the background download (or is
+                // already downloaded), whichever trigger found it.
+                state.updaterTookIt = runCatching { AutoUpdater.releaseFound(context, result.release) }.getOrDefault(false)
+                state.readyTag = runCatching { AutoUpdater.readyTag(context) }.getOrNull()
                 state.foundRelease = result.release
                 state.dialogVisible = true
             }
@@ -101,17 +117,30 @@ fun UpdateFoundDialog(state: UpdateCheckState) {
     val release = state.foundRelease ?: return
     val context = LocalContext.current
     val controller = LocalSettingsController.current
+    val mode = controller.current.value.updates.mode
+    val mayInstall = remember { AutoUpdater.buildMayInstall(context) }
+    val ready = state.readyTag == release.tag
     AlertDialog(
         onDismissRequest = { state.dialogVisible = false }, // SS13.6: dismissing outside/Back records nothing; the card (if any) stays
         title = { Text("New update available") },
         text = {
             androidx.compose.foundation.layout.Column {
                 Text("Version ${release.tag} is available on GitHub.")
+                // app-shell.md SS32.4: what the updater does with it, in one plain sentence.
+                updateDialogNote(mode, mayInstall && state.updaterTookIt, ready)?.let { note ->
+                    Text(note, modifier = androidx.compose.ui.Modifier.padding(top = 8.dp))
+                }
                 // spec: SS13.6, "Download APK" only when an asset was found. AlertDialog only
                 // offers two side-button slots, so this third action is drawn in the body instead
-                // of fought into confirm/dismiss.
+                // of fought into confirm/dismiss. SS32.4: once the APK is downloaded and checked,
+                // the same place offers to install it now.
                 val apkUrl = release.apkDownloadUrl
-                if (apkUrl != null) {
+                if (ready && mayInstall && mode != UpdateMode.OFF) {
+                    TextButton(onClick = {
+                        context.startActivity(Intent(context, InstallUpdateActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        state.dialogVisible = false
+                    }) { Text("Install now") }
+                } else if (apkUrl != null) {
                     TextButton(onClick = { openInBrowser(context, apkUrl) }) { Text("Download APK") }
                 }
             }
@@ -132,6 +161,15 @@ fun UpdateFoundDialog(state: UpdateCheckState) {
     )
 }
 
+/** The dialog's line about what happens next (app-shell.md SS32.4); none when updates are Off or this build never installs. */
+fun updateDialogNote(mode: UpdateMode, mayInstall: Boolean, ready: Boolean): String? = when {
+    !mayInstall || mode == UpdateMode.OFF -> null
+    mode == UpdateMode.INSTALL_AUTOMATICALLY && ready -> "It is downloaded and checked, and installs by itself the next time your screen is off."
+    mode == UpdateMode.INSTALL_AUTOMATICALLY -> "PhysiBoard downloads it on Wi-Fi and installs it by itself the next time your screen is off."
+    ready -> "It is downloaded and checked, ready to install."
+    else -> "PhysiBoard downloads it on Wi-Fi and lets you know when it is ready to install."
+}
+
 fun openInBrowser(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(intent)
@@ -146,7 +184,8 @@ fun toast(context: Context, message: String) = Toast.makeText(context, message, 
  */
 @Composable
 fun AutoUpdateCheckOnCreate(state: UpdateCheckState, installedVersionName: String, dismissedReleases: List<String>) {
+    val context = LocalContext.current.applicationContext
     LaunchedEffect(Unit) {
-        runUpdateCheck(state, installedVersionName, dismissedReleases.toSet(), ignoreDismissedReleases = true)
+        runUpdateCheck(context, state, installedVersionName, dismissedReleases.toSet(), ignoreDismissedReleases = true)
     }
 }

@@ -23,4 +23,4 @@ pairing CLIENT here. What remains in this module is the ADB protocol, the key
 handling, the discovery and the pairing client: the parts that are genuinely
 third-party.
 
-Modifications by PhysiBoard: AdbPairingService removed; AdbMdns logs its discovery and resolve verdicts at info level because the Titan drops verbose logs.
+Modifications by PhysiBoard: AdbPairingService removed; AdbMdns logs its discovery and resolve verdicts at info level because the Titan drops verbose logs; AdbClient gained execWithInput, which writes a file to a command's standard input, so PhysiBoard can install its own update through `cmd package install -S`.

@@ -27,6 +27,22 @@ if (!releaseSigningReady) {
     )
 }
 
+/*
+ * app-shell.md SS23.1: a test run may build a debug copy under another version (two copies one
+ * version apart, to try an update on the emulator) without touching the numbers below, which only
+ * the maintainer changes. Debug only: a stray property can never ship a release with a version code
+ * every later release would fall below.
+ */
+val versionCodeOverride = providers.gradleProperty("PHYSIBOARD_VERSION_CODE").orNull?.toIntOrNull()
+val versionNameOverride = providers.gradleProperty("PHYSIBOARD_VERSION_NAME").orNull?.takeIf { it.isNotBlank() }
+
+/*
+ * app-shell.md SS32.1: only the release build downloads and installs a release APK. A debug build
+ * may be given the ability for an emulator test with -PPHYSIBOARD_AUTO_UPDATE_TEST=true; the
+ * sideload build never has it.
+ */
+val autoUpdateTestBuild = providers.gradleProperty("PHYSIBOARD_AUTO_UPDATE_TEST").orNull == "true"
+
 android {
     namespace = "brobata.physiboard.app"
     compileSdk = 36
@@ -65,6 +81,10 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (releaseSigningReady) signingConfig = signingConfigs.getByName("release")
+            buildConfigField("boolean", "AUTO_UPDATE_INSTALLS", "true")
+        }
+        debug {
+            buildConfigField("boolean", "AUTO_UPDATE_INSTALLS", autoUpdateTestBuild.toString())
         }
         /*
          * The only build safe to put on the maintainer's phone while 2.x is the
@@ -78,6 +98,8 @@ android {
             applicationIdSuffix = ".dev3"
             versionNameSuffix = "-dev3"
             matchingFallbacks += listOf("debug")
+            // Never, test property or not: this id is not the release's, and its key is not either.
+            buildConfigField("boolean", "AUTO_UPDATE_INSTALLS", "false")
         }
     }
 
@@ -93,6 +115,15 @@ android {
         // BuildConfig.VERSION_NAME feeds the launch-routing decision and the update checker
         // (app-shell.md SS3, SS13): the app shell needs the live version name, not a duplicate copy.
         buildConfig = true
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.outputs.forEach { output ->
+            versionCodeOverride?.let { output.versionCode.set(it) }
+            versionNameOverride?.let { output.versionName.set(it) }
+        }
     }
 }
 
@@ -145,6 +176,10 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+    // The update store and the downloaded-APK checks run on Robolectric (JUnit 4, through the vintage engine).
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+    testRuntimeOnly(libs.junit.vintage.engine)
 }
 
 tasks.withType<Test> {

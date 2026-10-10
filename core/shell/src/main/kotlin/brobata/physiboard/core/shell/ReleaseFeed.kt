@@ -19,8 +19,12 @@ data class GithubRelease(
     val assets: List<ReleaseAsset>,
 )
 
-/** The release the checker offers, resolved from the list: its tag, the page to open, and the APK if one was attached. spec: SS13.3, SS13.6. */
-data class ResolvedRelease(val tag: String, val pageUrl: String, val apkDownloadUrl: String?)
+/**
+ * The release the checker offers, resolved from the list: its tag, the page to open, and the APK if
+ * one was attached. spec: SS13.3, SS13.6. [assets] is every attached file, which automatic updates
+ * read for the APK and its checksum by exact name (SS32.2).
+ */
+data class ResolvedRelease(val tag: String, val pageUrl: String, val apkDownloadUrl: String?, val assets: List<ReleaseAsset> = emptyList())
 
 /**
  * Parses the GitHub releases list and resolves the one release the checker offers. spec:
@@ -66,6 +70,7 @@ object ReleaseFeed {
             tag = chosen.tagName,
             pageUrl = chosen.htmlUrl.ifBlank { "https://github.com/brobata/physiboard/releases" },
             apkDownloadUrl = apk?.downloadUrl,
+            assets = chosen.assets,
         )
     }
 }
