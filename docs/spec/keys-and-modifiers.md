@@ -96,7 +96,7 @@ processing. Stages that neither consume nor pass simply fall through.
 21. **Enter as editor action** (`per-app-behavior.md`).
 22. **Diagnostics notification** of the key event (section 16).
 23. **Deferred space before text** (`text-input.md`) for keys with no Alt or Ctrl active.
-24. **Forward-delete alternatives** (section 7.7).
+24. **Backspace alternatives** (section 7.7).
 25. **Text pipeline** (`text-input.md`, `autocorrect-suggestions.md`) for keys with no Alt
     active in any form: backspace undo, double-space period, smart quotes, auto-cap, boundary
     handling. Consumes if it handled the key.
@@ -640,18 +640,62 @@ switching to the only subtype there is) instead of reaching the app or the field
 Enter and Backspace clear the deferred-punctuation space state. Enter consumes a Shift one-shot
 before the editor-action decision so that "Send" never leaves an armed Shift behind.
 
-### 7.7 Forward-delete alternatives
+### 7.7 Backspace alternatives
 
-Applied to Backspace (KEYCODE_DEL) with no text selected:
+Applied to Backspace (KEYCODE_DEL) with no text selected, checked in this order; the first that
+applies decides the press:
 
 | Setting (default) | Trigger | Effect |
 |---|---|---|
 | `shift_backspace_delete` (false) | Shift meta on the event | delete the character after the caret |
-| `alt_backspace_delete` (false) | Alt active (meta, latch or one-shot) | delete the character after the caret |
+| `alt_backspace_delete` = `forward` | Alt active (meta, latch or one-shot) | delete the character after the caret |
+| `alt_backspace_delete` = `line` | Alt active (meta, latch or one-shot) and Ctrl not active in any form | delete from the caret back to the start of its line (below) |
 | `backspace_at_start_delete` (false) | no Shift meta, no Alt, and no text before the caret | delete the character after the caret |
 
-The first two together never delete twice. With text selected, Backspace is left to the normal
-path so the selection is deleted.
+`alt_backspace_delete` is a choice of three: `character` (the default: Alt changes nothing and
+Backspace deletes one character), `line` and `forward`. It ships at `character` because it
+changes what Backspace does, and nothing that does ships on before it has been used on the
+phone. A store or backup written through 3.2.0, when the row was a switch, holds `true` (read as
+`forward`) or `false` (read as `character`); no migration runs.
+
+Shift's row and Alt's `forward` together never delete twice; with both on and Shift held, Shift
+decides and a tapped Alt stays armed for the next key. With Shift's row off, Alt+Shift+Backspace
+follows the Alt choice. Ctrl+Alt+Backspace stays Ctrl's (section 7.3): the line delete never
+takes it. A tapped (one-shot) Alt is spent by the Backspace it changed, as it is by a letter; a
+latched Alt stays, so each press deletes another line. With text selected, Backspace is left
+to the normal path so the selection is deleted (and a tapped Alt is spent).
+
+**Deleting to the start of the line.** The keyboard reads up to 4,000 characters before the
+caret, in place of the usual 240-character read for that one press, plus the document read
+every Backspace already takes for the selection, and deletes with one text edit through the
+input connection:
+
+- text on the line before the caret: all of it, back to the last line break, which stays;
+- the caret already at a line start: the line break before it, joining the line to the one
+  above (`\r\n` goes as one). Android's own text widgets do the same when the line under the
+  caret is empty; from the end of a text, repeated presses therefore take a line, then its
+  break, then the line above, exactly as they do there;
+- no line break within the 4,000 characters read: everything read. A longer line goes 4,000
+  characters per press. A read that begins inside a surrogate pair keeps that half, so no
+  emoji is left split. Everything after the caret stays.
+
+Android's own text widgets (Alt+Backspace reaching a plain text field as a key) delete the whole
+visual line under the caret, text after it included. The keyboard cannot see how the app wraps
+lines, so it works on the text's own lines, and only behind the caret, the same as Ctrl+U in a
+shell. Typing at the end of a line that fits on one row of the screen, the two agree.
+
+It falls back to an ordinary Backspace (the selection, or one character, or the key itself for
+a field that acts on it, text-input.md 8.1) when the app gives no document read (the selection
+cannot be known), when the reads cannot be trusted (`text-input.md` section 2), when there is a
+selection, or when there is nothing before the caret. The deferred-space debt, the auto-space
+flag and the autocorrect undo memory are cleared, and the tracked word is re-read from what is
+left before the caret.
+
+In a Terminal mode app (`per-app-behavior.md` 4.6) the app gets the real Alt+Backspace key
+(KEYCODE_DEL with Alt meta) for a held, tapped or latched Alt, and does with it what it does: a
+shell deletes the word before the cursor. Modifiers reach a terminal as the real combination,
+never as an edit made on its behalf, and a line-kill such as Ctrl+U means something else in many
+terminal programs.
 
 ## 8. Key repeat and long press
 
@@ -1186,7 +1230,7 @@ and Space to the screen trackpad screen. Keys nobody can change say so.
 | `alt_enter_layout_switch` | boolean | false | Alt+Enter cycles input language | Input Languages | Alt+Enter Layout Switch |
 | `toast_on_layout_switch` | boolean | true | toast after a layout-switch chord | Input Languages | Layout Switch Toast |
 | `shift_backspace_delete` | boolean | false | section 7.7 | Smart Features | Shift + Backspace |
-| `alt_backspace_delete` | boolean | false | section 7.7 | Smart Features | Alt + Backspace |
+| `alt_backspace_delete` | string: `character`, `line`, `forward`; `true` reads as `forward`, anything else as `character` | `character` | section 7.7 | Typing > Backspace | Alt + Backspace |
 | `backspace_at_start_delete` | boolean | false | section 7.7 | Smart Features | Backspace at line start |
 | `physical_keyboard_profile_override` | string: `auto`, `titan2`, `titan2elite_qwerty` | `auto` | which device Alt-layer asset loads | Built-in Keyboards | Keyboard profile |
 | `titan2_layout_enabled` | boolean | true on a Titan (unset means "is this a Titan") | aligns the on-screen keyboard with the Titan 2 physical keys | Built-in Keyboards | Titan 2 Layout Alignment |
@@ -1320,6 +1364,18 @@ committed text.
 | T48 | Long press mode `shift`: A down, timer fires | "a" replaced by "A" |
 | T49 | Backspace down with Shift meta, `shift_backspace_delete` on, no selection | one character after the caret deleted; consumed |
 | T50 | Backspace with a selection, any forward-delete setting | not intercepted |
+| T50b | `one\ntwo|`, `alt_backspace_delete` = `line`, Alt held, Backspace | `one\n|` (one read of 4,000 before the caret) |
+| T50c | `one\n|`, same | `one|` |
+| T50d | `hello world|` (first line), same | `|` |
+| T50e | `one\ntwo| three`, same | `one\n| three` |
+| T50f | `one\n[two] three`, same | `one\n| three` (the selection only) |
+| T50g | `|` (empty), same | the key reaches the app, nothing deleted by the keyboard |
+| T50h | `hi\n👍🏽 ok|`, same | `hi\n|` |
+| T50i | `one\ntwo\nthree|`, `line`, Alt tapped, Backspace, Backspace | `one\ntwo\n|`, then `one\ntwo|` |
+| T50j | a 5,000-character line, `line`, Alt held, Backspace twice | 4,000 characters, then the remaining 1,000 |
+| T50k | Ctrl+Alt+Backspace, `line` | exactly what it does with `character` |
+| T50l | Terminal mode app, `line`, Alt held or tapped, Backspace | KEYCODE_DEL down and up with Alt meta sent to the app |
+| T50m | `ab|c`, `forward`, Alt tapped, Backspace | `ab|`; the one-shot is spent |
 | T51 | No text field: Ctrl down t=0, up t=50, Ctrl down t=200 | nav mode latch on; keyboard shown; downs consumed |
 | T52 | No text field, nav mode on: E down | DPAD_UP sent to the editor |
 | T53 | No text field, `power_shortcuts_enabled` on: Sym down | power shortcut mode on; consumed; toast after 500 ms; mode off at 5000 ms |

@@ -58,6 +58,7 @@ around.
 | `keys-and-modifiers.md` | 7.5 | Ctrl+Space only consumes and switches when another input subtype exists; with one layout, Fn+Space no longer vanishes. | fcec53b |
 | `autocorrect-suggestions.md` | 6.1, 7.2, 9, 10 | Primary case repair and the automatic-correction decision's "exact primary case" fact now consult the personal and default word stores and every loaded dictionary, not only the primary list. | fcec53b |
 | `layers-sym-alt.md` | 5.4, 5.7 | A long press on an Emoji page grid key whose emoji takes a skin tone opens the skin-tone chooser instead of the customisation screen; a held page key whose emoji takes a tone no longer repeats its letter after the emoji. | 76a37bc |
+| `keys-and-modifiers.md` | 7.7 | A tapped (one-shot) Alt is spent by the Alt+Backspace forward delete it changed; it used to stay armed for the next key. | 2137bf3 |
 | `autocorrect-suggestions.md` | 18, 19, 20 | New section 18, the system spell checker; Keep/Drop and Provenance renumbered to 19 and 20. | d4cc06c |
 | `dictionaries-languages.md` | 4.1 | Dictionaries, tables and user words are held once per process and shared with the spell checker; the change broadcasts are handled even with no keyboard session running. | d4cc06c |
 | `layers-sym-alt.md` | 1, 4.1, 4.3, 4.5, 5.2, 5.10, 12, 14 | The GIF page (page 6, `gif` in `sym_pages_config`, off by default) and the Sym page chooser on a Sym double tap (`sym_double_tap_chooser`); the status-bar direct opens are recorded as 2.x only, and the Emoji-page eviction rule of 4.2 no longer applies. | 139b647e, 7f40c852 |
