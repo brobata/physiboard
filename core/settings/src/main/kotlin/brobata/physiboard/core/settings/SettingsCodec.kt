@@ -221,6 +221,9 @@ object SettingsKeys {
     const val PRIVATE_MODE = "private_mode"
     const val CLEAN_LINKS = "clean_links"
 
+    // SS2.18 updates (3.3)
+    const val UPDATE_MODE = "update_mode"
+
     // SS2.15 shell
     const val TUTORIAL_COMPLETED = "tutorial_completed"
     const val LAST_SEEN_WHATS_NEW = "last_seen_whats_new_version"
@@ -276,6 +279,7 @@ object SettingsCodec {
         writeLauncher(settings.launcher)
         writeFeedback(settings.feedback)
         writePrivacy(settings.privacy)
+        writeUpdates(settings.updates)
         writeShell(settings.shell)
         writeCaptures(settings.captures)
     }
@@ -298,6 +302,7 @@ object SettingsCodec {
             launcher = readLauncher(r),
             feedback = readFeedback(r),
             privacy = readPrivacy(r),
+            updates = readUpdates(r),
             shell = readShell(r),
             captures = readCaptures(r),
         )
@@ -784,6 +789,16 @@ object SettingsCodec {
             cleanLinks = r.bool(SettingsKeys.CLEAN_LINKS, d.cleanLinks),
         )
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Updates (SS2.18)
+    // ---------------------------------------------------------------------------------------------
+
+    private fun MutableMap<String, String>.writeUpdates(u: UpdatePrefs) {
+        put(SettingsKeys.UPDATE_MODE, u.mode.storedValue)
+    }
+
+    private fun readUpdates(r: FlatReader): UpdatePrefs = UpdatePrefs(mode = UpdateMode.fromStored(r.string(SettingsKeys.UPDATE_MODE)))
 
     // ---------------------------------------------------------------------------------------------
     // Launcher (SS2.12, SS2.4, SS2.7)

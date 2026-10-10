@@ -5,6 +5,7 @@ import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.settings.SettingsCodec
 import brobata.physiboard.core.settings.SettingsKeys
 import brobata.physiboard.core.settings.StatusBarVisibility
+import brobata.physiboard.core.settings.UpdateMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -244,6 +245,25 @@ class BackupCodecTest {
         assertEquals(0, outcome.skippedCount)
         assertTrue(outcome.settings.privacy.privateMode)
         assertFalse(outcome.settings.privacy.cleanLinks)
+    }
+
+    @Test
+    fun `update_mode goes out in a backup and comes back through a restore`() {
+        val changed = Settings().let { it.copy(updates = it.updates.copy(mode = UpdateMode.OFF)) }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", changed))!!
+        assertEquals("off", entries["update_mode"])
+        val outcome = BackupRestore.restore(Settings(), BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries))
+        assertEquals(0, outcome.skippedCount)
+        assertEquals(UpdateMode.OFF, outcome.settings.updates.mode)
+    }
+
+    @Test
+    fun `a 3_2 backup, which has no update_mode, leaves the current choice alone`() {
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", Settings()))!!
+        val from32 = entries - "update_mode"
+        val current = Settings().let { it.copy(updates = it.updates.copy(mode = UpdateMode.DOWNLOAD_AND_ASK)) }
+        val outcome = BackupRestore.restore(current, BackupFile(BackupMeta(versionCode = 30200, versionName = "3.2.0", timestampIso = "t"), from32))
+        assertEquals(UpdateMode.DOWNLOAD_AND_ASK, outcome.settings.updates.mode)
     }
 
     @Test

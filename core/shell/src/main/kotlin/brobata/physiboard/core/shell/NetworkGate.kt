@@ -7,6 +7,9 @@ package brobata.physiboard.core.shell
  */
 enum class NetworkPurpose(val label: String) {
     UPDATE_CHECK("update check"),
+
+    /** The release APK and its checksum, downloaded for an automatic update (app-shell.md SS32). */
+    UPDATE_DOWNLOAD("update download"),
     DICTIONARY_MANIFEST("dictionary list"),
     DICTIONARY_DOWNLOAD("dictionary download"),
 

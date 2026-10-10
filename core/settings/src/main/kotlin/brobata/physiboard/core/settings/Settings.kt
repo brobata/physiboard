@@ -49,6 +49,7 @@ data class Settings(
     val launcher: LauncherPrefs = LauncherPrefs(),
     val feedback: FeedbackPrefs = FeedbackPrefs(),
     val privacy: PrivacyPrefs = PrivacyPrefs(),
+    val updates: UpdatePrefs = UpdatePrefs(),
     val shell: ShellState = ShellState(),
     val captures: DeviceCaptures = DeviceCaptures(),
 ) {
@@ -797,6 +798,30 @@ data class PrivacyPrefs(
     val privateMode: Boolean = false,
     val cleanLinks: Boolean = true,
 )
+
+/**
+ * How a newer GitHub release reaches the phone. spec: app-shell.md SS32; settings-catalog.md SS2.18.
+ *
+ * [mode] defaults to [UpdateMode.INSTALL_AUTOMATICALLY]: PhysiBoard is distributed only by
+ * sideload, so without it most phones stay on whatever version they were first given.
+ */
+data class UpdatePrefs(
+    val mode: UpdateMode = UpdateMode.INSTALL_AUTOMATICALLY,
+)
+
+/**
+ * `update_mode`. [OFF] is the 3.2 behaviour, kept whole: the release is still looked for and
+ * announced, but nothing is downloaded or installed. Anything else stored reads as the default.
+ */
+enum class UpdateMode(val storedValue: String) {
+    INSTALL_AUTOMATICALLY("install"),
+    DOWNLOAD_AND_ASK("ask"),
+    OFF("off");
+
+    companion object {
+        fun fromStored(value: String?): UpdateMode = entries.firstOrNull { it.storedValue == value?.trim() } ?: INSTALL_AUTOMATICALLY
+    }
+}
 
 /** The app shell's own markers (settings-catalog.md SS2.15) that must survive a reinstall. The migration and baseline markers are 2.x-only. */
 data class ShellState(

@@ -112,6 +112,7 @@ class SettingsCodecTest {
             keyHaptics = true, keyHapticStrength = HapticIntensity.STRONG, eventHaptics = false,
         ),
         privacy = PrivacyPrefs(privateMode = true, cleanLinks = false),
+        updates = UpdatePrefs(mode = UpdateMode.DOWNLOAD_AND_ASK),
         shell = ShellState(tutorialCompleted = true, lastSeenWhatsNewVersion = "3.0.0", dismissedReleases = listOf("v3.0.1", "v3.0.2"), untestedDeviceNoticeSeen = true),
         captures = DeviceCaptures(
             fnCtrlPrevCaptured = true, fnCtrlPrevEnable = 1, fnCtrlPrevFunction = 7, sideKeyOriginalCaptured = true,
@@ -212,6 +213,22 @@ class SettingsCodecTest {
         assertEquals(SnippetPresentation.FLOATING_POPUP, s.expansion.presentation)
         assertEquals("!", s.expansion.snippetPrefix)
         assertEquals(MessagingPreset.APP_DEFAULT, s.perApp.enterPreset)
+    }
+
+    @Test
+    fun `update_mode defaults to installing automatically, round-trips, and reads anything else as the default`() {
+        assertEquals(UpdateMode.INSTALL_AUTOMATICALLY, Settings().updates.mode)
+        assertEquals("install", SettingsCodec.toMap(Settings())[SettingsKeys.UPDATE_MODE])
+        for (mode in UpdateMode.entries) {
+            val s = Settings(updates = UpdatePrefs(mode))
+            assertEquals(mode, SettingsCodec.fromMap(SettingsCodec.toMap(s)).updates.mode)
+        }
+        assertEquals("ask", UpdateMode.DOWNLOAD_AND_ASK.storedValue)
+        assertEquals("off", UpdateMode.OFF.storedValue)
+        // A 3.2 store has no row at all: it reads as the default, which is the one migration there is.
+        assertEquals(UpdateMode.INSTALL_AUTOMATICALLY, SettingsCodec.fromMap(emptyMap()).updates.mode)
+        assertEquals(UpdateMode.INSTALL_AUTOMATICALLY, SettingsCodec.fromMap(mapOf(SettingsKeys.UPDATE_MODE to "sometimes")).updates.mode)
+        assertEquals(UpdateMode.OFF, SettingsCodec.fromMap(mapOf(SettingsKeys.UPDATE_MODE to " off ")).updates.mode)
     }
 
     @Test
