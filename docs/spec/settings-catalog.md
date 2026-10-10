@@ -385,7 +385,7 @@ section "On-screen Keyboard") is not reachable from any row in 2.x.
 
 | Key | Type | Code default | What |
 |---|---|---|---|
-| `tutorial_completed` | boolean | false | Onboarding finished; setting it also stamps `last_seen_whats_new_version` with the current version. 3.2: the first-run pages open only while it is false and PhysiBoard is not already enabled and selected; launch writes it when the keyboard is already set up (app-shell.md 3, 4.1). Backed up and restored, so a restore never reopens the pages; Help "Show the tutorial" opens them without clearing it. No separate first-run key exists: updaters from 3.0/3.1 already hold true |
+| `tutorial_completed` | boolean | false | Onboarding finished; setting it also stamps `last_seen_whats_new_version` with the current version. 3.2: the first-run pages open only while setup is not recorded (this is false and `last_seen_whats_new_version` is blank) and PhysiBoard is not already enabled and selected; launch writes it when the keyboard is already set up (app-shell.md 3, 4.1). Backed up and restored, so a restore never reopens the pages; Help "Show the tutorial" opens them without clearing it. No separate first-run key exists: updaters from 3.0/3.1 hold true, or false with a version stamp when 3.0/3.1's Help "Show the tutorial" reset it, and the stamp counts as setup done |
 | `last_seen_whats_new_version` | string | none | The what's-new card was shown for this version |
 | `dismissed_releases` | string, comma-separated release tags | none | Update prompts the user dismissed |
 | `untested_device_notice_seen` | boolean | false | The "Untested on this phone" dialog was shown (only on a Titan 2 that is not an Elite) |

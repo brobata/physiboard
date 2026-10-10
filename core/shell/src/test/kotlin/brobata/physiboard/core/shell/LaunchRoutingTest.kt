@@ -38,7 +38,7 @@ class LaunchRoutingTest {
                 val decision = decide(completed = true, enabled = enabled, selected = selected)
                 assertEquals(LaunchDestination.HOME, decision.destination)
                 assertFalse(decision.markSetupComplete)
-                assertFalse(FirstRun.shouldShow(tutorialCompleted = true, imeEnabled = enabled, imeSelected = selected))
+                assertFalse(FirstRun.shouldShow(setupRecorded = true, imeEnabled = enabled, imeSelected = selected))
             }
         }
     }
@@ -66,6 +66,21 @@ class LaunchRoutingTest {
 
     @Test
     fun `T40 the what's-new note never comes before setup`() {
-        assertEquals(LaunchDestination.SETUP, decide(completed = false, enabled = false, selected = false, lastSeen = "3.0.0", current = "3.2.0").destination)
+        for (lastSeen in listOf(null, "", "  ")) {
+            assertEquals(LaunchDestination.SETUP, decide(completed = false, enabled = false, selected = false, lastSeen = lastSeen, current = "3.2.0").destination)
+        }
+    }
+
+    @Test
+    fun `T41 a 3_1 install whose user once reviewed the tutorial is not sent through first run`() {
+        // 3.0 and 3.1's Help "Show the tutorial" reset tutorial_completed to false and left the
+        // version stamp setup had written.
+        val stored = SettingsCodec.toMap(Settings()).toMutableMap()
+        stored[SettingsKeys.TUTORIAL_COMPLETED] = "false"
+        stored[SettingsKeys.LAST_SEEN_WHATS_NEW] = "3.1.0"
+        val shell = SettingsCodec.fromMap(stored).shell
+        val decision = LaunchRouting.decide(shell.tutorialCompleted, imeEnabled = false, imeSelected = false, shell.lastSeenWhatsNewVersion, "3.2.0")
+        assertEquals(LaunchDecision(LaunchDestination.WHATS_NEW), decision)
+        assertEquals(LaunchDecision(LaunchDestination.HOME), LaunchRouting.decide(false, imeEnabled = true, imeSelected = false, "3.2.0", "3.2.0"))
     }
 }

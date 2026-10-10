@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
                 val shell = application.settingsSource.settings.first().shell
                 // spec: app-shell.md SS3, SS4. The first-run pages only while setup is not recorded
                 // and PhysiBoard is not already on and chosen; the probe is read only then.
-                val probe = if (shell.tutorialCompleted) null else ImeProbeAndroid.evaluate(this@MainActivity, ImeComponent.SERVICE_CLASS_NAME)
+                val probe = if (LaunchRouting.setupRecorded(shell.tutorialCompleted, shell.lastSeenWhatsNewVersion)) null else ImeProbeAndroid.evaluate(this@MainActivity, ImeComponent.SERVICE_CLASS_NAME)
                 val decision = LaunchRouting.decide(
                     tutorialCompleted = shell.tutorialCompleted,
                     imeEnabled = probe?.enabled ?: false,

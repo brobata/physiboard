@@ -79,17 +79,17 @@ Opening the launcher icon runs this decision before anything is drawn:
 
 1. If the first-run pages are due (section 4, "Who sees them"): open them and close the home
    screen. Nothing else in this list runs.
-2. Else if `tutorial_completed` is false (so PhysiBoard is already enabled and selected): write
-   what Skip writes (section 4.6) and draw the home screen. Nothing else in this list runs.
-3. Else if the what's-new note is due: it is due when `tutorial_completed` is true, the build's
-   version name is non-blank, and `last_seen_whats_new_version` differs from it (including
-   being absent). Open the what's-new note and close the home screen.
+2. Else if setup is not recorded (section 4.1; so PhysiBoard is already enabled and selected):
+   write what Skip writes (section 4.6) and draw the home screen. Nothing else in this list runs.
+3. Else if the what's-new note is due: it is due when setup is recorded, the build's version
+   name is non-blank, and `last_seen_whats_new_version` differs from it. Open the what's-new
+   note and close the home screen.
 4. Else, if GitHub checks are allowed, (re)schedule the daily background update job
    (section 13.7).
 5. Draw the home screen.
 
-The enabled/selected probe (section 8.2) is read for step 1 only while `tutorial_completed` is
-false. The decision is `LaunchRouting.decide` in `:core:shell`.
+The enabled/selected probe (section 8.2) is read for step 1 only while setup is not recorded.
+The decision is `LaunchRouting.decide` in `:core:shell`.
 
 Help's "Show the tutorial" row opens the first-run pages directly, without touching
 `tutorial_completed` (3.2; 3.0 reset it to false, so backing out of a review made the launcher
@@ -104,25 +104,34 @@ extras. They replace 3.0's single page with two step cards.
 
 ### 4.1 Who sees them
 
-The pages open only when `tutorial_completed` is false AND PhysiBoard is not already both
+Setup is recorded when `tutorial_completed` is true OR `last_seen_whats_new_version` is
+non-blank. The pages open only when setup is not recorded AND PhysiBoard is not already both
 enabled and selected (section 8.2). That is:
 
-| `tutorial_completed` | Enabled | Selected | Launcher icon opens |
+| Setup recorded | Enabled | Selected | Launcher icon opens |
 |---|---|---|---|
-| false | no | either | the first-run pages, page 1 |
-| false | yes | no | the first-run pages, page 2 |
-| false | yes | yes | home; setup is recorded as finished (section 3, step 2) |
-| true | any | any | home, or the what's-new note when it is due |
+| no | no | either | the first-run pages, page 1 |
+| no | yes | no | the first-run pages, page 2 |
+| no | yes | yes | home; setup is recorded as finished (section 3, step 2) |
+| yes | any | any | home, or the what's-new note when it is due |
 
-Why updaters never see them: 3.0 and 3.1 open home only after their own setup was finished, and
-finishing it wrote `tutorial_completed` = true. An install updating from 3.0 or 3.1 that has ever
-seen home therefore already holds true, with no baseline step needed; one that never finished
-setup did not see home either and gets the pages, as it would have got the old page. An install
-whose flag was lost but whose keyboard is clearly in use (app data cleared, a backup from a
-phone that never finished setup) is caught by the keyboard check and goes home. 2.x imports
-carry the flag over (settings-catalog.md). Backups carry it too, so a restore never reopens the
-pages. No new setting was added for 3.2: `tutorial_completed` already means "first run is
-behind this install".
+Why the version stamp counts: every way of finishing setup, in 3.0, 3.1 and 3.2 alike (the
+setup page's Skip and Done, the what's-new note's Done, launch routing's own record), writes
+`tutorial_completed` = true and stamps `last_seen_whats_new_version` together, and nothing
+writes the stamp otherwise or ever clears it. But 3.0 and 3.1's Help "Show the tutorial" reset
+`tutorial_completed` to false and left the stamp alone, so an updater whose user once reviewed
+the tutorial holds false with a stamp. The stamp is what says that install finished setup.
+
+Why updaters never see the pages: 3.0 and 3.1 open home only after their own setup was
+finished, which wrote both records; a later tutorial review cleared only one. An install
+updating from 3.0 or 3.1 that has ever seen home therefore holds at least the stamp, with no
+baseline step needed; one that never finished setup did not see home either and gets the
+pages, as it would have got the old page. An install whose records were lost but whose
+keyboard is clearly in use (app data cleared, a backup from a phone that never finished setup)
+is caught by the keyboard check and goes home. 2.x imports carry the flag over
+(settings-catalog.md). Backups carry both records, so a restore never reopens the pages. No new
+setting was added for 3.2: the two existing records already say "first run is behind this
+install".
 
 ### 4.2 The pages
 
@@ -1292,8 +1301,8 @@ locales.
 
 | Preference key | Type | Default | What it changes | Screen | Label |
 |---|---|---|---|---|---|
-| `tutorial_completed` | boolean | false | whether the launcher icon may open the first-run pages (3, 4.1); in backups, so a restore does not reopen them | written by first-run Skip/Done, by launch routing when the keyboard is already set up (3), and by what's-new Done; never reset (3.2: Help "Show the tutorial" opens the pages without clearing it) | none |
-| `last_seen_whats_new_version` | string | absent | the version whose what's-new note has been seen; a mismatch with the build shows the note (3) | written by setup and what's-new Done | none |
+| `tutorial_completed` | boolean | false | whether the launcher icon may open the first-run pages (3, 4.1); in backups, so a restore does not reopen them | written by first-run Skip/Done, by launch routing when the keyboard is already set up (3), and by what's-new Done; never reset in 3.2 (Help "Show the tutorial" opens the pages without clearing it; 3.0 and 3.1 reset it to false there) | none |
+| `last_seen_whats_new_version` | string | absent | the version whose what's-new note has been seen; a mismatch with the build shows the note (3); non-blank also counts as setup recorded (4.1) | written by setup and what's-new Done, always together with `tutorial_completed` true; never cleared | none |
 | `impact_defaults_applied` | boolean | false | one-shot first-run defaults have been stamped (2, 27) | process start | none |
 | `alt_shift_default_initialized` | boolean | false | the Alt+Shift default rule has run (2) | process start | none |
 | `untested_device_notice_seen` | boolean | false | suppresses the untested-device dialog (7) | home dialog | "Got it" |
@@ -1414,13 +1423,14 @@ Encodable as JVM tests without a device.
 | T31 | context updates: app X, then PhysiBoard | last field = PhysiBoard, external = X |
 | T32 | credits markdown "{{button:Coffee|https://k.o}}" | one button element labelled "Coffee" |
 | T33 | Alt+Shift default rule on an empty preferences file | `alt_shift_layout_switch` false; on a non-empty file without the key: true; with the key already set: unchanged |
-| T34 | launch with `tutorial_completed` false, keyboard not enabled | first-run pages |
-| T35 | `tutorial_completed` false, enabled, not selected | first-run pages |
-| T36 | `tutorial_completed` false, enabled and selected | home, and setup recorded as finished |
+| T34 | launch with `tutorial_completed` false, no version stamp, keyboard not enabled | first-run pages |
+| T35 | `tutorial_completed` false, no version stamp, enabled, not selected | first-run pages |
+| T36 | `tutorial_completed` false, no version stamp, enabled and selected | home, and setup recorded as finished |
 | T37 | `tutorial_completed` true, any keyboard state | never the first-run pages |
 | T38 | a 3.1 store (`tutorial_completed` true, last seen "3.1.0") opened by 3.2 with the keyboard switched away | the what's-new note, not the pages |
 | T39 | a backup holding `tutorial_completed` true restored onto a fresh install | home, not the pages |
-| T40 | `tutorial_completed` false, last seen "3.0.0", current "3.2.0" | first-run pages before any what's-new note |
+| T40 | `tutorial_completed` false, no version stamp, current "3.2.0" | first-run pages before any what's-new note |
+| T41 | `tutorial_completed` false (reset by 3.1's Help "Show the tutorial"), last seen "3.1.0", keyboard not selected, opened by 3.2 | the what's-new note, not the pages |
 
 ## 30. Keep / Drop for 3.0
 
