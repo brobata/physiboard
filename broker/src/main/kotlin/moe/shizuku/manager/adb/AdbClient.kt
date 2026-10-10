@@ -2,6 +2,8 @@
  * Vendored from Shizuku (https://github.com/RikkaApps/Shizuku) by RikkaApps.
  * Licensed under the Apache License, Version 2.0. See
  * app/src/main/java/moe/shizuku/manager/adb/NOTICE and third_party/licenses/Apache-2.0.txt.
+ *
+ * Modified by PhysiBoard: execWithInput added (broker/NOTICE).
  */
 package moe.shizuku.manager.adb
 
@@ -125,6 +127,68 @@ class AdbClient(private val host: String, private val port: Int, private val key
             }
             else -> {
                 error("not A_OKAY or A_CLSE")
+            }
+        }
+    }
+
+    /**
+     * Added by PhysiBoard (see broker/NOTICE): opens [service] (an `exec:` line) and writes [size]
+     * bytes of [input] to its standard input, one [A_MAXDATA] payload per write, waiting for the
+     * phone's OKAY after each as the version-1 protocol requires. Everything the command writes
+     * back is handed to [listener]. [readTimeoutMs] replaces the per-read timeout for this call,
+     * since the command (an install) may stay quiet for longer than a shell line does.
+     */
+    fun execWithInput(service: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, listener: (ByteArray) -> Unit) {
+        val localId = 2
+        socket.soTimeout = readTimeoutMs
+        if (useTls) tlsSocket.soTimeout = readTimeoutMs
+        write(A_OPEN, localId, 0, service)
+        var message = read()
+        if (message.command == A_CLSE) {
+            write(A_CLSE, localId, message.arg0)
+            error("the phone refused $service")
+        }
+        if (message.command != A_OKAY) error("not A_OKAY or A_CLSE")
+        val remoteId = message.arg0
+        val buffer = ByteArray(A_MAXDATA)
+        var sent = 0L
+        var closed = false
+        while (sent < size && !closed) {
+            val wanted = minOf(buffer.size.toLong(), size - sent).toInt()
+            val n = input.read(buffer, 0, wanted)
+            if (n < 0) error("input ended after $sent of $size bytes")
+            write(A_WRTE, localId, remoteId, buffer.copyOf(n))
+            sent += n
+            while (true) {
+                message = read()
+                when (message.command) {
+                    A_OKAY -> break
+                    A_WRTE -> {
+                        if (message.data_length > 0) listener(message.data!!)
+                        write(A_OKAY, localId, remoteId)
+                    }
+                    A_CLSE -> {
+                        write(A_CLSE, localId, remoteId)
+                        closed = true
+                        break
+                    }
+                    else -> error("not A_OKAY, A_WRTE or A_CLSE")
+                }
+            }
+        }
+        while (!closed) {
+            message = read()
+            when (message.command) {
+                A_WRTE -> {
+                    if (message.data_length > 0) listener(message.data!!)
+                    write(A_OKAY, localId, remoteId)
+                }
+                A_CLSE -> {
+                    write(A_CLSE, localId, remoteId)
+                    closed = true
+                }
+                A_OKAY -> Unit
+                else -> error("not A_WRTE or A_CLSE")
             }
         }
     }

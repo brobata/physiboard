@@ -92,6 +92,33 @@ class PrivilegedBroker(
     /** spec: SS6, the whole sequence, blocking under the lock. Never throws. */
     override fun run(line: String): ShellResult = lock.withLock { runLocked(line) }
 
+    /**
+     * Installs the APK at [apk] with shell privileges, streaming it to `cmd package install -S`
+     * (app-shell.md SS32.3), under the broker lock like every other line. Installing PhysiBoard's
+     * own package ends this process before the answer can arrive; a [ShellResult.Ok] is returned
+     * only when the shell printed "Success". Never throws; never call on the main thread.
+     */
+    fun installApk(apk: java.io.File): ShellResult = lock.withLock {
+        if (!transport.hasStoredKey()) return@withLock fail(BrokerRules.NOT_PAIRED_MESSAGE)
+        val size = apk.length()
+        if (size <= 0L) return@withLock fail("The update file is empty.")
+        val port = transport.discoverConnectPort(BrokerRules.CONNECT_DISCOVERY_TIMEOUT_MS) ?: return@withLock fail(BrokerRules.NO_SERVICE_MESSAGE)
+        try {
+            val output = apk.inputStream().buffered().use { input ->
+                transport.execWithInput(port, PackageInstallLine.command(size), input, size, PackageInstallLine.READ_TIMEOUT_MS)
+            }
+            if (PackageInstallLine.succeeded(output)) {
+                lastResult = output
+                lastError = null
+                ShellResult.Ok(output)
+            } else {
+                fail(output.trim().ifEmpty { "The install gave no answer." })
+            }
+        } catch (error: Exception) {
+            fail(BrokerRules.errorText(error))
+        }
+    }
+
     /** [run] for coroutine callers; the lock is taken on [ioDispatcher], never on the caller's thread. */
     suspend fun runLine(line: String): ShellResult = withContext(ioDispatcher) { run(line) }
 

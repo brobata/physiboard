@@ -36,7 +36,7 @@ service, a real settings app, and the Titan's own privileged features.
 | `core/shell` | The app shell as plain Kotlin: update checker, what's-new note, launch routing, backup codec. |
 | `device/titan` | Titan 2 Elite-specific pure decisions the pipeline and toolbox both depend on. |
 | `device/privileged` | The privileged side of Titan features: pairing, the broker, backlight, ring. |
-| `broker` | A vendored, unmodified subset of Shizuku (Apache-2.0) for pairing with Wireless Debugging. |
+| `broker` | A vendored subset of Shizuku (Apache-2.0) for pairing with Wireless Debugging; the few changes are listed in `broker/NOTICE`. |
 | `ime` | The Android adapter: the `InputMethodService`, dictation, dictionary loading, the strip UI. |
 | `app` | The settings app (Compose/Material 3), the 2.x importer, and the shipped APK. |
 

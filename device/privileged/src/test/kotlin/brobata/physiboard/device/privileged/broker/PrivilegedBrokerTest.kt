@@ -207,4 +207,51 @@ class PrivilegedBrokerTest {
         assertEquals(BrokerBlocker.NOT_PAIRED, BrokerRules.blocker(hasStoredKey = false, wirelessDebuggingOn = true))
         assertEquals("not_paired", broker.let { transport.hasKey = false; it.blocker()?.reason })
     }
+
+    // Installing PhysiBoard's own update. app-shell.md SS32.3. ------------------------------------
+
+    private fun apk(bytes: ByteArray): java.io.File =
+        java.io.File.createTempFile("update", ".apk").apply { deleteOnExit(); writeBytes(bytes) }
+
+    @Test
+    fun `an update streams the file to pm with its size, and only Success counts`() {
+        val bytes = ByteArray(10_000) { (it % 251).toByte() }
+        val line = PackageInstallLine.command(10_000)
+        assertEquals("cmd package install -r -S 10000", line)
+        transport.responses[line] = "Success\n"
+        val result = broker.installApk(apk(bytes))
+        assertIs<ShellResult.Ok>(result)
+        assertEquals(line, transport.execs.single().first)
+        assertTrue(bytes.contentEquals(transport.execs.single().second), "every byte reaches the shell's standard input")
+        assertNull(broker.lastError)
+    }
+
+    @Test
+    fun `a failed or silent install is a failure with pm's own words`() {
+        val file = apk(ByteArray(64) { 1 })
+        transport.responses[PackageInstallLine.command(64)] = "Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]\n"
+        val failed = assertIs<ShellResult.Failed>(broker.installApk(file))
+        assertTrue(failed.message.startsWith("Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE"))
+        transport.responses[PackageInstallLine.command(64)] = ""
+        assertIs<ShellResult.Failed>(broker.installApk(file))
+        transport.failing += PackageInstallLine.command(64)
+        assertIs<ShellResult.Failed>(broker.installApk(file))
+    }
+
+    @Test
+    fun `an install without a pairing, a service or bytes never reaches the shell`() {
+        assertIs<ShellResult.Failed>(broker.installApk(apk(ByteArray(0))))
+        transport.port = null
+        assertEquals(NO_SERVICE_MESSAGE, assertIs<ShellResult.Failed>(broker.installApk(apk(ByteArray(8)))).message)
+        transport.hasKey = false
+        assertEquals(NOT_PAIRED_MESSAGE, assertIs<ShellResult.Failed>(broker.installApk(apk(ByteArray(8)))).message)
+        assertTrue(transport.execs.isEmpty())
+    }
+
+    @Test
+    fun `pm's answer is read line by line`() {
+        assertTrue(PackageInstallLine.succeeded("Performing Streamed Install\nSuccess\n"))
+        assertFalse(PackageInstallLine.succeeded("Failure [INSTALL_FAILED_VERSION_DOWNGRADE]"))
+        assertFalse(PackageInstallLine.succeeded("NoSuccess"))
+    }
 }

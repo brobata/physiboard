@@ -68,6 +68,16 @@ class AndroidAdbTransport(private val context: Context) : AdbTransport {
         }
     }
 
+    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int): String {
+        val key = loadStoredKey()
+        AdbClient(LOOPBACK, port, key).use { client ->
+            client.connect()
+            val output = ByteArrayOutputStream()
+            client.execWithInput("exec:$command", input, size, readTimeoutMs) { bytes -> output.write(bytes) }
+            return String(output.toByteArray(), Charsets.UTF_8)
+        }
+    }
+
     override fun pair(port: Int, code: String): PairResult {
         val key = try {
             loadStoredKey()

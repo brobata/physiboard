@@ -86,3 +86,20 @@ object BrokerRules {
     fun shouldRearmPairingWatcherAtProcessStart(wasArmed: Boolean, hasStoredKey: Boolean): Boolean =
         wasArmed && !hasStoredKey
 }
+
+/**
+ * The one streamed command the broker runs: installing PhysiBoard's own update from a file the
+ * app keeps private (app-shell.md SS32.3). Only a number goes into the line, never a path or a name.
+ */
+object PackageInstallLine {
+    /** `pm install` waits for the whole APK, then verifies and optimises it before it answers. */
+    const val READ_TIMEOUT_MS = 120_000
+
+    fun command(sizeBytes: Long): String {
+        require(sizeBytes > 0) { "an APK has bytes" }
+        return "cmd package install -r -S $sizeBytes"
+    }
+
+    /** `pm` prints "Success" on a line of its own, or "Failure [REASON]". */
+    fun succeeded(output: String): Boolean = output.lineSequence().any { it.trim() == "Success" }
+}

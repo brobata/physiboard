@@ -83,6 +83,22 @@ class FakeAdbTransport(
         return responses[line] ?: ""
     }
 
+    /** Every streamed command, with the bytes it was given. */
+    val execs = mutableListOf<Pair<String, ByteArray>>()
+
+    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int): String {
+        val bytes = ByteArray(size.toInt())
+        var read = 0
+        while (read < bytes.size) {
+            val n = input.read(bytes, read, bytes.size - read)
+            if (n < 0) break
+            read += n
+        }
+        execs += command to bytes.copyOf(read)
+        if (command in failing) throw IllegalStateException("not A_CNXN")
+        return responses[command] ?: ""
+    }
+
     override fun pair(port: Int, code: String): PairResult {
         pairCalls += port to code
         // A key is minted the moment a pairing is attempted (SS4.3).
