@@ -941,7 +941,8 @@ object TextInputPipeline {
         val ops = when {
             hasSelection -> listOf(EditorOp.CommitText(""))
             textBefore == null -> listOf(EditorOp.PassThroughKey)
-            else -> listOf(EditorOp.DeleteSurrounding(DeleteWordBackward.countToDelete(textBefore.takeLast(100)), 0))
+            // A live composing span would stretch the delete to its start (BaseInputConnection), so it is finished first.
+            else -> listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(DeleteWordBackward.countToDelete(textBefore.takeLast(100)), 0))
         }
         return TextInputResult(ops, newState)
     }
@@ -990,7 +991,9 @@ object TextInputPipeline {
             return handleBackspace(settings, state, editor, trust, shiftHeld, altActive)
         }
         val left = textBefore.substring(0, textBefore.length - count)
-        return TextInputResult(listOf(EditorOp.DeleteSurrounding(count, 0)), cleared.copy(currentWord = state.currentWord.reset().syncedFrom(left)))
+        // A live composing span (a dictation partial, an app's own composition) would stretch the delete
+        // back from the span's start instead of the cursor, eating the lines above; finish it first.
+        return TextInputResult(listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(count, 0)), cleared.copy(currentWord = state.currentWord.reset().syncedFrom(left)))
     }
 
     // ---------------------------------------------------------------------------------------

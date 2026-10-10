@@ -78,14 +78,14 @@ class DeleteToLineStartTest {
     @Test
     fun `the line before the cursor goes in one edit`() {
         val result = lineDelete("Dear Sam,\nthanks for the")
-        assertEquals(listOf(EditorOp.DeleteSurrounding(14, 0)), result.ops)
+        assertEquals(listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(14, 0)), result.ops)
         assertEquals("", result.state.currentWord.word)
     }
 
     @Test
     fun `joining a line re-reads the word now before the cursor`() {
         val result = lineDelete("see you\n")
-        assertEquals(listOf(EditorOp.DeleteSurrounding(1, 0)), result.ops)
+        assertEquals(listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(1, 0)), result.ops)
         assertEquals("you", result.state.currentWord.word)
     }
 
@@ -94,7 +94,7 @@ class DeleteToLineStartTest {
         val text = "one\ntwo three"
         // Cursor after "two": the window holds the whole document, the read only what is before the cursor.
         val result = lineDelete("one\ntwo", window = TextWindow(text, 7))
-        assertEquals(listOf(EditorOp.DeleteSurrounding(3, 0)), result.ops)
+        assertEquals(listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(3, 0)), result.ops)
     }
 
     @Test
@@ -135,7 +135,7 @@ class DeleteToLineStartTest {
     fun `the undo memory goes with the line, so a later Backspace cannot put a correction back`() {
         val state = TextInputState(autocorrectMemory = AutocorrectMemory().afterReplacement("teh", "the"))
         val result = lineDelete("x\nsee the ", state = state)
-        assertEquals(listOf(EditorOp.DeleteSurrounding(8, 0)), result.ops)
+        assertEquals(listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(8, 0)), result.ops)
         assertNull(result.state.autocorrectMemory.lastReplacement)
     }
 
