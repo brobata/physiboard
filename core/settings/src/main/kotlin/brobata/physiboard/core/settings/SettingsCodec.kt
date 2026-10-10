@@ -177,6 +177,8 @@ object SettingsKeys {
     const val RING_BRIGHTNESS = "notification_ring_brightness"
     const val RING_ICONS = "notification_ring_icons"
     const val RING_KEYBOARD_DARK = "notification_ring_keyboard_dark"
+    const val RING_CLOCK = "notification_ring_clock"
+    const val RING_STAY_ON_CHARGING = "notification_ring_stay_on_charging"
     const val RING_DEFAULT_COLOR = "notification_ring_default_color"
     const val RING_APP_COLORS = "notification_ring_app_colors"
     const val RING_CX = "notification_ring_cx"
@@ -700,6 +702,8 @@ object SettingsCodec {
         put(SettingsKeys.RING_BRIGHTNESS, x.ringBrightness.storedValue)
         put(SettingsKeys.RING_ICONS, x.ringShowIcons.toString())
         put(SettingsKeys.RING_KEYBOARD_DARK, x.ringKeyboardDark.toString())
+        put(SettingsKeys.RING_CLOCK, x.ringClock.toString())
+        put(SettingsKeys.RING_STAY_ON_CHARGING, x.ringStayOnCharging.toString())
         x.ringDefaultColor?.let { put(SettingsKeys.RING_DEFAULT_COLOR, it.toString()) }
         put(SettingsKeys.RING_APP_COLORS, JsonRows.encode(JsonObject(x.ringAppColors.mapValues { JsonPrimitive(it.value) })))
         x.ringFit?.let {
@@ -734,6 +738,8 @@ object SettingsCodec {
             ringBrightness = RingBrightness.fromStored(r.string(SettingsKeys.RING_BRIGHTNESS)) ?: d.ringBrightness,
             ringShowIcons = r.bool(SettingsKeys.RING_ICONS, d.ringShowIcons),
             ringKeyboardDark = r.bool(SettingsKeys.RING_KEYBOARD_DARK, d.ringKeyboardDark),
+            ringClock = r.bool(SettingsKeys.RING_CLOCK, d.ringClock),
+            ringStayOnCharging = r.bool(SettingsKeys.RING_STAY_ON_CHARGING, d.ringStayOnCharging),
             ringDefaultColor = r.intOrNull(SettingsKeys.RING_DEFAULT_COLOR),
             ringAppColors = appColors ?: d.ringAppColors,
             ringFit = fit,

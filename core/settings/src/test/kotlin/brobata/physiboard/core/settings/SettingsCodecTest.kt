@@ -92,7 +92,7 @@ class SettingsCodecTest {
         ),
         device = DevicePrefs(
             smartBacklightEnabled = false, ringEnabled = false, ringMinutes = 30, ringBrightness = RingBrightness.BRIGHT,
-            ringShowIcons = true, ringKeyboardDark = false, ringDefaultColor = 0xFF123456.toInt(),
+            ringShowIcons = true, ringKeyboardDark = false, ringClock = true, ringStayOnCharging = true, ringDefaultColor = 0xFF123456.toInt(),
             ringAppColors = mapOf("com.example.a" to 0xFF00FF00.toInt()), ringFit = RingFit(1f, 2f, 3f, 4f),
             autoSelectSpellChecker = false,
         ),
@@ -230,6 +230,22 @@ class SettingsCodecTest {
         assertEquals(SnippetPresentation.FLOATING_POPUP, s.expansion.presentation)
         assertEquals("!", s.expansion.snippetPrefix)
         assertEquals(MessagingPreset.APP_DEFAULT, s.perApp.enterPreset)
+    }
+
+    @Test
+    fun `the ring clock and stay on while charging default off and round-trip, device-backlight-ring SS5_11`() {
+        assertFalse(Settings().device.ringClock)
+        assertFalse(Settings().device.ringStayOnCharging)
+        val map = SettingsCodec.toMap(Settings())
+        assertEquals("false", map[SettingsKeys.RING_CLOCK])
+        assertEquals("false", map[SettingsKeys.RING_STAY_ON_CHARGING])
+        val on = Settings().let { it.copy(device = it.device.copy(ringClock = true, ringStayOnCharging = true)) }
+        val back = SettingsCodec.fromMap(SettingsCodec.toMap(on)).device
+        assertTrue(back.ringClock)
+        assertTrue(back.ringStayOnCharging)
+        // A 3.3 store has neither row: both read off.
+        assertFalse(SettingsCodec.fromMap(emptyMap()).device.ringClock)
+        assertFalse(SettingsCodec.fromMap(mapOf(SettingsKeys.RING_STAY_ON_CHARGING to "maybe")).device.ringStayOnCharging)
     }
 
     @Test

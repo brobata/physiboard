@@ -674,6 +674,10 @@ data class DevicePrefs(
     val ringBrightness: RingBrightness = RingBrightness.NORMAL,
     val ringShowIcons: Boolean = false,
     val ringKeyboardDark: Boolean = true,
+    /** `notification_ring_clock`: a dim clock on the ring's black screen (device-backlight-ring.md SS5.11). */
+    val ringClock: Boolean = false,
+    /** `notification_ring_stay_on_charging`: the clock stays up while plugged in and locked; needs [ringClock] (SS5.11). */
+    val ringStayOnCharging: Boolean = false,
     /** `notification_ring_default_color`; null means the ring policy's own default (device-backlight-ring.md). */
     val ringDefaultColor: Int? = null,
     val ringAppColors: Map<String, Int> = emptyMap(),

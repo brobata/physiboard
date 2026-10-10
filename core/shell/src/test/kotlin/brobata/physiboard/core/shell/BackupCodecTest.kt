@@ -259,6 +259,18 @@ class BackupCodecTest {
     }
 
     @Test
+    fun `the ring clock and stay on while charging go out in a backup and come back through a restore`() {
+        val changed = Settings().let { it.copy(device = it.device.copy(ringClock = true, ringStayOnCharging = true)) }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", changed))!!
+        assertEquals("true", entries["notification_ring_clock"])
+        assertEquals("true", entries["notification_ring_stay_on_charging"])
+        val outcome = BackupRestore.restore(Settings(), BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries))
+        assertEquals(0, outcome.skippedCount)
+        assertTrue(outcome.settings.device.ringClock)
+        assertTrue(outcome.settings.device.ringStayOnCharging)
+    }
+
+    @Test
     fun `a 3_2 backup, which has no update_mode, leaves the current choice alone`() {
         val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", Settings()))!!
         val from32 = entries - "update_mode"
