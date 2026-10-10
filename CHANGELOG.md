@@ -3,6 +3,8 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
+## 3.2.0 (unreleased)
+
 ## 3.1.0 (2026-10-09)
 
 A new look for everything PhysiBoard draws, settings that are easy to find, Backspace that works
