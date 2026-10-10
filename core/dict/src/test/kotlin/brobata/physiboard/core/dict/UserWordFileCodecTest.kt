@@ -91,4 +91,51 @@ class UserWordFileCodecTest {
         assertEquals(emptySet<String>(), UserWordFileCodec.decodeSeededSpellings(null))
         assertEquals(emptySet<String>(), UserWordFileCodec.decodeSeededSpellings("not json"))
     }
+
+    @Test
+    fun `a missing personal file starts the change from an empty list`() {
+        var written: String? = null
+        val result = UserWordFileCodec.updatePersonal({ null }, { null }, { written = it; true }) { it.withPersonalWordAdded("brobata", 1_000) }
+        assertEquals(listOf("brobata"), result?.personalWords()?.map { it.word })
+        assertEquals(listOf("brobata"), UserWordFileCodec.decodePersonalWords(written).map { it.word })
+    }
+
+    @Test
+    fun `a damaged or unreadable personal file is left as it is and the change reports failure`() {
+        for (read in listOf<() -> String?>({ """[{"w":"titan","f":2,"u":5},{"w":"brob""" }, { "not json" }, { "{}" }, { throw java.io.IOException("unreadable") })) {
+            var writes = 0
+            val result = UserWordFileCodec.updatePersonal(read, { null }, { writes++; true }) { it.withPersonalWordAdded("brobata", 1_000) }
+            assertEquals(null, result)
+            assertEquals(0, writes)
+        }
+    }
+
+    @Test
+    fun `a damaged default-word file does not stop a personal word being saved, and is not written`() {
+        var written: String? = null
+        val result = UserWordFileCodec.updatePersonal({ "[]" }, { "garbled" }, { written = it; true }) { it.withPersonalWordAdded("brobata", 1_000) }
+        assertEquals(listOf("brobata"), result?.personalWords()?.map { it.word })
+        assertEquals(listOf("brobata"), UserWordFileCodec.decodePersonalWords(written).map { it.word })
+    }
+
+    @Test
+    fun `a damaged or unreadable default-word file is left as it is and the change reports failure`() {
+        for (read in listOf<() -> String?>({ """[{"w":"haha","f":1}""" }, { throw java.io.IOException("unreadable") })) {
+            var writes = 0
+            val result = UserWordFileCodec.updateDefaults(read, { writes++; true }) { it + WordFrequency("lol", 1) }
+            assertEquals(null, result)
+            assertEquals(0, writes)
+        }
+        val fresh = UserWordFileCodec.updateDefaults({ null }, { true }) { it + WordFrequency("lol", 1) }
+        assertEquals(listOf("lol"), fresh?.map { it.word })
+    }
+
+    @Test
+    fun `only text that is there and not a list counts as damaged`() {
+        assertFalse(UserWordFileCodec.isUnreadableList(null))
+        assertFalse(UserWordFileCodec.isUnreadableList(""))
+        assertFalse(UserWordFileCodec.isUnreadableList("[]"))
+        assertTrue(UserWordFileCodec.isUnreadableList("[{"))
+        assertTrue(UserWordFileCodec.isUnreadableList("{}"))
+    }
 }

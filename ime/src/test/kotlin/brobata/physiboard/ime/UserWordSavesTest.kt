@@ -108,4 +108,13 @@ class UserWordSavesTest {
         assertEquals(setOf("brobata", "titan"), memoryWords())
         assertEquals(setOf("brobata", "titan"), fileWords())
     }
+
+    @Test
+    fun `a keyboard save leaves a damaged personal file as it is and reports failure`() {
+        val damaged = """[{"w":"titan","f":2,"u":500},{"w":"brob"""
+        personalFile.writeText(damaged)
+        val loader = UserWordFileLoader(app, android.os.Handler(Looper.getMainLooper()))
+        assertEquals(null, loader.updatePersonal { it.withPersonalWordAdded("physiboard", 2_000) })
+        assertEquals(damaged, personalFile.readText())
+    }
 }

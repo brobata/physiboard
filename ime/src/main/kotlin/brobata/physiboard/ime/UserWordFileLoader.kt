@@ -67,8 +67,8 @@ internal class UserWordFileLoader(
     /** [savePersonalAsync]'s work on the calling thread; the store written, or null when the write failed. */
     internal fun updatePersonal(change: (UserWordStore) -> UserWordStore): UserWordStore? =
         UserWordFileCodec.updatePersonal(
-            readPersonal = { readOrNull(personalFile) },
-            readDefaults = { readOrNull(defaultFile) },
+            readPersonal = { readIfPresent(personalFile) },
+            readDefaults = { readIfPresent(defaultFile) },
             writePersonal = { text -> runCatching { writeAtomically(personalFile, text) }.getOrDefault(false) },
             transform = change,
         )
@@ -100,7 +100,11 @@ internal class UserWordFileLoader(
             return
         }
 
-        val stored = UserWordFileCodec.decodeDefaultWords(readOrNull(defaultFile))
+        // A default-word file that is there but cannot be read, or is damaged, is left alone:
+        // writing the merge over it would drop every word it still holds.
+        val storedText = runCatching { readIfPresent(defaultFile) }.getOrElse { return }
+        if (UserWordFileCodec.isUnreadableList(storedText)) return
+        val stored = UserWordFileCodec.decodeDefaultWords(storedText)
         val seeded = UserWordFileCodec.decodeSeededSpellings(readOrNull(seededFile))
         val toAdd = UserWordFileCodec.defaultWordsToMergeIn(assetWords, stored, seeded)
         if (toAdd.isEmpty()) {
@@ -115,7 +119,10 @@ internal class UserWordFileLoader(
         runCatching { writeAtomically(seededFile, UserWordFileCodec.encodeSeededSpellings(assetWords)) }
     }
 
-    private fun readOrNull(file: File): String? = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
+    /** The file's text, or null when there is no file; throws when it is there but cannot be read. */
+    private fun readIfPresent(file: File): String? = if (file.exists()) file.readText() else null
+
+    private fun readOrNull(file: File): String? = runCatching { readIfPresent(file) }.getOrNull()
 
     /**
      * spec dictionaries-languages.md SS3: "a rename, or copy then delete when the rename fails" --

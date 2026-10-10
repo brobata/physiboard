@@ -10,6 +10,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * app-shell.md SS22.4, dictionaries-languages.md SS7: the Personal Dictionary screen and the
@@ -94,5 +95,30 @@ class PersonalWordFileUpdateTest {
         undo.join(5_000)
 
         assertEquals(setOf("titan", "brobata", "physiboard"), stored())
+    }
+
+    @Test
+    fun `a damaged personal file on disk is not replaced by an edit`() {
+        val damaged = """[{"w":"titan","f":2,"u":500},{"w":"brob"""
+        personalFile.writeText(damaged)
+        val result = updatePersonalFile(personalFile, defaultFile) { it.withPersonalWordAdded("physiboard", 2_000) }
+        assertEquals(null, result, "the caller reports save failed")
+        assertEquals(damaged, personalFile.readText())
+    }
+
+    @Test
+    fun `a personal file that is there but cannot be read is not replaced by an edit`() {
+        // A directory where the file should be: it exists, and reading it throws.
+        personalFile.mkdirs()
+        val result = updatePersonalFile(personalFile, defaultFile) { it.withPersonalWordAdded("physiboard", 2_000) }
+        assertEquals(null, result)
+        assertTrue(personalFile.isDirectory)
+    }
+
+    @Test
+    fun `a missing personal file is created by the first edit`() {
+        val result = updatePersonalFile(personalFile, defaultFile) { it.withPersonalWordAdded("physiboard", 2_000) }
+        assertNotNull(result)
+        assertEquals(setOf("physiboard"), stored())
     }
 }

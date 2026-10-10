@@ -1,5 +1,6 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -78,11 +79,15 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
     val writes = remember { Mutex() }
     val queuedWrites = remember { intArrayOf(0) }
 
+    // A write that did not land (a full disk, or a word file that is there but damaged, which is
+    // left as it is rather than replaced) says "save failed" and, once nothing else is queued,
+    // puts the list back to what the files hold, so it never shows an edit that was not saved.
     suspend fun write(block: suspend () -> UserWordStore?) = withContext(NonCancellable) {
         queuedWrites[0]++
         writes.withLock {
             val written = try { block() } finally { queuedWrites[0]-- }
-            if (written != null && queuedWrites[0] == 0) store = written
+            if (written == null) Toast.makeText(context, SAVE_FAILED, Toast.LENGTH_SHORT).show()
+            if (queuedWrites[0] == 0) store = written ?: fileStore.load()
         }
     }
 
@@ -206,3 +211,6 @@ private fun WordEditDialog(title: String, initialText: String, onDismiss: () -> 
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
+
+/** autocorrect-suggestions.md SS6.3: an edit that was not saved says so, in the keyboard's own words for it. */
+private const val SAVE_FAILED = "Personal dictionary: save failed"

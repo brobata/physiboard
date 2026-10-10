@@ -145,7 +145,15 @@ object UserWordFileCodec {
      * [PersonalDictionaryFileLock]. Every writer goes through here, so none of them writes a copy
      * read before another writer's change: each change is applied to what the file holds at that
      * moment. The caller supplies the file reads and the write, which keeps this module free of
-     * any file system. Returns the store written, or null when the write failed.
+     * any file system.
+     *
+     * A read returns null when the file does not exist (the change starts from an empty list)
+     * and throws when the file exists but cannot be read. A personal file that cannot be read,
+     * or holds something that is not a word list ([isUnreadableList]), is left exactly as it is:
+     * nothing is written and the result is null, as for a failed write, so the caller reports
+     * "save failed" instead of replacing the user's words with an empty list plus one. The
+     * default-word file is only read here, never written, so one that cannot be read counts as
+     * empty. Returns the store written, or null when nothing was written.
      */
     fun updatePersonal(
         readPersonal: () -> String?,
@@ -153,20 +161,36 @@ object UserWordFileCodec {
         writePersonal: (String) -> Boolean,
         transform: (UserWordStore) -> UserWordStore,
     ): UserWordStore? = synchronized(PersonalDictionaryFileLock) {
-        val current = UserWordStore.of(decodeDefaultWords(readDefaults()), decodePersonalWords(readPersonal()))
+        val personalText = runCatching { readPersonal() }.getOrElse { return null }
+        if (isUnreadableList(personalText)) return null
+        val defaultsText = runCatching { readDefaults() }.getOrNull()
+        val current = UserWordStore.of(decodeDefaultWords(defaultsText), decodePersonalWords(personalText))
         val updated = transform(current)
         if (writePersonal(encodePersonalWords(updated.personalWords()))) updated else null
     }
 
-    /** [updatePersonal]'s counterpart for [DEFAULT_WORDS_FILE_NAME], under the same lock. Returns the list written, or null when the write failed. */
+    /**
+     * [updatePersonal]'s counterpart for [DEFAULT_WORDS_FILE_NAME], under the same lock, with the
+     * same rule for a file that cannot be read or is not a word list: nothing is written and the
+     * result is null. Returns the list written, or null when nothing was written.
+     */
     fun updateDefaults(
         readDefaults: () -> String?,
         writeDefaults: (String) -> Boolean,
         transform: (List<WordFrequency>) -> List<WordFrequency>,
     ): List<WordFrequency>? = synchronized(PersonalDictionaryFileLock) {
-        val updated = transform(decodeDefaultWords(readDefaults()))
+        val defaultsText = runCatching { readDefaults() }.getOrElse { return null }
+        if (isUnreadableList(defaultsText)) return null
+        val updated = transform(decodeDefaultWords(defaultsText))
         if (writeDefaults(encodeDefaultWords(updated))) updated else null
     }
+
+    /**
+     * True for file text that is there but is not a JSON array: a truncated or garbled file.
+     * Writing a list over it would lose whatever it still holds, so the update functions refuse.
+     * Null (no file) and blank text are an empty list, not a damaged one.
+     */
+    fun isUnreadableList(text: String?): Boolean = !text.isNullOrBlank() && parseArray(text) == null
 
     private fun parseArray(text: String?): JsonArray? {
         if (text.isNullOrBlank()) return null

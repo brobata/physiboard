@@ -353,6 +353,14 @@ non-blank), an edit pencil (rename) and a delete button per row. Renaming or del
 word edits `user_defaults.json`; if that file is unreadable the operation reports "save failed"
 rather than overwriting it. Every change sends the update broadcast.
 
+The same holds for `personal_dictionary.json`, for every writer (this screen, Undo, the
+add-substitution sheet, the keyboard's own add and delete, the keyboard's merge of new default
+words): a missing file is an empty list and the change starts from it, but a file that is there
+and cannot be read, or does not hold a JSON array (truncated, garbled), is left exactly as it
+is. Nothing is written and the edit reports "Personal dictionary: save failed" (a toast, on
+this screen and from the keyboard); the screen then shows what the files hold. A file that is
+a valid array with a damaged entry is read without that entry, as before.
+
 ## 7. Boundary handling
 
 ### 7.1 Which keys are boundaries
@@ -552,7 +560,8 @@ Save is enabled when the shortcut is non-blank. Saving stores `shortcut (trimmed
 word` at the front of the custom set for the current subtype language (falling back to `it` when
 the subtype has no language), adds that language to the enabled list if absent, reloads the
 rules, optionally adds the word to the personal dictionary, and shows "Substitution saved" or
-"Could not save substitution". Tapping outside dismisses. A blank shortcut or replacement, or the
+"Could not save substitution" ("Substitution saved. Personal dictionary: save failed" when the
+substitution saved but the word could not be added, see 6.3). Tapping outside dismisses. A blank shortcut or replacement, or the
 trigger `__name`, is refused.
 
 ## 9. The automatic correction decision

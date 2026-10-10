@@ -37,7 +37,7 @@ class UserWordFileStore(private val context: Context) {
      * [UserWordFileCodec.updatePersonal], which holds the lock from the read to the write, so
      * neither writes over a word the other saved. There is deliberately no "save this whole
      * list": a list read earlier is a stale copy. Returns the store written, or null when the
-     * write failed.
+     * write failed or the file is there but unreadable or damaged (left as it is).
      */
     suspend fun updatePersonal(transform: (UserWordStore) -> UserWordStore): UserWordStore? = withContext(Dispatchers.IO) {
         ensureDefaultsFileExists()
@@ -49,7 +49,7 @@ class UserWordFileStore(private val context: Context) {
     /** The same for the default words (SS6.3: "Renaming or deleting a default word edits `user_defaults.json`"). */
     suspend fun updateDefaults(transform: (List<WordFrequency>) -> List<WordFrequency>): List<WordFrequency>? = withContext(Dispatchers.IO) {
         ensureDefaultsFileExists()
-        val updated = UserWordFileCodec.updateDefaults({ readOrNull(defaultFile) }, { writeAtomically(defaultFile, it) }, transform)
+        val updated = UserWordFileCodec.updateDefaults({ readIfPresent(defaultFile) }, { writeAtomically(defaultFile, it) }, transform)
         if (updated != null) notifyUpdated()
         updated
     }
@@ -74,9 +74,12 @@ class UserWordFileStore(private val context: Context) {
 
 /** [UserWordFileStore.updatePersonal]'s file work, apart from [Context] so it is tested on the JVM. */
 internal fun updatePersonalFile(personalFile: File, defaultFile: File, transform: (UserWordStore) -> UserWordStore): UserWordStore? =
-    UserWordFileCodec.updatePersonal({ readOrNull(personalFile) }, { readOrNull(defaultFile) }, { writeAtomically(personalFile, it) }, transform)
+    UserWordFileCodec.updatePersonal({ readIfPresent(personalFile) }, { readIfPresent(defaultFile) }, { writeAtomically(personalFile, it) }, transform)
 
-private fun readOrNull(file: File): String? = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
+/** The file's text, or null when there is no file; throws when the file is there but cannot be read (the update functions then write nothing). */
+private fun readIfPresent(file: File): String? = if (file.exists()) file.readText() else null
+
+private fun readOrNull(file: File): String? = runCatching { readIfPresent(file) }.getOrNull()
 
 private fun writeAtomically(file: File, text: String): Boolean = runCatching {
     val tmp = File(file.parentFile, "${file.name}.tmp")

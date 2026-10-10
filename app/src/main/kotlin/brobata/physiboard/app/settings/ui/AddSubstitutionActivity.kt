@@ -115,15 +115,23 @@ class AddSubstitutionActivity : ComponentActivity() {
                                             )
                                         }
                                     }.isSuccess
-                                    if (saved && addToDictionary && isValidNewDictionaryWord(word)) {
+                                    // A word file that is there but damaged is left as it is, so the
+                                    // word is not added; the toast says so rather than claiming it was.
+                                    val wordSaved = if (saved && addToDictionary && isValidNewDictionaryWord(word)) {
                                         runCatching {
                                             val fileStore = UserWordFileStore(this@AddSubstitutionActivity)
                                             fileStore.updatePersonal { it.withPersonalWordAdded(word, System.currentTimeMillis()) }
-                                        }
+                                        }.getOrNull() != null
+                                    } else {
+                                        true
                                     }
                                     Toast.makeText(
                                         this@AddSubstitutionActivity,
-                                        if (saved) "Substitution saved" else "Could not save substitution",
+                                        when {
+                                            !saved -> "Could not save substitution"
+                                            !wordSaved -> "Substitution saved. Personal dictionary: save failed"
+                                            else -> "Substitution saved"
+                                        },
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                     finish()
