@@ -53,7 +53,7 @@ fun HelpScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, onShowTutorial:
                 }
             }
             header("")
-            item { NavigateRow("Show the tutorial", "The first-run walkthrough, again", icon = Icons.Outlined.School, onClick = onShowTutorial) }
+            item { NavigateRow("Show the tutorial", "The first-run pages again: turn on, choose, extras", icon = Icons.Outlined.School, onClick = onShowTutorial) }
             if (githubChecksAllowed) {
                 item {
                     NavigateRow(

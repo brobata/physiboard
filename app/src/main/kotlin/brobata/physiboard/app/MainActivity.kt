@@ -27,6 +27,8 @@ import brobata.physiboard.app.settings.ui.PhysiBoardTheme
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SettingsApp
 import brobata.physiboard.app.settings.ui.rememberSettingsController
+import brobata.physiboard.app.shell.ImeComponent
+import brobata.physiboard.app.shell.ImeProbeAndroid
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.shell.LaunchDestination
 import brobata.physiboard.core.shell.LaunchRouting
@@ -96,7 +98,21 @@ class MainActivity : ComponentActivity() {
                     return@LaunchedEffect
                 }
                 val shell = application.settingsSource.settings.first().shell
-                startDestination = when (LaunchRouting.decide(shell.tutorialCompleted, shell.lastSeenWhatsNewVersion.ifBlank { null }, BuildConfig.VERSION_NAME)) {
+                // spec: app-shell.md SS3, SS4. The first-run pages only while setup is not recorded
+                // and PhysiBoard is not already on and chosen; the probe is read only then.
+                val probe = if (shell.tutorialCompleted) null else ImeProbeAndroid.evaluate(this@MainActivity, ImeComponent.SERVICE_CLASS_NAME)
+                val decision = LaunchRouting.decide(
+                    tutorialCompleted = shell.tutorialCompleted,
+                    imeEnabled = probe?.enabled ?: false,
+                    imeSelected = probe?.selected ?: false,
+                    lastSeenWhatsNewVersion = shell.lastSeenWhatsNewVersion.ifBlank { null },
+                    currentVersionName = BuildConfig.VERSION_NAME,
+                )
+                if (decision.markSetupComplete) {
+                    // The same record Skip writes (SS4.6), so neither setup nor this version's note shows.
+                    controller.update { it.copy(shell = it.shell.copy(tutorialCompleted = true, lastSeenWhatsNewVersion = BuildConfig.VERSION_NAME)) }
+                }
+                startDestination = when (decision.destination) {
                     LaunchDestination.SETUP -> Routes.SETUP
                     LaunchDestination.WHATS_NEW -> Routes.WHATS_NEW
                     LaunchDestination.HOME -> Routes.HOME
