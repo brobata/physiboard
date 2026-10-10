@@ -92,11 +92,15 @@ private fun readOrNull(file: File): String? = runCatching { readIfPresent(file) 
 private fun writeAtomically(file: File, text: String): Boolean = writeAtomically(file, text.toByteArray(Charsets.UTF_8))
 
 /** Writes [bytes] to a temporary file beside [file] and renames it over [file], so a reader sees the old file or the new one, never half of one. The caller holds the word-file lock. */
-internal fun writeAtomically(file: File, bytes: ByteArray): Boolean = runCatching {
+internal fun writeAtomically(file: File, bytes: ByteArray): Boolean {
     val tmp = File(file.parentFile, "${file.name}.tmp")
-    tmp.writeBytes(bytes)
-    tmp.renameTo(file)
-}.getOrDefault(false)
+    val written = runCatching {
+        tmp.writeBytes(bytes)
+        tmp.renameTo(file)
+    }.getOrDefault(false)
+    if (!written) runCatching { tmp.delete() }
+    return written
+}
 
 /** One row the personal-dictionary screen shows, either tier, merged and sorted case-insensitively (SS6.3). */
 data class DictionaryWordRow(val word: String, val frequency: Int, val isPersonal: Boolean)

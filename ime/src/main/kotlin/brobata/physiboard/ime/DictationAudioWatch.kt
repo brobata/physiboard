@@ -135,6 +135,8 @@ internal class DictationAudioWatch(
 
     /** Traces one focus change with what can be said about where it came from. */
     fun traceFocusChange(change: Int, ownRequestHeld: Boolean) {
+        // A focus change queued before the session ended must not land after it (its privacy latch is gone by then).
+        if (!active) return
         val sinceListen = SystemClock.uptimeMillis() - lastListenStartMs
         val source = when {
             callActive() -> "call"
