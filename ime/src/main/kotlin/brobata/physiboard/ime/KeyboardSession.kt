@@ -255,6 +255,9 @@ internal class KeyboardSession(
     private fun pushPrivacy() {
         pipeline.learningAllowed = privacy.learningAllowed
         DiagnosticLog.privateNow = !privacy.learningAllowed
+        // dictation.md SS6.9: the dictation trace is silent too. Set before the dictation
+        // controller hears of the change below, so the line for that change is not written.
+        DictationTrace.privateNow = !privacy.learningAllowed
         // dictation.md SS4.3, app-shell.md SS31.2: private mode keeps speech on the phone.
         dictationController.onPrivateModeChanged(privacy.privateMode)
         refreshCaretBadge()

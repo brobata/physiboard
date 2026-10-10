@@ -93,7 +93,7 @@ internal class DictationAudioWatch(
         runCatching { manager.registerAudioPlaybackCallback(playbackCallback, handler) }
         runCatching { manager.addOnModeChangedListener(executor, modeListener) }
         lastRouteSummary = routeSummary()
-        trace("audio start route=$route $lastRouteSummary sco=${scoName(scoState)} mode=${modeName(manager.mode)} ${playbackSummary()}")
+        trace("audio start route=${route.name} $lastRouteSummary sco=${scoName(scoState)} mode=${modeName(manager.mode)} ${playbackSummary()}")
         // A Bluetooth microphone (a head unit's hands-free link) is connected: the recognizer may
         // get it, and its link takes about a second to come up, all of it silence. Wait for the
         // first recording to say which microphone it actually has (recordingCallback).

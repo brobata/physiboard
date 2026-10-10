@@ -550,7 +550,21 @@ tag `PhysiBoardDictationTrace`, info level, in every build (through `Log.println
 release log stripping leaves alone): the event (a result as its text length and a short hash,
 never the words), the text operations applied (compose/finish/commit with lengths), the effects
 and the phase. Two callbacks carrying the same text have the same hash; that is what the
-2026-10-07 investigations needed and the engine's own log could not say.
+2026-10-07 investigations needed and the engine's own log could not say. The hash is the first
+four bytes of SHA-256 over a key made fresh each time the process starts, so it matches only
+within one run and cannot be looked up.
+
+Every event and effect is written under a fixed label (`ReadyForSpeech`, `segment len=12 h=…`,
+`StopListening`, `ShowMessage:NETWORK_ERROR`, …), never a class name, because the release build
+is minified and a class name there would print as something like `a0`. Enum values print by
+name. The trigger's package and its text before the session are not written, nor is the
+package of a field that opens.
+
+Nothing is written, neither these lines nor the `audio` lines of 6.10, while learning is off:
+private mode, a field that asks for no personalized learning (an incognito tab), or before the
+stored private-mode setting has been read (app-shell.md SS31). The switch is the same one that
+silences the keyboard's own diagnostic trail, and it is set before dictation hears that private
+mode turned on, so not even that line is written.
 
 ### 6.10 The car: Bluetooth, Android Auto and music
 
