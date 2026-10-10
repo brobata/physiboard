@@ -1,5 +1,7 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.keys.AltBackspaceAction
+
 /**
  * What Backspace should do, in the order text-input.md SS8 lists: forward-delete alternatives
  * first (only without a selection), then undo, then the ordinary fall-through. The caller is
@@ -37,7 +39,7 @@ object Backspace {
     ): Decision {
         if (!hasSelection) {
             if (shiftHeld && settings.shiftBackspaceDeletesForward) return Decision.DeleteForward
-            if (altActive && settings.altBackspaceDeletesForward) return Decision.DeleteForward
+            if (altActive && settings.altBackspace == AltBackspaceAction.DELETE_FORWARD) return Decision.DeleteForward
             if (settings.backspaceAtStartDeletesForward && charsBeforeCursor == 0 && !shiftHeld && !altActive) {
                 return Decision.DeleteForward
             }
@@ -66,5 +68,34 @@ object DeleteWordBackward {
         while (i > 0 && textBeforeCursor[i - 1].isWhitespace()) i--
         while (i > 0 && !textBeforeCursor[i - 1].isWhitespace()) i--
         return textBeforeCursor.length - i
+    }
+}
+
+/**
+ * Alt+Backspace with `alt_backspace_delete` = `line`: how many characters before the cursor to
+ * delete so the cursor ends at the start of its line. spec: keys-and-modifiers.md SS7.7.
+ *
+ * - Text on the line before the cursor: all of it, back to the last line break (kept).
+ * - The cursor already at a line start: the line break before it, so the line joins the one
+ *   above (a Windows "\r\n" goes as one). Android's own text fields do the same when the line
+ *   holds nothing to delete.
+ * - No line break in [textBeforeCursor]: all of it. The caller reads a bounded window, so on a
+ *   line longer than that window this deletes what was read and the next press deletes more.
+ *   A window that begins in the middle of a surrogate pair keeps that half rather than
+ *   leaving half an emoji behind.
+ * - Empty: 0, nothing to delete on this side.
+ *
+ * A line break is never part of a longer grapheme (apart from "\r\n"), so stopping just after
+ * one never splits an emoji or an accented letter.
+ */
+object DeleteToLineStart {
+    fun countToDelete(textBeforeCursor: String): Int {
+        if (textBeforeCursor.isEmpty()) return 0
+        if (textBeforeCursor.last() == '\n') {
+            return if (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == '\r') 2 else 1
+        }
+        val lineBreak = textBeforeCursor.lastIndexOf('\n')
+        if (lineBreak >= 0) return textBeforeCursor.length - lineBreak - 1
+        return if (textBeforeCursor[0].isLowSurrogate()) textBeforeCursor.length - 1 else textBeforeCursor.length
     }
 }

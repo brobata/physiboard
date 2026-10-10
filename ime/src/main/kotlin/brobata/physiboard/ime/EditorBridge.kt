@@ -19,7 +19,14 @@ import brobata.physiboard.core.text.ImeAction
 import brobata.physiboard.core.text.TextWindow
 
 /** spec: text-input.md SS2, "unify": one 240-before read per keystroke replaces the eleven different window sizes `:core:text` used to ask for individually. */
-private const val TEXT_BEFORE_CURSOR_WINDOW = 240
+internal const val TEXT_BEFORE_CURSOR_WINDOW = 240
+
+/**
+ * The one keystroke that reads further back: Alt+Backspace deleting to the start of the line
+ * (keys-and-modifiers.md SS7.7). It replaces the 240-character read for that press, never adds
+ * to it. A line longer than this is deleted this much at a time, one press each.
+ */
+internal const val LINE_DELETE_WINDOW = 4000
 
 /**
  * What one read of the real editor produced: the [EditorSnapshot] `:core:text` understands, plus
@@ -50,8 +57,13 @@ internal data class EditorReadout(
  */
 private const val EXTRACTED_TEXT_LIMIT = 4096
 
-internal fun InputConnection.readEditorState(nowMs: Long, wholeDocument: Boolean, fallbackCursorAbsolute: Int): EditorReadout {
-    val before = runCatching { getTextBeforeCursor(TEXT_BEFORE_CURSOR_WINDOW, 0)?.toString() }.getOrNull()
+internal fun InputConnection.readEditorState(
+    nowMs: Long,
+    wholeDocument: Boolean,
+    fallbackCursorAbsolute: Int,
+    textBeforeWindow: Int = TEXT_BEFORE_CURSOR_WINDOW,
+): EditorReadout {
+    val before = runCatching { getTextBeforeCursor(textBeforeWindow, 0)?.toString() }.getOrNull()
     val extracted = if (wholeDocument) {
         // Bounded, not the whole document. A hint of zero means "everything you have", and in a
         // terminal with a long scrollback that is an enormous string copied across a process
@@ -132,7 +144,7 @@ internal fun InputConnection.applyEditorOps(
                 EditorOp.Haptic -> haptic(false)
                 EditorOp.HapticUndo -> haptic(true)
                 EditorOp.PassThroughKey -> Unit // KeyboardPipeline never lets this reach here alone; see toPipelineResult.
-                is EditorOp.SendKey -> sendEffectKeyEvent(op.effect, op.withShift, op.withCtrl)
+                is EditorOp.SendKey -> sendEffectKeyEvent(op.effect, op.withShift, op.withCtrl, op.withAlt)
                 is EditorOp.PerformEditorAction -> performContextMenuAction(EFFECT_TO_MENU_ID[op.effect] ?: continue)
                 is EditorOp.DispatchMediaKey -> dispatchMediaKey(op.effect)
             }
@@ -209,6 +221,8 @@ private val EFFECT_TO_KEYCODE: Map<EditEffect, Int> = mapOf(
     EditEffect.PAGE_UP to KeyEvent.KEYCODE_PAGE_UP,
     EditEffect.PAGE_DOWN to KeyEvent.KEYCODE_PAGE_DOWN,
     EditEffect.DELETE_CHAR_FORWARD to KeyEvent.KEYCODE_FORWARD_DEL,
+    // Sent only to a Terminal mode app, with Alt: the real Alt+Backspace (keys-and-modifiers.md SS7.7).
+    EditEffect.DELETE_TO_LINE_START to KeyEvent.KEYCODE_DEL,
     EditEffect.LINE_HOME to KeyEvent.KEYCODE_MOVE_HOME,
     EditEffect.LINE_END to KeyEvent.KEYCODE_MOVE_END,
     // spec trackpad-caret-nav.md SS5.6/keys-and-modifiers.md SS7.3: page_start/page_end are Ctrl+Home/Ctrl+End on the same two keys.
@@ -224,12 +238,13 @@ private val EFFECT_TO_MENU_ID: Map<EditEffect, Int> = mapOf(
     EditEffect.UNDO to android.R.id.undo,
 )
 
-/** spec: keys-and-modifiers.md SS7.3's `keycode` row: a real key down/up pair, [withShift]/[withCtrl] adding the matching meta bits. */
-private fun InputConnection.sendEffectKeyEvent(effect: EditEffect, withShift: Boolean, withCtrl: Boolean) {
+/** spec: keys-and-modifiers.md SS7.3's `keycode` row: a real key down/up pair, [withShift]/[withCtrl]/[withAlt] adding the matching meta bits. */
+private fun InputConnection.sendEffectKeyEvent(effect: EditEffect, withShift: Boolean, withCtrl: Boolean, withAlt: Boolean) {
     val keyCode = EFFECT_TO_KEYCODE[effect] ?: return
     var meta = 0
     if (withShift) meta = meta or KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
     if (withCtrl) meta = meta or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+    if (withAlt) meta = meta or KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
     val now = android.os.SystemClock.uptimeMillis()
     sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
     sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
@@ -450,8 +465,11 @@ internal fun fillFieldFacts(info: EditorInfo?): FieldFacts? {
  *   web field that answers "" to every read) keep working.
  *
  * A press handled one way has its release handled the same way (a text edit has no release to
- * send). Never in a terminal-mode app (its keys keep their exact hardware path, section 4.6) or
- * without an editable field. Enter already goes through the connection (per-app-behavior.md
+ * send). A press with Ctrl, Alt or Meta held is the app's to handle, as it was before this router
+ * existed: Android's own fields delete a word on Ctrl+Backspace and the line on Alt+Backspace,
+ * which a one-character text edit would take away. Shift and the lock keys do not count (Shift
+ * held while selecting still deletes the selection here). Never in a terminal-mode app (its keys
+ * keep their exact hardware path, section 4.6) or without an editable field. Enter already goes through the connection (per-app-behavior.md
  * SS3.4); Tab and the arrows stay on the window's path, since they also move focus between views.
  */
 internal class EditingKeyRouter {
@@ -467,7 +485,7 @@ internal class EditingKeyRouter {
         if (code != KeyEvent.KEYCODE_DEL && code != KeyEvent.KEYCODE_FORWARD_DEL) return false
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
-                if (!editableField || terminalMode) return false
+                if (!editableField || terminalMode || event.metaState and APP_HANDLED_MODIFIERS != 0) return false
                 val road = deleteAsText(connection, backward = code == KeyEvent.KEYCODE_DEL)
                 if (road == null) {
                     // Nothing to delete as text on that side, or no answer: the key itself, through the connection.
@@ -524,5 +542,8 @@ internal class EditingKeyRouter {
     private companion object {
         /** Enough text to hold the longest emoji sequence in front of the cursor. */
         const val GRAPHEME_WINDOW = 32
+
+        /** Modifiers that make Backspace or Delete a different command in the app (word or line delete). */
+        const val APP_HANDLED_MODIFIERS = KeyEvent.META_CTRL_MASK or KeyEvent.META_ALT_MASK or KeyEvent.META_META_MASK
     }
 }

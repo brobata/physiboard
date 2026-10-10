@@ -382,6 +382,7 @@ object TextInputPipeline {
     ): TextInputResult = when (effect) {
         EditEffect.DELETE_CHAR_BACKWARD -> handleBackspace(settings, state, editor, trust, shiftHeld, altActive)
         EditEffect.DELETE_SELECTION_OR_WORD_BACKWARD, EditEffect.DELETE_WORD_BACKWARD -> handleDeleteWordBackward(editor, trust, state)
+        EditEffect.DELETE_TO_LINE_START -> handleDeleteToLineStart(field, settings, state, editor, trust, shiftHeld, altActive)
         EditEffect.NEWLINE -> handleEnter(field, settings, resources, state, editor, trust, appProfile, ctrlActive, shiftActive, navModeActive)
         // Without a document read the key goes to the app (which can select all itself) rather than being eaten; same as handleWordMove.
         EditEffect.SELECT_ALL -> editor.fullText?.let { TextInputResult(listOf(SelectAll.apply(it.text)), state) } ?: TextInputResult(listOf(EditorOp.PassThroughKey), state)
@@ -940,9 +941,59 @@ object TextInputPipeline {
         val ops = when {
             hasSelection -> listOf(EditorOp.CommitText(""))
             textBefore == null -> listOf(EditorOp.PassThroughKey)
-            else -> listOf(EditorOp.DeleteSurrounding(DeleteWordBackward.countToDelete(textBefore.takeLast(100)), 0))
+            // A live composing span would stretch the delete to its start (BaseInputConnection), so it is finished first.
+            else -> listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(DeleteWordBackward.countToDelete(textBefore.takeLast(100)), 0))
         }
         return TextInputResult(ops, newState)
+    }
+
+    /**
+     * spec: keys-and-modifiers.md SS7.7, Alt+Backspace's `line` choice: everything from the
+     * cursor back to the start of its line goes in one edit ([DeleteToLineStart]), or, with the
+     * cursor already at a line start, the line break before it.
+     *
+     * It needs to know there is no selection (deleting before a selection would leave the
+     * selection and remove text the user never chose) and to read the line, so it acts only on
+     * a whole-document read and a text read this pipeline can trust. Without either, with a
+     * selection, or with nothing before the cursor, the press is an ordinary Backspace: the
+     * selection goes, or one character, or the key reaches the app ([handleBackspace]); it is
+     * never swallowed.
+     *
+     * In a Terminal mode app (per-app-behavior.md SS4.6) modifiers reach the app as the real
+     * combination, never as an edit made on its behalf, so the app gets the Alt+Backspace key
+     * itself and decides what it means (a shell deletes the word before the cursor).
+     *
+     * Afterwards the undo memory is cleared, as for any edit that takes the corrected word
+     * with it, and the tracked word is re-read from what is left before the cursor.
+     */
+    private fun handleDeleteToLineStart(
+        field: FieldContext,
+        settings: TextInputSettingsBundle,
+        state: TextInputState,
+        editor: EditorSnapshot,
+        trust: EditorTrust,
+        shiftHeld: Boolean,
+        altActive: Boolean,
+    ): TextInputResult {
+        val cleared = state.copy(
+            deferredSpace = DeferredSpace.cancelled(),
+            autoSpacePending = false,
+            justCommittedSentenceEnd = false,
+            autocorrectMemory = state.autocorrectMemory.afterBoundaryWithoutReplacement().afterTrackingLost(),
+        )
+        if (field.kind == FieldKind.RAW_MODE_APP) {
+            return TextInputResult(listOf(EditorOp.SendKey(EditEffect.DELETE_TO_LINE_START, withAlt = true)), cleared.copy(currentWord = state.currentWord.reset()))
+        }
+        val window = if (trust.contextRulesAllowed) editor.fullText else null
+        val textBefore = editor.contextTextBeforeCursor(trust, state.currentWord.word)
+        val count = textBefore?.let(DeleteToLineStart::countToDelete) ?: 0
+        if (window == null || window.hasSelection || textBefore == null || count == 0) {
+            return handleBackspace(settings, state, editor, trust, shiftHeld, altActive)
+        }
+        val left = textBefore.substring(0, textBefore.length - count)
+        // A live composing span (a dictation partial, an app's own composition) would stretch the delete
+        // back from the span's start instead of the cursor, eating the lines above; finish it first.
+        return TextInputResult(listOf(EditorOp.FinishComposing, EditorOp.DeleteSurrounding(count, 0)), cleared.copy(currentWord = state.currentWord.reset().syncedFrom(left)))
     }
 
     // ---------------------------------------------------------------------------------------

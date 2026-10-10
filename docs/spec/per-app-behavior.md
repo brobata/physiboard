@@ -459,6 +459,7 @@ In a field classified "app raw mode" (section 4.1):
 | An Alt-layer character | key presses, as in every app (D7) |
 | Ctrl in any form (held Fn chord, a tapped one-shot, a double-tap latch) plus a key | a real Ctrl combo. A held chord whose event already carries Ctrl passes through as the physical event; otherwise the keyboard sends Ctrl plus the key (the layout-aware shortcut key, section 7.3 of `keys-and-modifiers.md`), with Shift when Shift is held. The Fn Layer map's editor actions (select all, copy, cut, paste, undo, the selection and word moves) and "no mapping" fallbacks such as Ctrl+Backspace's word delete do not run: Ctrl+A is ^A, Ctrl+Z is ^Z, Ctrl+C is ^C, Ctrl+D is ^D, Ctrl+E is ^E. A tapped Ctrl is spent by the key, a latched one stays until tapped off. Only keys that type or edit (letters, digits, punctuation, Space, Enter, Backspace, Tab, Esc, the arrows, Home/End, PgUp/PgDn, forward delete) become combos; Back, volume, Home, app switch, media and swipe-to-delete keep their usual handling, so a latched Ctrl never takes Back or volume from the system |
 | Esc, Tab, the arrows, Home/End, PgUp/PgDn | the key itself (they were already passed through) |
+| Alt+Backspace with `alt_backspace_delete` = `line` | the real Alt+Backspace key, Alt meta set, for a held, tapped or latched Alt (`keys-and-modifiers.md` 7.7); the keyboard deletes nothing itself |
 
 Kept as elsewhere, so they can take a key a terminal might want (documented, not changed):
 

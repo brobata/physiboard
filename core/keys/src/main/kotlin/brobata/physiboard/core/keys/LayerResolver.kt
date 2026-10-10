@@ -43,10 +43,10 @@ object LayerResolver {
         val variationsAllowed: Boolean = true,
     )
 
-    /** spec: keys-and-modifiers.md SS7.7 (the three forward-delete-alternative switches) and SS7.1 (swipe-to-delete). */
+    /** spec: keys-and-modifiers.md SS7.7 (the Backspace alternatives) and SS7.1 (swipe-to-delete). */
     data class LayerResolverSettings(
         val shiftBackspaceDelete: Boolean = false,
-        val altBackspaceDelete: Boolean = false,
+        val altBackspace: AltBackspaceAction = AltBackspaceAction.DELETE_CHARACTER,
         val backspaceAtStartDelete: Boolean = false,
         val swipeToDeleteEnabled: Boolean = false,
     )
@@ -127,8 +127,10 @@ object LayerResolver {
 
         var working = if (stroke.key == ENTER) consumeShiftOneShot(state) else state
 
-        if (stroke.key == BACKSPACE && !context.hasSelection && isForwardDeleteAlternative(stroke, working, resolverSettings, context)) {
-            return Resolution(working, typing, Action.Edit(EditEffect.DELETE_CHAR_FORWARD))
+        if (stroke.key == BACKSPACE && !context.hasSelection) {
+            backspaceAlternative(stroke, working, resolverSettings, context)?.let { effect ->
+                return Resolution(consumeAltOneShotIfUsed(working, stroke, effect, resolverSettings), typing, Action.Edit(effect))
+            }
         }
 
         val ctrlActiveNow = working.isCtrlActive(stroke.meta.ctrl)
@@ -279,22 +281,46 @@ object LayerResolver {
     }
 
     // -----------------------------------------------------------------
-    // Forward-delete alternatives. spec: keys-and-modifiers.md SS7.7.
+    // Backspace alternatives. spec: keys-and-modifiers.md SS7.7.
     // -----------------------------------------------------------------
 
-    private fun isForwardDeleteAlternative(
+    /**
+     * What Backspace does instead of deleting one character before the caret, or null for the
+     * ordinary path. The caller has already ruled out a selection. Shift's forward delete is
+     * checked first, so Alt+Shift+Backspace with both rows on deletes forward once. The
+     * line delete gives way to Ctrl in any form: Ctrl+Alt+Backspace stays Ctrl's word delete.
+     */
+    private fun backspaceAlternative(
         stroke: KeyStroke,
         state: ModifierState,
         settings: LayerResolverSettings,
         context: Context,
-    ): Boolean {
+    ): EditEffect? {
         val altActive = state.isAltActive(stroke.meta.alt)
+        val ctrlActive = state.isCtrlActive(stroke.meta.ctrl) || (context.isNumericField && state.isCtrlPhysicalCombo(stroke.meta.ctrl))
         return when {
-            settings.shiftBackspaceDelete && stroke.meta.shift -> true
-            settings.altBackspaceDelete && altActive -> true
-            settings.backspaceAtStartDelete && !stroke.meta.shift && !altActive && !context.hasTextBeforeCaret -> true
+            settings.shiftBackspaceDelete && stroke.meta.shift -> EditEffect.DELETE_CHAR_FORWARD
+            altActive && settings.altBackspace == AltBackspaceAction.DELETE_FORWARD -> EditEffect.DELETE_CHAR_FORWARD
+            altActive && !ctrlActive && settings.altBackspace == AltBackspaceAction.DELETE_TO_LINE_START -> EditEffect.DELETE_TO_LINE_START
+            settings.backspaceAtStartDelete && !stroke.meta.shift && !altActive && !context.hasTextBeforeCaret -> EditEffect.DELETE_CHAR_FORWARD
+            else -> null
+        }
+    }
+
+    /**
+     * A tapped (one-shot) Alt is spent on the Backspace it changed, exactly as it is on a letter
+     * it changes (SS7.2); a held or locked Alt stays. When Shift's own row decided the press,
+     * Alt played no part and an armed one-shot waits for the next key.
+     */
+    private fun consumeAltOneShotIfUsed(state: ModifierState, stroke: KeyStroke, effect: EditEffect, settings: LayerResolverSettings): ModifierState {
+        if (!state.alt.oneShot) return state
+        val shiftDecided = settings.shiftBackspaceDelete && stroke.meta.shift
+        val altDecided = !shiftDecided && when (effect) {
+            EditEffect.DELETE_TO_LINE_START -> true
+            EditEffect.DELETE_CHAR_FORWARD -> settings.altBackspace == AltBackspaceAction.DELETE_FORWARD
             else -> false
         }
+        return if (altDecided) state.copy(alt = state.alt.copy(oneShot = false)) else state
     }
 
     // -----------------------------------------------------------------

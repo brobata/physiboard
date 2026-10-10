@@ -55,7 +55,12 @@ class BackspaceWithoutViewFocusTest {
         clock += 50
         val key = if (keyCode == KeyEvent.KEYCODE_DEL) KeyId.Control(ControlKey.BACKSPACE) else KeyId.Control(ControlKey.FORWARD_DELETE)
         val edge = if (action == KeyEvent.ACTION_DOWN) KeyEdge.DOWN else KeyEdge.UP
-        val result = pipeline.onKeyStroke(KeyStroke(key, edge, repeat, clock, ModifierFlags()), EditorSnapshot(textBeforeCursor = box.beforeCursor(), nowMs = clock))
+        val flags = ModifierFlags(
+            shift = meta and KeyEvent.META_SHIFT_ON != 0,
+            ctrl = meta and KeyEvent.META_CTRL_ON != 0,
+            alt = meta and KeyEvent.META_ALT_ON != 0,
+        )
+        val result = pipeline.onKeyStroke(KeyStroke(key, edge, repeat, clock, flags), EditorSnapshot(textBeforeCursor = box.beforeCursor(), nowMs = clock))
         val event = KeyEvent(clock, clock, action, keyCode, repeat, meta)
         val consumed = result.consumed || router.route(box, event, editableField = kind != FieldKind.NOT_EDITABLE, terminalMode = kind == FieldKind.RAW_MODE_APP)
         if (!consumed) window += event
@@ -87,6 +92,37 @@ class BackspaceWithoutViewFocusTest {
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN, meta = KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON)
         press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_UP)
         assertEquals("ho", box.text.toString())
+    }
+
+    @Test
+    fun `held Ctrl+Backspace goes to the app as the real key, for its own word delete`() {
+        val ctrl = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        assertFalse(press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN, meta = ctrl))
+        assertFalse(press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_UP, meta = ctrl))
+        assertEquals("hello", box.text.toString())
+        assertEquals(listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP), window.map { it.action })
+        assertTrue(window.all { it.keyCode == KeyEvent.KEYCODE_DEL && it.isCtrlPressed })
+    }
+
+    @Test
+    fun `held Alt+Backspace goes to the app as the real key, for its own line delete`() {
+        val alt = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+        assertFalse(press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_DOWN, meta = alt))
+        assertFalse(press(KeyEvent.KEYCODE_DEL, KeyEvent.ACTION_UP, meta = alt))
+        assertEquals("hello", box.text.toString())
+        assertTrue(window.all { it.keyCode == KeyEvent.KEYCODE_DEL && it.isAltPressed })
+        assertEquals(2, window.size)
+    }
+
+    @Test
+    fun `a modified forward delete goes to the app too`() {
+        box.select(0, 0)
+        for (meta in listOf(KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON, KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON)) {
+            assertFalse(press(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.ACTION_DOWN, meta = meta))
+            assertFalse(press(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.ACTION_UP, meta = meta))
+        }
+        assertEquals("hello", box.text.toString())
+        assertEquals(4, window.size)
     }
 
     @Test

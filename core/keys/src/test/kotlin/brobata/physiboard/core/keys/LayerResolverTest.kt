@@ -143,6 +143,96 @@ class LayerResolverTest {
         assertFalse(result.action == Action.Edit(EditEffect.DELETE_CHAR_FORWARD))
     }
 
+    // SS7.7, Alt+Backspace (`alt_backspace_delete`) ---------------------------------------------
+
+    private val backspace = KeyId.Control(ControlKey.BACKSPACE)
+    private val lineSettings = LayerResolver.LayerResolverSettings(altBackspace = AltBackspaceAction.DELETE_TO_LINE_START)
+    private val forwardSettings = LayerResolver.LayerResolverSettings(altBackspace = AltBackspaceAction.DELETE_FORWARD)
+
+    private fun altBackspace(
+        state: ModifierState,
+        resolver: LayerResolver.LayerResolverSettings,
+        meta: ModifierFlags = ModifierFlags(),
+        context: LayerResolver.Context = field,
+    ) = LayerResolver.resolveKeyDown(state, TypingSessionState(), down(backspace, 0, meta = meta), layout(), settings, resolver, context)
+
+    @Test
+    fun `T49b - by default Alt+Backspace deletes one character, as Backspace alone`() {
+        val result = altBackspace(ModifierState(), resolverSettings, meta = ModifierFlags(alt = true))
+        assertEquals(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD), result.action)
+    }
+
+    @Test
+    fun `T49c - held Alt deletes to the start of the line`() {
+        val result = altBackspace(ModifierState(), lineSettings, meta = ModifierFlags(alt = true))
+        assertEquals(Action.Edit(EditEffect.DELETE_TO_LINE_START), result.action)
+    }
+
+    @Test
+    fun `T49d - a tapped Alt deletes to the start of the line and is spent`() {
+        val result = altBackspace(ModifierState(alt = AltState(oneShot = true)), lineSettings)
+        assertEquals(Action.Edit(EditEffect.DELETE_TO_LINE_START), result.action)
+        assertFalse(result.state.alt.oneShot)
+    }
+
+    @Test
+    fun `T49e - a locked Alt deletes to the start of the line and stays locked`() {
+        val result = altBackspace(ModifierState(alt = AltState(latched = true)), lineSettings)
+        assertEquals(Action.Edit(EditEffect.DELETE_TO_LINE_START), result.action)
+        assertTrue(result.state.alt.latched)
+    }
+
+    @Test
+    fun `T49f - with a selection Alt+Backspace is an ordinary Backspace and Alt is still spent`() {
+        val result = altBackspace(ModifierState(alt = AltState(oneShot = true)), lineSettings, context = field.copy(hasSelection = true))
+        assertEquals(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD), result.action)
+        assertFalse(result.state.alt.oneShot)
+    }
+
+    @Test
+    fun `T49g - without Alt the line choice changes nothing`() {
+        val result = altBackspace(ModifierState(), lineSettings)
+        assertEquals(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD), result.action)
+    }
+
+    @Test
+    fun `T49h - Ctrl+Alt+Backspace stays Ctrl's, whatever the Alt choice`() {
+        for (ctrl in listOf(ModifierState(ctrl = CtrlState(oneShot = true)), ModifierState())) {
+            val meta = if (ctrl.ctrl.oneShot) ModifierFlags(alt = true) else ModifierFlags(alt = true, ctrl = true)
+            val expected = altBackspace(ctrl, resolverSettings, meta = meta).action
+            assertEquals(expected, altBackspace(ctrl, lineSettings, meta = meta).action)
+        }
+    }
+
+    @Test
+    fun `T49i - Shift's forward delete wins over the line delete, and leaves a tapped Alt armed`() {
+        val both = lineSettings.copy(shiftBackspaceDelete = true)
+        val result = altBackspace(ModifierState(alt = AltState(oneShot = true)), both, meta = ModifierFlags(shift = true))
+        assertEquals(Action.Edit(EditEffect.DELETE_CHAR_FORWARD), result.action)
+        assertTrue(result.state.alt.oneShot)
+    }
+
+    @Test
+    fun `T49j - with Shift's row off, Alt+Shift+Backspace deletes to the start of the line`() {
+        val result = altBackspace(ModifierState(), lineSettings, meta = ModifierFlags(alt = true, shift = true))
+        assertEquals(Action.Edit(EditEffect.DELETE_TO_LINE_START), result.action)
+    }
+
+    @Test
+    fun `T49k - the forward choice deletes forward and spends a tapped Alt`() {
+        val result = altBackspace(ModifierState(alt = AltState(oneShot = true)), forwardSettings)
+        assertEquals(Action.Edit(EditEffect.DELETE_CHAR_FORWARD), result.action)
+        assertFalse(result.state.alt.oneShot)
+    }
+
+    @Test
+    fun `T49l - Shift+Backspace and Ctrl+Backspace are unchanged by the line choice`() {
+        val shift = ModifierFlags(shift = true)
+        assertEquals(altBackspace(ModifierState(), resolverSettings, meta = shift).action, altBackspace(ModifierState(), lineSettings, meta = shift).action)
+        val ctrl = ModifierFlags(ctrl = true)
+        assertEquals(altBackspace(ModifierState(), resolverSettings, meta = ctrl).action, altBackspace(ModifierState(), lineSettings, meta = ctrl).action)
+    }
+
     @Test
     fun `T59 - a numeric field still pastes on a Ctrl-held V instead of typing the Alt digit`() {
         val result = resolve(ModifierState(), down(letter('V'), 0, meta = ModifierFlags(ctrl = true)), context = numericField)

@@ -1,6 +1,7 @@
 package brobata.physiboard.ime
 
 import brobata.physiboard.core.actions.emoji.SkinTone
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.trackpad.ActivationMode
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
@@ -275,7 +276,7 @@ class ImeSettingsTest {
         val s = Settings(
             typing = TypingPrefs(
                 capitalizeAtTextStart = false, capitalizeAfterSentenceEnd = false, capitalizeRestrictedFields = true,
-                doubleSpaceToPeriod = false, clearAltOnSpace = false, shiftBackspaceDeletesForward = true, altBackspaceDeletesForward = true,
+                doubleSpaceToPeriod = false, clearAltOnSpace = false, shiftBackspaceDeletesForward = true, altBackspace = AltBackspaceAction.DELETE_TO_LINE_START,
                 backspaceAtStartDeletesForward = true, removeSpaceBefore = ".,", spaceBeforeNextText = "?!", commaSpace = true,
                 spacedHyphenToDash = true, dashStyle = DashStyle.EM_DASH, smartQuotes = true, smartQuoteStyle = SmartQuoteStyle.ENGLISH_CURLY,
                 frenchPunctuationSpacing = true, frenchPunctuationOnlyFrench = true, swipeToDelete = true,
@@ -292,8 +293,10 @@ class ImeSettingsTest {
         assertEquals(DashStyle.EM_DASH, k.textInput.spacing.dashStyle)
         assertEquals(SmartQuoteStyle.ENGLISH_CURLY, k.textInput.spacing.smartQuoteStyle)
         assertTrue(k.textInput.spacing.frenchPunctuationSpacing && k.textInput.spacing.frenchPunctuationOnlyFrench)
-        assertTrue(k.textInput.backspace.shiftBackspaceDeletesForward && k.textInput.backspace.altBackspaceDeletesForward && k.textInput.backspace.backspaceAtStartDeletesForward)
-        assertTrue(k.resolver.shiftBackspaceDelete && k.resolver.altBackspaceDelete && k.resolver.backspaceAtStartDelete && k.resolver.swipeToDeleteEnabled)
+        assertTrue(k.textInput.backspace.shiftBackspaceDeletesForward && k.textInput.backspace.backspaceAtStartDeletesForward)
+        assertEquals(AltBackspaceAction.DELETE_TO_LINE_START, k.textInput.backspace.altBackspace)
+        assertTrue(k.resolver.shiftBackspaceDelete && k.resolver.backspaceAtStartDelete && k.resolver.swipeToDeleteEnabled)
+        assertEquals(AltBackspaceAction.DELETE_TO_LINE_START, k.resolver.altBackspace)
         assertFalse(k.modifier.clearAltOnSpace)
     }
 

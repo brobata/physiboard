@@ -2124,7 +2124,12 @@ internal class KeyboardSession(
         val readout = if (readsNothing) {
             EditorReadout(EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs), documentStartOffset = 0, cursorAbsolute = lastReportedSelStart)
         } else {
-            ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
+            ic.readEditorState(
+                stroke.timeMs,
+                wholeDocument = pipeline.needsWholeDocument(stroke),
+                fallbackCursorAbsolute = lastReportedSelStart,
+                textBeforeWindow = pipeline.textBeforeWindow(stroke),
+            )
         }
         val tRead = System.nanoTime()
         val glyphBefore = pipeline.modifierGlyphInput()
@@ -2155,7 +2160,12 @@ internal class KeyboardSession(
         }
         val tApply = System.nanoTime()
         if (result.appMayEditField && stroke.edge == KeyEdge.DOWN && !AppliedEditAccounting.movesCursor(result.ops)) {
-            AppliedEditAccounting.expectedCursorAfterPassThrough(stroke.key, readout.cursorAbsolute, hasSelection = !lastReportedSelectionCollapsed)?.let { expected ->
+            AppliedEditAccounting.expectedCursorAfterPassThrough(
+                stroke.key,
+                readout.cursorAbsolute,
+                hasSelection = !lastReportedSelectionCollapsed,
+                ctrlOrAltHeld = stroke.meta.ctrl || stroke.meta.alt,
+            )?.let { expected ->
                 ownEdit = OwnEditExpectation(selStart = expected, expiresAtMs = SystemClock.uptimeMillis() + OwnEditExpectation.SETTLE_WINDOW_MS)
             }
         }

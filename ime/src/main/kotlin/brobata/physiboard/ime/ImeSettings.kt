@@ -104,7 +104,7 @@ internal object ImeSettings {
             statusBar = stripSettings(s, subtypeLocale),
             resolver = LayerResolver.LayerResolverSettings(
                 shiftBackspaceDelete = s.typing.shiftBackspaceDeletesForward,
-                altBackspaceDelete = s.typing.altBackspaceDeletesForward,
+                altBackspace = s.typing.altBackspace,
                 backspaceAtStartDelete = s.typing.backspaceAtStartDeletesForward,
                 swipeToDeleteEnabled = s.typing.swipeToDelete,
             ),
@@ -128,7 +128,7 @@ internal object ImeSettings {
                 ),
                 backspace = BackspaceSettings(
                     shiftBackspaceDeletesForward = s.typing.shiftBackspaceDeletesForward,
-                    altBackspaceDeletesForward = s.typing.altBackspaceDeletesForward,
+                    altBackspace = s.typing.altBackspace,
                     backspaceAtStartDeletesForward = s.typing.backspaceAtStartDeletesForward,
                 ),
                 lengthChangeAllowance = LengthChangeAllowance.forLanguage(subtypeLocale),

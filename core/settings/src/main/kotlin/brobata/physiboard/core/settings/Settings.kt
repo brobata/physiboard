@@ -3,6 +3,7 @@ package brobata.physiboard.core.settings
 import brobata.physiboard.core.actions.emoji.SkinTone
 import brobata.physiboard.core.actions.feedback.HapticIntensity
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
 import brobata.physiboard.core.pointer.keyboardswipe.TrackpadGestureProvider
@@ -77,7 +78,12 @@ data class TypingPrefs(
     val doubleSpaceToPeriod: Boolean = true,
     val clearAltOnSpace: Boolean = true,
     val shiftBackspaceDeletesForward: Boolean = false,
-    val altBackspaceDeletesForward: Boolean = false,
+    /**
+     * `alt_backspace_delete`: what Alt+Backspace does. Left alone (one character, or the app's own) by
+     * default, because anything that changes what Backspace does ships off until it has been
+     * used on the phone (keys-and-modifiers.md SS7.7).
+     */
+    val altBackspace: AltBackspaceAction = AltBackspaceAction.DELETE_CHARACTER,
     val backspaceAtStartDeletesForward: Boolean = false,
     /** The "Remove before" list, `auto_space_punctuation`: a subset of `.,;:!?\/")]}` in that order. spec: text-input.md SS6.3. */
     val removeSpaceBefore: String = "",

@@ -22,6 +22,7 @@ import brobata.physiboard.core.keys.AccidentalPressFilter
 import brobata.physiboard.core.keys.AccidentalPressFilterState
 import brobata.physiboard.core.keys.AccidentalPressSettings
 import brobata.physiboard.core.keys.Action
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.keys.BounceFilter
 import brobata.physiboard.core.keys.BounceFilterState
 import brobata.physiboard.core.keys.BounceKeySettings
@@ -876,6 +877,24 @@ internal class KeyboardPipeline(
             is KeyId.Letter, is KeyId.Digit, is KeyId.Punctuation ->
                 modifierState.isCtrlActive(stroke.meta.ctrl) || (modifierState.sym.togglePending && !modifierState.sym.chordUsed)
         }
+    }
+
+    /**
+     * How many characters before the cursor to read for [stroke]: the unified 240 (text-input.md
+     * SS19), or, for an Alt+Backspace that will delete to the start of the line
+     * (keys-and-modifiers.md SS7.7), [LINE_DELETE_WINDOW] in its place, so the line can be found
+     * in one read. Predicted from the same facts LayerResolver decides on; a wrong guess only
+     * changes how far back that one read reaches.
+     */
+    fun textBeforeWindow(stroke: KeyStroke): Int {
+        val lineDelete = stroke.edge == KeyEdge.DOWN &&
+            stroke.key == KeyId.Control(ControlKey.BACKSPACE) &&
+            settings.resolver.altBackspace == AltBackspaceAction.DELETE_TO_LINE_START &&
+            activeField.isReallyEditable &&
+            activeField.kind != FieldKind.RAW_MODE_APP &&
+            modifierState.isAltActive(stroke.meta.alt) &&
+            !modifierState.isCtrlActive(stroke.meta.ctrl)
+        return if (lineDelete) LINE_DELETE_WINDOW else TEXT_BEFORE_CURSOR_WINDOW
     }
 
     /**

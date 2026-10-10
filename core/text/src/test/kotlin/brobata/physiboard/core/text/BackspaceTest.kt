@@ -1,5 +1,6 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.keys.AltBackspaceAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -28,7 +29,7 @@ class BackspaceTest {
 
     @Test
     fun `T71 alt-backspace deletes forward when enabled`() {
-        val settings = noAlternatives.copy(altBackspaceDeletesForward = true)
+        val settings = noAlternatives.copy(altBackspace = AltBackspaceAction.DELETE_FORWARD)
         val decision = Backspace.decide(hasSelection = false, shiftHeld = false, altActive = true, settings, charsBeforeCursor = 2, AutocorrectMemory(), null)
         assertEquals(Backspace.Decision.DeleteForward, decision)
     }
@@ -63,7 +64,7 @@ class BackspaceTest {
 
     @Test
     fun `T76 both rows on, shift held, fires once`() {
-        val settings = noAlternatives.copy(shiftBackspaceDeletesForward = true, altBackspaceDeletesForward = true)
+        val settings = noAlternatives.copy(shiftBackspaceDeletesForward = true, altBackspace = AltBackspaceAction.DELETE_FORWARD)
         val decision = Backspace.decide(hasSelection = false, shiftHeld = true, altActive = false, settings, charsBeforeCursor = 2, AutocorrectMemory(), null)
         assertEquals(Backspace.Decision.DeleteForward, decision)
     }

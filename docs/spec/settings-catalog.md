@@ -81,7 +81,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `auto_show_keyboard` | boolean | true | same | Bring the keyboard up when a field gains focus | Smart Features > "Show keyboard automatically" |
 | `physical_keyboard_currency_symbol` | string, one of `€ $ £ ¥ ₹ ₽ ₿ ¤`; anything else reads as `€` | `€` | `$` | The currency key's output | Smart Features > "Currency Symbol" chips |
 | `shift_backspace_delete` | boolean | false | | Shift+Backspace deletes forward | Typing > Backspace > "Shift + Backspace deletes forward" |
-| `alt_backspace_delete` | boolean | false | | Alt+Backspace deletes forward | Typing > Backspace > "Alt + Backspace deletes forward" |
+| `alt_backspace_delete` | string: `character`, `line` or `forward`; `true` reads as `forward` (the row was a boolean through 3.2.0, true meaning forward), anything else as `character` | `character` | | What Alt+Backspace deletes: one character, back to the start of the line, or the character after the cursor (`keys-and-modifiers.md` 7.7) | Typing > Backspace > "Alt + Backspace" dropdown: "Delete one character", "Delete to the start of the line", "Delete forward" |
 | `backspace_at_start_delete` | boolean | false | | Backspace at line start deletes forward | Typing > Backspace > "At the start of a line, delete forward" |
 | `auto_space_punctuation` | string: an ordered subset of the characters `.,;:!?\/")]}` in that canonical order, other characters dropped | `""` | | Which punctuation gets a space put before it | Typing > More punctuation > "Spaces around punctuation", "before" column |
 | `space_after_punctuation` | string, same shape | `""` | | Which punctuation gets a space put after it | Same dialog, "after" column |

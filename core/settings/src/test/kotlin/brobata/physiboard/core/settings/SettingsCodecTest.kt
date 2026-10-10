@@ -2,6 +2,7 @@ package brobata.physiboard.core.settings
 
 import brobata.physiboard.core.actions.feedback.HapticIntensity
 import brobata.physiboard.core.actions.feedback.TypingSoundMode
+import brobata.physiboard.core.keys.AltBackspaceAction
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.keyboardswipe.SwipeToDeleteProvider
 import brobata.physiboard.core.pointer.keyboardswipe.TrackpadGestureProvider
@@ -27,7 +28,7 @@ class SettingsCodecTest {
         typing = TypingPrefs(
             capitalizeAtTextStart = false, capitalizeAfterSentenceEnd = false, capitalizeRestrictedFields = true,
             doubleSpaceToPeriod = false, clearAltOnSpace = false, shiftBackspaceDeletesForward = true,
-            altBackspaceDeletesForward = true, backspaceAtStartDeletesForward = true, removeSpaceBefore = ".,?",
+            altBackspace = AltBackspaceAction.DELETE_TO_LINE_START, backspaceAtStartDeletesForward = true, removeSpaceBefore = ".,?",
             spaceBeforeNextText = "!?", commaSpace = true, spacedHyphenToDash = true, dashStyle = DashStyle.EM_DASH,
             smartQuotes = true, smartQuoteStyle = SmartQuoteStyle.ENGLISH_CURLY, frenchPunctuationSpacing = true,
             frenchPunctuationOnlyFrench = true, swipeToDelete = true,
@@ -146,6 +147,22 @@ class SettingsCodecTest {
     @Test
     fun `an empty map is the defaults`() {
         assertEquals(Settings(), SettingsCodec.fromMap(emptyMap()))
+    }
+
+    @Test
+    fun `alt_backspace_delete writes its three choices and still reads the old boolean`() {
+        for (action in AltBackspaceAction.entries) {
+            val s = Settings().let { it.copy(typing = it.typing.copy(altBackspace = action)) }
+            assertEquals(action, SettingsCodec.fromMap(SettingsCodec.toMap(s)).typing.altBackspace)
+        }
+        assertEquals("character", SettingsCodec.toMap(Settings())[SettingsKeys.ALT_BACKSPACE_DELETE])
+        fun read(stored: String) = SettingsCodec.fromMap(mapOf(SettingsKeys.ALT_BACKSPACE_DELETE to stored)).typing.altBackspace
+        assertEquals(AltBackspaceAction.DELETE_TO_LINE_START, read("line"))
+        assertEquals(AltBackspaceAction.DELETE_FORWARD, read("forward"))
+        // Through 3.2.0 the row was a boolean: true meant forward, and still does.
+        assertEquals(AltBackspaceAction.DELETE_FORWARD, read("true"))
+        assertEquals(AltBackspaceAction.DELETE_CHARACTER, read("false"))
+        assertEquals(AltBackspaceAction.DELETE_CHARACTER, read("sideways"))
     }
 
     @Test

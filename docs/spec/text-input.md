@@ -457,8 +457,11 @@ selection. Before falling through the keyboard does the following, in order:
 1. Cancels the deferred-space debt and clears the auto-space flag.
 2. If text is selected, none of the forward-delete alternatives below apply.
 3. **Shift+Backspace** (`shift_backspace_delete`, default off) or **Alt+Backspace**
-   (`alt_backspace_delete`, default off, Alt held, latched or one-shot): deletes one
-   character after the cursor instead, and consumes the key.
+   (`alt_backspace_delete` = `forward`, Alt held, latched or one-shot): deletes one
+   character after the cursor instead, and consumes the key. With `alt_backspace_delete` =
+   `line`, Alt+Backspace deletes from the cursor back to the start of its line instead
+   (`keys-and-modifiers.md` 7.7). The default, `character`, leaves Alt+Backspace an ordinary
+   Backspace.
 4. **Backspace at line start** (`backspace_at_start_delete`, default off), with neither
    Shift nor Alt: if the app reports zero characters before the cursor, deletes one character
    after it and consumes the key. (It checks the field start, not the line start, despite the
@@ -510,6 +513,15 @@ events through view focus (Google Messages does: hence 98f8b9b3, which makes an 
 Backspace a text edit rather than a key event). With the optional accessibility service on, the
 first key typed into such a field also asks the service to focus the box, as a tap would, and to
 put the cursor back where it was (`accessibility_focus_field`, per-app-behavior.md 16.2).
+
+A Backspace or forward delete pressed with Ctrl, Alt or Meta held (on the event's meta state;
+Shift and the lock keys do not count) is not taken this way: it goes to the app's window as the
+real key, as it did before 3.2, because Android's own fields act on it themselves. Ctrl+Backspace
+deletes the word before the cursor and Alt+Backspace the line under it there; a one-character
+text edit took both away in 3.2.0. A tapped or latched Ctrl or Alt puts no meta on the event and
+is the keyboard's to resolve (Ctrl+Backspace's own word delete, section 8; Alt+Backspace,
+`keys-and-modifiers.md` 7.7). The keyboard does not predict where the cursor lands after such a
+key: the app's report is taken as it comes.
 
 ## 9. Auto-capitalization
 
@@ -749,7 +761,7 @@ that screen.
 | `auto_show_keyboard` | boolean | true | create the input view when a really editable field starts (status bar surface) | Smart Features, Keyboard behavior | Show keyboard automatically |
 | `physical_keyboard_currency_symbol` | string | "€" | the Alt-layer character of KEYCODE_GRAVE; no effect on the Titan (D3) | Smart Features, Currency Symbol | Currency Symbol |
 | `shift_backspace_delete` | boolean | false | Shift+Backspace deletes forward | Smart Features, Delete | Shift + Backspace |
-| `alt_backspace_delete` | boolean | false | Alt+Backspace deletes forward | Smart Features, Delete | Alt + Backspace |
+| `alt_backspace_delete` | string: `character`, `line`, `forward` (`true` reads as `forward`) | `character` | what Alt+Backspace deletes (`keys-and-modifiers.md` 7.7) | Typing > Backspace | Alt + Backspace |
 | `backspace_at_start_delete` | boolean | false | Backspace with nothing before the cursor deletes forward | Smart Features, Advanced | Backspace at line start |
 | `auto_space_punctuation` | string, subset of `.,;:!?\/")]}` in that order | "" | "Remove before" list (6.3) | Smart Features, Advanced, Punctuation spacing dialog, column "Remove before" | Punctuation spacing |
 | `space_after_punctuation` | string, same alphabet | "" | "Before next text" list (6.6) | same dialog, column "Before next text" | Punctuation spacing |
@@ -922,7 +934,8 @@ key X (D1).
 | T68 | `hello world|` | Ctrl+Backspace | `hello |` | |
 | T69 | `hel[lo]` | Ctrl+Backspace | `hel|` | |
 | T70 | `ab|c` | Shift+Backspace | `ab|` | `shift_backspace_delete` = true |
-| T71 | `ab|c` | Alt (one-shot) then Backspace | `ab|` | `alt_backspace_delete` = true |
+| T71 | `ab|c` | Alt (one-shot) then Backspace | `ab|` | `alt_backspace_delete` = `forward` |
+| T71b | `one\ntwo|` | Alt (one-shot) then Backspace | `one\n|` | `alt_backspace_delete` = `line` |
 | T72 | `a[b]c` | Shift+Backspace | falls through, app deletes selection | `shift_backspace_delete` = true |
 | T73 | `|abc` | Backspace | `|bc` | `backspace_at_start_delete` = true |
 | T74 | `a|bc` | Backspace | falls through | `backspace_at_start_delete` = true |
