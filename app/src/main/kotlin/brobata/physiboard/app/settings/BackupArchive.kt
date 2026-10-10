@@ -3,6 +3,7 @@ package brobata.physiboard.app.settings
 import android.content.Context
 import android.content.Intent
 import brobata.physiboard.core.dict.DictionaryBroadcastActions
+import brobata.physiboard.core.dict.UserWordFileCodec
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.shell.BackupCodec
 import brobata.physiboard.core.shell.BackupFile
@@ -128,7 +129,7 @@ object BackupArchive {
         val outcome = BackupRestore.restore(current, BackupFile(meta, mergedEntries))
 
         var sideFileFailures = 0
-        var userDefaultsRestored = false
+        var userWordsRestored = false
         val filesRoot = context.filesDir
         for ((name, bytes) in entries) {
             if (!name.startsWith(FILES_PREFIX)) continue
@@ -141,27 +142,50 @@ object BackupArchive {
                 sideFileFailures++
                 continue
             }
-            val target = File(filesRoot, relativePath)
-            // Belt and braces over the path rules above: whatever the name looked like, the file
-            // this resolves to has to sit under filesDir. Catches a symlink already on disk too,
-            // which no amount of reading the name can.
-            val written = runCatching {
-                val root = filesRoot.canonicalFile
-                require(target.canonicalFile.toPath().startsWith(root.toPath())) { "outside filesDir" }
-                target.parentFile?.mkdirs()
-                target.writeBytes(bytes)
-            }.isSuccess
+            val written = runCatching { restoreSideFile(filesRoot, relativePath, bytes) }.isSuccess
             if (written) {
-                if (relativePath == "user_defaults.json" || relativePath.endsWith("/user_defaults.json")) userDefaultsRestored = true
+                if (isUserWordFile(relativePath)) userWordsRestored = true
             } else {
                 sideFileFailures++
             }
         }
-        if (userDefaultsRestored) {
-            // spec: SS7.2 step 6, "if a restored file is named user_defaults.json at any depth, the broadcast ... is sent".
+        if (userWordsRestored) {
+            // spec: SS7.2 step 6: a restored word file (user_defaults.json at any depth, or
+            // personal_dictionary.json) sends the broadcast, so the keyboard reads the restored
+            // words now instead of keeping its old list until the next restart.
             context.sendBroadcast(Intent(DictionaryBroadcastActions.USER_DICTIONARY_UPDATED).setPackage(context.packageName))
         }
 
         RestoreResult.Applied(outcome, sideFileFailures, unreadablePrefsFiles)
+    }
+
+    private fun isUserWordFile(relativePath: String): Boolean =
+        relativePath == UserWordFileCodec.PERSONAL_WORDS_FILE_NAME ||
+            relativePath == UserWordFileCodec.DEFAULT_WORDS_FILE_NAME ||
+            relativePath.endsWith("/" + UserWordFileCodec.DEFAULT_WORDS_FILE_NAME)
+
+    /**
+     * Writes one restored side file under [filesRoot]; throws when it cannot. Belt and braces over
+     * the path rules: whatever the name looked like, the file it resolves to has to sit under
+     * [filesRoot], which also catches a symlink already on disk that no reading of the name can.
+     *
+     * The two word files the keyboard and the Personal dictionary screen edit
+     * (`personal_dictionary.json`, `user_defaults.json`) are written the way they write them:
+     * under [UserWordFileCodec.PersonalDictionaryFileLock] and through a temporary file renamed
+     * over the old one. A plain write raced a keyboard save (one of the two lost), and a
+     * restore cut short left half a file the keyboard then read as damaged.
+     */
+    internal fun restoreSideFile(filesRoot: File, relativePath: String, bytes: ByteArray) {
+        val target = File(filesRoot, relativePath)
+        val root = filesRoot.canonicalFile
+        require(target.canonicalFile.toPath().startsWith(root.toPath())) { "outside filesDir" }
+        target.parentFile?.mkdirs()
+        if (relativePath == UserWordFileCodec.PERSONAL_WORDS_FILE_NAME || relativePath == UserWordFileCodec.DEFAULT_WORDS_FILE_NAME) {
+            synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
+                check(writeAtomically(target, bytes)) { "could not replace $relativePath" }
+            }
+        } else {
+            target.writeBytes(bytes)
+        }
     }
 }

@@ -734,9 +734,15 @@ underlying error's message.
    a collection or a single string becomes a set. A value that cannot be coerced is skipped. Each
    store is committed synchronously; a failed commit moves that store's entries to skipped.
 6. If `physiboard_prefs:user_dictionary_entries` was applied, or a restored file is named
-   `user_defaults.json` at any depth, the broadcast
+   `user_defaults.json` at any depth, or `personal_dictionary.json` was restored, the broadcast
    `brobata.physiboard.ACTION_USER_DICTIONARY_UPDATED` is sent to the app's own package so the
    running keyboard reloads the dictionary.
+
+   3.x: the two word files the keyboard and the Personal dictionary screen edit,
+   `personal_dictionary.json` and `user_defaults.json`, are written back the way those two
+   write them: under the same word-file lock, to a temporary file renamed over the old one. A
+   keyboard save cannot interleave with the restore's write, and a restore cut short leaves the
+   old file whole rather than half of the new one.
 7. Snackbar: "Restore completed", or "Restored, but one item could not be applied" / "Restored,
    but N items could not be applied" where N counts skipped keys, skipped files and unreadable
    preference files, or "Restore failed: <reason>".
