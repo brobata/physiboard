@@ -3,11 +3,35 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
-## 3.2.0 (unreleased)
+## 3.2.0 (2026-10-10)
 
+Mixed-up words fixed for everyone, a short setup for new installs, and personal words that can't
+go missing.
+
+<!-- /card -->
+
+**Typing**
 - Fixing mixed-up words (its/it's, your/you're, their/there, then/than) is now on for everyone.
   It shipped off in 3.0 and 3.1 while it was being proven; updating turns it on once, and
   turning it off again afterwards sticks.
+
+**Setting up**
+- A fresh install opens on three short pages: turn PhysiBoard on, make it your keyboard, and the
+  optional extras (accessibility service, display over other apps, spell checking). Each page
+  updates by itself as you go, and Skip is always there. Anyone updating never sees them; Help
+  → "Show the tutorial" opens them any time.
+
+**Your words are safe**
+- Deleting, adding or renaming a word in Personal dictionary no longer erases a word the keyboard
+  learned while that screen was open, and Undo no longer drops one either.
+- A damaged dictionary file is left alone and reported, instead of being replaced by the next
+  word learned.
+- Restoring a backup brings your personal words back into the keyboard right away.
+
+**Privacy**
+- The voice-typing diagnostic log writes nothing in private mode or for any dictation started in
+  an incognito field, and reads the same in release builds as in test builds. It never logged
+  your words.
 
 ## 3.1.0 (2026-10-09)
 
