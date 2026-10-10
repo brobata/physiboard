@@ -77,76 +77,125 @@ process level; locale is applied per activity (section 22).
 
 Opening the launcher icon runs this decision before anything is drawn:
 
-1. If `tutorial_completed` is false: open the setup screen and close the home screen. Nothing
-   else in this list runs.
-2. Else if the what's-new note is due: it is due when `tutorial_completed` is true, the build's
+1. If the first-run pages are due (section 4, "Who sees them"): open them and close the home
+   screen. Nothing else in this list runs.
+2. Else if `tutorial_completed` is false (so PhysiBoard is already enabled and selected): write
+   what Skip writes (section 4.6) and draw the home screen. Nothing else in this list runs.
+3. Else if the what's-new note is due: it is due when `tutorial_completed` is true, the build's
    version name is non-blank, and `last_seen_whats_new_version` differs from it (including
-   being absent). Open the what's-new note (the setup activity with the boolean extra
-   `brobata.physiboard.UPDATE_TUTORIAL` = true) and close the home screen.
-3. Else, if GitHub checks are allowed, (re)schedule the daily background update job
+   being absent). Open the what's-new note and close the home screen.
+4. Else, if GitHub checks are allowed, (re)schedule the daily background update job
    (section 13.7).
-4. Draw the home screen.
+5. Draw the home screen.
 
-A consequence of 1: the "Show Tutorial" row in About resets `tutorial_completed` to false and
-opens the setup screen directly, so the setup flow is also what a user sees when they ask to
-review the tutorial. Another consequence: pressing Back on the setup screen instead of
-finishing it leaves `tutorial_completed` false, so the next tap on the icon opens setup again.
+The enabled/selected probe (section 8.2) is read for step 1 only while `tutorial_completed` is
+false. The decision is `LaunchRouting.decide` in `:core:shell`.
 
-## 4. First-run setup
+Help's "Show the tutorial" row opens the first-run pages directly, without touching
+`tutorial_completed` (3.2; 3.0 reset it to false, so backing out of a review made the launcher
+open setup again later). On a fresh install, pressing Back out of the first page instead of
+finishing leaves `tutorial_completed` false, so the next tap on the icon opens the pages again
+while the keyboard is still not set up, and settles it silently (step 2) once it is.
 
-The setup screen is one scrolling page with a terminal-style header (`physiboard:~$ setup`
-with a cursor that fades between opaque and transparent every 650 ms), the line "Two quick
-steps to start typing.", and two step cards.
+## 4. First-run setup (3.2)
 
-### 4.1 The two steps
+Three short pages, one thing each: turn PhysiBoard on, make it the keyboard, then the optional
+extras. They replace 3.0's single page with two step cards.
 
-| Step | Card | Done when | Button | Button does |
+### 4.1 Who sees them
+
+The pages open only when `tutorial_completed` is false AND PhysiBoard is not already both
+enabled and selected (section 8.2). That is:
+
+| `tutorial_completed` | Enabled | Selected | Launcher icon opens |
+|---|---|---|---|
+| false | no | either | the first-run pages, page 1 |
+| false | yes | no | the first-run pages, page 2 |
+| false | yes | yes | home; setup is recorded as finished (section 3, step 2) |
+| true | any | any | home, or the what's-new note when it is due |
+
+Why updaters never see them: 3.0 and 3.1 open home only after their own setup was finished, and
+finishing it wrote `tutorial_completed` = true. An install updating from 3.0 or 3.1 that has ever
+seen home therefore already holds true, with no baseline step needed; one that never finished
+setup did not see home either and gets the pages, as it would have got the old page. An install
+whose flag was lost but whose keyboard is clearly in use (app data cleared, a backup from a
+phone that never finished setup) is caught by the keyboard check and goes home. 2.x imports
+carry the flag over (settings-catalog.md). Backups carry it too, so a restore never reopens the
+pages. No new setting was added for 3.2: `tutorial_completed` already means "first run is
+behind this install".
+
+### 4.2 The pages
+
+Every page has the home screen's terminal header (section 22.1) with the command `setup`
+(`physiboard:~$ setup`, the cursor breathing on a 650 ms period) and the page number at the far
+end in the value style (`1/3`). Below it the page scrolls on its own; a bar pinned to the bottom,
+under a 1 dp rule, holds "Skip" (a text button, at the start) and "Next" ("Done" on page 3, at
+the end). Next is filled once the page's step is done and outlined before, so it is a way past
+the step rather than the thing to press. A page's title is mono (headline small) and marked a
+heading; its text is the reading style.
+
+| Page | Title | Text | The pane | Its button does |
 |---|---|---|---|---|
-| 1 | "1. Enable PhysiBoard" | enabled (section 8.2) | "Open settings", enabled while not done | Opens Android's input-method settings (`android.settings.INPUT_METHOD_SETTINGS`) |
-| 2 | "2. Set as keyboard" | selected (section 8.2) | "Switch", enabled only while step 1 is done and step 2 is not | Shows Android's input-method picker |
+| 1 | "Turn on PhysiBoard" | "Android keeps a new keyboard switched off until you turn it on. Open the list and switch PhysiBoard on." / "Android shows the same warning for every keyboard. That's expected." | "PhysiBoard is off", button "Open keyboard list"; done: "PhysiBoard is on" | Opens Android's input-method settings (`android.settings.INPUT_METHOD_SETTINGS`) |
+| 2 | "Make it your keyboard" | "Pick PhysiBoard in the list Android shows. You can change keyboards again any time." | "PhysiBoard is not your keyboard yet", button "Choose keyboard"; done: "PhysiBoard is your keyboard". While PhysiBoard is not enabled: "Turn PhysiBoard on first", button "Back to step 1" | Shows Android's input-method picker; "Back to step 1" goes to page 1 |
+| 3 | "A few extras" | "All optional. Turn on what you like now, or later in Settings." | three rows, below | each row's "Turn on" |
 
-Step 2's whole card is drawn at 45 % opacity until step 1 is done. A done card shows a check
-icon, an amber border, and the word "done" under its title; its button disappears. The four
-strings on the step cards ("Enable PhysiBoard", "Open settings", "Set as keyboard", "Switch")
-are hard-coded English; every other string on the screen is translated.
+A pane that is still to do has the amber (featured) border, the step's keycap icon and its
+button; once done it is a calm pane with the green check and no button.
 
-The screen polls the probe of section 8.2 immediately and then every 1800 ms for as long as it
-is showing, so the cards flip to done on their own when the user returns from Android's
-settings; there is nothing to tap to confirm.
+Page 3's rows, each with a "Turn on" button that becomes a green check and "On" once it is:
 
-### 4.2 "You're set"
+| Row | Line under it | Turn on opens | On when |
+|---|---|---|---|
+| "Accessibility service" | "Needed for Fn shortcuts everywhere and focusing the text box" (Home's warning line, section 6.3), and while off: "If Android says it is restricted: App info, ⋮, Allow restricted settings." | the service's own page in Android's settings, else the list (the Accessibility service screen's opener) | the service is enabled |
+| "Display over other apps" | "Needed for the emoji and clipboard panels and the screen trackpad" | `OverlayPermission.explainAndOpenSettings` (trackpad-caret-nav.md): the toast "PhysiBoard needs Display over other apps. Turn it on for this app, then come back." and Android's screen for this app, at most once every 8 s | `Settings.canDrawOverlays` |
+| "Spell checking" | "Pick PhysiBoard so apps underline misspellings" (Home's line) | Android's spell checker picker, or the nearest screen (autocorrect-suggestions.md section 18) | PhysiBoard is the system spell checker |
 
-When both steps are done, a section animates in below the cards: a check icon, "You're set.",
-and two buttons: "Show me the essentials" (filled) and "Skip" (outlined). 360 ms after both
-steps become done the page scrolls to its bottom so the buttons are never below the fold on
-the short square screen; the same scroll happens when the essentials expand.
+Nothing on these pages turns anything on by itself; each row only opens the place where the
+user does.
 
-"Show me the essentials" replaces the two buttons with a card of three lines and a "Done"
-button:
+### 4.3 Live state
 
-- microphone icon: "Hold Fn to talk (dictation)"
-- sun icon: "Backlight can light the dark (one-time setup)"
-- gear icon: "Everything else is on the home screen, by category" (3.1; 2.x: "Everything else lives in the Settings tile")
+The pages read the enabled/selected probe (section 8.2), the accessibility service, the overlay
+permission and the spell checker immediately, on every return to the app, and every 1000 ms
+while showing with the app in front (the input-method picker is a dialog over the page, so no return follows it).
+Panes and rows change by themselves; there is nothing to confirm. The pages open at the first
+step still to do: page 1 while not enabled, page 2 while enabled but not selected, else page 3.
 
-"Skip" and "Done" do the same thing: mark setup complete and open the home screen.
+### 4.4 Navigation and the hardware keyboard
 
-### 4.3 What "complete" writes
+- Next moves one page on; Done finishes. Skip finishes from any page.
+- Back (the gesture, the key, or Esc on a hardware keyboard) goes to the page before; on page 1
+  it leaves the pages as before (section 3), with nothing written.
+- Every button is focusable. When a page opens, focus goes to the page's own button while its
+  step is to do, and to Next once it is done (on page 3, to Done), so Enter presses the next
+  thing to do. As everywhere in Android, the first key pressed after touching the screen only
+  shows the focus; the next Enter presses it. Arrow keys and Tab move between the buttons.
+- The current page survives rotation and the process being reclaimed.
 
-Completing setup writes `tutorial_completed` = true and `last_seen_whats_new_version` = the
-current version name, in one commit. Because the version is stamped here, a fresh install never
-sees the what's-new note for the version it was installed with.
+### 4.5 Square screen
 
-### 4.4 Permissions
+The bar is pinned and the page scrolls above it, so Skip and Next are never below the fold on
+the Titan's 1080x1200 screen. The 3.0 page's 360 ms scroll to its bottom is gone with it.
 
-The setup screen asks for nothing. The first time the home screen is drawn on Android 13 or
+### 4.6 What "complete" writes
+
+Skip, Done, and the silent settle of section 3 step 2 write `tutorial_completed` = true and
+`last_seen_whats_new_version` = the current version name, in one commit. Because the version is
+stamped here, a fresh install never sees the what's-new note for the version it was installed
+with.
+
+### 4.7 Permissions
+
+The first-run pages ask for no permission themselves; their extras only open the screens where the user grants one. The first time the home screen is drawn on Android 13 or
 later without the notification permission, it launches the system `POST_NOTIFICATIONS` prompt
 once per home screen creation and ignores the answer; this is what lets the update
 notification and the re-selection notice (sections 13.7 and 17) be shown. The toolbox's device
 setup card asks for the same permission again when it appears un-granted, because the pairing
-code arrives as a notification (section 4.5). Microphone and overlay permissions are asked by
+code arrives as a notification (section 4.8). Microphone and overlay permissions are asked by
 their own features (dictation and trackpad documents).
 
-### 4.5 The device setup card
+### 4.8 The device setup card
 
 The card sits at the top of the toolbox screen and on the smart backlight screen. It is the
 broker document's subject; the shell facts are:
@@ -743,7 +792,7 @@ report row.
 | `physiboard_reselect_channel` | "Setup needed" | high, badge | 3 | package-replaced receiver (17) | "Pick PhysiBoard again"; opens the home screen |
 | `pastiera_nav_mode_channel` | "PhysiBoard Fn Layer" | default, no badge, no light, vibrate 0/50, silent | 1 | nobody in 2.x; the Fn layer only vibrates 70 ms and cancels id 1 defensively | none |
 | `physiboard_notification_ring` | ring channel | high | 41 | the notification ring (ring document) | full-screen intent, alarm category |
-| `adb_pairing` | pairing channel | high, silent, no badge, no bubbles | vendored service's own | the pairing service while armed (4.5) | shows the pairing-code entry |
+| `adb_pairing` | pairing channel | high, silent, no badge, no bubbles | vendored service's own | the pairing service while armed (4.8) | shows the pairing-code entry |
 
 All app-posted notifications use the mark, the single-colour keycap with the `>_` prompt cut
 into its face (`pb_ic_mark`, SS22.6; change record 2.0.2 introduced the keycap), as small icon,
@@ -797,7 +846,7 @@ is passed.
 | `brobata.physiboard.PREVIEW_UPDATE_TUTORIAL`, `brobata.physiboard.PREVIOUS_VERSION` | extras on the setup activity | read, never sent (5.3) |
 | `android.intent.action.MY_PACKAGE_REPLACED` | manifest receiver | section 17 |
 | `android.view.InputMethod` | service filter | the IME; settings activity declared in `res/xml/method.xml`, next-IME switching supported, subtypes en_US, it_IT, fr_FR, de_DE, pl_PL, da_DK, no_NO and more, each with `noSuggestions=true` |
-| `android.settings.ADB_WIRELESS_SETTINGS` | fired, with fallback | 4.5 |
+| `android.settings.ADB_WIRELESS_SETTINGS` | fired, with fallback | 4.8 |
 
 The settings activity is exported because Android's own settings launch it as the IME's
 settings screen; its only inputs are the extras above, matched against those constants.
@@ -1233,7 +1282,7 @@ nine non-English catalogues are machine-translated (commit "i18n: translate the 
 diagnostics strings", 2026-08-31: "Machine-translated, like the rest of the non-English
 catalogue"), brought to the full string set on 2026-08-29 after having been frozen at about
 half. Italian was upstream's original human translation but was regenerated with the rest. The
-hard-coded English strings are: the four setup step-card strings (4.1), the IME test screen
+hard-coded English strings are: every string on the first-run pages (4.2), the IME test screen
 (20), the "Debug Export" share subject, the report's section and key names, the terminal
 prompts, and the About build-info first line. Release-notes fallback sentences exist in German,
 Italian and English only (14). The app-language override (22.3) offers exactly the ten
@@ -1243,7 +1292,7 @@ locales.
 
 | Preference key | Type | Default | What it changes | Screen | Label |
 |---|---|---|---|---|---|
-| `tutorial_completed` | boolean | false | whether the launcher icon opens setup or home (3) | written by setup Done/Skip and what's-new Done; reset by About "Show Tutorial" | "Show Tutorial" |
+| `tutorial_completed` | boolean | false | whether the launcher icon may open the first-run pages (3, 4.1); in backups, so a restore does not reopen them | written by first-run Skip/Done, by launch routing when the keyboard is already set up (3), and by what's-new Done; never reset (3.2: Help "Show the tutorial" opens the pages without clearing it) | none |
 | `last_seen_whats_new_version` | string | absent | the version whose what's-new note has been seen; a mismatch with the build shows the note (3) | written by setup and what's-new Done | none |
 | `impact_defaults_applied` | boolean | false | one-shot first-run defaults have been stamped (2, 27) | process start | none |
 | `alt_shift_default_initialized` | boolean | false | the Alt+Shift default rule has run (2) | process start | none |
@@ -1287,13 +1336,16 @@ emoji picker on, order emoji_picker, symbols, clipboard, emoji), and an
 | D5 | Android turns wireless debugging off across reboots on this ROM, so a paired phone is routinely unable to connect; that is why the home badge and the setup card use a verified connection, not "key stored". | Strings "Android turns it off after a restart"; privileged-diagnostics comment |
 | D6 | The Do Not Disturb / Bedtime state (`zen_mode` != 0) can hide the pairing-code notification, so the setup card warns about it. | Setup card comment and string |
 | D7 | Unihertz's Android 16 firmware has a gesture-navigation settings page reachable by the action `com.android.settings.GESTURE_NAVIGATION_SETTINGS` with fragment argument `:settings:fragment_args_key` = `agui_hide_ime_caption_bar`, which hides the IME caption bar. | The dead tutorial page's constants (21) |
-| D8 | The screen is near-square and short; the setup page scrolls its buttons into view after 360 ms, tiles wrap two per row, and window size is read from the window rather than the display. | Comments in the setup and window-size code |
+| D8 | The screen is near-square and short; the first-run pages pin Skip and Next below a scrolling page (3.2; 3.0 scrolled its buttons into view after 360 ms), tiles wrap two per row, and window size is read from the window rather than the display. | Comments in the setup and window-size code |
 
 ## 28. Edge cases, quirks and known bugs
 
 | Situation | Behavior | Why |
 |---|---|---|
-| User presses Back on the setup screen | `tutorial_completed` stays false; next launcher tap shows setup again | completion is only written by Done/Skip |
+| User presses Back on the first first-run page | `tutorial_completed` stays false; the next launcher tap shows the pages again while the keyboard is not set up, and goes home (writing the flag) once it is | completion is written by Done/Skip, or by launch routing (3) |
+| App data cleared while PhysiBoard stays the keyboard | home, no first-run pages, no what's-new note | the keyboard check of 4.1 settles setup |
+| Updating from 3.0 or 3.1 | no first-run pages; the what's-new note as usual | their own setup already wrote `tutorial_completed` (4.1) |
+| First key on a hardware keyboard after touching a first-run page | only shows the focus on the page's button; the next Enter presses it | Android leaves touch mode on that key and consumes it |
 | Fresh install, first launch | setup only; no what's-new note for the installed version | setup stamps `last_seen_whats_new_version` |
 | Update installed while the app is not opened for weeks | the note shows once on the next open, for the current version only; intermediate versions' notes are never shown | the card is the current section of the change record |
 | Enabled from Android settings without ever opening the app | first-run defaults still apply | they are stamped at process start, not on the home |
@@ -1316,7 +1368,7 @@ emoji picker on, order emoji_picker, symbols, clipboard, emoji), and an
 | Home "T2E Tools" tile before the first verified check lands | no badge | unknown status never raises it |
 | Paired key stored, wireless debugging turned off | badge "needs pairing" on the tile; setup card says "Cannot reach the system" and offers the wireless toggle, not re-pairing | the pairing is still valid |
 | Preview extra on the what's-new note | the version is stamped anyway | 5.3 |
-| "Show Tutorial" while setup is already complete | setup screen shows with both steps already done; "Skip" or "Done" returns home | the probe runs live |
+| "Show the tutorial" while setup is already complete | the first-run pages open on page 3 with pages 1 and 2 already done (Back reaches them); Skip or Done returns home; Back out of page 1 returns to Help; the flag stays true throughout | the probe runs live; the pages open at the first step still to do |
 | App language changed | takes effect when each activity is recreated | applied at context wrap |
 | Bug report from a non-Titan phone | `device=Something else` | D1, D2 fail |
 | Bug template's Diagnostics hint | points to "Settings → Advanced → Diagnostics", a path that no longer exists | stale template text |
@@ -1362,6 +1414,13 @@ Encodable as JVM tests without a device.
 | T31 | context updates: app X, then PhysiBoard | last field = PhysiBoard, external = X |
 | T32 | credits markdown "{{button:Coffee|https://k.o}}" | one button element labelled "Coffee" |
 | T33 | Alt+Shift default rule on an empty preferences file | `alt_shift_layout_switch` false; on a non-empty file without the key: true; with the key already set: unchanged |
+| T34 | launch with `tutorial_completed` false, keyboard not enabled | first-run pages |
+| T35 | `tutorial_completed` false, enabled, not selected | first-run pages |
+| T36 | `tutorial_completed` false, enabled and selected | home, and setup recorded as finished |
+| T37 | `tutorial_completed` true, any keyboard state | never the first-run pages |
+| T38 | a 3.1 store (`tutorial_completed` true, last seen "3.1.0") opened by 3.2 with the keyboard switched away | the what's-new note, not the pages |
+| T39 | a backup holding `tutorial_completed` true restored onto a fresh install | home, not the pages |
+| T40 | `tutorial_completed` false, last seen "3.0.0", current "3.2.0" | first-run pages before any what's-new note |
 
 ## 30. Keep / Drop for 3.0
 
