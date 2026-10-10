@@ -43,6 +43,21 @@ class UserWordFileStore(private val context: Context) {
         ok
     }
 
+    /**
+     * Reads the file, applies [transform] and writes the result back, all under
+     * [UserWordFileCodec.PersonalDictionaryFileLock], so this write never discards a keyboard save
+     * that landed before it. A `load()` followed by [savePersonal] holds the lock only for the
+     * write, so a keyboard save landing between the two was lost. (The keyboard's own save still
+     * writes its in-memory list without reading the file; that side is not covered here.)
+     * Returns the new store, or null when the write failed.
+     */
+    suspend fun updatePersonal(transform: (UserWordStore) -> UserWordStore): UserWordStore? = withContext(Dispatchers.IO) {
+        ensureDefaultsFileExists()
+        val updated = updatePersonalFile(personalFile, defaultFile, transform)
+        if (updated != null) notifyUpdated()
+        updated
+    }
+
     /** Persists an edited default-word list (SS6.3: "Renaming or deleting a default word edits `user_defaults.json`"). */
     suspend fun saveDefaults(words: List<WordFrequency>): Boolean = withContext(Dispatchers.IO) {
         val ok = writeAtomically(defaultFile, UserWordFileCodec.encodeDefaultWords(words))
@@ -56,14 +71,6 @@ class UserWordFileStore(private val context: Context) {
         runCatching { defaultFile.writeBytes(assetBytes) }
     }
 
-    private fun readOrNull(file: File): String? = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
-
-    private fun writeAtomically(file: File, text: String): Boolean = runCatching {
-        val tmp = File(file.parentFile, "${file.name}.tmp")
-        tmp.writeText(text)
-        tmp.renameTo(file)
-    }.getOrDefault(false)
-
     /** autocorrect-suggestions.md SS6.1: "Settings screens announce changes with the broadcast `brobata.physiboard.ACTION_USER_DICTIONARY_UPDATED` (package-internal)." */
     private fun notifyUpdated() {
         val intent = Intent(DictionaryBroadcastActions.USER_DICTIONARY_UPDATED).setPackage(context.packageName)
@@ -75,6 +82,25 @@ class UserWordFileStore(private val context: Context) {
         const val ACTION_USER_DICTIONARY_UPDATED: String = DictionaryBroadcastActions.USER_DICTIONARY_UPDATED
     }
 }
+
+/** [UserWordFileStore.updatePersonal]'s file work, apart from [Context] so it is tested on the JVM. */
+internal fun updatePersonalFile(personalFile: File, defaultFile: File, transform: (UserWordStore) -> UserWordStore): UserWordStore? =
+    synchronized(UserWordFileCodec.PersonalDictionaryFileLock) {
+        val current = UserWordStore.of(
+            UserWordFileCodec.decodeDefaultWords(readOrNull(defaultFile)),
+            UserWordFileCodec.decodePersonalWords(readOrNull(personalFile)),
+        )
+        val updated = transform(current)
+        if (writeAtomically(personalFile, UserWordFileCodec.encodePersonalWords(updated.personalWords()))) updated else null
+    }
+
+private fun readOrNull(file: File): String? = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
+
+private fun writeAtomically(file: File, text: String): Boolean = runCatching {
+    val tmp = File(file.parentFile, "${file.name}.tmp")
+    tmp.writeText(text)
+    tmp.renameTo(file)
+}.getOrDefault(false)
 
 /** One row the personal-dictionary screen shows, either tier, merged and sorted case-insensitively (SS6.3). */
 data class DictionaryWordRow(val word: String, val frequency: Int, val isPersonal: Boolean)

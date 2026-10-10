@@ -118,7 +118,7 @@ class AddSubstitutionActivity : ComponentActivity() {
                                     if (saved && addToDictionary && isValidNewDictionaryWord(word)) {
                                         runCatching {
                                             val fileStore = UserWordFileStore(this@AddSubstitutionActivity)
-                                            fileStore.savePersonal(fileStore.load().withPersonalWordAdded(word, System.currentTimeMillis()))
+                                            fileStore.updatePersonal { it.withPersonalWordAdded(word, System.currentTimeMillis()) }
                                         }
                                     }
                                     Toast.makeText(

@@ -1031,7 +1031,7 @@ plays `UNDO`.
 | Sym pages: a page switched off, a page moved | the whole order and every page's switch, as before the run |
 | "Clear page" on My page 1 to 3 | that page's keys (its name was never touched) |
 | "Reset to Default" on the Emoji or Symbols layer | that layer's custom map |
-| Deleting a personal-dictionary word | the word with its count and last use, read back into the current file (a word re-added meanwhile keeps the newer entry); a default word goes back in its old place |
+| Deleting a personal-dictionary word | the word with its count and last use, read back into the current file (a word re-added meanwhile keeps the newer entry); the read and the write happen under the lock the keyboard's own writer takes, so Undo never writes over a word the keyboard saved before it; a default word goes back in its old place |
 
 Only "Reset all settings" and "Reset device settings to stock" (Backup & restore) keep their
 confirmation dialog, with the confirm button in the error colour; they reach outside one

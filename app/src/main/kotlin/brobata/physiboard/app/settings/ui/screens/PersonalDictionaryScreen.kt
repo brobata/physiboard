@@ -106,15 +106,16 @@ fun PersonalDictionaryScreen(onBack: () -> Unit) {
                     IconButton(onClick = { editing = row }) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
                     // app-shell.md SS22.4: deleted at once; Undo puts the word back exactly (its
                     // count and last use, or its place among the default words). The restore reads
-                    // the file again, so a word added in the meantime is kept.
+                    // the file again, so a word added in the meantime is kept; the personal
+                    // restore reads and writes under the keyboard writer's lock, so a word the
+                    // keyboard saves while it runs is kept too.
                     IconButton(onClick = {
                         if (row.isPersonal) {
                             val removed = store.personalWords().firstOrNull { it.word == row.word }
                             persist(store.withPersonalWordRemoved(row.word))
                             if (removed != null) {
                                 undo?.offer("dictionary-${row.word}", "Deleted “${row.word}”") {
-                                    val restored = DictionaryUndo.restorePersonal(fileStore.load(), removed)
-                                    if (fileStore.savePersonal(restored)) store = restored
+                                    fileStore.updatePersonal { DictionaryUndo.restorePersonal(it, removed) }?.let { store = it }
                                 }
                             }
                         } else {
