@@ -12,6 +12,9 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
   line again in Android's own text boxes (both broke in 3.1).
 - Alt+Backspace can delete to the start of the line in every app: Typing > Backspace > "Alt +
   Backspace". Off by default for now.
+- New installs get the screen trackpad (hold Space to move the cursor) switched on when setup
+  ends with "Display over other apps" allowed, the permission it needs. Updating keeps whatever
+  you had.
 
 ## 3.2.0 (2026-10-10)
 

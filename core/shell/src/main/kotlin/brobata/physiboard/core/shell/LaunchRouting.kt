@@ -71,4 +71,14 @@ data class FirstRunSteps(val enableDone: Boolean, val selectDone: Boolean) {
 /** spec: SS4.1. The first-run pages have no state of their own beyond the live probe; this names what it means. */
 object FirstRunSetup {
     fun steps(enabled: Boolean, selected: Boolean): FirstRunSteps = FirstRunSteps(enableDone = enabled, selectDone = enabled && selected)
+
+    /**
+     * app-shell.md SS4: the screen trackpad (hold Space) after the pages close. It needs "Display
+     * over other apps", so a first run that ends with that granted switches it on, the same rule
+     * pairing Titan tools follows (broker-privileged-toolbox.md SS7 step 2). Without the
+     * permission a hold would only open Android's permission screen, so the switch stays as it
+     * was; a replay from Help never touches it.
+     */
+    fun trackpadAfterSetup(firstRun: Boolean, overlayGranted: Boolean, trackpadOn: Boolean): Boolean =
+        trackpadOn || (firstRun && overlayGranted)
 }

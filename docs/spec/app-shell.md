@@ -133,6 +133,14 @@ is caught by the keyboard check and goes home. 2.x imports carry the flag over
 setting was added for 3.2: the two existing records already say "first run is behind this
 install".
 
+### 4.1a The trackpad after first run (3.3)
+
+When a first run closes (Done or Skip) with "Display over other apps" granted, the screen
+trackpad (`screen_trackpad_enabled`) is switched on, the same rule pairing Titan tools follows
+(broker-privileged-toolbox.md SS7 step 2). Without the permission it stays as it was: a hold
+would only open Android's permission screen. A replay from Help never changes it, and it is
+never switched off here. Test T42.
+
 ### 4.2 The pages
 
 Every page has the home screen's terminal header (section 22.1) with the command `setup`

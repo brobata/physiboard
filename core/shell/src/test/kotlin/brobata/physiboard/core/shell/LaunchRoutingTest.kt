@@ -83,4 +83,14 @@ class LaunchRoutingTest {
         assertEquals(LaunchDecision(LaunchDestination.WHATS_NEW), decision)
         assertEquals(LaunchDecision(LaunchDestination.HOME), LaunchRouting.decide(false, imeEnabled = true, imeSelected = false, "3.2.0", "3.2.0"))
     }
+
+    @Test
+    fun `T42 a first run that ends with the overlay granted switches the trackpad on, and only then`() {
+        assertEquals(true, FirstRunSetup.trackpadAfterSetup(firstRun = true, overlayGranted = true, trackpadOn = false))
+        assertEquals(false, FirstRunSetup.trackpadAfterSetup(firstRun = true, overlayGranted = false, trackpadOn = false))
+        // A replay from Help leaves a deliberate off alone.
+        assertEquals(false, FirstRunSetup.trackpadAfterSetup(firstRun = false, overlayGranted = true, trackpadOn = false))
+        // Never switches it off.
+        assertEquals(true, FirstRunSetup.trackpadAfterSetup(firstRun = true, overlayGranted = false, trackpadOn = true))
+    }
 }

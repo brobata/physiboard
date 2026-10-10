@@ -119,7 +119,7 @@ fun SetupScreen(onComplete: () -> Unit) {
     // Start at the first step still to do: a phone with PhysiBoard on but not chosen opens on page 2.
     var page by rememberSaveable { mutableIntStateOf(firstPage(state.steps)) }
     BackHandler(enabled = page > 0) { page-- }
-    val finish = { completeSetup(controller, onComplete) }
+    val finish = { completeSetup(controller, overlayGranted = readSetupState(context).overlayOn, onComplete) }
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TerminalHeader(command = "setup", cursorPeriodMillis = 650) {
@@ -221,7 +221,7 @@ private fun ExtrasPage(state: SetupState) {
         ExtraRow(
             icon = Icons.Outlined.Layers,
             title = "Display over other apps",
-            description = "Needed for the emoji and clipboard panels and the screen trackpad",
+            description = "Needed for the emoji and clipboard panels and the screen trackpad (hold Space to move the cursor)",
             hint = null,
             on = state.overlayOn,
         ) { OverlayPermission.explainAndOpenSettings(context, "PhysiBoard") }
@@ -397,11 +397,16 @@ private fun firstPage(steps: FirstRunSteps): Int = when {
     else -> 2
 }
 
-private fun completeSetup(controller: SettingsController, onComplete: () -> Unit) {
+private fun completeSetup(controller: SettingsController, overlayGranted: Boolean, onComplete: () -> Unit) {
     // spec: SS4.6. One commit: tutorial_completed and last_seen_whats_new_version together, so a
-    // fresh install never sees the what's-new note for the version it was installed with.
+    // fresh install never sees the what's-new note for the version it was installed with. The
+    // trackpad joins it when this first run granted what it needs (FirstRunSetup.trackpadAfterSetup).
     controller.update {
-        it.copy(shell = it.shell.copy(tutorialCompleted = true, lastSeenWhatsNewVersion = BuildConfig.VERSION_NAME))
+        val trackpadOn = FirstRunSetup.trackpadAfterSetup(firstRun = !it.shell.tutorialCompleted, overlayGranted = overlayGranted, trackpadOn = it.trackpad.enabled)
+        it.copy(
+            shell = it.shell.copy(tutorialCompleted = true, lastSeenWhatsNewVersion = BuildConfig.VERSION_NAME),
+            trackpad = it.trackpad.copy(enabled = trackpadOn),
+        )
     }
     onComplete()
 }
