@@ -141,15 +141,16 @@ class AdbClient(private val host: String, private val port: Int, private val key
      * 256 KiB) per write, waiting for the phone's OKAY after each as the version-1 protocol
      * requires. Everything the command writes back is handed to [listener]. [readTimeoutMs]
      * replaces the per-read timeout for this call, since the command (an install) may stay quiet
-     * for longer than a shell line does. [shouldContinue] is asked before every write; when it
-     * answers false the stream is closed short, so the command fails instead of running.
+     * for longer than a shell line does. [shouldContinue] is asked after each payload is read from
+     * [input] and before it is written, with whether it is the last one; when it answers false the
+     * stream is closed short, so the command fails instead of running.
      */
     fun execWithInput(
         service: String,
         input: java.io.InputStream,
         size: Long,
         readTimeoutMs: Int,
-        shouldContinue: () -> Boolean,
+        shouldContinue: (isLast: Boolean) -> Boolean,
         listener: (ByteArray) -> Unit,
     ) {
         val localId = 2
@@ -167,13 +168,13 @@ class AdbClient(private val host: String, private val port: Int, private val key
         var sent = 0L
         var closed = false
         while (sent < size && !closed) {
-            if (!shouldContinue()) {
-                write(A_CLSE, localId, remoteId)
-                error("stopped after $sent of $size bytes")
-            }
             val wanted = minOf(buffer.size.toLong(), size - sent).toInt()
             val n = input.read(buffer, 0, wanted)
             if (n < 0) error("input ended after $sent of $size bytes")
+            if (!shouldContinue(sent + n >= size)) {
+                write(A_CLSE, localId, remoteId)
+                error("stopped after $sent of $size bytes")
+            }
             write(A_WRTE, localId, remoteId, buffer.copyOf(n))
             sent += n
             while (true) {

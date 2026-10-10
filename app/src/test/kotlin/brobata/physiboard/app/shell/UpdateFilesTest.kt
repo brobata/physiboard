@@ -30,7 +30,7 @@ class UpdateFilesTest {
     private val ours = InstalledApp(context.packageName, 30200, setOf("a".repeat(64)))
 
     private fun downloaded(bytes: ByteArray): Pair<File, PendingUpdate> {
-        val partial = store.partialFile()
+        val partial = store.partialFile("v3.3.0")
         partial.writeBytes(bytes)
         val ready = PendingUpdate("v3.3.0", 30300, ApkInspector.sha256(partial), "physiboard-3.3.0.apk")
         assertTrue(store.keep(partial, ready))
@@ -42,7 +42,7 @@ class UpdateFilesTest {
         val (apk, ready) = downloaded(ByteArray(32) { 7 })
         assertTrue(apk.isFile)
         assertTrue(apk.path.startsWith(context.noBackupFilesDir.path))
-        assertFalse(File(updates, "download.part").exists())
+        assertFalse(File(updates, "physiboard-3.3.0.apk.part").exists())
         assertEquals(ready, UpdateStore(context).read().ready)
         assertEquals(apk, store.apkFor(ready))
     }
@@ -77,12 +77,29 @@ class UpdateFilesTest {
     @Test
     fun `refusing a newer release keeps the update already waiting`() {
         val (apk, ready) = downloaded(ByteArray(16) { 3 })
-        store.partialFile().writeBytes(ByteArray(4))
+        store.partialFile("v3.3.1").writeBytes(ByteArray(4))
         store.refuse("v3.3.1")
         assertTrue(apk.isFile)
         assertEquals(ready, store.read().ready)
         assertEquals("v3.3.1", store.read().refusedTag)
-        assertFalse(File(updates, "download.part").exists())
+        assertFalse(File(updates, "physiboard-3.3.1.apk.part").exists())
+    }
+
+    @Test
+    fun `refusing one release never deletes another release's download in progress`() {
+        val (apk, ready) = downloaded(ByteArray(16) { 4 })
+        val downloading = store.partialFile("v3.3.2").apply { writeBytes(ByteArray(8)) }
+        store.refuse("v3.3.0")
+        assertFalse(apk.exists())
+        assertNull(store.read().ready)
+        assertTrue("v3.3.2's download is still being written", downloading.isFile)
+        store.refuse("v3.3.1")
+        assertTrue(downloading.isFile)
+        store.discardReady()
+        assertTrue("discarding never touches a download in progress", downloading.isFile)
+        store.refuse("v3.3.2")
+        assertFalse(downloading.exists())
+        assertEquals("v3.3.0", ready.tag)
     }
 
     @Test

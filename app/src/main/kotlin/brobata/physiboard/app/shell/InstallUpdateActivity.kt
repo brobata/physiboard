@@ -53,7 +53,10 @@ class InstallUpdateActivity : ComponentActivity() {
             val target = PendingIntent.getActivity(
                 app,
                 REQUEST_STATUS,
-                Intent(app, InstallUpdateActivity::class.java).setAction(ACTION_STATUS).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                Intent(app, InstallUpdateActivity::class.java)
+                    .setAction(ACTION_STATUS)
+                    .putExtra(UpdateInstallReceiver.EXTRA_TAG, ready.tag)
+                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             ).intentSender
             runCatching { SessionInstaller.commit(app, apk, ready.sha256, target) }
@@ -81,7 +84,11 @@ class InstallUpdateActivity : ComponentActivity() {
                 Log.e(TAG, "Android refused the update: $status $message")
                 Toast.makeText(applicationContext, "Android refused the update. It was deleted; the release page has it.", Toast.LENGTH_LONG).show()
                 val app = applicationContext
-                Thread { UpdateStore(app).read().ready?.let { AutoUpdater.refuse(app, it.tag) } }.start()
+                val committedTag = intent.getStringExtra(UpdateInstallReceiver.EXTRA_TAG)
+                Thread {
+                    val readyTag = UpdateStore(app).read().ready?.tag
+                    if (AutoUpdatePolicy.sessionApplies(committedTag, readyTag)) AutoUpdater.refuse(app, readyTag!!)
+                }.start()
             }
             AfterSession.DONE, AfterSession.KEEP, AfterSession.NOTIFY_READY -> Unit
         }

@@ -15,10 +15,11 @@ class UpdateInstallReceiver : BroadcastReceiver() {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
         val sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+        val committedTag = intent.getStringExtra(EXTRA_TAG)
         val pending = goAsync()
         Thread {
             try {
-                AutoUpdater.onBackgroundSessionResult(context.applicationContext, status, sessionId, message)
+                AutoUpdater.onBackgroundSessionResult(context.applicationContext, status, sessionId, message, committedTag)
             } finally {
                 pending.finish()
             }
@@ -27,5 +28,8 @@ class UpdateInstallReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_STATUS = "brobata.physiboard.action.UPDATE_INSTALL_STATUS"
+
+        /** The tag of the release the session installs; only that release may be refused by the answer. */
+        const val EXTRA_TAG = "brobata.physiboard.extra.UPDATE_TAG"
     }
 }

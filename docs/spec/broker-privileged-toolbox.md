@@ -262,7 +262,10 @@ constantly (it is the IME), which is why outcomes are also persisted (section 8)
 and checked APK written to its standard input from the app's private files in writes of the size
 the phone announces when the connection opens (at most 256 KiB), each waiting for the phone's
 acknowledgement; before each write the caller is asked whether to go on (the updater stops when
-the screen comes on, closing the stream short so nothing installs). It runs under the same lock and discovery as every
+the screen comes on, closing the stream short so nothing installs). The stream is hashed as it is
+read, and the last write is made only when the whole file matches the SHA-256 the updater checked;
+otherwise the stream is closed short with "The update file changed after it was checked; nothing
+was installed." It runs under the same lock and discovery as every
 line; only the size, a number, goes into the command; the read timeout is 120 000 ms per read
 instead of 10 000, since `pm` answers only after verifying and optimising the APK; and only a line
 reading `Success` counts as done. Installing PhysiBoard's own package ends the process that is

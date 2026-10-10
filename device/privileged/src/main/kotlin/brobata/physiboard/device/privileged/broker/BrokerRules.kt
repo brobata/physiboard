@@ -100,6 +100,12 @@ object PackageInstallLine {
         return "cmd package install -r -S $sizeBytes"
     }
 
+    const val CHANGED_MESSAGE = "The update file changed after it was checked; nothing was installed."
+
+    /** [digest] (raw bytes) equals [expectedHex] (any case). */
+    fun sameDigest(digest: ByteArray, expectedHex: String): Boolean =
+        digest.joinToString("") { "%02x".format(it) }.equals(expectedHex, ignoreCase = true)
+
     /** `pm` prints "Success" on a line of its own, or "Failure [REASON]". */
     fun succeeded(output: String): Boolean = output.lineSequence().any { it.trim() == "Success" }
 }

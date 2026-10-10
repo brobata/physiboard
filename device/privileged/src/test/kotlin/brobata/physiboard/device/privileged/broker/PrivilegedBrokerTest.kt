@@ -254,6 +254,20 @@ class PrivilegedBrokerTest {
         assertIs<ShellResult.Failed>(broker.installApk(apk(ByteArray(8)), shouldContinue = { false }))
     }
 
+    private fun sha256(bytes: ByteArray) =
+        java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    @Test
+    fun `a file that no longer matches its checked hash stops before the last write`() {
+        val bytes = ByteArray(10_000) { (it % 7).toByte() }
+        transport.responses[PackageInstallLine.command(10_000)] = "Success\n"
+        val changed = assertIs<ShellResult.Failed>(broker.installApk(apk(bytes), expectedSha256 = sha256(ByteArray(10_000))))
+        assertEquals(PackageInstallLine.CHANGED_MESSAGE, changed.message)
+        assertTrue(transport.execs.isEmpty(), "the final payload never went out, so pm had nothing whole to install")
+        assertIs<ShellResult.Ok>(broker.installApk(apk(bytes), expectedSha256 = sha256(bytes).uppercase()))
+        assertTrue(bytes.contentEquals(transport.execs.single().second))
+    }
+
     @Test
     fun `pm's answer is read line by line`() {
         assertTrue(PackageInstallLine.succeeded("Performing Streamed Install\nSuccess\n"))

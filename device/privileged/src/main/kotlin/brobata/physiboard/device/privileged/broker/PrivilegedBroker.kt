@@ -97,17 +97,24 @@ class PrivilegedBroker(
      * (app-shell.md SS32.3), under the broker lock like every other line. Installing PhysiBoard's
      * own package ends this process before the answer can arrive; a [ShellResult.Ok] is returned
      * only when the shell printed "Success". [shouldContinue] is asked before every write of the
-     * stream; false (the screen came on) closes it short, so `pm` installs nothing. Never throws;
-     * never call on the main thread.
+     * stream; false (the screen came on) closes it short, so `pm` installs nothing. The bytes are
+     * hashed as they are read, and when [expectedSha256] is given the last write is made only if the
+     * whole stream matches it: what `pm` installs is exactly what was checked. Never throws; never
+     * call on the main thread.
      */
-    fun installApk(apk: java.io.File, shouldContinue: () -> Boolean = { true }): ShellResult = lock.withLock {
+    fun installApk(apk: java.io.File, expectedSha256: String? = null, shouldContinue: () -> Boolean = { true }): ShellResult = lock.withLock {
         if (!transport.hasStoredKey()) return@withLock fail(BrokerRules.NOT_PAIRED_MESSAGE)
         val size = apk.length()
         if (size <= 0L) return@withLock fail("The update file is empty.")
         val port = transport.discoverConnectPort(BrokerRules.CONNECT_DISCOVERY_TIMEOUT_MS) ?: return@withLock fail(BrokerRules.NO_SERVICE_MESSAGE)
+        var mismatch = false
         try {
-            val output = apk.inputStream().buffered().use { input ->
-                transport.execWithInput(port, PackageInstallLine.command(size), input, size, PackageInstallLine.READ_TIMEOUT_MS, shouldContinue)
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val output = java.security.DigestInputStream(apk.inputStream().buffered(), digest).use { input ->
+                transport.execWithInput(port, PackageInstallLine.command(size), input, size, PackageInstallLine.READ_TIMEOUT_MS) { isLast ->
+                    if (isLast && expectedSha256 != null && !PackageInstallLine.sameDigest(digest.digest(), expectedSha256)) mismatch = true
+                    !mismatch && shouldContinue()
+                }
             }
             if (PackageInstallLine.succeeded(output)) {
                 lastResult = output
@@ -117,7 +124,7 @@ class PrivilegedBroker(
                 fail(output.trim().ifEmpty { "The install gave no answer." })
             }
         } catch (error: Exception) {
-            fail(BrokerRules.errorText(error))
+            fail(if (mismatch) PackageInstallLine.CHANGED_MESSAGE else BrokerRules.errorText(error))
         }
     }
 

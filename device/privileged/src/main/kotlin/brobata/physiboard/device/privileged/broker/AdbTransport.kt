@@ -65,11 +65,12 @@ interface AdbTransport {
     /**
      * Like [runShell], but runs [command] through the `exec:` service with [size] bytes of [input]
      * written to its standard input, waiting up to [readTimeoutMs] per read. [shouldContinue] is asked
-     * before every write; false closes the stream short so the command fails. Used to install
+     * after each payload is read and before it is written, with whether it is the last; false closes
+     * the stream short so the command fails. Used to install
      * PhysiBoard's own update (app-shell.md SS32.3): the APK stays in the app's private files and
      * the shell reads it from this stream, never from a path. Throws like [runShell].
      */
-    fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, shouldContinue: () -> Boolean): String
+    fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, shouldContinue: (isLast: Boolean) -> Boolean): String
 
     /**
      * Pairs on 127.0.0.1:[port] with [code], minting a key when none is stored and re-minting

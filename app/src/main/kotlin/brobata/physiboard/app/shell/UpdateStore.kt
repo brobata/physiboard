@@ -3,7 +3,9 @@ package brobata.physiboard.app.shell
 import android.content.Context
 import android.util.Log
 import brobata.physiboard.core.shell.PendingUpdate
+import brobata.physiboard.core.shell.UpdateAssetSelection
 import brobata.physiboard.core.shell.UpdateRecord
+import brobata.physiboard.core.shell.VersionComparison
 import java.io.File
 
 /**
@@ -34,10 +36,20 @@ class UpdateStore(context: Context) {
         }
     }
 
-    /** The file a download is written to before it has passed its checks. */
-    fun partialFile(): File = synchronized(LOCK) {
+    /**
+     * The file [tag]'s download is written to before it has passed its checks,
+     * `physiboard-<version>.apk.part`. One per release, so refusing one release can never delete
+     * another release's download under the job writing it.
+     */
+    fun partialFile(tag: String): File = synchronized(LOCK) {
         dir.mkdirs()
-        File(dir, PARTIAL)
+        partialFor(tag) ?: throw IllegalArgumentException("not a release tag: $tag")
+    }
+
+    private fun partialFor(tag: String): File? {
+        val version = VersionComparison.normalize(tag)
+        if (!PLAIN_VERSION.matches(version)) return null
+        return File(dir, UpdateAssetSelection.apkName(version) + PARTIAL_SUFFIX)
     }
 
     /** The checked APK for [ready], or null when it is missing from disk. */
@@ -46,52 +58,54 @@ class UpdateStore(context: Context) {
     /** Moves a checked download into place as [ready], dropping any older APK. */
     fun keep(partial: File, ready: PendingUpdate): Boolean = synchronized(LOCK) {
         val target = File(dir, ready.fileName)
-        deleteFiles(includingPartial = false)
+        deleteApks()
         if (!partial.renameTo(target)) {
             partial.delete()
             return false
         }
+        // Only one download runs at a time, so any other partial file is a leftover of one that died.
+        dir.listFiles()?.forEach { if (it.name.endsWith(PARTIAL_SUFFIX)) it.delete() }
         write(UpdateRecord(ready = ready, refusedTag = null))
         true
     }
 
     /**
      * Forgets the downloaded update (installed, superseded, or no longer wanted) and deletes its file.
-     * A download in progress is left alone: only the download job owns `download.part`, and deleting
+     * A download in progress is left alone: only the download job owns its partial file, and deleting
      * it under that job would make a good newer release look broken and be refused for good.
      */
     fun discardReady() = synchronized(LOCK) {
-        deleteFiles(includingPartial = false)
+        deleteApks()
         val record = read()
         if (record.ready != null) write(record.copy(ready = null))
     }
 
     /**
-     * [tag]'s APK failed a check or Android refused it: delete it and do not download it again. A
-     * different release already downloaded and checked is kept; only a half-finished download goes.
+     * [tag]'s APK failed a check or Android refused it: delete it and do not download it again.
+     * Only [tag]'s own files go: a different release already downloaded and checked is kept, and so
+     * is a different release's download in progress.
      */
     fun refuse(tag: String) = synchronized(LOCK) {
         val record = read()
+        partialFor(tag)?.delete()
         if (record.ready?.tag.let { it == null || it == tag }) {
-            deleteFiles(includingPartial = true)
+            deleteApks()
             write(UpdateRecord(ready = null, refusedTag = tag))
         } else {
-            File(dir, PARTIAL).delete()
             write(record.copy(refusedTag = tag))
         }
     }
 
-    private fun deleteFiles(includingPartial: Boolean) {
-        dir.listFiles()?.forEach { file ->
-            if (file.name.endsWith(".apk") || (includingPartial && file.name == PARTIAL)) file.delete()
-        }
+    private fun deleteApks() {
+        dir.listFiles()?.forEach { file -> if (file.name.endsWith(".apk")) file.delete() }
     }
 
     private companion object {
         const val TAG = "UpdateStore"
         const val DIR = "updates"
         const val RECORD = "record.json"
-        const val PARTIAL = "download.part"
+        const val PARTIAL_SUFFIX = ".part"
+        val PLAIN_VERSION = Regex("""\d{1,4}(\.\d{1,4}){1,3}""")
         val LOCK = Any()
     }
 }

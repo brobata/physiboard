@@ -58,12 +58,20 @@ object SessionInstaller {
         }
     }
 
-    /** Android's status code as the updater's outcome. A full disk is worth another try; every other failure is a refusal. */
+    /**
+     * Android's status code as the updater's outcome (app-shell.md SS32.3). Only a verdict on the
+     * APK itself (invalid, incompatible with the installed app, conflicting with it) refuses the
+     * release. A plain failure, a block by policy, a timeout, the user saying no and a full disk
+     * keep the file for another try, as does any code this build does not know.
+     */
     fun outcome(status: Int): SessionOutcome = when (status) {
         PackageInstaller.STATUS_SUCCESS -> SessionOutcome.SUCCESS
         PackageInstaller.STATUS_PENDING_USER_ACTION -> SessionOutcome.NEEDS_USER
-        PackageInstaller.STATUS_FAILURE_ABORTED, PackageInstaller.STATUS_FAILURE_STORAGE -> SessionOutcome.CANCELLED
-        else -> SessionOutcome.FAILED
+        PackageInstaller.STATUS_FAILURE_INVALID,
+        PackageInstaller.STATUS_FAILURE_INCOMPATIBLE,
+        PackageInstaller.STATUS_FAILURE_CONFLICT,
+        -> SessionOutcome.REFUSED
+        else -> SessionOutcome.RETRY_LATER
     }
 
     /** Drops a session Android left waiting for a confirmation nobody will see. */

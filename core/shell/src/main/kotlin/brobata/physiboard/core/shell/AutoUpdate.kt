@@ -252,7 +252,13 @@ object AutoUpdatePolicy {
     fun routes(brokerReachable: Boolean): List<Route> =
         if (brokerReachable) listOf(Route.BROKER, Route.SESSION, Route.NOTIFY) else listOf(Route.SESSION, Route.NOTIFY)
 
-    enum class SessionOutcome { SUCCESS, NEEDS_USER, CANCELLED, FAILED }
+    /**
+     * Android's answer to a session, as the updater acts on it. [RETRY_LATER] keeps the file:
+     * the user said no, the phone was full or busy, a policy or a timeout stopped it, none of
+     * which says the APK is bad. Only [REFUSED] (Android judged the APK itself invalid, or
+     * incompatible or conflicting with the installed app) deletes it and gives the release up.
+     */
+    enum class SessionOutcome { SUCCESS, NEEDS_USER, RETRY_LATER, REFUSED }
 
     enum class AfterSession {
         /** Installed; the new version's process takes over. */
@@ -271,10 +277,17 @@ object AutoUpdatePolicy {
         REFUSE,
     }
 
+    /**
+     * Whether Android's answer about the session for [committedTag] may act on the update waiting
+     * now ([readyTag]). An answer that arrives after a newer release replaced the file, or that does
+     * not say which release it was for, never refuses or deletes anything.
+     */
+    fun sessionApplies(committedTag: String?, readyTag: String?): Boolean = committedTag != null && committedTag == readyTag
+
     fun afterSession(outcome: SessionOutcome, interactive: Boolean): AfterSession = when (outcome) {
         SessionOutcome.SUCCESS -> AfterSession.DONE
         SessionOutcome.NEEDS_USER -> if (interactive) AfterSession.CONFIRM else AfterSession.NOTIFY_READY
-        SessionOutcome.CANCELLED -> AfterSession.KEEP
-        SessionOutcome.FAILED -> AfterSession.REFUSE
+        SessionOutcome.RETRY_LATER -> AfterSession.KEEP
+        SessionOutcome.REFUSED -> AfterSession.REFUSE
     }
 }

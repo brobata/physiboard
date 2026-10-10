@@ -1687,7 +1687,7 @@ queued, with two constraints: an **unmetered network** and storage not low. Unme
 keyboard should not spend mobile data unasked; a 3.2 release APK is 10.9 MB and Wi-Fi comes round
 daily on almost every phone, so the cost is a delay of hours at most, and "Check for updates"
 still shows the release at once with its browser download. The checksum file is read first (at
-most 4096 bytes), then the APK is streamed to `no_backup/updates/download.part` with its SHA-256
+most 4096 bytes), then the APK is streamed to `no_backup/updates/physiboard-<version>.apk.part` with its SHA-256
 computed on the way in, capped at 100 MB. A network failure is retried with the scheduler's
 backoff, four attempts in all, then left to the next check. Private mode refuses both requests
 before anything is sent (31.2, purpose "update download"); the job then simply ends. A redirect to
@@ -1714,8 +1714,10 @@ The downloaded file must pass, in this order, or it is deleted at once:
 A refused release is remembered (`refusedTag`, 32.6), announced the 3.2 way so the user can still
 get it from the release page, and never downloaded again; the next release is tried normally. The
 same five checks run again immediately before every install, against the app as installed at that
-moment, and the bytes written into Android's installer are hashed again on the way and must still
-match.
+moment, and the bytes handed on are hashed again on the way and must still match: Android's
+installer session is abandoned on a mismatch, and the Titan tools stream is hashed as it is read and
+closed short before its last write, so `pm` never receives a whole file that differs from the one
+checked.
 
 Routes, best first, each tried only while the screen is still off:
 
@@ -1742,9 +1744,13 @@ Routes, best first, each tried only while the screen is still off:
    now" again (D10).
 
 Android's answers to a session: installed (the file is deleted by the new version, 32.6); needs the
-user (route 3); cancelled or out of storage (the file is kept for another try); anything else (the
+user (route 3); invalid, incompatible or conflicting, Android's verdicts on the APK itself (the
 release is refused as above, toast "Android refused the update. It was deleted; the release page
-has it." when the user started it).
+has it." when the user started it); anything else, a plain failure, a block by policy, a timeout,
+the user saying no, a full disk or a code this build does not know (the file is kept for another
+try). Each session carries the tag it installs, and an answer acts only while that tag is still the
+update waiting: a late answer about a release a newer download has replaced refuses and deletes
+nothing.
 
 ### 32.4 When it installs
 
@@ -1761,6 +1767,9 @@ lost. "Install automatically" therefore installs only while nobody can be typing
   screen (still off), and dictation. A dictation session running with the screen off is looked at
   again after 5 minutes. The keyboard window is not a separate condition: with the screen off
   nothing can be typed in it.
+- The screen is read again before every Titan tools write and right before the session commit; but
+  once the last write is made or the session is committed, the install cannot be stopped, and for
+  the roughly 13 s Android then takes (D11) a screen turned on still sees the keyboard restart.
 - After the update the what's-new note shows on the next open (section 5), as for any update.
 
 In "Download and ask me" the six-hourly check posts the ready notification again while the update
@@ -1782,15 +1791,16 @@ moment." says what is about to happen.
 
 ### 32.6 Where the file lives
 
-`no_backup/updates/` in PhysiBoard's own data: `download.part` while downloading, then
+`no_backup/updates/` in PhysiBoard's own data: `physiboard-<version>.apk.part` while downloading, then
 `physiboard-<version>.apk`, and `record.json` (the checked update's tag, version code, SHA-256 and
 file name, and the last refused tag). App data is private to the app, and the files are created
 readable by their owner only, so no other app can read or replace the APK between the check and the
 install; "no_backup" keeps it out of auto backup, device transfer and PhysiBoard's own backup. A
 record naming any file that is not `physiboard-<digits and dots>.apk` is ignored. Every process
 start deletes a waiting update the installed app has caught up with (the one just installed), and
-cancels its notification. Deleting a waiting update never touches `download.part`, which belongs to
-a download that may be running at that moment.
+cancels its notification. Deleting a waiting update never touches a `.part` file, which belongs to
+a download that may be running at that moment, and refusing a release deletes only that release's
+own `.part`; a finished download clears any other leftover one (only one download runs at a time).
 
 ### 32.7 How soon a release is noticed
 
@@ -1830,6 +1840,10 @@ installed at the next 2 minutes of screen-off.
 | U6 | APK hash differs from the checksum; not an APK; other package; same or lower version code; unsigned; other signer set, or one extra signer | each refused and deleted, release announced, not downloaded again |
 | U7 | screen on / screen off and dictating / screen off and idle | wait / look again in 5 min / install |
 | U7a | the screen comes on while Titan tools stream the APK | the stream is closed short; nothing installs |
+| U7b | the APK changes after its check, before the Titan tools stream ends | the last write is never made; nothing installs |
+| U13 | each Android session status | only invalid, incompatible and conflict refuse the release; every other failure, timeout and unknown code keep the file |
+| U14 | a refusal answer for v3.3.0 while v3.3.1 is waiting, or with no tag | nothing refused or deleted |
+| U15 | v3.3.0 refused while v3.3.2 downloads | v3.3.2's `.part` untouched |
 | U8 | Titan tools paired and Wireless debugging on | installed through the broker; else Android's installer; else the ready notification |
 | U9 | a waiting v3.3.0 and a found v3.2.0 | v3.2.0 not downloaded |
 | U10 | a waiting v3.3.0 and a refused v3.3.1 | v3.3.0 kept |

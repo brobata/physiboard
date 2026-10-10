@@ -49,7 +49,7 @@ class UpdateDownloadWorker(appContext: Context, params: WorkerParameters) : Coro
             is UpdateDownloader.Result.Failed -> return retryOrGiveUp("checksum", r.message)
             is UpdateDownloader.Result.Invalid -> return refused(tag, release, r.message)
         }
-        val partial = store.partialFile()
+        val partial = store.partialFile(tag)
         val actual = when (val r = UpdateDownloader.fetchApk(assets, partial)) {
             is UpdateDownloader.Result.Ok -> r.value
             is UpdateDownloader.Result.Blocked -> return Result.success()

@@ -243,8 +243,16 @@ class AutoUpdateTest {
         assertEquals(AfterSession.DONE, p.afterSession(SessionOutcome.SUCCESS, interactive = false))
         assertEquals(AfterSession.NOTIFY_READY, p.afterSession(SessionOutcome.NEEDS_USER, interactive = false))
         assertEquals(AfterSession.CONFIRM, p.afterSession(SessionOutcome.NEEDS_USER, interactive = true))
-        assertEquals(AfterSession.KEEP, p.afterSession(SessionOutcome.CANCELLED, interactive = true))
-        assertEquals(AfterSession.REFUSE, p.afterSession(SessionOutcome.FAILED, interactive = false))
+        assertEquals(AfterSession.KEEP, p.afterSession(SessionOutcome.RETRY_LATER, interactive = true))
+        assertEquals(AfterSession.REFUSE, p.afterSession(SessionOutcome.REFUSED, interactive = false))
+    }
+
+    @Test
+    fun `an install answer acts only on the release that was committed`() {
+        assertTrue(AutoUpdatePolicy.sessionApplies("v3.3.0", "v3.3.0"))
+        assertFalse(AutoUpdatePolicy.sessionApplies("v3.3.0", "v3.3.1"), "a newer download replaced it")
+        assertFalse(AutoUpdatePolicy.sessionApplies("v3.3.0", null), "nothing waits any more")
+        assertFalse(AutoUpdatePolicy.sessionApplies(null, "v3.3.0"), "an answer that does not say which release")
     }
 
     @Test

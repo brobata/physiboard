@@ -86,16 +86,19 @@ class FakeAdbTransport(
     /** Every streamed command, with the bytes it was given. */
     val execs = mutableListOf<Pair<String, ByteArray>>()
 
-    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, shouldContinue: () -> Boolean): String {
-        if (!shouldContinue()) throw IllegalStateException("stopped after 0 of $size bytes")
-        val bytes = ByteArray(size.toInt())
-        var read = 0
-        while (read < bytes.size) {
-            val n = input.read(bytes, read, bytes.size - read)
+    override fun execWithInput(port: Int, command: String, input: java.io.InputStream, size: Long, readTimeoutMs: Int, shouldContinue: (isLast: Boolean) -> Boolean): String {
+        // Reads and "writes" in 4096-byte payloads the way the real client does, asking before each.
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(4096)
+        var sent = 0L
+        while (sent < size) {
+            val n = input.read(buffer, 0, minOf(buffer.size.toLong(), size - sent).toInt())
             if (n < 0) break
-            read += n
+            if (!shouldContinue(sent + n >= size)) throw IllegalStateException("stopped after $sent of $size bytes")
+            out.write(buffer, 0, n)
+            sent += n
         }
-        execs += command to bytes.copyOf(read)
+        execs += command to out.toByteArray()
         if (command in failing) throw IllegalStateException("not A_CNXN")
         return responses[command] ?: ""
     }

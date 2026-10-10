@@ -228,7 +228,7 @@ object AutoUpdater {
                 Route.BROKER -> {
                     Log.i(TAG, "installing ${ready.tag} through Titan tools")
                     // The stream is closed short the moment the screen comes on, so pm installs nothing.
-                    when (val result = broker.installApk(apk) { !isInteractive(context) }) {
+                    when (val result = broker.installApk(apk, expectedSha256 = ready.sha256) { !isInteractive(context) }) {
                         is ShellResult.Ok -> return
                         is ShellResult.Failed -> Log.w(TAG, "Titan tools could not install ${ready.tag}: ${result.message}")
                     }
@@ -238,7 +238,7 @@ object AutoUpdater {
                     // to the notification instead of a session that can only be abandoned.
                     if (!context.packageManager.canRequestPackageInstalls()) continue
                     Log.i(TAG, "installing ${ready.tag} through Android's installer")
-                    val committed = runCatching { SessionInstaller.commit(context, apk, ready.sha256, backgroundStatusTarget(context)) }
+                    val committed = runCatching { SessionInstaller.commit(context, apk, ready.sha256, backgroundStatusTarget(context, ready.tag)) }
                         .onFailure { Log.w(TAG, "Android's installer could not take ${ready.tag}", it) }
                     if (committed.isSuccess) return
                 }
@@ -275,19 +275,27 @@ object AutoUpdater {
         UpdateNotifications.announce(context, ResolvedRelease(tag, UpdateNotifications.releasePage(tag), apkDownloadUrl = null))
     }
 
-    private fun backgroundStatusTarget(context: Context) = PendingIntent.getBroadcast(
+    /** The tag rides along, so the answer can only ever act on the release that was committed. */
+    private fun backgroundStatusTarget(context: Context, tag: String) = PendingIntent.getBroadcast(
         context,
         0,
-        Intent(context, UpdateInstallReceiver::class.java).setAction(UpdateInstallReceiver.ACTION_STATUS),
+        Intent(context, UpdateInstallReceiver::class.java)
+            .setAction(UpdateInstallReceiver.ACTION_STATUS)
+            .putExtra(UpdateInstallReceiver.EXTRA_TAG, tag),
         PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     ).intentSender
 
     /** Android's answer to a background session (SS32.3). */
-    fun onBackgroundSessionResult(context: Context, status: Int, sessionId: Int, message: String?) {
+    fun onBackgroundSessionResult(context: Context, status: Int, sessionId: Int, message: String?, committedTag: String?) {
         val outcome = SessionInstaller.outcome(status)
-        Log.i(TAG, "Android's installer answered $outcome ($status) ${message.orEmpty()}")
+        Log.i(TAG, "Android's installer answered $outcome ($status) for $committedTag ${message.orEmpty()}")
         val store = UpdateStore(context)
         val ready = store.read().ready
+        if (!AutoUpdatePolicy.sessionApplies(committedTag, ready?.tag)) {
+            // A late answer about a release that is no longer the one waiting: drop its session, touch nothing else.
+            if (outcome == AutoUpdatePolicy.SessionOutcome.NEEDS_USER) SessionInstaller.abandon(context, sessionId)
+            return
+        }
         when (AutoUpdatePolicy.afterSession(outcome, interactive = false)) {
             AfterSession.DONE -> store.discardReady()
             AfterSession.NOTIFY_READY -> {
