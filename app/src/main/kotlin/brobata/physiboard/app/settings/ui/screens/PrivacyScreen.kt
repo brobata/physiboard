@@ -56,7 +56,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
                     title = "About private mode",
                     text = "While this is on, PhysiBoard remembers nothing you type: no new words, no word predictions learned, " +
                         "no clipboard history, no recent emoji. Autocorrect still uses what it already knows. PhysiBoard also makes no " +
-                        "network requests: no update checks and no dictionary downloads. Dictation is done by your phone's speech " +
+                        "network requests: no update checks, no update downloads and no dictionary downloads. Dictation is done by your phone's speech " +
                         "service, which may still go online; it is not part of PhysiBoard. To switch it from the keyboard, give \"Private mode\" a key " +
                         "under Assigned launcher keys (Sym + that key), or put the command physiboard.toggle_private_mode on the Fn layer.",
                 )

@@ -142,6 +142,7 @@ object SearchCatalog {
         SearchEntry("Test field", HELP, Routes.TEST_FIELD, "test type try field"),
         SearchEntry("Diagnostics", HELP, Routes.DIAGNOSTICS, "diagnostics debug export key event logger bug report record"),
         SearchEntry("Check for updates", HELP, Routes.HELP, "update github release check version download apk"),
+        SearchEntry("Updates", HELP, Routes.HELP, "updates automatic auto-update install download wifi new version ask notification off unknown apps"),
         SearchEntry("Show the tutorial", HELP, Routes.HELP, "tutorial walkthrough intro setup first run onboarding welcome again"),
         SearchEntry("About", "About", Routes.ABOUT, "about version licence license credits support sponsor report problem"),
     )

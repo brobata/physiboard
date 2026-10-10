@@ -27,6 +27,21 @@ if (!releaseSigningReady) {
     )
 }
 
+/*
+ * app-shell.md SS23.1: a test run may build a copy under another version (two copies one version
+ * apart, to try an update on the emulator) without touching the numbers below, which only the
+ * maintainer changes.
+ */
+val versionCodeOverride = providers.gradleProperty("PHYSIBOARD_VERSION_CODE").orNull?.toIntOrNull()
+val versionNameOverride = providers.gradleProperty("PHYSIBOARD_VERSION_NAME").orNull?.takeIf { it.isNotBlank() }
+
+/*
+ * app-shell.md SS32.1: only the release build downloads and installs a release APK. A debug build
+ * may be given the ability for an emulator test with -PPHYSIBOARD_AUTO_UPDATE_TEST=true; the
+ * sideload build never has it.
+ */
+val autoUpdateTestBuild = providers.gradleProperty("PHYSIBOARD_AUTO_UPDATE_TEST").orNull == "true"
+
 android {
     namespace = "brobata.physiboard.app"
     compileSdk = 36
@@ -35,8 +50,8 @@ android {
         applicationId = "brobata.physiboard"
         minSdk = 31
         targetSdk = 36
-        versionCode = 30200
-        versionName = "3.2.0"
+        versionCode = versionCodeOverride ?: 30200
+        versionName = versionNameOverride ?: "3.2.0"
         // app-shell.md SS23.1 (D3): the phone this ships to is arm64 only, same as the embedded
         // ADB library; an x86 or armeabi-v7a build would carry native code that silently never runs.
         ndk { abiFilters += "arm64-v8a" }
@@ -65,6 +80,10 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (releaseSigningReady) signingConfig = signingConfigs.getByName("release")
+            buildConfigField("boolean", "AUTO_UPDATE_INSTALLS", "true")
+        }
+        debug {
+            buildConfigField("boolean", "AUTO_UPDATE_INSTALLS", autoUpdateTestBuild.toString())
         }
         /*
          * The only build safe to put on the maintainer's phone while 2.x is the
@@ -78,6 +97,8 @@ android {
             applicationIdSuffix = ".dev3"
             versionNameSuffix = "-dev3"
             matchingFallbacks += listOf("debug")
+            // Never, test property or not: this id is not the release's, and its key is not either.
+            buildConfigField("boolean", "AUTO_UPDATE_INSTALLS", "false")
         }
     }
 
@@ -145,6 +166,10 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+    // The update store and the downloaded-APK checks run on Robolectric (JUnit 4, through the vintage engine).
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+    testRuntimeOnly(libs.junit.vintage.engine)
 }
 
 tasks.withType<Test> {
