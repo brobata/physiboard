@@ -654,8 +654,8 @@ and "ordinary words overruled ≤ 0" as invariants; they are not to be loosened.
 Only English was rebuilt. The other eleven bundled lists came from the same upstream process and
 very likely have the same coverage problem.
 
-Amended 2026-10-06, **the mix-up exception**. With `fix_word_mixups` on (off by default; section
-13, settings-catalog.md), one narrow kind of known word may be replaced: a word from a
+Amended 2026-10-06, **the mix-up exception**. With `fix_word_mixups` on (on by default from 3.2,
+off in 3.0 and 3.1; section 13, settings-catalog.md), one narrow kind of known word may be replaced: a word from a
 hand-curated confusion set (`its`/`it's`, `your`/`you're`, `their`/`there`/`they're`,
 `then`/`than`, `to`/`too`, `lose`/`loose`, `whose`/`who's`, `were`/`we're`/`where`,
 `cant`/`can't`, `wont`/`won't`, `lets`/`let's`, `ill`/`I'll`, `know`/`no`, `new`/`knew`,
@@ -842,7 +842,7 @@ engine's path without a word-pair table.
 | `max_auto_replace_distance` | int 0..3 | code default 1; shipped Titan baseline 2 | Largest edit distance a correction may have; 0 shows "Off" and blocks every fuzzy correction (accent and case repairs at distance 0 still pass, on both paths). With a word-pair table the distance is further capped at 2, and at 1 for a word of four letters or fewer | Auto-correction, shown only while automatic correction is on; slider with 3 steps | "Maximum correction distance" |
 | `use_keyboard_proximity` | boolean | code default false; shipped Titan baseline true | Drops same-length candidates that need a far-key substitution; adjacent-key bonus in edit-type ranking. No effect when the language has a word-pair table (English): that path's slip costs are the key geometry itself (section 16), so it always weighs key distance, and the 2.5-key veto and the nudges are not used there | Auto-correction | "Keyboard Proximity Ranking" (subtitle: Ranks corrections by how close the keys are. English, which reads the sentence, always weighs the Titan's key distances; this switch is for the other languages.) |
 | `use_edit_type_ranking` | boolean | false | The edit-type score term (insert 0.5 > substitute 0.4/0.2 > delete 0.3/0.1/0) | Auto-correction | "Edit Type Ranking" |
-| `fix_word_mixups` | boolean | false (no baseline) | The mix-up fix of the previous word (section 10's exception); needs the word-pair table | Auto-correction | "Fix mixed-up words" (subtitle: Fixes a real word typed for its twin — its/it's, your/you're, their/there, then/than — by reading the words on both sides. Backspace right after puts back what you typed.) |
+| `fix_word_mixups` | boolean | true (baseline 10; false in 3.0 and 3.1) | The mix-up fix of the previous word (section 10's exception); needs the word-pair table | Auto-correction | "Fix mixed-up words" (subtitle: Fixes a real word typed for its twin — its/it's, your/you're, their/there, then/than — by reading the words on both sides. Backspace right after puts back what you typed.) |
 | `user_dictionary_entries` | string (JSON array of `{"w","f","u"}`) | `[]` | The personal dictionary | Personal dictionary; strip add-word | "Personal dictionary" |
 | `trackpad_gesture_add_word_enabled` | boolean | true | Whether the left-third trackpad gesture adds the add-word candidate | none (no UI; backed up) | "Add words with gestures" (string exists, unused) |
 | `trackpad_gesture_add_word_full_width_enabled` | boolean | true | Whether any third adds the candidate when it is alone on the strip | none (no UI) | "Full-width add-word swipe" (string exists, unused) |

@@ -92,9 +92,10 @@ class ContextCorrectionTest {
     }
 
     @Test
-    fun `T-the mix-up fix is off unless fix_word_mixups is on`() {
-        assertEquals(false, AutocorrectSettings().fixWordMixups)
-        assertEquals(BoundaryOutcome.CommitPlain, boundary("The dog wagged it's tail", settings = shipped).outcome)
+    fun `T-the mix-up fix is on by default and stays out of the way when fix_word_mixups is off`() {
+        assertEquals(true, AutocorrectSettings().fixWordMixups)
+        assertEquals("The dog wagged its tail", applied("The dog wagged it's tail", boundary("The dog wagged it's tail", settings = shipped)))
+        assertEquals(BoundaryOutcome.CommitPlain, boundary("The dog wagged it's tail", settings = shipped.copy(fixWordMixups = false)).outcome)
     }
 
     @Test

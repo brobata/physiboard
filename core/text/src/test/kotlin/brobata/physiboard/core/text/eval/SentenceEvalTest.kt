@@ -81,9 +81,10 @@ class SentenceEvalTest {
         println(SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.WRONG || it.outcome == CaseOutcome.CLOBBERED }, limit = 40))
         println("  missed non-word typos by reason: " + summary.words.filter { it.outcome == CaseOutcome.MISSED && !it.typedKnown }.groupingBy { it.reason }.eachCount())
         assertEquals(0, summary.clobberedOf(WordKind.KNOWN), SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.CLOBBERED && it.typedKnown }))
-        // Ratchets: recall 0.750 (0.858 of the typos that are not themselves real words), 88 wrong, 6 clobbered, when this landed.
+        // Ratchets: recall 0.750 (0.858 of the typos that are not themselves real words), 88 wrong, 6 clobbered, when this landed;
+        // 90 wrong once the mix-up fix shipped on (3.2), since it now runs in the shipped settings too.
         assertTrue(summary.recall >= 0.75, summary.report("b"))
-        assertTrue(summary.wrong <= 88, summary.report("b"))
+        assertTrue(summary.wrong <= 90, summary.report("b"))
         assertTrue(summary.clobbered <= 6, summary.report("b"))
     }
 

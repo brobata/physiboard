@@ -5,6 +5,10 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
 
 ## 3.2.0 (unreleased)
 
+- Fixing mixed-up words (its/it's, your/you're, their/there, then/than) is now on for everyone.
+  It shipped off in 3.0 and 3.1 while it was being proven; updating turns it on once, and
+  turning it off again afterwards sticks.
+
 ## 3.1.0 (2026-10-09)
 
 A new look for everything PhysiBoard draws, settings that are easy to find, Backspace that works

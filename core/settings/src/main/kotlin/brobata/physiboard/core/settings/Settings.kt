@@ -118,11 +118,11 @@ data class CorrectionPrefs(
     val useKeyboardProximity: Boolean = true,
     /**
      * `fix_word_mixups`: swaps a real word typed for its twin (its/it's, your/you're) by reading
-     * the words on both sides. spec: autocorrect-suggestions.md SS10. Ships OFF: it rewrites a
-     * word the user typed correctly spelled, so it stays off, in the baseline too, until it has
-     * survived real use on the maintainer's Titan.
+     * the words on both sides. spec: autocorrect-suggestions.md SS10. On by default from 3.2 (the
+     * maintainer's call, 2026-10-09, after using it daily on the Titan); it shipped off in 3.0
+     * and 3.1 while it was unproven, and baseline 10 turns it on for those installs once.
      */
-    val fixWordMixups: Boolean = false,
+    val fixWordMixups: Boolean = true,
 )
 
 /** One language's user substitutions: the catalogue's JSON object whose `__name` is the display name and every other field `wrong: right`. */

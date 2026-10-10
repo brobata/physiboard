@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 9 switches the event vibrations off. */
-    const val CURRENT_VERSION: Int = 9
+    /** The baseline version this build ships with; version 10 turns the mix-up fix on. */
+    const val CURRENT_VERSION: Int = 10
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -79,6 +79,11 @@ object SettingsBaseline {
         // the settings app's ticks) off, by the maintainer's choice; the dev build had stored
         // them on. Dictation's cues are their own setting and keep buzzing.
         9 to mapOf(SettingsKeys.EVENT_HAPTICS to "false"),
+        // Version 10, 2026-10-09: the mix-up fix (its/it's, your/you're) on for everyone, the
+        // maintainer's call after daily use on the Titan. It shipped off in 3.0 and 3.1, so a
+        // stored "false" is almost always the old default, not a choice; turning it off again
+        // afterwards stands.
+        10 to mapOf(SettingsKeys.FIX_WORD_MIXUPS to "true"),
     )
 
     /**

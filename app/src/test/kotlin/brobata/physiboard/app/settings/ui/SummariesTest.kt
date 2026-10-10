@@ -15,7 +15,7 @@ class SummariesTest {
     @Test
     fun `the shipped defaults read as plain sentences`() {
         assertEquals("Auto-capitals on · double-space period on", Summaries.typing(defaults))
-        assertEquals("Autocorrect on · mix-ups off", Summaries.autocorrect(defaults))
+        assertEquals("Autocorrect on · mix-ups on", Summaries.autocorrect(defaults))
         assertEquals("QWERTY · follows the language", Summaries.languages(defaults))
         assertEquals("Alt symbol · 500 ms", Summaries.longPress(defaults))
         assertEquals("Emoji → Symbols", Summaries.symPages(defaults))

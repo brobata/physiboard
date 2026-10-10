@@ -24,8 +24,8 @@ class SettingsDefaultsTest {
     }
 
     @Test
-    fun `fixing mixed-up words ships off`() {
-        assertFalse(d.correction.fixWordMixups)
+    fun `fixing mixed-up words ships on`() {
+        assertTrue(d.correction.fixWordMixups)
     }
 
     @Test
