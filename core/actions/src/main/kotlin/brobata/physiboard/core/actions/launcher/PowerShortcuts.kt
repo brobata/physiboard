@@ -83,11 +83,20 @@ object PowerShortcutMode {
 
 /** How one key down should be routed through the launcher shortcut paths. spec SS6.2. */
 sealed class LauncherKeyDecision {
-    /** The key holds an assignment: run it, the key is consumed (and, in a text field, the Sym chord counts as used). */
+    /**
+     * The key holds an assignment: run it, the key is consumed (and, in a text field, the Sym chord
+     * counts as used). From [LauncherKeyRouter] this means "the key is this feature's"; the run
+     * itself waits for the release ([LauncherPressTiming], SS6.2 D).
+     */
     data class Run(val keycode: Int, val entry: ShortcutEntry) : LauncherKeyDecision()
 
-    /** No assignment, outside a text field: the assignment sheet opens for [keycode]; the key is consumed. */
-    data class OpenAssignmentSheet(val keycode: Int) : LauncherKeyDecision()
+    /**
+     * The assignment sheet opens for [keycode]; the key is consumed. Either the key has no
+     * assignment (outside a text field, on its down; choosing a command then also runs it), or
+     * [byHold]: an assigned key was held past `long_press_threshold` (SS6.2 D), and the sheet
+     * opens to reassign or remove it, without running what is chosen.
+     */
+    data class OpenAssignmentSheet(val keycode: Int, val byHold: Boolean = false) : LauncherKeyDecision()
 
     /** Not this feature's key; the ordinary pipeline continues. */
     data object FallThrough : LauncherKeyDecision()

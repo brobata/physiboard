@@ -19,6 +19,20 @@ object AssignmentSheet {
     const val EMPTY: String = "No commands found"
     fun emptyForQuery(query: String): String = "No results for \"$query\""
 
+    /**
+     * spec SS6.4: the line under the header naming what the key does now, so a sheet opened by
+     * holding an assigned key (SS6.2 D) shows what it is about to replace or remove. A legacy
+     * entry with no title falls back to its app name, then its package, then the quick launcher's
+     * own name.
+     */
+    fun currentLabel(entry: ShortcutEntry): String {
+        val name = entry.title ?: entry.appName ?: entry.packageName ?: if (entry.isQuickLauncher) QUICK_LAUNCHER_NAME else UNKNOWN_COMMAND
+        return "Now: $name"
+    }
+
+    private const val QUICK_LAUNCHER_NAME = "PhysiBoard QuickLauncher"
+    private const val UNKNOWN_COMMAND = "a command"
+
     /** spec SS6.4: result code 1 "assigned", 2 "removed"; the intent extras. */
     const val RESULT_ASSIGNED: Int = 1
     const val RESULT_REMOVED: Int = 2
