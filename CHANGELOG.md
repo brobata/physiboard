@@ -3,6 +3,16 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
+## 3.3.0 (unreleased)
+
+- PhysiBoard updates itself: a new release is noticed within hours, downloaded on Wi-Fi, checked
+  against its published checksum and your copy's signing key, and installed while the screen is
+  off. Help > Updates: install automatically, download and ask me, or off.
+- Ctrl+Backspace deletes a word again, and a held Alt+Backspace deletes back to the start of the
+  line again in Android's own text boxes (both broke in 3.1).
+- Alt+Backspace can delete to the start of the line in every app: Typing > Backspace > "Alt +
+  Backspace". Off by default for now.
+
 ## 3.2.0 (2026-10-10)
 
 Mixed-up words fixed for everyone, a short setup for new installs, and personal words that can't
