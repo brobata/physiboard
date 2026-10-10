@@ -43,6 +43,7 @@ import brobata.physiboard.core.actions.feedback.TypingSoundMode
 import brobata.physiboard.core.actions.feedback.TypingSounds
 import brobata.physiboard.core.actions.launcher.AssignableKeys
 import brobata.physiboard.core.actions.launcher.AssignmentSheet
+import brobata.physiboard.core.actions.launcher.LauncherKeyDecision
 import brobata.physiboard.core.actions.picker.AddSubstitutionSheet
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
@@ -279,6 +280,9 @@ internal class KeyboardSession(
 
     private val handler = Handler(Looper.getMainLooper())
     private val longPressRunnable = Runnable { onLongPressTick() }
+
+    /** expansion-clipboard-pickers-launcher.md SS6.2 D: a launcher key held to the threshold opens its sheet. */
+    private val launcherHoldRunnable = Runnable { onLauncherHoldTick() }
 
     private var statusBar: StatusBarView? = null
 
@@ -594,6 +598,7 @@ internal class KeyboardSession(
         settingsScope.cancel()
         runCatching { haptics.release() }
         handler.removeCallbacks(longPressRunnable)
+        handler.removeCallbacks(launcherHoldRunnable)
         handler.removeCallbacksAndMessages(cursorUpdateToken)
         handler.removeCallbacksAndMessages(selectionSyncToken)
         handler.removeCallbacks(dipReshowRunnable)
@@ -2024,7 +2029,8 @@ internal class KeyboardSession(
     private fun processWithoutConnection(stroke: KeyStroke): Boolean {
         if (pipeline.fieldReallyEditable) return false
         val result = pipeline.onKeyStroke(stroke, EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs), hasInputConnection = false)
-        result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
+        scheduleLauncherHold()
+        result.launcherKey?.let(::performLauncherKey)
         result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
         if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
         if (result.symWantsTheField) {
@@ -2111,7 +2117,9 @@ internal class KeyboardSession(
         // will not answer.
         // Alt, Ctrl, Sym and Fn presses change modifier state only and read nothing from the
         // field either; only Shift's down does (auto-cap's suppression context, text-input.md SS9.3).
-        val readsNothing = stroke.edge == KeyEdge.UP || (stroke.key is KeyId.Modifier && stroke.key != KeyId.Modifier(ModifierKey.SHIFT))
+        // A held launcher key's repeats are swallowed whole (expansion-clipboard-pickers-launcher.md 6.2 D).
+        val readsNothing = stroke.edge == KeyEdge.UP || (stroke.key is KeyId.Modifier && stroke.key != KeyId.Modifier(ModifierKey.SHIFT)) ||
+            pipeline.ownsLauncherPress(stroke)
         val readout = if (readsNothing) {
             EditorReadout(EditorSnapshot(textBeforeCursor = null, nowMs = stroke.timeMs), documentStartOffset = 0, cursorAbsolute = lastReportedSelStart)
         } else {
@@ -2155,11 +2163,12 @@ internal class KeyboardSession(
             DiagnosticLog.i(TAG) { "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] ops=${result.ops.size}" }
         }
         scheduleLongPressIfNeeded()
+        scheduleLauncherHold()
         // spec app-shell.md SS11, autocorrect-suggestions.md SS7.2: "each attempt is recorded in
         // the debug capture with its outcome", regardless of whether Diagnostics is open.
         result.autocorrectDebug?.let(::reportAutocorrectionDebug)
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
-        result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
+        result.launcherKey?.let(::performLauncherKey)
         // spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on; none when it turns off."
         var strokeHaptic = collectedHaptic
         if (result.navModeTransition == NavModeTransition.ENTERED) strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticEvent.NAV_MODE)
@@ -2908,8 +2917,12 @@ internal class KeyboardSession(
         // latch ([ModifierGlyphInput.ctrlLatchedNotNavMode] excludes it on purpose) is a different
         // feature, not "Ctrl held for a chord", so it does not disqualify the trigger.
         val glyph = pipeline.modifierGlyphInput()
+        // A Space under Sym (held, or the Sym-armed launcher mode waiting) is a Sym chord, never a
+        // trigger: holding Sym+Space opens the launcher key's sheet (expansion-clipboard-pickers-
+        // launcher.md SS6.2 D) instead of the trackpad.
         val carriesDisqualifyingMeta = trackpadKey == TrackpadPhysicalKey.SPACE &&
             (event.metaState and KeyEvent.META_CTRL_ON != 0 || event.metaState and KeyEvent.META_ALT_ON != 0 ||
+                event.metaState and KeyEvent.META_SYM_ON != 0 || pipeline.symChordLive ||
                 glyph.ctrlOneShotArmed || glyph.ctrlLatchedNotNavMode || glyph.altOneShotArmed || glyph.altLatched)
         return when (event.action) {
             KeyEvent.ACTION_DOWN -> {
@@ -3024,6 +3037,30 @@ internal class KeyboardSession(
     }.getOrElse { error ->
         Log.e(TAG, "accent pick crashed", error)
         false
+    }
+
+    /**
+     * expansion-clipboard-pickers-launcher.md SS6.2: runs what the launcher keys decided. A sheet
+     * opened by holding an assigned key (SS6.2 D) is a long press, felt as one when event haptics
+     * are on (keys-and-modifiers.md SS13.5; [haptics] applies that gate).
+     */
+    private fun performLauncherKey(decision: LauncherKeyDecision) {
+        runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) }
+        if (decision is LauncherKeyDecision.OpenAssignmentSheet && decision.byHold) haptics.play(HapticEvent.LONG_PRESS)
+    }
+
+    /** SS6.2 D: (re)arms the hold timer for the earliest launcher key still held as a tap; nothing when none is. */
+    private fun scheduleLauncherHold() {
+        handler.removeCallbacks(launcherHoldRunnable)
+        val deadline = pipeline.launcherHoldDeadlineMs ?: return
+        handler.postDelayed(launcherHoldRunnable, (deadline - SystemClock.uptimeMillis()).coerceAtLeast(0))
+    }
+
+    private fun onLauncherHoldTick() {
+        runCatching {
+            pipeline.onLauncherHoldTick(SystemClock.uptimeMillis())?.let(::performLauncherKey)
+            scheduleLauncherHold()
+        }.onFailure { error -> Log.e(TAG, "launcher hold tick crashed", error) }
     }
 
     private fun scheduleLongPressIfNeeded() {

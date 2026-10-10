@@ -3,6 +3,8 @@ package brobata.physiboard.ime
 import brobata.physiboard.core.actions.launcher.LauncherKeyDecision
 import brobata.physiboard.core.actions.launcher.LauncherKeyRouter
 import brobata.physiboard.core.actions.launcher.LauncherKeySettings
+import brobata.physiboard.core.actions.launcher.LauncherPress
+import brobata.physiboard.core.actions.launcher.LauncherPressTiming
 import brobata.physiboard.core.actions.launcher.LauncherShortcuts
 import brobata.physiboard.core.actions.launcher.PowerShortcutMode
 import brobata.physiboard.core.actions.launcher.PowerShortcutState
@@ -189,7 +191,11 @@ data class PipelineResult(
      * Dictation's c440844 invariant needs that fact as much as an edit this keyboard made itself.
      */
     val appMayEditField: Boolean = false,
-    /** spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired (or an unassigned one asks for the sheet); `:ime` performs it. */
+    /**
+     * spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired (on its release,
+     * SS6.2 D), or the sheet is asked for (an unassigned key's down, or a key held past the
+     * threshold); `:ime` performs it.
+     */
     val launcherKey: LauncherKeyDecision? = null,
     /** spec SS6.2 B: the Sym-armed mode just armed at this time; `:ime` schedules the toast and the disarm. */
     val powerModeArmedAtMs: Long? = null,
@@ -340,6 +346,12 @@ internal class KeyboardPipeline(
 
     /** spec SS6.2 B: the Sym-armed power shortcut mode, which only exists with no editable field. */
     private var powerMode = PowerShortcutState.IDLE
+
+    /**
+     * spec SS6.2 D: the launcher keys that went down and have not come back up, by key. Usually
+     * none or one; a map so two overlapping presses each keep their own release.
+     */
+    private val launcherPresses = LinkedHashMap<KeyId, LauncherPress>()
 
     /** layers-sym-alt.md SS5.2: the text box an app took away a moment ago, and the page that was open on it. */
     private var fieldLoss: FieldLoss? = null
@@ -511,6 +523,10 @@ internal class KeyboardPipeline(
         // commands instead of text. The restore is dropped outright, not deferred: the user is
         // already typing, so there is no later "outside a field" moment left to apply it to.
         if (field.isReallyEditable && powerMode.isArmed) powerMode = PowerShortcutState.IDLE
+        // spec SS6.2 D: a launcher key held across a field change does nothing more (its release
+        // may have gone to the old window, and a hold timer must not open the sheet later), but
+        // its repeats and release are still swallowed if they come.
+        launcherPresses.replaceAll { _, press -> LauncherPressTiming.abandon(press) }
         textInputState = textInputState.forNewField()
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
@@ -737,7 +753,7 @@ internal class KeyboardPipeline(
         val fromArmedMode = effect.fireKey != null
         val decision = LauncherKeyRouter.outsideTextField(stroke.key, settings.launcherShortcuts, settings.launcherKeys, ctrlLatch, foregroundIsHome, fromArmedMode, symPhysicallyHeld = stroke.meta.sym)
         if (decision == LauncherKeyDecision.FallThrough) return if (effect.consumed) PipelineResult.CONSUMED_NO_OP else null
-        return PipelineResult(emptyList(), consumed = true, launcherKey = decision)
+        return beginLauncherPress(stroke, decision)
     }
 
     /**
@@ -753,8 +769,74 @@ internal class KeyboardPipeline(
         val decision = LauncherKeyRouter.inTextField(stroke.key, settings.launcherShortcuts, settings.launcherKeys, symHeldOrPending, stroke.isInitialPress, ctrlLatch)
         if (decision !is LauncherKeyDecision.Run) return null
         modifierState = ModifierMachine.symChordUsed(modifierState)
-        return PipelineResult(emptyList(), consumed = true, launcherKey = decision)
+        return beginLauncherPress(stroke, decision)
     }
+
+    /**
+     * spec SS6.2 D: the down of a key the router took. An assignment waits for its release (a
+     * tap) or the threshold (a hold, the sheet); an unassigned key's sheet opens now. The key is
+     * consumed either way.
+     */
+    private fun beginLauncherPress(stroke: KeyStroke, decision: LauncherKeyDecision): PipelineResult {
+        val step = LauncherPressTiming.begin(stroke.key, decision, stroke.timeMs, layout.longPress.clampedThresholdMs)
+        step.press?.let { launcherPresses[stroke.key] = it }
+        return PipelineResult(emptyList(), consumed = true, launcherKey = step.decision)
+    }
+
+    /**
+     * spec SS6.2 D: the repeats and the release of a launcher key's press, ahead of everything
+     * else that could claim them (nav mode, the Sym chord symbol, the app): all consumed, the
+     * release running a tap's assignment. A fresh down of the same key means the old press's
+     * release never came; that press is forgotten and the new down routes as usual.
+     */
+    private fun launcherPressFollowUp(stroke: KeyStroke): PipelineResult? {
+        val press = launcherPresses[stroke.key] ?: return null
+        val step = when {
+            stroke.edge == KeyEdge.UP -> LauncherPressTiming.onRelease(press, stroke.timeMs)
+            stroke.repeatCount > 0 -> LauncherPressTiming.onTick(press, stroke.timeMs)
+            else -> {
+                launcherPresses.remove(stroke.key)
+                return null
+            }
+        }
+        val next = step.press
+        if (next == null) launcherPresses.remove(stroke.key) else launcherPresses[stroke.key] = next
+        return PipelineResult(emptyList(), consumed = true, launcherKey = step.decision)
+    }
+
+    /**
+     * spec SS6.2 D: a repeat or release of a launcher key's press, which the pipeline answers
+     * without reading the field; `:ime` skips the editor read for it.
+     */
+    fun ownsLauncherPress(stroke: KeyStroke): Boolean =
+        (stroke.edge == KeyEdge.UP || stroke.repeatCount > 0) && launcherPresses.containsKey(stroke.key)
+
+    /** spec SS6.2 D: when the earliest held launcher key turns from a tap into a hold; `:ime` runs [onLauncherHoldTick] then. */
+    val launcherHoldDeadlineMs: Long?
+        get() {
+            if (launcherPresses.isEmpty()) return null
+            var earliest: Long? = null
+            for (press in launcherPresses.values) if (!press.settled && (earliest == null || press.deadlineMs < earliest)) earliest = press.deadlineMs
+            return earliest
+        }
+
+    /** spec SS6.2 D: the hold timer ran; the sheet for the first key held past the threshold, or null. */
+    fun onLauncherHoldTick(nowMs: Long): LauncherKeyDecision? {
+        for ((key, press) in launcherPresses.entries.toList()) {
+            val step = LauncherPressTiming.onTick(press, nowMs)
+            val decision = step.decision ?: continue
+            step.press?.let { launcherPresses[key] = it }
+            return decision
+        }
+        return null
+    }
+
+    /**
+     * trackpad-caret-nav.md SS2.2: Sym is down (or the Sym-armed launcher mode is waiting for its
+     * key), so the next key is a Sym chord, never a trackpad trigger: holding Sym+Space opens the
+     * assignment sheet for Space (SS6.2 D) rather than the trackpad.
+     */
+    val symChordLive: Boolean get() = modifierState.sym.togglePending || powerMode.isArmed
 
     /**
      * spec: per-app-behavior.md SS3.5 step 4a, SS3.8: "Sym is being held (a Sym chord is pending)
@@ -844,6 +926,10 @@ internal class KeyboardPipeline(
             val result = applyAction(action, shiftHeld = stroke.meta.shift, altActive = modifierState.isAltActive(stroke.meta.alt), editor)
             return if (armed != null) result.copy(consumed = true, powerModeArmedAtMs = armed.powerModeArmedAtMs, symWantsTheField = armed.symWantsTheField) else result
         }
+
+        // spec expansion-clipboard-pickers-launcher.md SS6.2 D: a launcher key's repeats and release
+        // are that feature's, whatever else would claim them.
+        launcherPressFollowUp(stroke)?.let { return it }
 
         if (stroke.edge == KeyEdge.UP) {
             // spec: keys-and-modifiers.md SS15 point 3, key-up: "Any key-up while nav mode is active is consumed."

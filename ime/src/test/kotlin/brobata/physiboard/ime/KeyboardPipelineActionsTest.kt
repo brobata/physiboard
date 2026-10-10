@@ -47,6 +47,7 @@ class KeyboardPipelineActionsTest {
     private fun snapshot(text: String, at: Long = 100) = EditorSnapshot(textBeforeCursor = text, fullText = TextWindow(text, text.length, text.length), nowMs = at)
     private fun down(key: KeyId, at: Long = 100, symMeta: Boolean = false) = KeyStroke(key, KeyEdge.DOWN, 0, at, meta = brobata.physiboard.core.keys.ModifierFlags(sym = symMeta))
     private fun up(key: KeyId, at: Long = 120) = KeyStroke(key, KeyEdge.UP, 0, at)
+    private fun repeat(key: KeyId, at: Long, count: Int = 1) = KeyStroke(key, KeyEdge.DOWN, count, at)
 
     @Test
     fun `T1 through the pipeline - Space on an exact match commits the replacement instead of a space`() {
@@ -85,16 +86,66 @@ class KeyboardPipelineActionsTest {
     }
 
     @Test
-    fun `C - Sym pending plus the quick launcher's key fires the launcher and marks the chord`() {
+    fun `C - Sym pending plus the quick launcher's key fires the launcher on the release and marks the chord`() {
         val p = pipeline()
         p.onKeyStroke(down(sym), snapshot(""))
-        val result = p.onKeyStroke(down(space, at = 110), snapshot("", 110))
-        assertTrue(result.consumed)
-        assertIs<LauncherKeyDecision.Run>(result.launcherKey)
-        assertTrue(result.launcherKey!!.let { (it as LauncherKeyDecision.Run).entry.isQuickLauncher })
+        val pressed = p.onKeyStroke(down(space, at = 110), snapshot("", 110))
+        assertTrue(pressed.consumed)
+        assertNull(pressed.launcherKey, "SS6.2 D: nothing runs until the key is released or held")
+        assertTrue(pressed.ops.isEmpty())
         // The chord counts as used: the Sym release must not cycle a page.
         p.onKeyStroke(up(sym, 130), snapshot("", 130))
         assertEquals(0, p.currentSymPage)
+        val released = p.onKeyStroke(up(space, 160), snapshot("", 160))
+        assertTrue(released.consumed)
+        assertTrue(released.ops.isEmpty())
+        assertIs<LauncherKeyDecision.Run>(released.launcherKey)
+        assertTrue((released.launcherKey as LauncherKeyDecision.Run).entry.isQuickLauncher)
+        assertNull(p.launcherHoldDeadlineMs, "no timer left behind")
+    }
+
+    @Test
+    fun `D - in a field, Sym held plus an assigned key held past the threshold opens its sheet and types nothing`() {
+        val q = KeyId.Letter('Q')
+        val qCode = AssignableKeys.keycodeOf(q)!!
+        val app = ShortcutEntry.QUICK_LAUNCHER.copy(type = ShortcutEntry.TYPE_APP, commandId = null, launch = null, packageName = "com.whatsapp", title = "WhatsApp")
+        val p = pipeline(KeyboardSettings(launcherShortcuts = LauncherShortcuts().assign(qCode, app)))
+        p.onKeyStroke(down(sym, at = 1_000), snapshot("hi", 1_000))
+        val pressed = p.onKeyStroke(down(q, at = 1_100), snapshot("hi", 1_100))
+        assertTrue(pressed.consumed)
+        assertNull(pressed.launcherKey)
+        val threshold = p.layout.longPress.clampedThresholdMs
+        assertEquals(1_100 + threshold, p.launcherHoldDeadlineMs)
+        assertNull(p.onLauncherHoldTick(1_100 + threshold - 1))
+        // The system's auto-repeat starts before the threshold: swallowed, no Sym chord symbol typed.
+        val early = p.onKeyStroke(repeat(q, at = 1_500), snapshot("hi", 1_500))
+        assertTrue(early.consumed)
+        assertTrue(early.ops.isEmpty(), "a repeat under Sym must not type the chord symbol: ${early.ops}")
+        assertNull(early.launcherKey)
+        assertEquals(LauncherKeyDecision.OpenAssignmentSheet(qCode, byHold = true), p.onLauncherHoldTick(1_100 + threshold))
+        assertNull(p.launcherHoldDeadlineMs)
+        val late = p.onKeyStroke(repeat(q, at = 1_700, count = 2), snapshot("hi", 1_700))
+        assertTrue(late.consumed && late.ops.isEmpty() && late.launcherKey == null, "the sheet opens once and nothing launches")
+        val released = p.onKeyStroke(up(q, 1_900), snapshot("hi", 1_900))
+        assertTrue(released.consumed && released.ops.isEmpty())
+        assertNull(released.launcherKey, "a hold never launches as well")
+        p.onKeyStroke(up(sym, 1_950), snapshot("hi", 1_950))
+        assertEquals(0, p.currentSymPage)
+        // The next press of the key is an ordinary letter again.
+        val typed = p.onKeyStroke(down(q, at = 3_000), snapshot("hi", 3_000))
+        assertTrue(typed.ops.any { it is EditorOp.CommitText }, "plain Q types again: ${typed.ops}")
+    }
+
+    @Test
+    fun `D - a field that changes while the key is held drops the press but still swallows its release`() {
+        val p = pipeline()
+        p.onKeyStroke(down(sym), snapshot(""))
+        p.onKeyStroke(down(space, at = 110), snapshot("", 110))
+        p.onStartInput(FieldContext(FieldKind.NORMAL))
+        assertNull(p.launcherHoldDeadlineMs, "no sheet can open later from a release lost with the old field")
+        val released = p.onKeyStroke(up(space, 160), snapshot("", 160))
+        assertTrue(released.consumed)
+        assertNull(released.launcherKey)
     }
 
     @Test
@@ -124,12 +175,17 @@ class KeyboardPipelineActionsTest {
         assertTrue(armed.consumed)
         assertEquals(1000L, armed.powerModeArmedAtMs)
         assertEquals(1000L, p.powerShortcutArmedAtMs)
-        val fired = p.onKeyStroke(down(space, at = 1200), snapshot("", 1200))
-        assertIs<LauncherKeyDecision.Run>(fired.launcherKey)
+        val pressed = p.onKeyStroke(down(space, at = 1200), snapshot("", 1200))
+        assertTrue(pressed.consumed)
+        assertNull(pressed.launcherKey)
         assertNull(p.powerShortcutArmedAtMs)
+        assertIs<LauncherKeyDecision.Run>(p.onKeyStroke(up(space, 1300), snapshot("", 1300)).launcherKey)
         val unassigned = pipeline(editable = false)
         unassigned.onKeyStroke(down(sym, at = 1000), snapshot(""))
+        // An unassigned key keeps its old behaviour: the sheet on the down; its repeats and release are swallowed.
         assertEquals(LauncherKeyDecision.OpenAssignmentSheet(AssignableKeys.keycodeOf(KeyId.Letter('Q'))!!), unassigned.onKeyStroke(down(KeyId.Letter('Q'), at = 1100), snapshot("", 1100)).launcherKey)
+        assertTrue(unassigned.onKeyStroke(repeat(KeyId.Letter('Q'), at = 1600), snapshot("", 1600)).let { it.consumed && it.launcherKey == null })
+        assertTrue(unassigned.onKeyStroke(up(KeyId.Letter('Q'), 1700), snapshot("", 1700)).let { it.consumed && it.launcherKey == null })
     }
 
     /**

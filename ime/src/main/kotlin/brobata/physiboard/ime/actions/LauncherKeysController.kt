@@ -42,14 +42,18 @@ internal class LauncherKeysController(
 
     fun onPowerModeDisarmed() = handler.removeCallbacks(timeoutRunnable)
 
-    /** spec SS6.2 A/B/C and SS6.3: run the assignment, or open the sheet from a key press (which also launches the choice). */
+    /**
+     * spec SS6.2 A/B/C and SS6.3: run the assignment, or open the sheet from a key press. An
+     * unassigned key's sheet also launches the choice; a sheet opened by holding an assigned key
+     * (SS6.2 D) only reassigns or removes.
+     */
     fun perform(decision: LauncherKeyDecision) {
         when (decision) {
             is LauncherKeyDecision.Run -> {
                 val resolved = ShortcutRun.resolve(decision.entry) { id -> catalog.build().find(id) }
                 if (resolved == ShortcutRun.OpenQuickLauncher) quickLauncher.toggle() else executor.run(resolved)
             }
-            is LauncherKeyDecision.OpenAssignmentSheet -> openAssignmentSheet(decision.keycode, skipLaunch = false)
+            is LauncherKeyDecision.OpenAssignmentSheet -> openAssignmentSheet(decision.keycode, skipLaunch = decision.byHold)
             LauncherKeyDecision.FallThrough -> Unit
         }
     }

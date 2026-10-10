@@ -48,8 +48,8 @@ class NoFieldAccessibilityRelayTest {
         }
     }
 
-    private fun KeyboardPipeline.key(key: KeyId, edge: KeyEdge = KeyEdge.DOWN, ctrl: Boolean = false, connected: Boolean = false) =
-        onKeyStroke(KeyStroke(key, edge, 0, clock.also { clock += 60 }, ModifierFlags(ctrl = ctrl)), EditorSnapshot(textBeforeCursor = null, nowMs = clock), hasInputConnection = connected)
+    private fun KeyboardPipeline.key(key: KeyId, edge: KeyEdge = KeyEdge.DOWN, ctrl: Boolean = false, connected: Boolean = false, repeat: Int = 0) =
+        onKeyStroke(KeyStroke(key, edge, repeat, clock.also { clock += 60 }, ModifierFlags(ctrl = ctrl)), EditorSnapshot(textBeforeCursor = null, nowMs = clock), hasInputConnection = connected)
 
     @Test
     fun `Sym then Space opens the quick launcher with no text box and no connection`() {
@@ -61,7 +61,30 @@ class NoFieldAccessibilityRelayTest {
         p.key(KeyId.Modifier(ModifierKey.SYM), KeyEdge.UP)
         val space = p.key(KeyId.Control(ControlKey.SPACE))
         assertTrue(space.consumed)
-        assertTrue("the default Space assignment runs: ${space.launcherKey}", space.launcherKey is LauncherKeyDecision.Run)
+        assertEquals("expansion-clipboard-pickers-launcher.md SS6.2 D: the run waits for the release", null, space.launcherKey)
+        val released = p.key(KeyId.Control(ControlKey.SPACE), KeyEdge.UP)
+        assertTrue("the release is consumed, as its press was", released.consumed)
+        assertTrue("the default Space assignment runs: ${released.launcherKey}", released.launcherKey is LauncherKeyDecision.Run)
+    }
+
+    @Test
+    fun `holding Sym then Space with no text box opens the sheet for Space and swallows the rest of the press`() {
+        val p = pipeline()
+        p.key(KeyId.Modifier(ModifierKey.SYM))
+        p.key(KeyId.Modifier(ModifierKey.SYM), KeyEdge.UP)
+        val downAt = clock
+        assertTrue(p.key(KeyId.Control(ControlKey.SPACE)).consumed)
+        val deadline = p.launcherHoldDeadlineMs
+        assertNotNull(deadline)
+        assertEquals(downAt + p.layout.longPress.clampedThresholdMs, deadline)
+        val sheet = p.onLauncherHoldTick(deadline!!)
+        assertEquals(LauncherKeyDecision.OpenAssignmentSheet(62, byHold = true), sheet)
+        clock = deadline + 50
+        val rep = p.key(KeyId.Control(ControlKey.SPACE), repeat = 3)
+        assertTrue("a repeat is swallowed, never launched", rep.consumed && rep.launcherKey == null && rep.ops.isEmpty())
+        val released = p.key(KeyId.Control(ControlKey.SPACE), KeyEdge.UP)
+        assertTrue(released.consumed)
+        assertEquals(null, released.launcherKey)
     }
 
     @Test
