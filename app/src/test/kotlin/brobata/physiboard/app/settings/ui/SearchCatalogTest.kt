@@ -49,4 +49,13 @@ class SearchCatalogTest {
         assertTrue(SearchCatalog.search("auto-update").any { it.title == "Updates" && it.route == Routes.HELP })
         assertEquals(emptyList(), SearchCatalog.search("   "))
     }
+
+    @Test
+    fun `the ring clock and the charging clock are found by the words for an always-on display`() {
+        for (query in listOf("clock", "always on", "AOD", "nightstand", "charging")) {
+            assertTrue(SearchCatalog.search(query).any { it.route == Routes.NOTIFICATION_RING }, query)
+        }
+        assertTrue(SearchCatalog.search("nightstand").any { it.title == "Stay on while charging" })
+        assertTrue(SearchCatalog.search("aod").any { it.title == "Show the clock" })
+    }
 }

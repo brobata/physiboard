@@ -134,6 +134,8 @@ object SearchCatalog {
         SearchEntry("Screen density", TITAN, Routes.SCREEN_DENSITY, "density dpi wm zoom scale screen size"),
         SearchEntry("System tweaks", TITAN, Routes.SYSTEM_TWEAKS, "animation scale notification history one-handed mode tweaks"),
         SearchEntry("Notification ring", TITAN, Routes.NOTIFICATION_RING, "ring glow camera hole notification lock screen backlight color colour"),
+        SearchEntry("Show the clock", "Notification ring", Routes.NOTIFICATION_RING, "clock time date always on display aod ambient lock screen ring"),
+        SearchEntry("Stay on while charging", "Notification ring", Routes.NOTIFICATION_RING, "charging charger plugged nightstand bedside dock clock always on display aod screen on"),
         // Backup & restore, Help, About.
         SearchEntry("Back up now", BACKUP, Routes.BACKUP, "backup export settings file save"),
         SearchEntry("Restore from a file", BACKUP, Routes.BACKUP, "restore import backup settings file"),

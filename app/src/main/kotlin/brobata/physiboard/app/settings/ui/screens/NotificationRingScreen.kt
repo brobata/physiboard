@@ -226,6 +226,30 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     onCheckedChange = { checked -> controller.update { it.copy(device = it.device.copy(ringKeyboardDark = checked)) } },
                 )
             }
+            // spec: device-backlight-ring.md SS5.11.5.
+            header("Clock")
+            item {
+                SwitchRow(
+                    label = "Show the clock",
+                    description = "A dim clock and date on the ring's black screen, in the style of an always-on display. " +
+                        "The Titan has no true always-on display, so the clock is only there while the ring is. " +
+                        "With Show app icons on, the waiting apps appear under the date as small grey icons; never what the notifications say.",
+                    checked = device.ringClock,
+                    onCheckedChange = { checked -> controller.update { it.copy(device = it.device.copy(ringClock = checked)) } },
+                )
+            }
+            item {
+                SwitchRow(
+                    label = "Stay on while charging",
+                    description = "While the phone is plugged in and locked, the clock comes up whenever the screen goes off and keeps the screen on, " +
+                        "at its lowest brightness, until you unplug, unlock, touch the screen or press a key. " +
+                        "Press power while it shows and it stays off until you next wake the phone.",
+                    note = if (!device.ringClock) "Needs Show the clock." else null,
+                    checked = device.ringStayOnCharging,
+                    enabled = device.ringClock,
+                    onCheckedChange = { checked -> controller.update { it.copy(device = it.device.copy(ringStayOnCharging = checked)) } },
+                )
+            }
             header("Colour")
             item {
                 ColorRow(label = "Default colour", color = device.ringDefaultColor ?: DEFAULT_GREEN) { editingColorFor = DEFAULT_COLOR_KEY }
@@ -258,7 +282,11 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
             item {
                 ButtonRow(
                     label = "Try it",
-                    description = "Shows the ring for a few seconds with PhysiBoard's own icon. Lock the phone first to see it the way it will really look.",
+                    description = if (device.ringClock) {
+                        "Shows the ring and the clock for a few seconds with PhysiBoard's own icon. Lock the phone first to see it the way it will really look."
+                    } else {
+                        "Shows the ring for a few seconds with PhysiBoard's own icon. Lock the phone first to see it the way it will really look."
+                    },
                     buttonText = "Try it",
                     onClick = { privileged.ring.startDemo() },
                 )
