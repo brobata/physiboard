@@ -118,9 +118,13 @@ object Nightstand {
 
     fun keepsScreenOn(chargingHold: Boolean, ringTimerRunning: Boolean): Boolean = chargingHold || ringTimerRunning
 
-    /** The ring's own brightness while its timer runs; the charging clock's [BRIGHTNESS] otherwise. */
-    fun windowBrightness(chargingHold: Boolean, ringTimerRunning: Boolean, ringBrightness: Float): Float =
-        if (chargingHold && !ringTimerRunning) BRIGHTNESS else ringBrightness
+    /**
+     * The ring's own brightness while its timer runs; [BRIGHTNESS] otherwise on a screen the
+     * charger has held ([heldByCharger] stays true after unplugging, so letting go never
+     * brightens the clock on its way out). An ordinary ring keeps its own level throughout.
+     */
+    fun windowBrightness(heldByCharger: Boolean, ringTimerRunning: Boolean, ringBrightness: Float): Float =
+        if (heldByCharger && !ringTimerRunning) BRIGHTNESS else ringBrightness
 
     /**
      * The glow breathes (a redraw every frame) only while the ring's timer runs. On the charging

@@ -188,9 +188,9 @@ class NotificationRingClockTest {
 
     @Test
     fun `T58 - brightness and breathing - the charging clock is at the floor and still, a fresh ring uses its own level and breathes`() {
-        assertEquals(Nightstand.BRIGHTNESS, Nightstand.windowBrightness(chargingHold = true, ringTimerRunning = false, ringBrightness = 0.2f))
-        assertEquals(0.2f, Nightstand.windowBrightness(chargingHold = true, ringTimerRunning = true, ringBrightness = 0.2f))
-        assertEquals(0.6f, Nightstand.windowBrightness(chargingHold = false, ringTimerRunning = false, ringBrightness = 0.6f))
+        assertEquals(Nightstand.BRIGHTNESS, Nightstand.windowBrightness(heldByCharger = true, ringTimerRunning = false, ringBrightness = 0.2f))
+        assertEquals(0.2f, Nightstand.windowBrightness(heldByCharger = true, ringTimerRunning = true, ringBrightness = 0.2f))
+        assertEquals(0.6f, Nightstand.windowBrightness(heldByCharger = false, ringTimerRunning = false, ringBrightness = 0.6f))
         assertTrue(Nightstand.BRIGHTNESS > 0f && Nightstand.BRIGHTNESS < NotificationRingBrightness.DIM)
 
         assertFalse(Nightstand.breathes(hasSources = false, chargingHold = true, ringTimerRunning = false), "the bare clock never animates")

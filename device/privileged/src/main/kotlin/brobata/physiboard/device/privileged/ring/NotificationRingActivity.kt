@@ -77,6 +77,9 @@ class NotificationRingActivity : Activity(), RingSurface {
     /** SS5.11.2: the charger holds the screen; the ring's timer no longer decides. */
     private var chargingHold = false
 
+    /** The charger has held this screen at some point; unplugging then never brightens it (SS5.11.4). */
+    private var heldByCharger = false
+
     /** The ring's own timer (SS5.7.3) is counting; false on a charging clock nothing new has arrived on. */
     private var timerRunning = false
     private var placed = false
@@ -263,7 +266,8 @@ class NotificationRingActivity : Activity(), RingSurface {
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
-        val brightness = Nightstand.windowBrightness(chargingHold, timerRunning, ringBrightness())
+        if (chargingHold) heldByCharger = true
+        val brightness = Nightstand.windowBrightness(heldByCharger, timerRunning, ringBrightness())
         if (window.attributes.screenBrightness != brightness) {
             window.attributes = window.attributes.apply { screenBrightness = brightness }
         }

@@ -149,5 +149,6 @@ class NotificationRingActivityTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertFalse(keepsScreenOn(activity))
         assertFalse(activity.isFinishing)
+        assertEquals("letting go never brightens the clock", Nightstand.BRIGHTNESS, activity.window.attributes.screenBrightness, 0f)
     }
 }
