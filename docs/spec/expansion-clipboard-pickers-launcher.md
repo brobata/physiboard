@@ -1446,7 +1446,7 @@ The tutorial's "Typing sounds (gimmick)" page offers the same three modes with a
 | Snippet with leading spaces or trailing newline | Inserted verbatim | replacement text is never trimmed |
 | Expansion in a terminal app on the exact-typing list | Never happens | restricted fields clear the lookup |
 | Text changes between the key down and the commit (the token no longer ends the text) | Nothing is typed; matches clear | the commit re-checks the text before deleting |
-| Popup while the keyboard window is not up (no anchor) | Nothing is drawn; keys still accept | the popup needs the keyboard window as anchor |
+| Popup without "Display over other apps" | Nothing is drawn, and the rows count as not visible: Up, Down and Escape go to the app, Space with the prefix option, Tab and Enter take only an exact match | 3.0's popup is its own overlay window and needs no keyboard window; through 3.3.0 it was drawn only while the keyboard window or the strip was up, which since the bar went was never, while its keys still acted on the hidden rows |
 | Suggestion bar presentation while suggestions are disabled for the app | The three slots still show the matches | expansion forces the suggestion row |
 | Popup position | Top center of the keyboard window, shifted up by its own height | as shipped; verified by a unit test |
 | Copy of a password from a password manager | Stored in history and shown in full | no sensitive-content check exists |

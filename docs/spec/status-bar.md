@@ -156,16 +156,29 @@ not free:
   keyboard" and add the keyboard-switcher button, for as long as the field had focus.
 
 With no window, the app's `ime` inset stays empty (`frame=[0,0][0,0] visible=false`) from focus
-to Back, and the navigation bar does not change. Nothing else
-needed the window: the status bar icon's and dictation's hold asks the input-method service to
-count the keyboard as shown (`requestShowSelf`), which grants the visible binding and the
-microphone capability without a window (seen on the emulator: `mInputShown=true`,
-`mVisibleBound=true`, `mDecorViewVisible=false` while Shift was held after Back had hidden the
-keyboard, and both false again 750 ms after it was let go); the Sym pages, the clipboard and emoji panels, the screen trackpad
-and the caret badge are overlay windows of their own. The one thing that does need the window
-is the native provider of the keyboard-surface swipes (trackpad-caret-nav.md SS3.3, off by
-default), which already only worked while the strip was on screen. Leaving an editable field
-gets section 13's window-hidden handling all the same (T44).
+to Back, and the navigation bar does not change. What the window used to carry had to stop
+depending on it:
+
+- The status bar icon's and dictation's hold asks the input-method service to count the
+  keyboard as shown (`requestShowSelf`), which grants the visible binding and the microphone
+  capability without a window (seen on the emulator: `mInputShown=true`, `mVisibleBound=true`,
+  `mDecorViewVisible=false` while Shift was held after Back had hidden the keyboard, and both
+  false again 750 ms after it was let go).
+- The text expansion popup is an overlay window of its own; it used to be drawn only while the
+  keyboard's window or the strip was up, which since the bar went meant never, while its keys
+  still acted on the invisible rows. It is now drawn for any editable field when "Display over
+  other apps" is on; without that permission it stays down, and its rows count as not visible
+  for the keys (expansion-clipboard-pickers-launcher.md SS11).
+- The Sym pages, the clipboard and emoji panels, the screen trackpad and the caret badge are
+  overlay windows of their own.
+- The experimental inline suggestions raise a real window while they want their empty input
+  view, and while they do, any hold (the status bar icon's or dictation's) raises it too, with
+  the gesture-navigation band. When they stop wanting it the keyboard asks Android to hide,
+  unless a hold still needs the keyboard counted as shown.
+
+The one thing that does need the window is the native provider of the keyboard-surface swipes
+(trackpad-caret-nav.md SS3.3, off by default), which already only worked while the strip was on
+screen. Leaving an editable field gets section 13's window-hidden handling all the same (T44).
 
 ### 3.5 "Show status bar": always, never, only in these apps
 
