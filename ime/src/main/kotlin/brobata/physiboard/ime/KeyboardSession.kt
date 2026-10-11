@@ -26,6 +26,7 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import android.widget.Toast
+import androidx.annotation.VisibleForTesting
 import androidx.core.content.ContextCompat
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.keys.ModifierKey
@@ -1732,6 +1733,7 @@ internal class KeyboardSession(
         lastReportedSelEnd = newSelEnd
         lastReportedSelectionCollapsed = newSelStart == newSelEnd
         noteFieldClearedByAppIfSo(newSelStart, newSelEnd)
+        noteCaretLeftDictatedWords(newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         ownEdit?.let { expectation ->
             val verdict = expectation.classify(newSelStart, SystemClock.uptimeMillis())
             DiagnosticLog.i(TAG) { "selection: $oldSelStart->$newSelStart verdict=$verdict" }
@@ -1848,12 +1850,7 @@ internal class KeyboardSession(
         // usual work below, whichever path takes it: a chooser, the trackpad's held Space, the
         // firmware swipe keycode or the ordinary pipeline. Fn is a modifier here, so the burst
         // that stops a session by design still reaches the trigger, not this.
-        normalized?.let { stroke ->
-            if (stroke.edge == KeyEdge.DOWN && stroke.repeatCount == 0 && stroke.key !is KeyId.Modifier && dictationController.isActive) {
-                dictationController.onKeyDown()
-                if (!dictationController.isActive) fnGuard.noteStoppedByOther(SystemClock.uptimeMillis())
-            }
-        }
+        normalized?.let(::noteKeyDownForDictation)
         normalized?.let { stroke ->
             if (skinTones.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, eventTimeMs = event.eventTime)) return@runCatching true
         }
@@ -2424,7 +2421,8 @@ internal class KeyboardSession(
         syncSymPanels()
     }
 
-    private val symGridListener = object : SymGridPanelController.Listener {
+    @VisibleForTesting
+    internal val symGridListener = object : SymGridPanelController.Listener {
         // spec SS5.4, SS5.7: the same `KeyboardPipeline.onKeyStroke` path a physical press of this
         // letter takes while the page is open, so `trySymPageKey`'s commit, French spacing and
         // `sym_auto_close` all run exactly as they do for the hardware key (`processKeyStroke`
@@ -2433,7 +2431,13 @@ internal class KeyboardSession(
             runCatching {
                 val now = SystemClock.uptimeMillis()
                 val key = KeyId.Letter(letter)
-                processKeyStroke(KeyStroke(key = key, edge = KeyEdge.DOWN, repeatCount = 0, timeMs = now))
+                val down = KeyStroke(key = key, edge = KeyEdge.DOWN, repeatCount = 0, timeMs = now)
+                // dictation.md SS3: the tap is this key's press, so it ends a running session
+                // under `dictation_stop_on_typing` exactly as the hardware key does, before the
+                // field is read: the dictated words are committed and the symbol lands after them
+                // (or at the cursor the user tapped, SS7.4), never in place of them.
+                noteKeyDownForDictation(down)
+                processKeyStroke(down)
                 processKeyStroke(KeyStroke(key = key, edge = KeyEdge.UP, repeatCount = 0, timeMs = now))
                 // spec expansion-clipboard-pickers-launcher.md SS4.7: a tap is not a hold. The
                 // down above armed the skin-tone hold like a real key would; this up never passes
@@ -3129,6 +3133,15 @@ internal class KeyboardSession(
      * where a Ctrl-triggered send's Ctrl state actually gets cleared once that answer is yes.
      */
     private fun applyResult(ic: InputConnection, result: PipelineResult, readout: EditorReadout, keyTypes: Char? = null): Boolean {
+        // spec: the c440844 invariant, dictation.md SS7.4. An edit this keyboard is about to make
+        // to the text, a key it hands to the app knowing the app will delete or paste with it
+        // (never a modifier press, a key-up or a Fn repeat), or a send or newline, means the user
+        // is changing the field under a listening dictation session; see
+        // DictationController.onUserEditedComposingText. Reported BEFORE the ops apply: that
+        // report releases the dictated words' composing span, and a commit made while the span
+        // is still there replaces the whole sentence (a Sym-page "?" typed over "how are you").
+        // Releasing changes neither the text nor the cursor, so [readout] stays true.
+        if (AppliedEditAccounting.editsField(result) || result.enterDelivery?.editsField == true) noteFieldEditedDuringDictation()
         if (result.ops.isNotEmpty()) {
             if (AppliedEditAccounting.movesCursor(result.ops)) {
                 ownEdit = OwnEditExpectation(
@@ -3151,17 +3164,11 @@ internal class KeyboardSession(
                 ),
             )
         }
-        // spec: the c440844 invariant. An edit this keyboard made to the text, or a key it handed
-        // to the app knowing the app will delete or paste with it (never a modifier press, a
-        // key-up or a Fn repeat), means the user changed the field under a listening dictation
-        // session; see DictationController.onUserEditedComposingText.
-        if (AppliedEditAccounting.editsField(result)) noteFieldEditedDuringDictation()
         val delivery = result.enterDelivery ?: return result.consumed
         val delivered = ic.performEnterDelivery(delivery, SystemClock.uptimeMillis())
         if (delivery.clearsCtrlState(delivered)) {
             pipeline.clearCtrlStateAfterEnterSend()
         }
-        if (delivered && delivery.editsField) noteFieldEditedDuringDictation()
         return delivered
     }
 
@@ -3198,8 +3205,14 @@ internal class KeyboardSession(
      * utterance was still composing, and the stop's final typed the sent words into it). Reads
      * the field once; a field that answers nothing, or has never shown a caret past 0, is
      * unknown and left alone.
+     *
+     * [exactCaret]: the caret must sit right at the end of the partial. Asked when a selection
+     * report put the caret elsewhere (dictation.md SS7.4): a tap just past a newline or a space
+     * after the words is a move, which the trailing-whitespace tolerance of the result check
+     * would read as "still there". The partial itself never ends in whitespace (results are
+     * trimmed, SS7.1).
      */
-    private fun verifyDictationField(): FieldVerdict {
+    private fun verifyDictationField(exactCaret: Boolean = false): FieldVerdict {
         val composing = dictationController.composingTextInField ?: return FieldVerdict.INTACT
         if (!dictationFieldSeenNonEmpty) return FieldVerdict.UNKNOWN
         val ic = service.currentInputConnection ?: return FieldVerdict.UNKNOWN
@@ -3208,7 +3221,8 @@ internal class KeyboardSession(
             val after = runCatching { ic.getTextAfterCursor(1, 0)?.toString() }.getOrNull() ?: return FieldVerdict.UNKNOWN
             return if (after.isEmpty()) FieldVerdict.CLEARED else FieldVerdict.CHANGED
         }
-        return if (before.trimEnd().endsWith(composing.trimEnd(), ignoreCase = true)) FieldVerdict.INTACT else FieldVerdict.CHANGED
+        val atCaret = if (exactCaret) before.endsWith(composing, ignoreCase = true) else before.trimEnd().endsWith(composing.trimEnd(), ignoreCase = true)
+        return if (atCaret) FieldVerdict.INTACT else FieldVerdict.CHANGED
     }
 
     /** Reachable with `dictation_stop_on_typing` off (with it on, the key down already ended the session before its edit) and from the swipe deletes, which are not keys. */
@@ -3216,7 +3230,37 @@ internal class KeyboardSession(
         if (dictationController.isActive) dictationController.onUserEditedComposingText()
     }
 
-    /** A delivered send or newline changes the field (or clears it entirely); a swallow or a decline leaves it untouched. */
+    /**
+     * dictation.md SS3: a key other than a modifier going down while a session runs reaches the
+     * controller first, which ends the session under `dictation_stop_on_typing`. A hardware key
+     * and a tap on the Sym page's grid (the same key, on screen) both come through here.
+     */
+    private fun noteKeyDownForDictation(stroke: KeyStroke) {
+        if (stroke.edge != KeyEdge.DOWN || stroke.repeatCount != 0 || stroke.key is KeyId.Modifier || !dictationController.isActive) return
+        dictationController.onKeyDown()
+        if (!dictationController.isActive) fnGuard.noteStoppedByOther(SystemClock.uptimeMillis())
+    }
+
+    /**
+     * dictation.md SS7.4: the user put the cursor somewhere else (a tap, a selection) while the
+     * partial is still composing. The span is released at once, so nothing that finishes the
+     * utterance later (a quiet error, a key's stop, the stop watchdog, the next result) rewrites
+     * it and pulls the cursor back to the words. The keyboard's own composing writes report the
+     * caret at the end of the span ([DictatedSpanCaret]); any other report is confirmed by
+     * reading the field, so a stale report of an earlier write is never taken for a move, and a
+     * field that cannot be read is left alone.
+     */
+    private fun noteCaretLeftDictatedWords(selStart: Int, selEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
+        if (!dictationController.isActive || !dictationController.composingAllowed || dictationController.composingTextInField == null) return
+        if (!DictatedSpanCaret.mayHaveLeft(selStart, selEnd, candidatesStart, candidatesEnd)) return
+        if (verifyDictationField(exactCaret = true) == FieldVerdict.CHANGED) dictationController.onUserEditedComposingText()
+    }
+
+    /**
+     * A send or newline changes the field (or clears it entirely); a swallow or a decline leaves
+     * it untouched. Read before the delivery is attempted ([applyResult]), so one the app then
+     * refuses still counts: the dictated words are released as plain text, which loses nothing.
+     */
     private val EnterIntent.editsField: Boolean
         get() = when (this) {
             is EnterIntent.RequestEditorAction, EnterIntent.SendPlainEnter, EnterIntent.SendCtrlEnter, EnterIntent.InsertNewline -> true

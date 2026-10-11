@@ -617,6 +617,9 @@ internal class DictationController(
         override fun onEndOfSpeech() = dispatch(DictationEvent.EndOfSpeech)
         override fun onError(error: Int) {
             DiagnosticLog.i(TAG) { "recognizer error $error phase=${session?.phase}" }
+            // An error finishes the composing partial too (SS6.6), so the field is checked the
+            // same way: words the user has moved away from are not rewritten (SS7.4).
+            beforeResult()
             dispatch(DictationEvent.Error(error))
         }
         override fun onResults(results: Bundle?) {
@@ -638,6 +641,7 @@ internal class DictationController(
         }
         override fun onEndOfSegmentedSession() {
             DiagnosticLog.i(TAG) { "segmented session ended phase=${session?.phase}" }
+            beforeResult()
             dispatch(DictationEvent.SegmentedSessionEnded)
         }
     }
@@ -691,4 +695,16 @@ internal enum class FieldVerdict {
     CHANGED,
     /** The field cannot be read reliably (a web field answering nothing). */
     UNKNOWN,
+}
+
+/**
+ * dictation.md SS7.4: what a selection report says about the dictated partial's composing span.
+ * The keyboard's own composing writes always leave a collapsed caret at the end of the span, so
+ * such a report is the keyboard's own; anything else (a caret before or inside the span, a
+ * selection, or no span reported while one is believed to be composing) may be the user moving
+ * away, and is worth one read of the field to confirm.
+ */
+internal object DictatedSpanCaret {
+    fun mayHaveLeft(selStart: Int, selEnd: Int, candidatesStart: Int, candidatesEnd: Int): Boolean =
+        candidatesStart < 0 || candidatesEnd < 0 || selStart != selEnd || selEnd != candidatesEnd
 }
