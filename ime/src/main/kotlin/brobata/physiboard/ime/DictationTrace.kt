@@ -119,6 +119,7 @@ internal object DictationTrace {
     internal fun opLabel(op: DictationTextOp): String = when (op) {
         is DictationTextOp.SetComposingText -> "compose${op.text.length}"
         DictationTextOp.FinishComposing -> "finish"
+        DictationTextOp.ReleaseComposing -> "release"
         is DictationTextOp.CommitText -> "commit${op.text.length}"
         is DictationTextOp.DeleteBeforeCursor -> "del${op.count}"
     }

@@ -63,13 +63,14 @@ object DictationEngine {
                 if (!session.request.preferOffline && session.phase != DictationPhase.STOPPING) requestStop(session, now) else DictationOutcome(session)
             DictationEvent.EditorFieldClosed -> DictationOutcome(session.copy(editorGoneDeadlineMs = now + DictationTiming.EDITOR_GONE_GRACE_MS))
             is DictationEvent.EditorFieldOpened -> handleEditorFieldOpened(session, event.ownerPackage)
-            // The words already on screen become the user's plain text, wherever they now are. Left
-            // composing, the app keeps them as the keyboard's span: the next commit (a symbol, a
-            // key, the next utterance) replaces the whole span and lands the cursor there instead
-            // of where the user tapped.
+            // spec SS7.4: the words already on screen become the user's plain text, wherever they
+            // now are. Left composing, the app keeps them as the keyboard's span: the next commit
+            // (a symbol, a key, the next utterance) replaces the whole span and lands the cursor
+            // there instead of where the user tapped. Released, not finished: a finish is a commit
+            // in a direct-commit field, which would type the staged words after the user's edit.
             DictationEvent.UserEditedComposingText -> DictationOutcome(
                 session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated)),
-                textOps = if (session.utterance.pending is PendingUtterance.Live) listOf(DictationTextOp.FinishComposing) else emptyList(),
+                textOps = if (session.utterance.pending is PendingUtterance.Live) listOf(DictationTextOp.ReleaseComposing) else emptyList(),
             )
             DictationEvent.EditorRejectedInsert -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
             is DictationEvent.StartFailed -> DictationOutcome(

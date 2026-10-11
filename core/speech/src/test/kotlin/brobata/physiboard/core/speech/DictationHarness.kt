@@ -54,7 +54,7 @@ class FakeField {
         for (op in ops) {
             when (op) {
                 is DictationTextOp.SetComposingText -> composing = op.text
-                DictationTextOp.FinishComposing -> {
+                DictationTextOp.FinishComposing, DictationTextOp.ReleaseComposing -> {
                     committed.append(composing)
                     composing = ""
                 }

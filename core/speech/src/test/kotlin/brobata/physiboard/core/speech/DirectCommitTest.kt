@@ -71,4 +71,44 @@ class DirectCommitTest {
         )
         assertEquals(listOf(DictationTextOp.CommitText(" ")), written)
     }
+
+    @Test
+    fun `releasing the region drops what was staged and writes nothing`() {
+        val written = run(
+            listOf(DictationTextOp.SetComposingText("ls -la")),
+            listOf(DictationTextOp.ReleaseComposing),
+            listOf(DictationTextOp.FinishComposing),
+        )
+        assertEquals(emptyList(), written)
+    }
+
+    /**
+     * A web terminal, `dictation_stop_on_typing` off: "ls -la" is staged (never shown), the user
+     * presses Enter, and the keyboard reports the edit. The staged words must not be typed after
+     * the Enter; an edit report that came out as a finish did exactly that (a commit of the raw
+     * partial into the shell).
+     */
+    @Test
+    fun `an edit under a staged utterance never types it after the edit, through the engine`() {
+        val settings = DictationSettings(androidApiLevel = 36, stopOnTyping = false)
+        val textSettings = DictationTextSettings()
+        var session: DictationSession? = null
+        var state = DirectCommitState()
+        val written = mutableListOf<DictationTextOp>()
+        fun send(event: DictationEvent, now: Long) {
+            val outcome = DictationEngine.handle(session, event, now, settings, textSettings, segmentedRefusalLatch = false)
+            session = outcome.session
+            val translated = DirectCommit.translate(outcome.textOps, state)
+            state = translated.state
+            written += translated.ops
+        }
+        send(DictationEvent.Trigger("terminal", ""), 0L)
+        send(DictationEvent.ReadyForSpeech, 10L)
+        send(DictationEvent.PartialResult("ls -la"), 100L)
+        send(DictationEvent.UserEditedComposingText, 200L)
+        assertEquals(emptyList(), written, "the edit report writes nothing")
+        send(DictationEvent.FinalResult("ls -la"), 300L)
+        send(DictationEvent.Error(DictationErrorCode.NO_MATCH), 400L)
+        assertEquals(emptyList(), written, "nor does anything later in that utterance")
+    }
 }

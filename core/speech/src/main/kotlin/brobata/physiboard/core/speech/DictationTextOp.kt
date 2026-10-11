@@ -20,8 +20,21 @@ sealed class DictationTextOp {
      */
     data class SetComposingText(val text: String) : DictationTextOp()
 
-    /** Ends the current composing region, turning it into ordinary text without changing it. */
+    /**
+     * The utterance is over: what it settled on becomes ordinary text. On an editor that holds a
+     * composing region this ends the region without changing it; [DirectCommit] reads it as
+     * "write what was staged, once".
+     */
     object FinishComposing : DictationTextOp()
+
+    /**
+     * Lets go of the composing region and writes nothing: the words already on screen stay as the
+     * user's plain text, wherever the user has put the cursor (spec SS7.4). Applied like
+     * [FinishComposing] on an editor that holds a region, but it is never a commit: in a
+     * direct-commit field ([DirectCommit]) the staged words were never shown and the user has
+     * just edited the field (an Enter in a shell), so writing them now would type them after it.
+     */
+    object ReleaseComposing : DictationTextOp()
 
     /** Deletes [count] characters before the cursor, so a direct commit can replace what the previous one left (see [DirectCommit]). */
     data class DeleteBeforeCursor(val count: Int) : DictationTextOp()

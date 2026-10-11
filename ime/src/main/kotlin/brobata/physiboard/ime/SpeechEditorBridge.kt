@@ -18,7 +18,8 @@ internal fun InputConnection.applyDictationTextOps(ops: List<DictationTextOp>) {
         for (op in ops) {
             when (op) {
                 is DictationTextOp.SetComposingText -> setComposingText(op.text, 1)
-                DictationTextOp.FinishComposing -> finishComposingText()
+                // Both end the region and keep its words; they differ only for DirectCommit.
+                DictationTextOp.FinishComposing, DictationTextOp.ReleaseComposing -> finishComposingText()
                 is DictationTextOp.DeleteBeforeCursor -> deleteSurroundingText(op.count, 0)
                 is DictationTextOp.CommitText -> commitText(op.text, 1)
             }

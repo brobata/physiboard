@@ -48,6 +48,9 @@ object DirectCommit {
                     if (pending.isNotEmpty()) out += DictationTextOp.CommitText(pending)
                     pending = ""
                 }
+                // The user edited the field under the utterance: what was staged is dropped,
+                // never written after the user's own edit.
+                DictationTextOp.ReleaseComposing -> pending = ""
                 is DictationTextOp.CommitText -> {
                     out += op
                     pending = ""
