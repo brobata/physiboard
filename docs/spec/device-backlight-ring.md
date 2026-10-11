@@ -634,8 +634,9 @@ unknown state counts as not locked).
 
 **Starting.** The listener's receiver hears `android.intent.action.SCREEN_OFF`,
 `SCREEN_ON`, `USER_PRESENT`, `ACTION_POWER_CONNECTED` and `ACTION_POWER_DISCONNECTED`. A start
-is attempted at a screen-off with no ring screen up or on its way, and at a plug-in. The attempt,
-in order:
+is attempted at a screen-off with no ring screen up or on its way (with one up that is not
+holding the screen, at the first check, 6 s on; with one holding it, never: see "The power key"),
+and at a plug-in. The attempt, in order:
 
 1. If any of the three switches is off, stop (nothing else is read).
 2. If not plugged in, the screen is on, the clock was put away (below), or a ring screen is up or
@@ -684,15 +685,22 @@ the phone's own screen timeout then turns it off, black to black, at the same fl
 (letting go never brightens it). On phones that wake the screen at unplug, the timeout starts
 from the unplug. On the emulator with a 15 s timeout the screen was off 29 s after unplugging.
 
-**The power key ("put away").** A screen-off while any ring screen is up can only be the power
-key, since the window holds off the timeout. It ends the screen (as for any ring) and puts the
-clock away: no charging clock starts again until the user wakes the phone themselves (a screen-on
+**The power key ("put away").** A screen-off while a ring screen holds keep-screen-on (the
+charger holds it, or a ring's own timer is running) can only be the power key, since the window
+holds off the timeout. The ring screen reports this itself before it finishes, so it never
+depends on which of the two screen-off receivers runs first. It ends the screen (as for any ring)
+and puts the clock away: no charging clock starts again until the user wakes the phone themselves (a screen-on
 that no ring launch caused), unlocks it, or plugs it in. Pressing power on the nightstand clock
 therefore turns it off for good that time; waking the phone to check something and letting the
 screen go off again (by the power key or the timeout) brings the clock back. That is the
 nightstand behaviour: the clock is there whenever the phone is put down on the charger, and one
 press dismisses it until the phone is next used. A notification ring that arrives while put away
 still rings, but is an ordinary ring: the charger does not hold it, and its timer lets it go.
+
+A ring screen that had already let go (its minutes over, keep-screen-on released) and is then
+ended by the phone's own timeout puts nothing away: the first check of the chain runs 6 s later,
+once that screen is gone, and starts the clock if everything holds. The same applies to a second
+screen-off while a launch is still on its way.
 
 #### 5.11.3 Burn-in
 
@@ -751,7 +759,8 @@ the demo is never held by the charger). Search finds both rows under "clock", "a
 The clock screen is the ring's activity: shown over the lock screen, never dismissing it. Any
 touch or key ends it and leaves the lock screen (or, if the phone was not locked, whatever was
 there before, which the charging clock never covers: 5.11.2 step 3, and the screen re-checks the
-lock when it is created). It draws no notification content (5.11.1), takes no input but the
+lock and the charger when it is created; a charging-clock launch that finds the phone unlocked or
+unplugged by then finishes at once, even with notifications waiting). It draws no notification content (5.11.1), takes no input but the
 ending touch and key, and offers no way past the lock screen. The receivers it registers
 are for protected system broadcasts only.
 
@@ -775,7 +784,9 @@ are for protected system broadcasts only.
 
 Not shown on the emulator: a secure lock screen with a lock delay (the retry chain), the
 pocket check, the Titan's own lock screen and its full-screen-intent handling, real charger
-broadcasts, and how the panel looks at 0.01 in a dark room.
+broadcasts, and how the panel looks at 0.01 in a dark room. Also unproven: a check's alarm
+wakes the CPU, but the check itself runs on the ring's worker after the alarm's own hold on the
+CPU has ended, so on a phone that suspends at once it may run late, until the CPU next wakes.
 
 #### 5.11.8 Test cases
 
@@ -801,14 +812,16 @@ broadcasts, and how the panel looks at 0.01 in a dark room.
 | T62 | Not locked at screen-off; first check still not locked; second check locked | checks scheduled at 6000 then 10000 ms; launched at the second check |
 | T63 | Never locked | exactly the six checks, then nothing |
 | T64 | Not locked at screen-off, then the user wakes the phone | the pending check is cancelled |
-| T65 | Clock up; power; plain screen-off; user wakes, screen off | one launch only until the wake; then a second launch |
+| T65 | Clock up (holding); power; plain screen-off; user wakes, screen off. Also: the clock reports its own screen-off and is gone before the listener hears it | one launch only until the wake; then a second launch. Put away either way |
 | T66 | Clock put away by power; plug-in with the screen dark and locked | launched again |
 | T67 | "Try it" with the clock on, 24-hour set | clock drawn as HH:MM with a date, the minute tick registered, keep-screen-on, brightness 0.2; finished after 8 s; the tick unregistered |
 | T68 | "Try it" with the clock off | no clock, no minute tick registered |
 | T69 | Charging clock launched, plugged and locked | not finished, keep-screen-on, brightness 0.01, no ring; still so 8 hours on |
-| T70 | Charging clock launched, plugged, not locked | finished at once |
+| T70 | Charging clock launched, plugged, not locked; again with a notification waiting in its seed | finished at once, both times |
 | T71 | Charging clock; a notification; 11 minutes; the notification removed; unplugged | ring at 0.2; held at 0.01 with the glow; clock stays, glow gone; keep-screen-on released, brightness still 0.01, not finished |
 | T72 | A notification launches a ring that never appears; 15 s later another notification | a new launch with only the new notification (not a join) |
+| T73 | On the charger, a notification ring whose minutes are over (not holding) is ended by the timeout | not put away; a check at 6 s; once the ring screen is gone, the clock is launched |
+| T74 | Not locked at screen-off (a check pending); the user wakes the phone; the cancelled check's alarm fires anyway | nothing launched, no further check scheduled |
 
 ## 6. The device setup card
 

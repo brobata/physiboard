@@ -127,6 +127,24 @@ class NotificationRingActivityTest {
     }
 
     @Test
+    fun `T70 - never over a phone that is not locked, even with notifications waiting`() {
+        setPlugged(true)
+        setLocked(false)
+        val waiting = ActiveRingNotification(
+            brobata.physiboard.device.titan.NotificationRingCandidate("com.example", false, false, true, 0),
+            0xFF2F80ED.toInt(),
+            "waiting",
+            1L,
+        )
+        app.privileged.ring.startNightstand(listOf(waiting), app.packageName)
+        val deadline = System.currentTimeMillis() + 5_000
+        while (app.privileged.ring.state.sources.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        assertEquals(1, app.privileged.ring.state.sources.size)
+        val activity = launch(NotificationRingActivity.nightstandIntent(app)).get()
+        assertTrue(activity.isFinishing)
+    }
+
+    @Test
     fun `T71 - a notification brightens and breathes for the ring's minutes, then the clock goes back to the floor, and unplugging lets go`() {
         setPlugged(true)
         setLocked(true)

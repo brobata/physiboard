@@ -131,20 +131,25 @@ class NotificationRingClockTest {
     @Test
     fun `T53 - power pressed on the clock keeps it dark until the user wakes the phone`() {
         var memory = NightstandMemory()
-        memory = memory.onScreenOff(ringOnScreen = true)
+        memory = memory.onScreenOff(screenHeld = true)
         assertTrue(memory.putAway)
         assertEquals(NightstandAttempt.NONE, Nightstand.attempt(ready.copy(putAway = memory.putAway)))
         // The user wakes it: a screen-on the ring did not cause.
         memory = memory.onScreenOn(ringOnScreen = false, nowMs = 100_000)
         assertFalse(memory.putAway)
         // And turns it off again: this screen-off had no ring screen up, so the clock comes back.
-        memory = memory.onScreenOff(ringOnScreen = false)
+        memory = memory.onScreenOff(screenHeld = false)
         assertEquals(NightstandAttempt.START, Nightstand.attempt(ready.copy(putAway = memory.putAway)))
     }
 
     @Test
+    fun `T53 - a ring screen that had let go and timed out puts nothing away`() {
+        assertFalse(NightstandMemory().onScreenOff(screenHeld = false).putAway)
+    }
+
+    @Test
     fun `T54 - the ring's own screen-on does not clear put-away, unlocking and plugging in do`() {
-        val away = NightstandMemory().onScreenOff(ringOnScreen = true)
+        val away = NightstandMemory().onScreenOff(screenHeld = true)
         val launched = away.onLaunched(nowMs = 1_000)
         assertTrue(launched.onScreenOn(ringOnScreen = false, nowMs = 2_000).putAway, "a launch on its way turned the screen on")
         assertTrue(away.onScreenOn(ringOnScreen = true, nowMs = 2_000).putAway, "the ring is up")

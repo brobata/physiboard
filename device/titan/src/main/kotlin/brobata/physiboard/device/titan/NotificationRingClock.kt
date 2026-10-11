@@ -136,8 +136,8 @@ object Nightstand {
 
 /**
  * What the charging clock remembers between events. [putAway]: the user pressed power while a
- * ring screen was showing, so it stays dark until the user next wakes the phone, unlocks it or
- * plugs it in. [launchPendingSinceMs]: a launch was sent and its screen has not appeared yet,
+ * ring screen was holding the screen on, so it stays dark until the user next wakes the phone,
+ * unlocks it or plugs it in. [launchPendingSinceMs]: a launch was sent and its screen has not appeared yet,
  * so the screen-on it causes is not the user's.
  *
  * spec: device-backlight-ring.md SS5.11.2.
@@ -149,8 +149,12 @@ data class NightstandMemory(val putAway: Boolean = false, val launchPendingSince
 
     fun onRingCreated(): NightstandMemory = copy(launchPendingSinceMs = null)
 
-    /** Screen off with a ring screen up can only be the power key (keep-screen-on holds off the timeout). */
-    fun onScreenOff(ringOnScreen: Boolean): NightstandMemory = if (ringOnScreen) copy(putAway = true) else this
+    /**
+     * Screen off while a ring screen holds keep-screen-on can only be the power key (the window
+     * holds off the timeout). A ring screen that has let go was ended by the phone's own timeout,
+     * which puts nothing away.
+     */
+    fun onScreenOff(screenHeld: Boolean): NightstandMemory = if (screenHeld) copy(putAway = true) else this
 
     /** A screen-on the ring did not cause is the user waking the phone. */
     fun onScreenOn(ringOnScreen: Boolean, nowMs: Long): NightstandMemory =

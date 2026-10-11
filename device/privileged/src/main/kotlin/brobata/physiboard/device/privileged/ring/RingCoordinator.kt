@@ -80,6 +80,10 @@ class RingCoordinator(
     @Volatile
     private var surface: RingSurface? = null
 
+    /** The ring screen currently holds keep-screen-on (its own report). spec: SS5.11.2 "The power key". */
+    @Volatile
+    private var surfaceHolding = false
+
     /** spec: SS5.11.2: put-away and the launch on its way. Guarded by [memoryLock]: events arrive on the main thread, launches on the worker. */
     private var memory = NightstandMemory()
     private val memoryLock = Any()
@@ -90,10 +94,28 @@ class RingCoordinator(
     /** spec: SS5.11.2: the user pressed power on a ring screen. */
     fun isPutAway(): Boolean = synchronized(memoryLock) { memory.putAway }
 
-    /** spec: SS5.11.2. Called on the main thread by the listener's screen receiver, before any ring screen has reacted. */
+    /** The ring screen tells the session whether it holds keep-screen-on right now. */
+    fun onSurfaceHolding(surface: RingSurface, holding: Boolean) {
+        if (this.surface === surface) surfaceHolding = holding
+    }
+
+    /** A ring screen is up and holding the screen on: a screen-off now can only be the power key. */
+    fun isScreenHeld(): Boolean = surface != null && surfaceHolding
+
+    /**
+     * spec: SS5.11.2 "The power key": the held ring screen itself saw the screen go off. Reported
+     * by the screen before it finishes, so put-away never depends on which of the two screen-off
+     * receivers runs first.
+     */
+    fun onHeldScreenOff(surface: RingSurface) {
+        if (this.surface !== surface) return
+        synchronized(memoryLock) { memory = memory.onScreenOff(screenHeld = true) }
+    }
+
+    /** spec: SS5.11.2. Called on the main thread by the listener's screen receiver. */
     fun onScreenOff() {
-        val onScreen = surface != null
-        synchronized(memoryLock) { memory = memory.onScreenOff(onScreen) }
+        val held = isScreenHeld()
+        synchronized(memoryLock) { memory = memory.onScreenOff(held) }
     }
 
     fun onScreenOn() {
@@ -141,6 +163,7 @@ class RingCoordinator(
      */
     fun onRingCreated(surface: RingSurface): List<RingSource> {
         this.surface = surface
+        surfaceHolding = false
         synchronized(memoryLock) { memory = memory.onRingCreated() }
         backlight.takeOwnership()
         return state.sources
@@ -150,6 +173,7 @@ class RingCoordinator(
     fun onRingDestroyed(surface: RingSurface) {
         if (this.surface !== surface) return
         this.surface = null
+        surfaceHolding = false
         state = RingSessionState()
         backlight.restore()
     }

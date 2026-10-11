@@ -33,13 +33,15 @@ class NightstandCoordinatorTest {
         override fun finishRing() { finished++ }
     }
 
-    /** Records every scheduled retry; [fire] runs the latest. */
+    /** Records every scheduled retry; [fire] runs the latest. [all] keeps every action, cancelled or not, to replay a late alarm. */
     private class Retries : DelayedRunner {
         val delays = mutableListOf<Long>()
+        val all = mutableListOf<() -> Unit>()
         private var pending: (() -> Unit)? = null
         var cancels = 0
         override fun schedule(delayMs: Long, action: () -> Unit): () -> Unit {
             delays += delayMs
+            all += action
             pending = action
             return { cancels++; if (pending === action) pending = null }
         }
@@ -92,11 +94,12 @@ class NightstandCoordinatorTest {
         postedAtMs = at,
     )
 
-    /** The screen goes off with nothing up: the clock should start. The launch's screen then appears. */
+    /** The screen goes off with nothing up: the clock should start. The launch's screen then appears, holding the screen on. */
     private fun clockUp(): Surface {
         nightstand.onScreenOff()
         val surface = Surface()
         ring.onRingCreated(surface)
+        ring.onSurfaceHolding(surface, true)
         interactive = true
         nightstand.onScreenOn()
         return surface
@@ -196,6 +199,48 @@ class NightstandCoordinatorTest {
     }
 
     @Test
+    fun `T65 - the held screen reporting its own screen-off puts the clock away even when the listener hears it last`() {
+        val surface = clockUp()
+        interactive = false
+        ring.onHeldScreenOff(surface)
+        ring.onRingDestroyed(surface)
+        nightstand.onScreenOff()
+        assertEquals(1, launcher.nightstands)
+        assertTrue(ring.isPutAway())
+    }
+
+    @Test
+    fun `T73 - a ring that let go and timed out on the charger is followed by the clock, not put away`() {
+        // A notification ring, its minutes over: up, but no longer holding the screen on.
+        ring.onNotificationPosted(waiting("com.a", "a", 1).candidate, 0, "a", "brobata.physiboard.dev3")
+        val surface = Surface()
+        ring.onRingCreated(surface)
+        ring.onSurfaceHolding(surface, false)
+        // The phone's timeout turns the screen off; the ring screen finishes on it.
+        nightstand.onScreenOff()
+        assertEquals(0, launcher.nightstands, "not while the old ring screen is still there")
+        assertTrue(!ring.isPutAway())
+        assertEquals(listOf(6_000L), retries.delays)
+        ring.onRingDestroyed(surface)
+        retries.fire()
+        assertEquals(1, launcher.nightstands)
+    }
+
+    @Test
+    fun `T74 - an alarm from a cancelled chain that fires anyway does nothing`() {
+        locked = false
+        nightstand.onScreenOff()
+        val stale = retries.all.single()
+        interactive = true
+        nightstand.onScreenOn()
+        interactive = false
+        locked = true
+        stale()
+        assertEquals(0, launcher.nightstands)
+        assertEquals(1, retries.delays.size, "no new check scheduled by the stale one")
+    }
+
+    @Test
     fun `T66 - plugging in forgets put-away and starts the clock on a dark, locked phone`() {
         val surface = clockUp()
         interactive = false
@@ -220,6 +265,10 @@ class NightstandCoordinatorTest {
         nightstand.onScreenOff()
         nightstand.onScreenOff()
         assertEquals(1, launcher.nightstands)
-        assertNull(retries.delays.firstOrNull())
+        // The second is checked again once the first has had time to appear; still on its way, nothing more.
+        assertEquals(listOf(6_000L), retries.delays)
+        retries.fire()
+        assertEquals(1, launcher.nightstands)
+        assertNull(retries.delays.getOrNull(1))
     }
 }

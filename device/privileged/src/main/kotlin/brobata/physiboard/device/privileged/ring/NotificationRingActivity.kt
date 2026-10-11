@@ -82,6 +82,9 @@ class NotificationRingActivity : Activity(), RingSurface {
 
     /** The ring's own timer (SS5.7.3) is counting; false on a charging clock nothing new has arrived on. */
     private var timerRunning = false
+
+    /** The window holds keep-screen-on right now, so a screen-off can only be the power key (SS5.11.2). */
+    private var holding = false
     private var placed = false
     private var tornDown = false
 
@@ -145,7 +148,9 @@ class NotificationRingActivity : Activity(), RingSurface {
                 demo = false,
             )
             sources = ring.onRingCreated(this)
-            if (sources.isEmpty() && !chargingHold) {
+            // A charging-clock launch the charger cannot hold (unplugged or unlocked since it was
+            // sent) never shows, waiting notifications or not: it must not sit over an open phone.
+            if (!chargingHold && (nightstandLaunch || sources.isEmpty())) {
                 finish()
                 return
             }
@@ -254,11 +259,13 @@ class NotificationRingActivity : Activity(), RingSurface {
 
     /** SS5.11.4: keep-screen-on, brightness and breathing follow the charger and the ring's timer. */
     private fun updateWindow() {
-        if (Nightstand.keepsScreenOn(chargingHold, timerRunning)) {
+        holding = Nightstand.keepsScreenOn(chargingHold, timerRunning)
+        if (holding) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+        if (!demo && !tornDown) services?.ring?.onSurfaceHolding(this, holding)
         if (chargingHold) heldByCharger = true
         val brightness = Nightstand.windowBrightness(heldByCharger, timerRunning, ringBrightness())
         if (window.attributes.screenBrightness != brightness) {
@@ -339,6 +346,8 @@ class NotificationRingActivity : Activity(), RingSurface {
     /** spec: SS5.7 "Ending": the decision is [NotificationRingLifecycle.onEndTrigger]'s. Returns true when the ring is finishing. */
     private fun onEndTrigger(trigger: RingEndTrigger): Boolean {
         if (trigger == RingEndTrigger.TIMER_EXPIRY) timerRunning = false
+        // SS5.11.2 "The power key": reported before finishing, whichever receiver runs first.
+        if (trigger == RingEndTrigger.SCREEN_OFF && holding && !demo) services?.ring?.onHeldScreenOff(this)
         val decision = NotificationRingLifecycle.onEndTrigger(trigger, demo, chargingHold)
         if (decision.finishes) {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

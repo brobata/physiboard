@@ -5,6 +5,7 @@ import brobata.physiboard.device.titan.Nightstand
 import brobata.physiboard.device.titan.NightstandAttempt
 import brobata.physiboard.device.titan.NightstandFacts
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicInteger
 
 /** The phone facts the charging clock's start reads. spec: device-backlight-ring.md SS5.11.2. */
 interface NightstandProbe {
@@ -44,12 +45,25 @@ class NightstandCoordinator(
     @Volatile
     private var cancelRetry: (() -> Unit)? = null
 
-    /** spec: SS5.11.2 "Starting": screen off with no ring screen up is the moment to start; with one up it was the power key, and the clock is put away. */
+    /** Bumped by every event; a check from an older chain finds it changed and stops, so only one chain is ever live. */
+    private val chain = AtomicInteger()
+
+    /**
+     * spec: SS5.11.2 "Starting": screen off with no ring screen up is the moment to start. With a
+     * ring screen holding the screen on it was the power key, and the clock is put away. With a
+     * ring screen up that had already let go (its timer ran out, the phone's timeout ended it),
+     * the check waits for that screen to be gone: the first check of the chain, 6 s on.
+     */
     fun onScreenOff() {
-        val wasShowing = ring.isRingOnScreenOrPending()
+        val held = ring.isScreenHeld()
+        val ringUp = ring.isRingOnScreenOrPending()
         ring.onScreenOff()
-        cancelRetries()
-        if (!wasShowing) worker.execute { attempt(0) }
+        val current = cancelRetries()
+        when {
+            held -> Unit
+            ringUp -> scheduleCheck(0, current)
+            else -> worker.execute { attempt(0, current) }
+        }
     }
 
     fun onScreenOn() {
@@ -65,19 +79,32 @@ class NightstandCoordinator(
     /** Plugging in is a fresh start: put-away is forgotten and, if the screen is already dark and locked, the clock comes up. */
     fun onPowerConnected() {
         ring.onPowerConnected()
-        cancelRetries()
-        worker.execute { attempt(0) }
+        val current = cancelRetries()
+        worker.execute { attempt(0, current) }
     }
 
-    fun onPowerDisconnected() = cancelRetries()
+    fun onPowerDisconnected() {
+        cancelRetries()
+    }
 
-    private fun cancelRetries() {
+    /** Ends the live chain and returns the new chain's number. */
+    private fun cancelRetries(): Int {
+        val next = chain.incrementAndGet()
         cancelRetry?.invoke()
         cancelRetry = null
+        return next
     }
 
-    /** Check number [checkIndex] (0 at the event itself). Runs on the worker. */
-    private fun attempt(checkIndex: Int) {
+    /** Schedules check [checkIndex] + 1 after the gap [Nightstand.retryDelayMs] gives for [checkIndex]; nothing once the chain is over. */
+    private fun scheduleCheck(checkIndex: Int, chainId: Int) {
+        val delay = Nightstand.retryDelayMs(checkIndex) ?: return
+        if (chainId != chain.get()) return
+        cancelRetry = retries.schedule(delay) { worker.execute { attempt(checkIndex + 1, chainId) } }
+    }
+
+    /** Check number [checkIndex] (0 at the event itself) of chain [chainId]. Runs on the worker. */
+    private fun attempt(checkIndex: Int, chainId: Int) {
+        if (chainId != chain.get()) return
         val prefs = store.snapshot().device
         val featureOn = Nightstand.isEnabled(prefs.ringEnabled, prefs.ringClock, prefs.ringStayOnCharging)
         // Cheapest first: with the switch off nothing else is read.
@@ -96,10 +123,7 @@ class NightstandCoordinator(
                 if (pocket.isCovered()) return
                 ring.startNightstand(active.active(), ownPackageName)
             }
-            NightstandAttempt.RETRY_LATER -> {
-                val delay = Nightstand.retryDelayMs(checkIndex) ?: return
-                cancelRetry = retries.schedule(delay) { worker.execute { attempt(checkIndex + 1) } }
-            }
+            NightstandAttempt.RETRY_LATER -> scheduleCheck(checkIndex, chainId)
             NightstandAttempt.NONE -> Unit
         }
     }
