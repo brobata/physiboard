@@ -114,8 +114,9 @@ The window itself is a normal input method window that never uses fullscreen (ex
 - **The app requests input.** Android's own path. PhysiBoard does not gate on it.
 
 There is no "did anyone ask for a keyboard" gate: once a field is focused and the evaluation
-runs, the candidates surface is shown. This is why the strip floats over a launcher's home
-screen even though nobody requested input (section 3.6).
+runs, the candidates surface is shown wherever the strip could be drawn (section 3.4, "No
+strip, no window"; since the bar went, nowhere). This is why the strip floated over a
+launcher's home screen even though nobody requested input (section 3.6).
 
 ### 3.4 What takes it down
 
@@ -124,11 +125,47 @@ screen even though nobody requested input (section 3.6).
   (section 13) unless a nudge is in flight.
 - Nav mode is latched: the strip's root is made invisible in the layout (it contributes no
   height) but the window stays up.
-- The "Show status bar" setting says no for this app (section 3.5): the root collapses to
-  zero height. The window still exists, the input method is still active and hardware keys
-  still work; the strip has no footprint and its touchable band is empty.
+- The "Show status bar" setting says no for this app (section 3.5): no window is put up at
+  all (below, "No strip, no window"). The input method is still active and hardware keys
+  still work. Within a field whose window is up, the footprint decision (Sym page open, a
+  field with nothing to suggest) still collapses the root to zero height with the window up.
 - A key that closes the window from PhysiBoard's side (a keyboard-mode transition that
   requests hide) hides it.
+
+**No strip, no window.** The window is put up for a field only where the strip could be
+drawn there: the field is really editable and "Show status bar" says yes for the app
+(`StripVisibility.keyboardWindowWanted`, T43). Since the bar went for good the mode is
+hardwired to never (`ImeSettings.STRIP_VISIBILITY`), so the keyboard puts up no window of its
+own, with one exception: the experimental inline suggestions (`fill_inline_suggestions`, off
+by default, layers-sym-alt.md 4.7) still raise an empty input view while they want it, and on
+gesture navigation that window costs the same band described below. An up-but-empty window is
+not free:
+
+- On gesture navigation, Android 15 and later give any input-method window that is up a band of
+  `navigation_bar_frame_height` (48 dp, 90 px on the Titan) for the keyboard's own navigation
+  bar, and the platform's `NavigationBarController.updateInsets` clamps the keyboard's reported
+  insets to the top of that band whatever `onComputeInsets` says. So an empty window told every
+  app that a 90 px keyboard was up, twice the gesture bar's 45 px. Vivaldi lifted its bottom
+  bar into the band, where it showed half cut off behind the gesture handle, for as long as the
+  address bar had focus (a Titan 2 user on Reddit, "the bottom of the screen bugs out slightly
+  when I go to type a URL into Vivaldi"; reproduced 2026-10-10 on an Android 16 emulator with
+  the Titan's 1080 x 1200 screen: `type=ime frame=[0,1110][1080,1200] visible=true`, window
+  `Requested h=90`, `mGivenContentInsets` 0). With the strip the band sat under the strip and
+  nothing showed through, which is why the report blamed the bar's removal.
+- On three-button navigation the empty window still made the system draw Back as "close the
+  keyboard" and add the keyboard-switcher button, for as long as the field had focus.
+
+With no window, the app's `ime` inset stays empty (`frame=[0,0][0,0] visible=false`) from focus
+to Back, and the navigation bar does not change. Nothing else
+needed the window: the status bar icon's and dictation's hold asks the input-method service to
+count the keyboard as shown (`requestShowSelf`), which grants the visible binding and the
+microphone capability without a window (seen on the emulator: `mInputShown=true`,
+`mVisibleBound=true`, `mDecorViewVisible=false` while Shift was held after Back had hidden the
+keyboard, and both false again 750 ms after it was let go); the Sym pages, the clipboard and emoji panels, the screen trackpad
+and the caret badge are overlay windows of their own. The one thing that does need the window
+is the native provider of the keyboard-surface swipes (trackpad-caret-nav.md SS3.3, off by
+default), which already only worked while the strip was on screen. Leaving an editable field
+gets section 13's window-hidden handling all the same (T44).
 
 ### 3.5 "Show status bar": always, never, only in these apps
 
@@ -751,6 +788,13 @@ action mode is reset, any multi-tap cycle is finalized, modifier state is reset 
 preserved), and the suggestion context is reset. When the window is shown again the strip is
 refreshed immediately.
 
+With no window up (section 3.4, "No strip, no window") Android has nothing to hide and reports
+no hide, so the same window-hidden handling runs when the keyboard leaves an editable field
+(the field finishes, or the next field is not editable), at the moment the window used to go:
+once, and not when one field follows straight on from another, which never hid the window
+either (`StripVisibility.leavesFieldWithoutWindow`, T44). Back no longer hides anything, so
+it no longer runs this handling; a state such as caps lock now lasts until the field is left.
+
 When a field finishes (independent of the window): action mode is reset, any pending surface
 transition is cancelled, modifiers are reset (nav mode preserved), nav mode is re-entered if
 it was on before the field, and the system status-bar icon is hidden unless nav mode is on.
@@ -916,6 +960,8 @@ Each row is a pure decision that a JVM test can encode without a device.
 | T40 | Surface transition to candidates requested, surface not rendered after 6 retries of 250 ms | abandoned; requested-shown state set to what is actually rendered |
 | T41 | All 24 presets | locked LED colors pairwise distinct |
 | T42 | Hex "#1A2B3C", "1a2b3c", "12345", "GGGGGG" | parsed, parsed, rejected, rejected |
+| T43 | Keyboard window for a field, mode never (any app, editable or not); mode always or a listed app | no window; window only for an editable field |
+| T44 | Applying a decision: editable field open before, none now, no window up; window up; next field editable | hidden-window handling runs once; not run (Android reports the hide); not run |
 
 ## 19. Keep / Drop for 3.0
 

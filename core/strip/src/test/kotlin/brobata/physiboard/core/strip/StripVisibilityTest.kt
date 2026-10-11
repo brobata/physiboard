@@ -93,4 +93,34 @@ class StripVisibilityTest {
         assertEquals(StripFootprint.SHOWN, call(offers = false, hide = false))
         assertEquals(StripFootprint.SHOWN, call(offers = true))
     }
+
+    /** Vivaldi's address bar on gesture navigation: an empty keyboard window costs the app a 48 dp band (2026-10-10). */
+    @Test
+    fun `T43 with the strip never shown no keyboard window goes up, in any field or app`() {
+        for (pkg in listOf("com.vivaldi.browser", "com.android.chrome", null)) {
+            assertFalse(StripVisibility.keyboardWindowWanted(StripVisibilityMode.NEVER, StripVisibility.SEEDED_APPS, pkg, fieldEditable = true))
+            assertFalse(StripVisibility.keyboardWindowWanted(StripVisibilityMode.NEVER, StripVisibility.SEEDED_APPS, pkg, fieldEditable = false))
+        }
+    }
+
+    @Test
+    fun `T43 the window goes up only for an editable field where the strip could be drawn`() {
+        assertTrue(StripVisibility.keyboardWindowWanted(StripVisibilityMode.ALWAYS, emptySet(), "com.example", fieldEditable = true))
+        assertFalse(StripVisibility.keyboardWindowWanted(StripVisibilityMode.ALWAYS, emptySet(), "com.example", fieldEditable = false))
+        assertTrue(StripVisibility.keyboardWindowWanted(StripVisibilityMode.APPS, setOf("com.listed"), "com.listed", fieldEditable = true))
+        assertFalse(StripVisibility.keyboardWindowWanted(StripVisibilityMode.APPS, setOf("com.listed"), "com.other", fieldEditable = true))
+    }
+
+    @Test
+    fun `T44 leaving an editable field with no window up runs the hidden handling once`() {
+        assertTrue(StripVisibility.leavesFieldWithoutWindow(wasOpen = true, nowOpen = false, windowShown = false))
+    }
+
+    @Test
+    fun `T44 a window that is up reports its own hide, and a field straight after another is no leave`() {
+        assertFalse(StripVisibility.leavesFieldWithoutWindow(wasOpen = true, nowOpen = false, windowShown = true))
+        assertFalse(StripVisibility.leavesFieldWithoutWindow(wasOpen = true, nowOpen = true, windowShown = false))
+        assertFalse(StripVisibility.leavesFieldWithoutWindow(wasOpen = false, nowOpen = false, windowShown = false))
+        assertFalse(StripVisibility.leavesFieldWithoutWindow(wasOpen = false, nowOpen = true, windowShown = false))
+    }
 }
