@@ -17,6 +17,8 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
   strip at the bottom. Back now goes straight to the app.
 - The snippet popup sits just above the line you're typing on.
 - A ring Android declined to show no longer silences every ring after it.
+- After dictating, tapping elsewhere in the message leaves the cursor where you tapped, and a
+  symbol from the Sym page goes in there instead of replacing the dictated sentence.
 
 ## 3.3.0 (2026-10-10)
 

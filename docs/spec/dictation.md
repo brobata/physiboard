@@ -125,7 +125,7 @@ a fresh one (D20).
 | The 10-minute session cap (6.4) | graceful stop | committed |
 | A phone call rings or is answered (6.7) | immediate end | committed |
 | The app empties the field itself: a send button. Seen as the caret at 0 with nothing before or after it, or the same app's field restarting empty, in a field this session has put text into (finished or still composing) and that has since reported a caret past 0; never in a field that cannot hold a composing region (a terminal empties its box after every character). Checked again, by reading the field, before any result is applied over a composing partial, whatever the phase | immediate end, recognizer cancelled; nothing the engine says afterwards lands (the sent words went with the message) | cleared (nothing is there) |
-| The field has text but no longer holds the composing partial at the caret (read before a result is applied) | the utterance is dead: that result and every later one of it write nothing (7.4); the session goes on, or ends if it was stopping | nothing re-inserted |
+| The field has text but no longer holds the composing partial at the caret (read before a result or an engine error is applied, and when a selection report puts the caret off the words, 7.4) | the utterance is dead: its composing span is released where it stands, and that result and every later one of it write nothing (7.4); the session goes on, or ends if it was stopping | kept as plain text where they are; nothing re-inserted |
 | Real error (6.6) | session ends; message | committed |
 | Five fast failures or busy answers in a row (6.6) | session ends; "Speech recognition error." | committed |
 | Offline language pack missing and nothing else allowed (4.3) | session ends; message | committed |
@@ -707,12 +707,38 @@ or segment (which normally repeats the very words the user removed) writes nothi
 ends at the utterance boundary; the next utterance composes normally. With the setting on
 (default) the key ends the session first, so this never arises.
 
-The same invalidation follows any result whose partial is no longer at the caret (SS3's field
-check): a tap that moves the cursor away counts. At that moment the composing span is finished
-(3.4): the words already on screen stay as the user's plain text, wherever they are. Left
-composing, the app kept them as the keyboard's span, so the next commit (a Sym-page symbol, a
-key, the next utterance) replaced the whole span and put the cursor there instead of where the
-user tapped (seen on the Titan in Google Messages, 2026-10-11).
+The same invalidation follows the user moving away from the words (3.4). Every invalidation
+**releases** the composing span at that moment: the words already on screen stay as the user's
+plain text, wherever they are, and nothing is written. Left composing, the app kept them as the
+keyboard's span, so the next write (a Sym-page symbol, a key, a quiet error or a stop finishing
+the utterance, the next result) replaced the whole span and pulled the cursor back to the words
+instead of where the user tapped (seen on the Titan in Google Messages, 2026-10-11). A release is
+not a finish: in a direct-commit field (7.3) a finish writes the staged words, which after the
+user's own edit (an Enter in a shell) would type them after it; a release drops them.
+
+What counts as moving away or editing:
+
+- **A selection report off the span.** The keyboard's own composing writes always report a
+  collapsed caret at the end of the span; any other report (the caret before or inside the
+  words, a selection, or no span reported while one is composing) is confirmed by reading the
+  field as in SS3's field check, and released when the text before the caret no longer ends
+  exactly with the partial (no whitespace allowed between: a tap just past a newline or a space
+  after the words is a move). The read is of the field as it is now, so a stale report of an
+  earlier write reads the current partial at the caret and releases nothing; an app that never
+  reports its span is read on every write and released only when the read says so. A field that
+  cannot be read is left alone.
+- **The field check before a result or an engine error** (SS3): the partial no longer at the
+  caret.
+- **An edit the keyboard is about to make**: a commit, a delete, a key handed to the app to edit
+  with, a send or newline, from a key or a touch on the Sym page grid or a strip row. Reported
+  before the edit is applied, so the edit lands at the cursor and never over the words. The
+  emoji picker, clipboard, GIF and skin-tone picks end the composing region themselves before
+  they commit, and report the edit after it.
+
+A tap on the Sym page grid is that key's press: with `dictation_stop_on_typing` on it ends the
+session first, exactly as the hardware key does, so the symbol goes in after the dictated
+words. The panels' other picks (emoji picker, clipboard, GIFs) are touches, not keys: they keep
+the session listening and insert at the cursor.
 
 ### 7.5 Capitalisation of a final
 
@@ -1083,6 +1109,8 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | car 4 | audio error mid-session with a partial | partial committed; re-listen after 300 ms; the next words land; five in a row end with the message |
 | car 5 | car mode, busy twice, settle, focus bounced, the car's "play" | words land; no message; the player resumed once |
 | car 6 | a call (by mode, or a loss during one) | ends at once, words kept |
+| caret | partial composing; the user taps inside or before the words; then a quiet error, or a key, or a Sym grid tap (stop-on-typing on and off) | the words stay as plain text; the error writes nothing and the cursor stays; the key or symbol lands at the tapped cursor; a grid tap with no tap away lands after the words (`DictationCaretTest`, against an editor that keeps a real composing span) |
+| shell | direct-commit field, stop-on-typing off: a partial staged, then a key | the key alone; the staged words are never typed after it (`DirectCommitTest`, `DictationCaretTest`) |
 
 Plus the text tests kept from before (capitalisation, spacing, the frozen context, the session
 echo, direct commit, deleted words never typed back) and the cue table.
