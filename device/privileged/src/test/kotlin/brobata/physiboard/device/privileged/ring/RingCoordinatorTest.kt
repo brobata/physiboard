@@ -23,6 +23,8 @@ class RingCoordinatorTest {
         var demos = 0
         override fun launch(sources: List<RingSource>) { launches += sources }
         override fun launchDemo() { demos++ }
+        var nightstands = 0
+        override fun launchNightstand() { nightstands++ }
     }
 
     private class RecordingSurface : RingSurface {
@@ -163,6 +165,26 @@ class RingCoordinatorTest {
         coordinator.onRingDestroyed(old)
         assertEquals(listOf("com.a"), coordinator.state.sources.map { it.packageName })
         assertEquals(0, switch.value)
+    }
+
+    @Test
+    fun `a launch the system declined does not swallow every later ring`() {
+        post("com.a")
+        assertEquals(1, launcher.launches.size)
+        // No ring screen ever appeared; 15 s on, the launch is no longer "on its way".
+        clock.nowMs += 15_000
+        post("com.b")
+        assertEquals(2, launcher.launches.size)
+        assertEquals(listOf("com.b"), launcher.launches[1].map { it.packageName })
+    }
+
+    @Test
+    fun `within 15 s of a launch a second notification joins it rather than launching again`() {
+        post("com.a")
+        clock.nowMs += 14_000
+        post("com.b")
+        assertEquals(1, launcher.launches.size)
+        assertEquals(listOf("com.a", "com.b"), coordinator.state.sources.map { it.packageName })
     }
 
     @Test

@@ -2,6 +2,7 @@ package brobata.physiboard.device.privileged.ring
 
 import brobata.physiboard.core.settings.DevicePrefs
 import brobata.physiboard.device.privileged.DeviceStateStore
+import brobata.physiboard.device.titan.NightstandMemory
 import brobata.physiboard.device.titan.NotificationRingCandidate
 import brobata.physiboard.device.titan.NotificationRingColor
 import brobata.physiboard.device.titan.NotificationRingLifecycle
@@ -24,6 +25,9 @@ interface RingSurface {
 interface RingLauncher {
     fun launch(sources: List<RingSource>)
 
+    /** The charging clock, by the same route as the ring. spec: SS5.11.2. */
+    fun launchNightstand()
+
     /** spec: SS5.7.6 ("Try it"). */
     fun launchDemo()
 }
@@ -37,6 +41,14 @@ fun interface ScreenProbe {
 fun interface PocketProbe {
     fun isCovered(): Boolean
 }
+
+/** One notification still in the shade, as the charging clock's start reads it. spec: SS5.11.2. */
+data class ActiveRingNotification(
+    val candidate: NotificationRingCandidate,
+    val declaredColorArgb: Int,
+    val notificationKey: String,
+    val postedAtMs: Long,
+)
 
 /**
  * The notification ring's session: which notifications are waiting, whether a ring is on
@@ -68,6 +80,51 @@ class RingCoordinator(
     @Volatile
     private var surface: RingSurface? = null
 
+    /** spec: SS5.11.2: put-away and the launch on its way. Guarded by [memoryLock]: events arrive on the main thread, launches on the worker. */
+    private var memory = NightstandMemory()
+    private val memoryLock = Any()
+
+    /** A ring screen is up, or a launch was sent less than 15 s ago and its screen has not appeared yet. */
+    fun isRingOnScreenOrPending(): Boolean = surface != null || synchronized(memoryLock) { memory.launchPending(clock()) }
+
+    /** spec: SS5.11.2: the user pressed power on a ring screen. */
+    fun isPutAway(): Boolean = synchronized(memoryLock) { memory.putAway }
+
+    /** spec: SS5.11.2. Called on the main thread by the listener's screen receiver, before any ring screen has reacted. */
+    fun onScreenOff() {
+        val onScreen = surface != null
+        synchronized(memoryLock) { memory = memory.onScreenOff(onScreen) }
+    }
+
+    fun onScreenOn() {
+        val onScreen = surface != null
+        synchronized(memoryLock) { memory = memory.onScreenOn(onScreen, clock()) }
+    }
+
+    fun onUnlocked() = synchronized(memoryLock) { memory = memory.onUnlocked() }
+
+    fun onPowerConnected() = synchronized(memoryLock) { memory = memory.onPowerConnected() }
+
+    /**
+     * spec: SS5.11.2: puts the charging clock up, seeded with the qualifying notifications still
+     * in the shade so its glow and icons say what is waiting. The caller ([NightstandCoordinator])
+     * has already decided it should start; this re-checks only that nothing beat it to the screen.
+     */
+    fun startNightstand(active: List<ActiveRingNotification>, ownPackageName: String) {
+        worker.execute {
+            if (isRingOnScreenOrPending()) return@execute
+            val prefs = store.snapshot().device
+            val seed = active
+                .filter { it.candidate.packageName != ownPackageName && NotificationRingPolicy.evaluate(it.candidate) == null }
+                .sortedBy { it.postedAtMs }
+                .map { RingSource(it.notificationKey, it.candidate.packageName, resolveColor(it.candidate.packageName, it.declaredColorArgb, prefs), it.postedAtMs) }
+            state = RingSessionState(seed)
+            synchronized(memoryLock) { memory = memory.onLaunched(clock()) }
+            backlight.suppress()
+            launcher.launchNightstand()
+        }
+    }
+
     /** spec: SS5.2, "For every posted notification, in order". [ownPackageName] is the running app's own, never a literal (the sideload build has another id). */
     fun onNotificationPosted(candidate: NotificationRingCandidate, declaredColorArgb: Int, notificationKey: String, ownPackageName: String) {
         worker.execute { handlePosted(candidate, declaredColorArgb, notificationKey, ownPackageName) }
@@ -84,6 +141,7 @@ class RingCoordinator(
      */
     fun onRingCreated(surface: RingSurface): List<RingSource> {
         this.surface = surface
+        synchronized(memoryLock) { memory = memory.onRingCreated() }
         backlight.takeOwnership()
         return state.sources
     }
@@ -106,10 +164,14 @@ class RingCoordinator(
         if (candidate.packageName == ownPackageName) return
         if (NotificationRingPolicy.evaluate(candidate) != null) return
         val source = RingSource(notificationKey, candidate.packageName, resolveColor(candidate.packageName, declaredColorArgb, settings.device), clock())
-        val ringShowing = state.sources.isNotEmpty()
+        val ringShowing = isRingOnScreenOrPending()
+        // Sources held with no screen up and no launch on its way are left over from a launch the
+        // system declined (SS9); without this every later notification would "join" a ring that
+        // never appears.
+        if (!ringShowing && state.sources.isNotEmpty()) state = RingSessionState()
         val interactive = !ringShowing && screen.isInteractive()
         val covered = !ringShowing && !interactive && pocket.isCovered()
-        when (val decision = NotificationRingLifecycle.onNotificationPosted(state, source, interactive, covered)) {
+        when (val decision = NotificationRingLifecycle.onNotificationPosted(state, source, interactive, covered, ringOnScreen = ringShowing)) {
             is RingArrivalDecision.UpdateExisting -> {
                 state = RingSessionState(decision.sources)
                 val shown = decision.sources
@@ -117,6 +179,7 @@ class RingCoordinator(
             }
             is RingArrivalDecision.Start -> {
                 state = RingSessionState(decision.sources)
+                synchronized(memoryLock) { memory = memory.onLaunched(clock()) }
                 backlight.suppress()
                 launcher.launch(decision.sources)
             }

@@ -32,6 +32,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    // The ring activity's window (clock, charging hold) runs on Robolectric (JUnit 4, through the vintage engine).
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 kotlin {
@@ -60,6 +62,9 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+    testRuntimeOnly(libs.junit.vintage.engine)
 }
 
 tasks.withType<Test> {

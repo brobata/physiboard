@@ -27,7 +27,18 @@ class AndroidRingLauncher(private val context: Context, private val permissions:
 
     override fun launch(sources: List<RingSource>) {
         val latest = sources.lastOrNull() ?: return
-        val intent = NotificationRingActivity.intent(context, latest.notificationKey, latest.packageName, latest.colorArgb, demo = false)
+        announce(
+            NotificationRingActivity.intent(context, latest.notificationKey, latest.packageName, latest.colorArgb, demo = false),
+            "Turning the screen on for a notification",
+        )
+    }
+
+    /** spec: SS5.11.2: the charging clock goes up by the ring's own route. */
+    override fun launchNightstand() {
+        announce(NotificationRingActivity.nightstandIntent(context), "Showing the clock while charging")
+    }
+
+    private fun announce(intent: Intent, text: String) {
         if (!permissions.canUseFullScreenIntent() || !permissions.areNotificationsEnabled()) {
             // spec SS5.6 point 1: a direct start is attempted and its failure logged; the system may refuse.
             startDirect(intent)
@@ -38,7 +49,7 @@ class AndroidRingLauncher(private val context: Context, private val permissions:
         val announcement = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(brobata.physiboard.design.R.drawable.pb_ic_ring)
             .setContentTitle("Notification ring")
-            .setContentText("Turning the screen on for a notification")
+            .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             // "silent" on the notification itself would mark it alert-suppressed and SystemUI

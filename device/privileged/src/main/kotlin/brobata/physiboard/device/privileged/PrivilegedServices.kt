@@ -1,10 +1,12 @@
 package brobata.physiboard.device.privileged
 
+import android.app.AlarmManager
 import android.content.ComponentName
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import brobata.physiboard.device.privileged.backlight.GlobalMasterSwitchAccess
 import brobata.physiboard.device.privileged.backlight.KeyboardBacklightController
@@ -14,13 +16,17 @@ import brobata.physiboard.device.privileged.broker.BrokerRules
 import brobata.physiboard.device.privileged.broker.PairingCoordinator
 import brobata.physiboard.device.privileged.broker.PairingWatcherService
 import brobata.physiboard.device.privileged.broker.PrivilegedBroker
+import brobata.physiboard.device.privileged.ring.ActiveNotificationsSource
+import brobata.physiboard.device.privileged.ring.AndroidNightstandProbe
 import brobata.physiboard.device.privileged.ring.AndroidRingLauncher
 import brobata.physiboard.device.privileged.ring.DelayedRunner
+import brobata.physiboard.device.privileged.ring.NightstandCoordinator
 import brobata.physiboard.device.privileged.ring.NotificationRingListener
 import brobata.physiboard.device.privileged.ring.ProximityPocketCheck
 import brobata.physiboard.device.privileged.ring.RingBacklight
 import brobata.physiboard.device.privileged.ring.RingCoordinator
 import brobata.physiboard.device.privileged.ring.ScreenProbe
+import brobata.physiboard.device.privileged.ring.ShadeReader
 import brobata.physiboard.device.privileged.setup.AccessibilityServiceSwitch
 import brobata.physiboard.device.privileged.setup.AndroidPermissionProbe
 import brobata.physiboard.device.privileged.setup.AndroidSystemSettingsAccess
@@ -105,14 +111,42 @@ class PrivilegedServices(
         },
     )
     val ringLauncher: AndroidRingLauncher = AndroidRingLauncher(appContext, permissions)
+    private val ringWorker: Executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "physiboard-ring") }
+    private val pocketCheck = ProximityPocketCheck(appContext)
     val ring: RingCoordinator = RingCoordinator(
         store = store,
         backlight = ringBacklight,
         launcher = ringLauncher,
         screen = ScreenProbe { appContext.getSystemService(PowerManager::class.java)?.isInteractive ?: true },
-        pocket = ProximityPocketCheck(appContext),
-        worker = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "physiboard-ring") },
+        pocket = pocketCheck,
+        worker = ringWorker,
         surfaceExecutor = mainExecutor,
+    )
+
+    /** Set by the notification listener while it is connected (ring SS5.11): the shade, for the charging clock's seed and the clock's icons. */
+    @Volatile
+    var shade: ShadeReader? = null
+
+    /**
+     * ring SS5.11.2: the charging clock. Its retry checks are inexact wakeup alarms, one at a time,
+     * with an in-process listener (no PendingIntent, nothing in the manifest): the CPU may be
+     * asleep while the screen is off, and a Handler's clock stops with it.
+     */
+    val nightstand: NightstandCoordinator = NightstandCoordinator(
+        store = store,
+        ring = ring,
+        probe = AndroidNightstandProbe(appContext),
+        active = ActiveNotificationsSource { shade?.active().orEmpty() },
+        pocket = pocketCheck,
+        retries = DelayedRunner { delayMs, action ->
+            val alarms = appContext.getSystemService(AlarmManager::class.java)
+            val listener = AlarmManager.OnAlarmListener { runCatching(action).onFailure { Log.e(TAG, "nightstand retry crashed", it) } }
+            alarms?.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + delayMs, "physiboard:charging-clock", listener, Handler(Looper.getMainLooper()))
+            val cancel: () -> Unit = { alarms?.cancel(listener) }
+            cancel
+        },
+        worker = ringWorker,
+        ownPackageName = appContext.packageName,
     )
     val pairing: PairingCoordinator = PairingCoordinator(AndroidAdbTransport(appContext), broker, worker) { runSetupAsync(SetupReasons.PAIRING_SUCCEEDED) }
 
