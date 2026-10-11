@@ -26,6 +26,30 @@ object StripVisibility {
     }
 
     /**
+     * Whether the keyboard's own window is put up for a field at all. spec: status-bar.md SS3.4.
+     * Only where the strip could be drawn: an up-but-empty window is not free. On gesture
+     * navigation (Android 15 and later) Android gives any keyboard window that is up a 48 dp band
+     * for the keyboard's own navigation bar and reports that band to the app as the keyboard's
+     * height; with no strip to fill it the band is transparent, and Vivaldi lifted its bottom bar
+     * into it, half cut off, whenever the address bar had focus (a Titan 2 user's report,
+     * reproduced on Android 16, 2026-10-10). The status bar icon and dictation do not need the
+     * window: their hold asks the input-method service, which counts the keyboard as shown
+     * without one (keys-and-modifiers.md SS13.1, dictation.md SS6.8).
+     */
+    fun keyboardWindowWanted(mode: StripVisibilityMode, apps: Set<String>, packageName: String?, fieldEditable: Boolean): Boolean =
+        fieldEditable && isShownForApp(mode, apps, packageName)
+
+    /**
+     * spec: status-bar.md SS13. True when the keyboard leaves an editable field ([wasOpen] to not
+     * [nowOpen]) with no window of its own up ([windowShown] false): Android reports no hide
+     * then, so the keyboard runs the hidden-window handling itself, once, at the moment the
+     * window used to go. A window that is up reports its own hide, and a field followed straight
+     * by another (the next field's decision replaces the leave's) is no leave at all.
+     */
+    fun leavesFieldWithoutWindow(wasOpen: Boolean, nowOpen: Boolean, windowShown: Boolean): Boolean =
+        wasOpen && !nowOpen && !windowShown
+
+    /**
      * The whole footprint decision. spec SS3.4: nav mode latched makes the root invisible with
      * the window up. 2.x drew the Sym pages inside the strip and so showed it for an open page
      * whatever the mode; 3.0's pages are panels of their own and the strip collapses under them.

@@ -311,10 +311,7 @@ internal object ImeSettings {
         val bar = s.statusBar
         val theme = StripThemeResolution.resolve(bar.theme, bar.layoutOverrides, subtypeLocale, s.languages.keyboardLayout)
         return StripSettings(
-            // The suggestion row is hidden for good (2026-10-05, the maintainer's call): apps keep
-            // the whole screen, autocorrect does the work, and Sym still opens its pages. The
-            // stored `status_bar_visibility` is kept for import/export but no longer read.
-            visibility = StripVisibilityMode.NEVER,
+            visibility = STRIP_VISIBILITY,
             apps = bar.apps,
             barHeightDp = bar.heightDp,
             slots = ButtonSlots(left = bar.leftButtons.map(::stripButton), right = bar.rightButtons.map(::stripButton)),
@@ -465,6 +462,15 @@ internal object ImeSettings {
 
     /** The one bundled language's locale, what `:ime` scores theme overrides and extra-language lookups against until a subtype module exists. */
     const val DEFAULT_SUBTYPE_LOCALE: String = "en"
+
+    /**
+     * The suggestion row is hidden for good (2026-10-05, the maintainer's call): apps keep the
+     * whole screen, autocorrect does the work, and Sym still opens its pages. The stored
+     * `status_bar_visibility` is kept for import/export but no longer read. A constant rather
+     * than a stored value, so the keyboard-window decision (status-bar.md SS3.4) holds from the
+     * first field, before the settings store has answered.
+     */
+    val STRIP_VISIBILITY: StripVisibilityMode = StripVisibilityMode.NEVER
 
     /** spec: autocorrect-suggestions.md SS8.1's bundled codes minus `x-pastiera`, the ones the absent-value rule may pick and [RuleSetAssetLoader] tries to load. */
     val BUNDLED_RULE_SET_CODES: Set<String> = setOf("it", "en", "es", "fr", "de", "pl")

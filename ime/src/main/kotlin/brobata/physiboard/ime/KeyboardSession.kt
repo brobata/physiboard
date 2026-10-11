@@ -118,6 +118,7 @@ import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripGeometry
 import brobata.physiboard.core.strip.StripInsets
 import brobata.physiboard.core.strip.StripTheme
+import brobata.physiboard.core.strip.StripVisibility
 import brobata.physiboard.core.strip.SuggestionRow
 import brobata.physiboard.core.strip.SuggestionRowRules
 import brobata.physiboard.core.strip.SurfaceTransitionOutcome
@@ -1187,7 +1188,12 @@ internal class KeyboardSession(
         // already is; the strip gives up the space for the whole field. See [StripOverlap].
         pipeline.fieldDrawsUnderStrip =
             StripOverlap.appDrawsUnderStrip(reportedPackage, lastSettings.perApp.nudgePackages, field.isReallyEditable)
-        requestCandidatesShown(field.isReallyEditable)
+        // status-bar.md SS3.4: the window goes up only where the strip could be drawn, which since
+        // the bar went is nowhere; an empty window still costs the app the bottom of its screen.
+        requestCandidatesShown(
+            StripVisibility.keyboardWindowWanted(ImeSettings.STRIP_VISIBILITY, pipeline.settings.statusBar.apps, reportedPackage, field.isReallyEditable),
+            fieldOpen = field.isReallyEditable,
+        )
         currentPackageName = reportedPackage
         // spec expansion-clipboard-pickers-launcher.md SS6.2 A: the home screen path needs the foreground launcher.
         pipeline.foregroundIsHome = reportedPackage != null && reportedPackage in homePackages
@@ -1319,6 +1325,9 @@ internal class KeyboardSession(
      * apart"), and everything here follows that one answer. Guarded the same way [onKeyEvent] is.
      */
     fun onKeyboardWindowHidden() {
+        keyboardWindowShown = false
+        // The field's leave has been handled, by this hide, real or stood in for.
+        keyboardFieldOpen = false
         runCatching {
             if (!pipeline.onWindowHidden(SystemClock.uptimeMillis())) return@runCatching
             trackpad.onKeyboardWindowHidden()
@@ -1446,6 +1455,7 @@ internal class KeyboardSession(
 
     /** spec: status-bar.md SS13, "When the window is shown again the strip is refreshed immediately." */
     fun onKeyboardWindowShown() {
+        keyboardWindowShown = true
         runCatching {
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
             pipeline.onWindowShown(textBeforeCursor)
@@ -1559,6 +1569,12 @@ internal class KeyboardSession(
     private val surfaceTransitionToken = Any()
     private var surfaceTransitionState = SurfaceTransitionState()
 
+    /** Whether Android has the keyboard's own window up, from its shown and hidden callbacks. */
+    private var keyboardWindowShown = false
+
+    /** Whether the last applied decision had an editable field open; see [performCandidatesShown]. */
+    private var keyboardFieldOpen = false
+
     /**
      * spec SS3.2: posts the real `setCandidatesViewShown` call for the next UI turn rather than
      * calling it from this stack, so a second evaluation that lands before the first one ran can
@@ -1566,14 +1582,24 @@ internal class KeyboardSession(
      * [StatusBarView.isRenderedOnScreen] and retried up to [SurfaceTransitionRetry.MAX_ATTEMPTS]
      * times, [SurfaceTransitionRetry.INTERVAL_MS] apart, before it is abandoned (T40).
      */
-    private fun requestCandidatesShown(shown: Boolean) {
+    private fun requestCandidatesShown(shown: Boolean, fieldOpen: Boolean = shown) {
         handler.removeCallbacksAndMessages(surfaceTransitionToken)
         surfaceTransitionState = SurfaceTransitionState()
-        handler.postDelayed({ performCandidatesShown(shown) }, surfaceTransitionToken, 0L)
+        handler.postDelayed({ performCandidatesShown(shown, fieldOpen) }, surfaceTransitionToken, 0L)
     }
 
-    private fun performCandidatesShown(shown: Boolean) {
+    /**
+     * [fieldOpen] is whether an editable field is open, which is when the window used to be up
+     * before the strip went (status-bar.md SS3.4). Leaving such a field with no window up gets
+     * the same handling a hidden window gets (SS13: modifiers, trackpad, the suggestion context),
+     * at the moment the window used to go, since Android has no window to hide and reports no
+     * hide. Read before the call: a window that is up hides inside it and reports that itself.
+     */
+    private fun performCandidatesShown(shown: Boolean, fieldOpen: Boolean) {
+        val leftWithoutWindow = StripVisibility.leavesFieldWithoutWindow(keyboardFieldOpen, fieldOpen, keyboardWindowShown)
         runCatching { service.setCandidatesViewShown(shown) }.onFailure { error -> Log.e(TAG, "candidates view shown crashed", error) }
+        if (leftWithoutWindow) onKeyboardWindowHidden()
+        keyboardFieldOpen = fieldOpen
         if (!shown) return
         // spec SS3.2: "one turn after that forces the enclosing container back to visible".
         handler.postDelayed({
