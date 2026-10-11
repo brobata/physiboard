@@ -662,6 +662,13 @@ internal class KeyboardPipeline(
 
     val expansionHighlight: Int get() = expansion.highlight
 
+    /**
+     * spec SS2.6, SS11: whether the matches' rows are actually on screen, asked at each expansion
+     * key. `:ime` answers from the popup overlay (absent without "Display over other apps") and
+     * the strip; unset, the rows count as drawn.
+     */
+    var expansionRowsShown: () -> Boolean = { true }
+
     /** spec SS2.5, the suggestion bar presentation: "the first three matches replace the three suggestion slots". */
     private fun expansionBarRows(): List<SnippetMatch> =
         if (settings.expansion.presentation == SnippetPresentation.SUGGESTION_BAR) SnippetExpansion.visibleRows(expansion, settings.expansion.presentation) else emptyList()
@@ -696,7 +703,7 @@ internal class KeyboardPipeline(
     private fun tryExpansion(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult? {
         if (!settings.expansion.enabled || !SnippetExpansion.isExpansionKey(stroke.key) || stroke.repeatCount > 0) return null
         val gate = expansionGate(selectionCollapsed = !(editor.fullText?.hasSelection ?: false), editorConnected = editor.textBeforeCursor != null)
-        val result = SnippetExpansion.onKeyDown(expansion, stroke.key, anyModifierActive(stroke), editor.textBeforeCursor, settings.expansion, gate)
+        val result = SnippetExpansion.onKeyDown(expansion, stroke.key, anyModifierActive(stroke), editor.textBeforeCursor, settings.expansion, gate, rowsOnScreen = expansionRowsShown())
         expansion = result.state
         return when (result) {
             is ExpansionKeyResult.NotConsumed -> null

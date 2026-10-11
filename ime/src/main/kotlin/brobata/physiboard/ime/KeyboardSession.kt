@@ -739,6 +739,8 @@ internal class KeyboardSession(
     init {
         // app-shell.md SS31: the learning paths start in [privacy]'s initial state, not learning until the store is read.
         pushPrivacy()
+        // expansion-clipboard-pickers-launcher.md SS11: rows nobody can see take no keys.
+        pipeline.expansionRowsShown = { expansionPopup.isShown || (pipeline.expansionOwnsStripSlots && statusBar?.isRenderedOnScreen() == true) }
         // layers-sym-alt.md SS4.7: a code arriving, typed or expiring redraws the Fill page and its cue.
         OneTimeCodeHolder.addListener(codesChanged)
         persistCtrlMappingMigrationIfNeeded(lastSettings.keys.navModeDefaultMappingsVersion)
@@ -1325,9 +1327,8 @@ internal class KeyboardSession(
      * apart"), and everything here follows that one answer. Guarded the same way [onKeyEvent] is.
      */
     fun onKeyboardWindowHidden() {
-        keyboardWindowShown = false
         // The field's leave has been handled, by this hide, real or stood in for.
-        keyboardFieldOpen = false
+        windowDecision.onWindowHidden()
         runCatching {
             if (!pipeline.onWindowHidden(SystemClock.uptimeMillis())) return@runCatching
             trackpad.onKeyboardWindowHidden()
@@ -1375,10 +1376,11 @@ internal class KeyboardSession(
 
     /**
      * spec SS6.8: asks the input-method service to show this keyboard, which is the one path
-     * that binds the keyboard with the microphone capability (D22). On this phone the request
-     * shows nothing new: the platform asks [onShowInputRequested], which says no for a hardware
-     * keyboard, and the candidates window stays exactly as it was; only the system's bookkeeping
-     * changes.
+     * that binds the keyboard with the microphone capability (D22). The request puts nothing on
+     * screen: the platform asks [onShowInputRequested], which says no for a hardware keyboard,
+     * and the keyboard has no window of its own up (status-bar.md SS3.4), so only the system's
+     * bookkeeping changes. The one exception is the experimental inline suggestions: while they
+     * want their empty input view the answer is yes, and the hold raises a real window with it.
      */
     private fun holdImeVisibleForDictation() {
         shownHold.acquire(ShownHoldOwner.DICTATION)
@@ -1455,7 +1457,7 @@ internal class KeyboardSession(
 
     /** spec: status-bar.md SS13, "When the window is shown again the strip is refreshed immediately." */
     fun onKeyboardWindowShown() {
-        keyboardWindowShown = true
+        windowDecision.onWindowShown()
         runCatching {
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
             pipeline.onWindowShown(textBeforeCursor)
@@ -1569,11 +1571,10 @@ internal class KeyboardSession(
     private val surfaceTransitionToken = Any()
     private var surfaceTransitionState = SurfaceTransitionState()
 
-    /** Whether Android has the keyboard's own window up, from its shown and hidden callbacks. */
-    private var keyboardWindowShown = false
-
-    /** Whether the last applied decision had an editable field open; see [performCandidatesShown]. */
-    private var keyboardFieldOpen = false
+    /** The posted per-field decision and the leave handling with no window up (status-bar.md SS3.4, SS13). */
+    private val windowDecision by lazy {
+        KeyboardWindowDecision(handler, surfaceTransitionToken, apply = ::performCandidatesShown, leftField = ::onKeyboardWindowHidden)
+    }
 
     /**
      * spec SS3.2: posts the real `setCandidatesViewShown` call for the next UI turn rather than
@@ -1581,25 +1582,16 @@ internal class KeyboardSession(
      * cancel it outright (T39). A transition to shown is then checked against
      * [StatusBarView.isRenderedOnScreen] and retried up to [SurfaceTransitionRetry.MAX_ATTEMPTS]
      * times, [SurfaceTransitionRetry.INTERVAL_MS] apart, before it is abandoned (T40).
+     * [fieldOpen] is whether an editable field is open, which is when the window used to be up
+     * before the strip went; see [KeyboardWindowDecision].
      */
     private fun requestCandidatesShown(shown: Boolean, fieldOpen: Boolean = shown) {
-        handler.removeCallbacksAndMessages(surfaceTransitionToken)
         surfaceTransitionState = SurfaceTransitionState()
-        handler.postDelayed({ performCandidatesShown(shown, fieldOpen) }, surfaceTransitionToken, 0L)
+        windowDecision.request(shown, fieldOpen)
     }
 
-    /**
-     * [fieldOpen] is whether an editable field is open, which is when the window used to be up
-     * before the strip went (status-bar.md SS3.4). Leaving such a field with no window up gets
-     * the same handling a hidden window gets (SS13: modifiers, trackpad, the suggestion context),
-     * at the moment the window used to go, since Android has no window to hide and reports no
-     * hide. Read before the call: a window that is up hides inside it and reports that itself.
-     */
-    private fun performCandidatesShown(shown: Boolean, fieldOpen: Boolean) {
-        val leftWithoutWindow = StripVisibility.leavesFieldWithoutWindow(keyboardFieldOpen, fieldOpen, keyboardWindowShown)
+    private fun performCandidatesShown(shown: Boolean) {
         runCatching { service.setCandidatesViewShown(shown) }.onFailure { error -> Log.e(TAG, "candidates view shown crashed", error) }
-        if (leftWithoutWindow) onKeyboardWindowHidden()
-        keyboardFieldOpen = fieldOpen
         if (!shown) return
         // spec SS3.2: "one turn after that forces the enclosing container back to visible".
         handler.postDelayed({
@@ -2278,7 +2270,13 @@ internal class KeyboardSession(
 
     private fun refreshExpansionPopup() {
         val rows = pipeline.expansionPopupRows()
-        if (rows.isEmpty() || !service.isInputViewShown && statusBar?.isRenderedOnScreen() != true) {
+        // expansion-clipboard-pickers-launcher.md SS2.5, SS11: the popup is an overlay window of
+        // its own and needs no keyboard window, only an editable field and "Display over other
+        // apps". Without the permission it stays down quietly (no toast on every keystroke), and
+        // the keys treat the matches as not visible (see [KeyboardPipeline.expansionRowsShown]).
+        if (rows.isEmpty() || !pipeline.fieldReallyEditable ||
+            brobata.physiboard.ime.pointer.OverlayPermission.availability(service) != brobata.physiboard.core.pointer.OverlayAvailability.AVAILABLE
+        ) {
             expansionPopup.hide()
             return
         }
@@ -2699,7 +2697,18 @@ internal class KeyboardSession(
         if (inlineInputViewWanted == wanted) return
         inlineInputViewWanted = wanted
         if (!wanted) {
-            runCatching { service.updateInputViewShown() }.onFailure { error -> Log.e(TAG, "inline input view toggle crashed", error) }
+            runCatching {
+                service.updateInputViewShown()
+                // status-bar.md SS3.4: the empty input view raised a real window, and taking the
+                // view away leaves that window up (Android keeps it while its own show request
+                // stands), with the gesture-navigation band. With no hold needing the keyboard
+                // counted as shown, the keyboard asks Android to hide, a turn later, unless the
+                // next field has wanted the view again by then.
+                handler.post {
+                    if (inlineInputViewWanted || !windowDecision.windowShown || shownHold.isHeld) return@post
+                    runCatching { service.requestHideSelf(0) }.onFailure { error -> Log.e(TAG, "inline input view hide crashed", error) }
+                }
+            }.onFailure { error -> Log.e(TAG, "inline input view toggle crashed", error) }
             return
         }
         // Android asks for the request as the field's input starts, before the keyboard's own

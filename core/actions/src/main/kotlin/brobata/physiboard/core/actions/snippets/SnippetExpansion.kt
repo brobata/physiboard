@@ -126,6 +126,9 @@ object SnippetExpansion {
      * freshly re-read [textBeforeCaret] (T11). [anyModifierActive] is the caller's answer to
      * SS2.6's "no modifier active in any form (Ctrl, Alt, Shift or Meta held, latched, one-shot,
      * or reported by the event)"; Fn arrives as Ctrl on the Titan, so Fn plus a key never expands.
+     * [rowsOnScreen] is whether the presentation's rows are actually drawn: a popup without its
+     * overlay permission, or bar rows with no bar, are not visible, so Up, Down and Escape go on
+     * to the app and Space, Tab or Enter take only an exact match (SS11).
      */
     fun onKeyDown(
         state: ExpansionState,
@@ -134,10 +137,11 @@ object SnippetExpansion {
         textBeforeCaret: String?,
         settings: SnippetSettings,
         gate: ExpansionGate,
+        rowsOnScreen: Boolean = true,
     ): ExpansionKeyResult {
         val fresh = refresh(state, textBeforeCaret, settings, gate)
         if (anyModifierActive || !isExpansionKey(key) || !fresh.hasMatches) return ExpansionKeyResult.NotConsumed(fresh)
-        val visible = visibleRows(fresh, settings.presentation).isNotEmpty()
+        val visible = rowsOnScreen && visibleRows(fresh, settings.presentation).isNotEmpty()
         val exact = SnippetMatcher.exactMatch(fresh.matches, fresh.token!!.typedShortcut)
         return when (key) {
             SPACE -> when {

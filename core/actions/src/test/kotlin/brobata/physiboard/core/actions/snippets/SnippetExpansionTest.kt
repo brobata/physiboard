@@ -169,6 +169,20 @@ class SnippetExpansionTest {
         assertIs<ExpansionKeyResult.NotConsumed>(press("!sig", escape, off).first)
     }
 
+    /** The popup with "Display over other apps" off: nothing is drawn, so the rows take no keys (SS11). */
+    @Test
+    fun `rows not on screen take no navigation keys and Tab takes only the exact match`() {
+        val settings = base.copy(snippets = listOf(Snippet("sig", "Regards"), Snippet("sign", "Signed")), presentation = SnippetPresentation.FLOATING_POPUP)
+        fun key(text: String, key: KeyId) = SnippetExpansion.onKeyDown(ExpansionState.EMPTY, key, false, text, settings, gate, rowsOnScreen = false)
+        assertIs<ExpansionKeyResult.NotConsumed>(key("!si", up))
+        assertIs<ExpansionKeyResult.NotConsumed>(key("!si", KeyId.Control(ControlKey.DPAD_DOWN)))
+        assertIs<ExpansionKeyResult.NotConsumed>(key("!si", escape))
+        assertIs<ExpansionKeyResult.NotConsumed>(key("!si", tab), "no exact match and no visible row: Tab is the app's")
+        assertEquals(ExpansionCommit(4, "Regards"), (key("!sig", tab) as ExpansionKeyResult.Consumed).commit)
+        val onScreen = SnippetExpansion.onKeyDown(ExpansionState.EMPTY, tab, false, "!si", settings, gate, rowsOnScreen = true)
+        assertEquals(ExpansionCommit(3, "Regards"), (onScreen as ExpansionKeyResult.Consumed).commit, "drawn rows: Tab takes the highlighted one")
+    }
+
     @Test
     fun `Up and Down move the highlight only through the rows the presentation shows`() {
         val settings = base.copy(snippets = (1..5).map { Snippet("s$it", "$it") }, presentation = SnippetPresentation.SUGGESTION_BAR)

@@ -26,9 +26,11 @@ import brobata.physiboard.ime.access.AccessibilityBridge
  *
  * PhysiBoard is a physical-keyboard keyboard, so it never offers a software
  * keyboard: [onEvaluateInputViewShown] stays false (the one exception is an empty
- * input view of no height for the experimental inline suggestions, off by default)
- * and the only surface it puts on screen is the strip, rendered in the candidates
- * view ([onCreateCandidatesView]).
+ * input view of no height for the experimental inline suggestions, off by default).
+ * The strip that used to live in the candidates view ([onCreateCandidatesView]) is
+ * gone for good, and with it the keyboard's own window: nothing is put up for a field
+ * (status-bar.md SS3.4, "No strip, no window"). Everything the keyboard shows is an
+ * overlay window of its own.
  */
 class PhysiBoardInputMethodService : InputMethodService() {
 
