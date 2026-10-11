@@ -3,6 +3,21 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
+## 3.4.0 (unreleased)
+
+- A clock on the notification ring: a dim time, date and (optionally) grey icons of the apps
+  waiting, never their text, shifting slightly every minute so nothing burns in. Notification
+  ring > "Show the clock". Off by default.
+- A nightstand clock: with "Stay on while charging", the clock comes up whenever the screen goes
+  off on the charger and stays until you unplug, unlock, touch or press a key. Power puts it away
+  until the next wake. Off by default. (The Titan has no true always-on display; this keeps the
+  screen on at its lowest brightness.)
+- Browsers with a bottom toolbar (Vivaldi) no longer lose the bottom of the screen while you type:
+  PhysiBoard no longer puts up an empty keyboard window, which on gesture navigation cost apps a
+  strip at the bottom. Back now goes straight to the app.
+- The snippet popup sits just above the line you're typing on.
+- A ring Android declined to show no longer silences every ring after it.
+
 ## 3.3.0 (2026-10-10)
 
 PhysiBoard now keeps itself up to date, and Ctrl+Backspace and Alt+Backspace delete words and
