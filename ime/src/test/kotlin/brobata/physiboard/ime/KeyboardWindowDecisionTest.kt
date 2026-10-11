@@ -21,10 +21,10 @@ class KeyboardWindowDecisionTest {
 
     private val applied = mutableListOf<Boolean>()
     private var leaves = 0
-    private val decision = KeyboardWindowDecision(Handler(Looper.getMainLooper()), Any(), apply = { applied += it }, leftField = { leaves++; onHidden() })
+    private val decision = KeyboardWindowDecision(Handler(Looper.getMainLooper()), Any(), apply = { applied += it }, leftField = { leaves++; onHidden(fieldStillOpen = false) })
 
     /** What KeyboardSession.onKeyboardWindowHidden does first, for a hide real or stood in for. */
-    private fun onHidden(): Unit = decision.onWindowHidden()
+    private fun onHidden(fieldStillOpen: Boolean): Unit = decision.onWindowHidden(fieldStillOpen)
 
     private fun turn() = shadowOf(Looper.getMainLooper()).idle()
 
@@ -67,11 +67,22 @@ class KeyboardWindowDecisionTest {
     }
 
     @Test
-    fun `T44 after a real hide the next finish is no second leave`() {
+    fun `T44 a real hide with no field left open is the leave, so the next finish is no second one`() {
         decision.onWindowShown()
         start(editable = true); turn()
-        decision.onWindowHidden()
+        onHidden(fieldStillOpen = false)
         finish(); turn()
         assertEquals(0, leaves)
+    }
+
+    /** The inline suggestions' window going while field B is open must not cost B its leave. */
+    @Test
+    fun `T44 a real hide while the next field is still open leaves that field's leave to run`() {
+        decision.onWindowShown()
+        start(editable = true); turn()
+        finish(); start(editable = true); turn()
+        onHidden(fieldStillOpen = true)
+        finish(); start(editable = false); turn()
+        assertEquals(1, leaves)
     }
 }

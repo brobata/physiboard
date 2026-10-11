@@ -1327,8 +1327,8 @@ internal class KeyboardSession(
      * apart"), and everything here follows that one answer. Guarded the same way [onKeyEvent] is.
      */
     fun onKeyboardWindowHidden() {
-        // The field's leave has been handled, by this hide, real or stood in for.
-        windowDecision.onWindowHidden()
+        // A hide with no editable field left open is the field's leave, real or stood in for.
+        windowDecision.onWindowHidden(fieldStillOpen = pipeline.fieldReallyEditable)
         runCatching {
             if (!pipeline.onWindowHidden(SystemClock.uptimeMillis())) return@runCatching
             trackpad.onKeyboardWindowHidden()
@@ -2274,13 +2274,18 @@ internal class KeyboardSession(
         // its own and needs no keyboard window, only an editable field and "Display over other
         // apps". Without the permission it stays down quietly (no toast on every keystroke), and
         // the keys treat the matches as not visible (see [KeyboardPipeline.expansionRowsShown]).
-        if (rows.isEmpty() || !pipeline.fieldReallyEditable ||
-            brobata.physiboard.ime.pointer.OverlayPermission.availability(service) != brobata.physiboard.core.pointer.OverlayAvailability.AVAILABLE
+        // The permission is asked only while the popup is down: revoking it takes the window away.
+        if (rows.isEmpty() || !pipeline.fieldReallyEditable || (
+                !expansionPopup.isShown &&
+                    brobata.physiboard.ime.pointer.OverlayPermission.availability(service) != brobata.physiboard.core.pointer.OverlayAvailability.AVAILABLE
+                )
         ) {
             expansionPopup.hide()
             return
         }
-        expansionPopup.render(rows, pipeline.expansionHighlight, aboveBottomPx = stripHeightPx()) { index -> onExpansionRowTapped(index) }
+        // SS2.5: placed by the caret, since there is no keyboard window to stand on.
+        val caret = lastCaretGeometry
+        expansionPopup.render(rows, pipeline.expansionHighlight, caret?.topPx, caret?.bottomPx) { index -> onExpansionRowTapped(index) }
     }
 
     private fun onExpansionRowTapped(index: Int) {

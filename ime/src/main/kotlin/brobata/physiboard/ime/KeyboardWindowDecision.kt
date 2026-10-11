@@ -47,9 +47,14 @@ internal class KeyboardWindowDecision(
         windowShown = true
     }
 
-    /** The window went, really or stood in for: the field's leave has been handled. */
-    fun onWindowHidden() {
+    /**
+     * The window went, really or stood in for. When no editable field is open any more
+     * ([fieldStillOpen] false) that was the field's leave, and the next decision is none. A hide
+     * while the field is still open (the app hid the keyboard, or the inline suggestions' window
+     * went) is not the leave: the field's leave still runs when it comes.
+     */
+    fun onWindowHidden(fieldStillOpen: Boolean) {
         windowShown = false
-        fieldOpen = false
+        if (!fieldStillOpen) fieldOpen = false
     }
 }

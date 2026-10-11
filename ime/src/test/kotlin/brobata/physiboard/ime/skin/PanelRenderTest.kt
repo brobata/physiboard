@@ -266,7 +266,7 @@ class PanelRenderTest {
             captureLast("accents-$label")
         }
         ExpansionPopupController(service).render(
-            listOf(SnippetMatch(Snippet("addr", "1200 Barton Springs Rd")), SnippetMatch(Snippet("adm", "Admin office: ext 204"))), 0, 0,
+            listOf(SnippetMatch(Snippet("addr", "1200 Barton Springs Rd")), SnippetMatch(Snippet("adm", "Admin office: ext 204"))), 0, 900f, 950f,
         ) { }
         captureLast("expansion-popup")
     }

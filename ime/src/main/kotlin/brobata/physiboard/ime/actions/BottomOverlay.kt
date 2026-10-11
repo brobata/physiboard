@@ -143,6 +143,17 @@ internal class BottomOverlay(private val service: InputMethodService, private va
     fun dp(value: Int): Int = (value * service.resources.displayMetrics.density).toInt()
     fun dp(value: Double): Int = (value * service.resources.displayMetrics.density).toInt()
 
+    /** The whole screen's height, the frame a bottom-anchored overlay's margin counts from. */
+    fun screenHeightPx(): Int = runCatching {
+        service.getSystemService(WindowManager::class.java)?.currentWindowMetrics?.bounds?.height()
+    }.getOrNull() ?: service.resources.displayMetrics.heightPixels
+
+    /** The status bar's height, the top edge nothing placed by the caret goes above. */
+    fun statusBarHeightPx(): Int = runCatching {
+        service.getSystemService(WindowManager::class.java)?.currentWindowMetrics?.windowInsets
+            ?.getInsetsIgnoringVisibility(android.view.WindowInsets.Type.statusBars())?.top
+    }.getOrNull() ?: 0
+
     companion object {
         /**
          * `titan2_elite_rounded_corner_insets`, set by the keyboard whenever its settings load.
