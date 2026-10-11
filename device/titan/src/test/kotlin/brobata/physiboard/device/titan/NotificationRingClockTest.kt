@@ -198,10 +198,10 @@ class NotificationRingClockTest {
         assertEquals(0.6f, Nightstand.windowBrightness(heldByCharger = false, ringTimerRunning = false, ringBrightness = 0.6f))
         assertTrue(Nightstand.BRIGHTNESS > 0f && Nightstand.BRIGHTNESS < NotificationRingBrightness.DIM)
 
-        assertFalse(Nightstand.breathes(hasSources = false, chargingHold = true, ringTimerRunning = false), "the bare clock never animates")
-        assertFalse(Nightstand.breathes(hasSources = true, chargingHold = true, ringTimerRunning = false), "an old notification on the charger: still glow")
-        assertTrue(Nightstand.breathes(hasSources = true, chargingHold = true, ringTimerRunning = true))
-        assertTrue(Nightstand.breathes(hasSources = true, chargingHold = false, ringTimerRunning = false), "an ordinary ring keeps 3.3's breathing")
+        assertFalse(Nightstand.breathes(hasSources = false, heldByCharger = true, ringTimerRunning = false), "the bare clock never animates")
+        assertFalse(Nightstand.breathes(hasSources = true, heldByCharger = true, ringTimerRunning = false), "an old notification on the charger, or after unplugging: still glow")
+        assertTrue(Nightstand.breathes(hasSources = true, heldByCharger = true, ringTimerRunning = true))
+        assertTrue(Nightstand.breathes(hasSources = true, heldByCharger = false, ringTimerRunning = false), "an ordinary ring keeps 3.3's breathing")
     }
 
     @Test

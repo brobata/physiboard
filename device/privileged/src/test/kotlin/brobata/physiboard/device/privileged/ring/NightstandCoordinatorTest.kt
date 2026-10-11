@@ -241,6 +241,22 @@ class NightstandCoordinatorTest {
     }
 
     @Test
+    fun `T78 - with the charging switch off nothing is ever scheduled`() {
+        store.update { it.copy(device = it.device.copy(ringStayOnCharging = false)) }
+        // A ring up that has let go: the case that otherwise schedules the 6 s check.
+        ring.onNotificationPosted(waiting("com.a", "a", 1).candidate, 0, "a", "brobata.physiboard.dev3")
+        val surface = Surface()
+        ring.onRingCreated(surface)
+        nightstand.onScreenOff()
+        nightstand.onPowerConnected()
+        locked = false
+        ring.onRingDestroyed(surface)
+        nightstand.onScreenOff()
+        assertTrue(retries.delays.isEmpty())
+        assertEquals(0, launcher.nightstands)
+    }
+
+    @Test
     fun `T66 - plugging in forgets put-away and starts the clock on a dark, locked phone`() {
         val surface = clockUp()
         interactive = false

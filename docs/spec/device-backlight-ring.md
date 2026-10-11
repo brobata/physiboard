@@ -653,7 +653,13 @@ and at a plug-in. The attempt, in order:
    a charging-clock marker. The activity cancels the announcement as it does for a ring.
 
 A launch counts as "on its way" for 15000 ms (the announcement's own timeout) or until the ring
-screen appears, whichever is first.
+screen appears, whichever is first, measured on the time-since-boot clock so a wall-clock change
+cannot stretch or end it. A notification that arrives while the launch is on its way joins the
+clock as a fresh notification: the screen starts the ring's minutes for it (brighter, breathing),
+while the seeded ones, older than the launch, do not.
+
+With the switch off (any of the three), a screen-off or a plug-in schedules nothing at all: no
+alarm wakes the phone for a feature it does not use.
 
 **Checking again.** A start that finds the phone not yet locked is checked again after 6, 10, 15,
 30, 60 and 180 s (cumulatively 6 s, 16 s, 31 s, 61 s, 121 s and 301 s after the screen went off),
@@ -687,8 +693,9 @@ from the unplug. On the emulator with a 15 s timeout the screen was off 29 s aft
 
 **The power key ("put away").** A screen-off while a ring screen holds keep-screen-on (the
 charger holds it, or a ring's own timer is running) can only be the power key, since the window
-holds off the timeout. The ring screen reports this itself before it finishes, so it never
-depends on which of the two screen-off receivers runs first. It ends the screen (as for any ring)
+holds off the timeout. The ring screen reports this itself before it finishes, and lets go of the
+session (no longer up, no longer holding) the moment it ends rather than when Android destroys it,
+so it never depends on which of the two screen-off receivers runs first or on a late destroy. It ends the screen (as for any ring)
 and puts the clock away: no charging clock starts again until the user wakes the phone themselves (a screen-on
 that no ring launch caused), unlocks it, or plugs it in. Pressing power on the nightstand clock
 therefore turns it off for good that time; waking the phone to check something and letting the
@@ -723,7 +730,7 @@ as the clock is up; at the floor brightness this is the one fixed bright-ish sha
 | Charging clock, nothing waiting | 0.01 (the floor) | yes, until unplugged | none |
 | Charging clock, notification newer than the ring's minutes | the ring's | yes | breathing |
 | Charging clock, older notifications only | 0.01 | yes, until unplugged | held still at breath 0.3 (alpha factor 0.35 + 0.65 x 0.3 = 0.545) |
-| Charging clock after unplugging | 0.01 | released (unless the ring's timer still runs) | as before |
+| Charging clock after unplugging | 0.01 | released (unless the ring's timer still runs) | as before: still unless the ring's timer runs; unplugging never starts the breathing |
 
 The floor, 0.01, is as low as a window may ask: Android clamps any window brightness to the
 panel's own minimum, so this is the dimmest level the panel offers; 0 is avoided because some
@@ -822,6 +829,11 @@ CPU has ended, so on a phone that suspends at once it may run late, until the CP
 | T72 | A notification launches a ring that never appears; 15 s later another notification | a new launch with only the new notification (not a join) |
 | T73 | On the charger, a notification ring whose minutes are over (not holding) is ended by the timeout | not put away; a check at 6 s; once the ring screen is gone, the clock is launched |
 | T74 | Not locked at screen-off (a check pending); the user wakes the phone; the cancelled check's alarm fires anyway | nothing launched, no further check scheduled |
+| T75 | Charging clock seeded with a notification older than the launch; then unplugged | glow still (breath 0.3), brightness 0.01; still not breathing after unplugging |
+| T76 | Charging clock whose seed holds a notification newer than the launch | the ring's minutes run: brightness 0.2 |
+| T77 | Power key on a held charging clock | finishing; at once no longer held, no longer up, and put away |
+| T78 | Charging switch off; screen-off with a ring up that let go; plug-in; screen-off | no check scheduled, nothing launched |
+| T79 | A ring launch; the wall clock set back an hour; 2 s (since boot) later a notification; 15 s later another | the first joins; the second starts a new ring |
 
 ## 6. The device setup card
 

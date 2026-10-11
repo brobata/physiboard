@@ -72,6 +72,8 @@ class RingCoordinator(
     private val worker: Executor,
     private val surfaceExecutor: Executor,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Time since boot for the launch-pending window (SystemClock.elapsedRealtime on the phone); a wall-clock change must not stretch or end it. */
+    private val elapsedClock: () -> Long = clock,
 ) {
     @Volatile
     var state: RingSessionState = RingSessionState()
@@ -89,7 +91,7 @@ class RingCoordinator(
     private val memoryLock = Any()
 
     /** A ring screen is up, or a launch was sent less than 15 s ago and its screen has not appeared yet. */
-    fun isRingOnScreenOrPending(): Boolean = surface != null || synchronized(memoryLock) { memory.launchPending(clock()) }
+    fun isRingOnScreenOrPending(): Boolean = surface != null || synchronized(memoryLock) { memory.launchPending(elapsedClock()) }
 
     /** spec: SS5.11.2: the user pressed power on a ring screen. */
     fun isPutAway(): Boolean = synchronized(memoryLock) { memory.putAway }
@@ -120,7 +122,7 @@ class RingCoordinator(
 
     fun onScreenOn() {
         val onScreen = surface != null
-        synchronized(memoryLock) { memory = memory.onScreenOn(onScreen, clock()) }
+        synchronized(memoryLock) { memory = memory.onScreenOn(onScreen, elapsedClock()) }
     }
 
     fun onUnlocked() = synchronized(memoryLock) { memory = memory.onUnlocked() }
@@ -141,7 +143,7 @@ class RingCoordinator(
                 .sortedBy { it.postedAtMs }
                 .map { RingSource(it.notificationKey, it.candidate.packageName, resolveColor(it.candidate.packageName, it.declaredColorArgb, prefs), it.postedAtMs) }
             state = RingSessionState(seed)
-            synchronized(memoryLock) { memory = memory.onLaunched(clock()) }
+            synchronized(memoryLock) { memory = memory.onLaunched(elapsedClock()) }
             backlight.suppress()
             launcher.launchNightstand()
         }
@@ -203,7 +205,7 @@ class RingCoordinator(
             }
             is RingArrivalDecision.Start -> {
                 state = RingSessionState(decision.sources)
-                synchronized(memoryLock) { memory = memory.onLaunched(clock()) }
+                synchronized(memoryLock) { memory = memory.onLaunched(elapsedClock()) }
                 backlight.suppress()
                 launcher.launch(decision.sources)
             }

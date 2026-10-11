@@ -126,22 +126,66 @@ class NotificationRingActivityTest {
         assertTrue(activity.isFinishing)
     }
 
-    @Test
-    fun `T70 - never over a phone that is not locked, even with notifications waiting`() {
-        setPlugged(true)
-        setLocked(false)
+    /** Seeds the ring session the way the charging clock's start does, with one waiting notification posted at [postedAtMs]. */
+    private fun seed(postedAtMs: Long) {
         val waiting = ActiveRingNotification(
             brobata.physiboard.device.titan.NotificationRingCandidate("com.example", false, false, true, 0),
             0xFF2F80ED.toInt(),
             "waiting",
-            1L,
+            postedAtMs,
         )
         app.privileged.ring.startNightstand(listOf(waiting), app.packageName)
         val deadline = System.currentTimeMillis() + 5_000
         while (app.privileged.ring.state.sources.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(20)
         assertEquals(1, app.privileged.ring.state.sources.size)
+    }
+
+    @Test
+    fun `T70 - never over a phone that is not locked, even with notifications waiting`() {
+        setPlugged(true)
+        setLocked(false)
+        seed(postedAtMs = 1L)
         val activity = launch(NotificationRingActivity.nightstandIntent(app)).get()
         assertTrue(activity.isFinishing)
+    }
+
+    @Test
+    fun `T75 - a charging clock seeded with an old notification holds its glow still, and still after unplugging`() {
+        setPlugged(true)
+        setLocked(true)
+        seed(postedAtMs = 1L)
+        val activity = launch(NotificationRingActivity.nightstandIntent(app)).get()
+        assertTrue(ringView(activity).showRing)
+        assertEquals(NotificationRingActivity.STILL_BREATH, ringView(activity).breath, 0f)
+        assertEquals(Nightstand.BRIGHTNESS, activity.window.attributes.screenBrightness, 0f)
+        setPlugged(false)
+        app.sendBroadcast(Intent(Intent.ACTION_POWER_DISCONNECTED))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(900))
+        assertEquals("unplugging does not start the breathing", NotificationRingActivity.STILL_BREATH, ringView(activity).breath, 0f)
+    }
+
+    @Test
+    fun `T76 - a notification that arrived while the charging clock was on its way starts the ring's minutes`() {
+        setPlugged(true)
+        setLocked(true)
+        val intent = NotificationRingActivity.nightstandIntent(app)
+        seed(postedAtMs = System.currentTimeMillis() + 60_000)
+        val activity = launch(intent).get()
+        assertEquals(NotificationRingBrightness.NORMAL, activity.window.attributes.screenBrightness, 0f)
+    }
+
+    @Test
+    fun `T77 - the power key on a held clock lets go of the session at once, not at a late onDestroy`() {
+        setPlugged(true)
+        setLocked(true)
+        val activity = launch(NotificationRingActivity.nightstandIntent(app)).get()
+        assertTrue(app.privileged.ring.isScreenHeld())
+        app.sendBroadcast(Intent(Intent.ACTION_SCREEN_OFF))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(activity.isFinishing)
+        assertFalse(app.privileged.ring.isScreenHeld())
+        assertFalse(app.privileged.ring.isRingOnScreenOrPending())
+        assertTrue("still put away", app.privileged.ring.isPutAway())
     }
 
     @Test

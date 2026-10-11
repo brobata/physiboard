@@ -59,6 +59,8 @@ class NightstandCoordinator(
         val ringUp = ring.isRingOnScreenOrPending()
         ring.onScreenOff()
         val current = cancelRetries()
+        // With the switch off nothing is scheduled at all: no alarm wakes the phone for a feature it does not use.
+        if (!featureOn()) return
         when {
             held -> Unit
             ringUp -> scheduleCheck(0, current)
@@ -80,12 +82,15 @@ class NightstandCoordinator(
     fun onPowerConnected() {
         ring.onPowerConnected()
         val current = cancelRetries()
+        if (!featureOn()) return
         worker.execute { attempt(0, current) }
     }
 
     fun onPowerDisconnected() {
         cancelRetries()
     }
+
+    private fun featureOn(): Boolean = store.snapshot().device.let { Nightstand.isEnabled(it.ringEnabled, it.ringClock, it.ringStayOnCharging) }
 
     /** Ends the live chain and returns the new chain's number. */
     private fun cancelRetries(): Int {

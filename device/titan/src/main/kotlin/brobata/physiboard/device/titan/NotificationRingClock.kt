@@ -95,7 +95,7 @@ object Nightstand {
      */
     val RETRY_DELAYS_MS: List<Long> = listOf(6_000L, 10_000L, 15_000L, 30_000L, 60_000L, 180_000L)
 
-    /** A launch counts as on its way for this long (the announcement's own timeout, SS5.6). */
+    /** A launch counts as on its way for this long (the announcement's own timeout, SS5.6), on the time-since-boot clock. */
     const val LAUNCH_PENDING_MS = 15_000L
 
     /** The charging clock rides on the ring and needs the clock: all three switches. */
@@ -127,11 +127,12 @@ object Nightstand {
         if (heldByCharger && !ringTimerRunning) BRIGHTNESS else ringBrightness
 
     /**
-     * The glow breathes (a redraw every frame) only while the ring's timer runs. On the charging
-     * clock after that, the glow stays still and the screen is redrawn once a minute.
+     * The glow breathes (a redraw every frame) only while the ring's timer runs. On a screen the
+     * charger has held ([heldByCharger] stays true after unplugging) the glow is otherwise still
+     * and the screen is redrawn once a minute; an ordinary ring keeps 3.3's breathing.
      */
-    fun breathes(hasSources: Boolean, chargingHold: Boolean, ringTimerRunning: Boolean): Boolean =
-        hasSources && (ringTimerRunning || !chargingHold)
+    fun breathes(hasSources: Boolean, heldByCharger: Boolean, ringTimerRunning: Boolean): Boolean =
+        hasSources && (ringTimerRunning || !heldByCharger)
 }
 
 /**
@@ -143,6 +144,7 @@ object Nightstand {
  * spec: device-backlight-ring.md SS5.11.2.
  */
 data class NightstandMemory(val putAway: Boolean = false, val launchPendingSinceMs: Long? = null) {
+    /** [nowMs] and the launch time are both time since boot, never wall-clock time, which the user or the network can move. */
     fun launchPending(nowMs: Long): Boolean = launchPendingSinceMs != null && nowMs - launchPendingSinceMs in 0 until Nightstand.LAUNCH_PENDING_MS
 
     fun onLaunched(nowMs: Long): NightstandMemory = copy(launchPendingSinceMs = nowMs)

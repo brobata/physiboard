@@ -179,6 +179,24 @@ class RingCoordinatorTest {
     }
 
     @Test
+    fun `the launch-pending window runs on time since boot - a wall clock set back does not end it`() {
+        val elapsed = FakeClock(500_000L)
+        val wall = FakeClock(10_000_000L)
+        val timed = RingCoordinator(
+            store = store, backlight = backlight, launcher = launcher, screen = { screenInteractive }, pocket = { pocketCovered },
+            worker = DirectExecutor, surfaceExecutor = DirectExecutor, clock = wall, elapsedClock = elapsed,
+        )
+        timed.onNotificationPosted(message("com.a"), 0xFF2F80ED.toInt(), "com.a|1", "brobata.physiboard.dev3")
+        wall.nowMs -= 3_600_000
+        elapsed.nowMs += 2_000
+        timed.onNotificationPosted(message("com.b"), 0xFF2F80ED.toInt(), "com.b|1", "brobata.physiboard.dev3")
+        assertEquals(1, launcher.launches.size, "still on its way: the second joins")
+        elapsed.nowMs += 15_000
+        timed.onNotificationPosted(message("com.c"), 0xFF2F80ED.toInt(), "com.c|1", "brobata.physiboard.dev3")
+        assertEquals(2, launcher.launches.size, "15 s of time since boot later, a new launch")
+    }
+
+    @Test
     fun `within 15 s of a launch a second notification joins it rather than launching again`() {
         post("com.a")
         clock.nowMs += 14_000

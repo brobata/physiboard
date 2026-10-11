@@ -121,6 +121,7 @@ class PrivilegedServices(
         pocket = pocketCheck,
         worker = ringWorker,
         surfaceExecutor = mainExecutor,
+        elapsedClock = SystemClock::elapsedRealtime,
     )
 
     /** Set by the notification listener while it is connected (ring SS5.11): the shade, for the charging clock's seed and the clock's icons. */

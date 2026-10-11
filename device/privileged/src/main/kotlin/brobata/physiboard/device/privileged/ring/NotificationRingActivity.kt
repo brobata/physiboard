@@ -154,8 +154,10 @@ class NotificationRingActivity : Activity(), RingSurface {
                 finish()
                 return
             }
-            // A notification starts the ring's timer; the charging clock going up does not.
-            timerRunning = !nightstandLaunch
+            // A notification starts the ring's timer; the charging clock going up does not, but a
+            // notification that arrived while its launch was on its way does.
+            val launchedAtMs = intent.getLongExtra(EXTRA_LAUNCHED_AT, Long.MAX_VALUE)
+            timerRunning = !nightstandLaunch || sources.any { it.addedAtMs > launchedAtMs }
         }
         if (demo) timerRunning = true
 
@@ -271,7 +273,7 @@ class NotificationRingActivity : Activity(), RingSurface {
         if (window.attributes.screenBrightness != brightness) {
             window.attributes = window.attributes.apply { screenBrightness = brightness }
         }
-        val breathe = Nightstand.breathes(sources.isNotEmpty(), chargingHold, timerRunning)
+        val breathe = Nightstand.breathes(sources.isNotEmpty(), heldByCharger, timerRunning)
         if (breathe && animator == null && !tornDown) {
             // SS5.7 step 6: 1800 ms per leg, linear, forever.
             animator = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -282,7 +284,8 @@ class NotificationRingActivity : Activity(), RingSurface {
                 addUpdateListener { animation -> ringView.breath = animation.animatedValue as Float }
                 start()
             }
-        } else if (!breathe && animator != null) {
+        } else if (!breathe) {
+            // Also with no animator ever started (a seeded charging clock): the view's own default is full strength.
             animator?.cancel()
             animator = null
             ringView.breath = STILL_BREATH
@@ -351,6 +354,13 @@ class NotificationRingActivity : Activity(), RingSurface {
         val decision = NotificationRingLifecycle.onEndTrigger(trigger, demo, chargingHold)
         if (decision.finishes) {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            // Let go of the session now, not at onDestroy, which can come late: the screen must not
+            // stay reported as held, or as up, after it has ended (SS5.11.2).
+            holding = false
+            if (!demo) {
+                services?.ring?.onSurfaceHolding(this, false)
+                services?.ring?.onRingDestroyed(this)
+            }
             if (!isFinishing) finish()
             return true
         }
@@ -398,6 +408,7 @@ class NotificationRingActivity : Activity(), RingSurface {
         const val EXTRA_DEMO = "demo"
         const val DEMO_KEY = "demo"
         const val EXTRA_NIGHTSTAND = "nightstand"
+        const val EXTRA_LAUNCHED_AT = "launched_at"
 
         /** SS5.11.4: the glow's level when it holds still, as a breath value (alpha factor 0.35 + 0.65 x 0.3 = 0.545). */
         const val STILL_BREATH = 0.3f
@@ -425,5 +436,7 @@ class NotificationRingActivity : Activity(), RingSurface {
             Intent(context, NotificationRingActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra(EXTRA_NIGHTSTAND, true)
+                // Wall-clock, the same clock as each source's arrival time.
+                .putExtra(EXTRA_LAUNCHED_AT, System.currentTimeMillis())
     }
 }
