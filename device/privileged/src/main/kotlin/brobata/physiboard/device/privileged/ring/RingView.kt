@@ -73,14 +73,12 @@ class RingView(context: Context) : View(context) {
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = CLOCK_GREY
-        alpha = TIME_ALPHA
+        color = Color.argb(TIME_ALPHA, CLOCK_GREY_LEVEL, CLOCK_GREY_LEVEL, CLOCK_GREY_LEVEL)
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create(Typeface.SANS_SERIF, THIN_WEIGHT, false)
     }
     private val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = CLOCK_GREY
-        alpha = DATE_ALPHA
+        color = Color.argb(DATE_ALPHA, CLOCK_GREY_LEVEL, CLOCK_GREY_LEVEL, CLOCK_GREY_LEVEL)
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
     }
@@ -167,7 +165,7 @@ class RingView(context: Context) : View(context) {
         const val ICON_TOP_FRACTION = 0.42f
 
         /** Greyish white, dim: no colour on the screen but the ring's own. */
-        val CLOCK_GREY = Color.rgb(0xC8, 0xC8, 0xC8)
+        const val CLOCK_GREY_LEVEL = 0xC8
         const val TIME_ALPHA = 170
         const val DATE_ALPHA = 140
         const val CLOCK_ICON_ALPHA = 140

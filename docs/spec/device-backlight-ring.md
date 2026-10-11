@@ -621,7 +621,8 @@ clock both on, the clock comes up whenever the screen goes off while the phone i
 locked, and stays up until the phone is unplugged, unlocked, touched or a key is pressed.
 
 The switch needs the clock: it is greyed out on the screen, with the note "Needs Show the
-clock.", while the clock is off, and it does nothing with the clock off even if its stored value
+clock.", while the clock is off (and shows "Needs Ring on new notifications." while the ring is
+off), and it does nothing with either off even if its stored value
 is true (a restored backup). It also needs the ring, because it rides on the ring's notification
 access: the screen and charger broadcasts below are heard by a receiver the notification listener
 registers while it is connected, the one part of the app the system keeps running.

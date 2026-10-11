@@ -203,14 +203,7 @@ class NotificationRingActivity : Activity(), RingSurface {
             updateClock()
         }
 
-        // Step 6: the breathing animation, 1800 ms per leg, linear, forever; started and stopped by updateWindow.
-        animator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = BREATH_LEG_MS
-            repeatMode = ValueAnimator.REVERSE
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            addUpdateListener { animation -> ringView.breath = animation.animatedValue as Float }
-        }
+        // Step 6 (the breathing animation) is started and stopped by updateWindow.
         applySources(restartTimer = timerRunning)
     }
 
@@ -272,11 +265,19 @@ class NotificationRingActivity : Activity(), RingSurface {
             window.attributes = window.attributes.apply { screenBrightness = brightness }
         }
         val breathe = Nightstand.breathes(sources.isNotEmpty(), chargingHold, timerRunning)
-        val running = animator ?: return
-        if (breathe && !running.isStarted) {
-            running.start()
-        } else if (!breathe && running.isStarted) {
-            running.cancel()
+        if (breathe && animator == null && !tornDown) {
+            // SS5.7 step 6: 1800 ms per leg, linear, forever.
+            animator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = BREATH_LEG_MS
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+                interpolator = LinearInterpolator()
+                addUpdateListener { animation -> ringView.breath = animation.animatedValue as Float }
+                start()
+            }
+        } else if (!breathe && animator != null) {
+            animator?.cancel()
+            animator = null
             ringView.breath = STILL_BREATH
         }
     }

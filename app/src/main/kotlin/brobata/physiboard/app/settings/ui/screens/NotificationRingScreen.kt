@@ -244,7 +244,11 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     description = "While the phone is plugged in and locked, the clock comes up whenever the screen goes off and keeps the screen on, " +
                         "at its lowest brightness, until you unplug, unlock, touch the screen or press a key. " +
                         "Press power while it shows and it stays off until you next wake the phone.",
-                    note = if (!device.ringClock) "Needs Show the clock." else null,
+                    note = when {
+                        !device.ringClock -> "Needs Show the clock."
+                        !device.ringEnabled -> "Needs Ring on new notifications."
+                        else -> null
+                    },
                     checked = device.ringStayOnCharging,
                     enabled = device.ringClock,
                     onCheckedChange = { checked -> controller.update { it.copy(device = it.device.copy(ringStayOnCharging = checked)) } },
