@@ -287,8 +287,15 @@ For every posted notification, in order:
 8. Launch the ring (5.6).
 
 For every removed notification: if a ring is on screen, remove that notification's key from the
-ring's sources; when none remain, the ring finishes; otherwise the ring takes the colour of the
-most recently added remaining source and redraws the icons.
+ring's sources; when none remain, the ring finishes (unless the charger holds it, 5.11.2);
+otherwise the ring takes the colour of the most recently added remaining source and redraws the
+icons. A removal does not restart the timer (5.7.3: only a new source does).
+
+"A ring is on screen" (points 4 and 5) means a ring screen exists, or a launch was sent less than
+15000 ms ago and its screen has not appeared yet. Sources left over from a launch the system
+declined (no screen after 15 s) are dropped at the next notification, which then starts a ring of
+its own instead of joining one that never appeared. While connected, the listener also hears the
+screen, unlock and charger broadcasts for the charging clock (5.11.2).
 
 ### 5.3 Which notifications qualify
 
@@ -467,7 +474,10 @@ stroke; stroke is clamped to 1..40 px. Back leaves without saving.
 phone first to see it the way it will really look.") starts a demo ring directly: source key
 "demo", the app's own package, the built-in green, 8000 ms, after which it finishes itself. The
 demo does not darken the keyboard (that happens in the listener, not the activity) and is not
-subject to the policy or the pocket check.
+subject to the policy or the pocket check. With `notification_ring_clock` on, the demo also shows
+the clock (5.11.1), and the description reads "Shows the ring and the clock for a few seconds
+with PhysiBoard's own icon. Lock the phone first to see it the way it will really look."; the
+demo is never held by the charger.
 
 ### 5.8 Keeping the keyboard dark and putting it back
 
@@ -554,7 +564,250 @@ holds the screen on is said by the "Keep the screen on for" row.)
 8. "App colours" heading and description; one row per app (22 dp dot, label, "Remove"); "Add an
    app" button.
 9. Divider; fit description and "Fit the ring to the lens" button.
-10. "Try it" description and button.
+10. "Try it" description and button (its description names the clock when the clock is on).
+
+From 3.4 a "Clock" section sits between items 6 and 7: "Show the clock" and "Stay on while
+charging", the second greyed out with its note while the clock is off (5.11.5).
+
+### 5.11 The clock and staying on while charging (3.4)
+
+The Titan has no always-on display (D30). Two options on the Notification ring screen, both off
+by default, make the ring's black screen do the job of one: a clock drawn on it, and that clock
+held up while the phone sits on a charger. Neither is an always-on display in Android's sense: the
+panel is fully on (at a low brightness, almost every pixel black) for as long as the screen shows.
+
+#### 5.11.1 The clock
+
+With `notification_ring_clock` on, every ring screen (a notification ring, the charging clock of
+5.11.2 and "Try it") also draws:
+
+1. The time, in a thin (weight 100) sans-serif face, 72 dp, centred horizontally, its baseline at
+   58 % of the window height. It follows the phone's 12/24-hour setting: 12-hour is the hour
+   without a leading zero and no AM/PM ("7:05", midnight and noon "12:00"); 24-hour pads the hour
+   ("07:05", "19:05"). Minutes always have two digits.
+2. The date below it, 16 dp, regular weight, baseline 32 dp below the time's: weekday, month and
+   day in the locale's own order and abbreviations (the skeleton "EEEMMMd", "Sat, Oct 10" in US
+   English).
+3. When `notification_ring_icons` is on, a row of small icons 18 dp below the date's baseline:
+   18 dp square, 10 dp apart, centred under the date. One icon per distinct app among the
+   notifications the ring is holding (5.2), oldest first, at most 6 (the most recent). Each icon is
+   that app's most recent held notification's own small (status bar) icon, tinted grey; when that
+   cannot be loaded, the app's launcher icon with its colour removed. With the clock on, the
+   coloured icon row of 5.7.1 point 4 is not drawn; the clock's row replaces it. With "Show app
+   icons" off there are no icons anywhere, so the clock never says which apps are waiting unless
+   the user chose that (the Titan's own lock screen may be set to hide notifications entirely).
+
+Colour: greyish white (RGB C8C8C8) at alpha 170 of 255 for the time, 140 for the date and the
+icons. Nothing on the screen has colour except the ring's own glow.
+
+Never drawn: any notification's title, text, sender, image or count. The clock reads the
+notifications only for their keys, packages, colours and small icons.
+
+Placement: the camera-hole ring sits in the top-left corner (5.7.1: the fitted ring is centred
+at (78, 80) px with radius 46 on the 1080 x 1200 panel, glow included it stays within the top
+15 % of the height and the left 15 % of the width). The clock block's top (the time's cap height)
+sits near 50 % of the height, so the two never meet, whatever override the fit screen stores
+within reason.
+
+Updates: the time and date are redrawn on the system's minute tick
+(`android.intent.action.TIME_TICK`) and on `android.intent.action.TIME_SET` /
+`android.intent.action.TIMEZONE_CHANGED`. There is no per-second timer. They are listened for
+only while a ring screen with the clock is up.
+
+#### 5.11.2 Stay on while charging
+
+With `notification_ring_stay_on_charging` on, and the ring (`notification_ring_enabled`) and the
+clock both on, the clock comes up whenever the screen goes off while the phone is plugged in and
+locked, and stays up until the phone is unplugged, unlocked, touched or a key is pressed.
+
+The switch needs the clock: it is greyed out on the screen, with the note "Needs Show the
+clock.", while the clock is off, and it does nothing with the clock off even if its stored value
+is true (a restored backup). It also needs the ring, because it rides on the ring's notification
+access: the screen and charger broadcasts below are heard by a receiver the notification listener
+registers while it is connected, the one part of the app the system keeps running.
+
+"Plugged in" means any charger, read from the battery's sticky status
+(`android.intent.action.BATTERY_CHANGED`, plugged not 0), so a full battery still on the cable
+counts. "Locked" means the keyguard is showing or locked (Android's keyguard-locked state; an
+unknown state counts as not locked).
+
+**Starting.** The listener's receiver hears `android.intent.action.SCREEN_OFF`,
+`SCREEN_ON`, `USER_PRESENT`, `ACTION_POWER_CONNECTED` and `ACTION_POWER_DISCONNECTED`. A start
+is attempted at a screen-off with no ring screen up or on its way, and at a plug-in. The attempt,
+in order:
+
+1. If any of the three switches is off, stop (nothing else is read).
+2. If not plugged in, the screen is on, the clock was put away (below), or a ring screen is up or
+   a launch is on its way, stop.
+3. If not locked, check again later (below); the clock never holds the screen over a phone that
+   is not locked, since that would stretch Android's "lock after screen timeout" grace period into
+   a whole night.
+4. Pocket check (5.5); if covered (face down on the nightstand), stop.
+5. Seed the ring's session with the notifications still in the shade that the policy (5.3) lets
+   ring, oldest first, each coloured by 5.4, so the clock's glow and icons say what is waiting.
+6. Darken the keyboard (5.8), exactly as for a ring.
+7. Launch by the ring's own route (5.6): the same channel and notification id 41, text "Showing
+   the clock while charging", full-screen intent to the ring activity with no notification key and
+   a charging-clock marker. The activity cancels the announcement as it does for a ring.
+
+A launch counts as "on its way" for 15000 ms (the announcement's own timeout) or until the ring
+screen appears, whichever is first.
+
+**Checking again.** A start that finds the phone not yet locked is checked again after 6, 10, 15,
+30, 60 and 180 s (cumulatively 6 s, 16 s, 31 s, 61 s, 121 s and 301 s after the screen went off),
+which covers every lock delay Android offers up to 5 minutes; after the last check it gives up
+until the next screen-off. Each check is one inexact wake-up alarm (Android may run it a few
+seconds late; it rounds anything under 5 s up anyway); only one is pending at a time. Any
+screen-on, unlock, plug-in or unplug cancels the pending check; every check re-reads every fact.
+
+**Holding.** The ring screen is "held by the charger" when it is not a demo, the three switches
+are on, the phone is plugged in and locked, and the clock was not put away; this is decided when
+the screen is created and again at every plug-in or unplug it hears (a plug-in ignores
+put-away). While held:
+
+- the screen stays on with nothing waiting (a launch for the clock alone is not finished for
+  having no notifications);
+- the ring's timer (5.7.3) expiring releases nothing;
+- the last waiting notification going away puts the glow and icons out and leaves the clock up;
+- a new notification joins it (5.2 point 4 applies to the charging clock even with nothing in it:
+  a notification arriving while the clock is up, or while its launch is on its way, is added to
+  it rather than skipped because the screen is on), restarts the ring's timer and brightens the
+  screen to the ring's brightness for the ring's minutes, breathing; then it goes back to the
+  floor brightness with the glow held still.
+
+Touch, a key, unlock and screen-off end it exactly as they end a ring (5.7 "Ending").
+
+**Letting go.** Unplugged while showing, the screen stops holding at once (the window's
+keep-screen-on is cleared unless the ring's own timer is still running for a fresh notification);
+the phone's own screen timeout then turns it off, black to black, at the same floor brightness
+(letting go never brightens it). On phones that wake the screen at unplug, the timeout starts
+from the unplug. On the emulator with a 15 s timeout the screen was off 29 s after unplugging.
+
+**The power key ("put away").** A screen-off while any ring screen is up can only be the power
+key, since the window holds off the timeout. It ends the screen (as for any ring) and puts the
+clock away: no charging clock starts again until the user wakes the phone themselves (a screen-on
+that no ring launch caused), unlocks it, or plugs it in. Pressing power on the nightstand clock
+therefore turns it off for good that time; waking the phone to check something and letting the
+screen go off again (by the power key or the timeout) brings the clock back. That is the
+nightstand behaviour: the clock is there whenever the phone is put down on the charger, and one
+press dismisses it until the phone is next used. A notification ring that arrives while put away
+still rings, but is an ordinary ring: the charger does not hold it, and its timer lets it go.
+
+#### 5.11.3 Burn-in
+
+The clock block (time, date and icons together) moves once a minute, on the minute tick, to the
+next position of a fixed 16-step loop around its home position, in dp (x right, y down):
+(0,0), (2,1), (4,2), (3,4), (1,3), (−1,4), (−3,3), (−4,1), (−2,0), (−4,−1), (−3,−3), (−1,−4),
+(1,−3), (3,−4), (4,−2), (2,−1), then back to the start. The position is the wall-clock minute
+(milliseconds since the epoch / 60000) modulo 16, so it does not restart when the screen does. No
+position is more than 4 dp from home on either axis and no step moves more than 2 dp per axis,
+so the move is not noticed. The ring does not move: it has to stay on the lens. On the charging
+clock with old notifications waiting, the glow is held still at a dim level (below) for as long
+as the clock is up; at the floor brightness this is the one fixed bright-ish shape on the panel.
+
+#### 5.11.4 Brightness, animation and battery
+
+| State | Window brightness | Keep-screen-on | Glow |
+|---|---|---|---|
+| Ordinary ring, timer running | the ring's (5.7.2) | yes | breathing (5.7, every frame) |
+| Ordinary ring, timer expired | the ring's | released | breathing |
+| Charging clock, nothing waiting | 0.01 (the floor) | yes, until unplugged | none |
+| Charging clock, notification newer than the ring's minutes | the ring's | yes | breathing |
+| Charging clock, older notifications only | 0.01 | yes, until unplugged | held still at breath 0.3 (alpha factor 0.35 + 0.65 x 0.3 = 0.545) |
+| Charging clock after unplugging | 0.01 | released (unless the ring's timer still runs) | as before |
+
+The floor, 0.01, is as low as a window may ask: Android clamps any window brightness to the
+panel's own minimum, so this is the dimmest level the panel offers; 0 is avoided because some
+drivers read it as "backlight off".
+
+CPU: with the glow still or absent, the screen is redrawn only on the minute tick (one draw a
+minute) and nothing else runs; the app holds no wake lock of its own (keep-screen-on is the
+window's, held by the system for the window). The only timers while the screen is off are the
+start checks of 5.11.2, at most six inexact alarms after a screen-off that found the phone not yet
+locked. The listener's receiver costs one short wake per screen-on, screen-off, unlock, plug and
+unplug, and returns at once when the switch is off.
+
+Battery: the charging clock only runs on the charger, so it costs no battery charge; it costs
+panel lifetime (an AMOLED panel lit all night at its minimum brightness, almost all of it black).
+The clock alone with an ordinary ring (not charging) adds one text draw per frame to the ring's
+existing cost and nothing else.
+
+#### 5.11.5 Settings and the screen
+
+| Preference key | Type | Default | What it changes | Screen | Label |
+|---|---|---|---|---|---|
+| `notification_ring_clock` | boolean | false | Draw the clock (5.11.1) on every ring screen | Notification ring | "Show the clock", description "A dim clock and date on the ring's black screen, in the style of an always-on display. The Titan has no true always-on display, so the clock is only there while the ring is. With Show app icons on, the waiting apps appear under the date as small grey icons; never what the notifications say." |
+| `notification_ring_stay_on_charging` | boolean | false | The charging clock (5.11.2); does nothing unless `notification_ring_clock` and `notification_ring_enabled` are on | Notification ring | "Stay on while charging", description "While the phone is plugged in and locked, the clock comes up whenever the screen goes off and keeps the screen on, at its lowest brightness, until you unplug, unlock, touch the screen or press a key. Press power while it shows and it stays off until you next wake the phone."; greyed out with the note "Needs Show the clock." while the clock is off |
+
+Both rows sit in a "Clock" section between "Behaviour" and "Colour" (5.10). With the clock on,
+"Try it" reads "Shows the ring and the clock for a few seconds with PhysiBoard's own icon. Lock
+the phone first to see it the way it will really look." and the demo shows the clock (5.7.6;
+the demo is never held by the charger). Search finds both rows under "clock", "always on",
+"AOD", "nightstand" and "charging".
+
+#### 5.11.6 Lock-screen safety
+
+The clock screen is the ring's activity: shown over the lock screen, never dismissing it. Any
+touch or key ends it and leaves the lock screen (or, if the phone was not locked, whatever was
+there before, which the charging clock never covers: 5.11.2 step 3, and the screen re-checks the
+lock when it is created). It draws no notification content (5.11.1), takes no input but the
+ending touch and key, and offers no way past the lock screen. The receivers it registers
+are for protected system broadcasts only.
+
+#### 5.11.7 What the emulator showed (2026-10-10, `titan2elite` AVD, Android 14, swipe lock screen)
+
+- "Try it" with the clock on: the ring and the clock, the demo's own icon greyed under the date;
+  12-hour time without AM/PM.
+- On the charger (`dumpsys battery set ac 1`), power key from the lock screen: the clock came up
+  through the full-screen notification (launched by SystemUI on the pending intent) about 0.3 s
+  after the screen went off, at window brightness 0.01 with the window's keep-screen-on wake lock,
+  seeded with the one notification already in the shade (glow in its colour, its small icon grey).
+- A notification posted from the shell while the clock was up: brightness 0.2 (the ring's
+  Normal), breathing, a second grey icon, no text anywhere; 130 s later (ring minutes 2) back to
+  0.01 and still held.
+- Power key on the clock: dark, and still dark 8 s later. Woken to the lock screen, then power
+  again: the clock came back.
+- Unlocked on the home screen, on the charger, left to time out (15 s): the clock came up about
+  4 s after the screen went off.
+- Unplugged (`dumpsys battery unplug`) while showing: keep-screen-on released at once,
+  brightness stayed 0.01, the screen was off 29 s later on the 15 s timeout.
+
+Not shown on the emulator: a secure lock screen with a lock delay (the retry chain), the
+pocket check, the Titan's own lock screen and its full-screen-intent handling, real charger
+broadcasts, and how the panel looks at 0.01 in a dark room.
+
+#### 5.11.8 Test cases
+
+| # | Input sequence | Expected outcome |
+|---|---|---|
+| T45 | Time 07:05 and 19:05, 12-hour; 00:00 and 12:30, 12-hour; 07:05 and 00:00, 24-hour | "7:05", "7:05"; "12:00", "12:30"; "07:05", "00:00" |
+| T46 | The burn-in loop | 16 distinct positions, each within 4 dp of home per axis, each step at most 2 dp per axis, both signs on both axes |
+| T47 | Burn-in offset for minutes 0, 1, 5 and 21, and −1 | (0,0); (2,1); minute 5 equals minute 21; minute −1 is the last position |
+| T48 | Held notifications A1, B1, A2 (packages A, B); then B1 removed; then 8 distinct packages | icons [A, B]; [A]; the last 6 |
+| T49 | Ring, clock, charging switches: all on; any one off | enabled; not enabled |
+| T50 | All on, plugged, dark, locked, not put away, nothing up | start |
+| T51 | As T50 but each of: switch off, unplugged, screen on, put away, ring up | no start; not locked alone: check again later; not locked and unplugged: no start |
+| T52 | The check-again chain | after 6, 16, 31, 61, 121 and 301 s, then none |
+| T53 | Power on the clock; then a screen-on the user caused; then screen off | put away (no start); cleared; start |
+| T54 | Put away, then a screen-on within 15 s of a launch or with a ring up; unlock; plug in | still put away; cleared; cleared |
+| T55 | Held by the charger: on, plugged, locked, not put away, not demo; then each one false | held; not held |
+| T56 | Held: timer expiry; last notification removed; touch, key, screen off, unlock | nothing released, not finished; nothing released, not finished; finished each |
+| T57 | Keep-screen-on: held and no timer; not held and timer running; neither | on; on; off |
+| T58 | Brightness and breathing per the 5.11.4 table | as the table |
+| T59 | Switches on, plugged, locked, screen goes off | charging clock launched, keyboard darkened, nothing held |
+| T60 | Shade holds B (posted at 20), A (10), an ongoing one and the app's own | clock seeded with [A, B] |
+| T61 | Each of: charging switch off, clock off, unplugged, covered, screen on; screen goes off | nothing launched, keyboard untouched |
+| T62 | Not locked at screen-off; first check still not locked; second check locked | checks scheduled at 6000 then 10000 ms; launched at the second check |
+| T63 | Never locked | exactly the six checks, then nothing |
+| T64 | Not locked at screen-off, then the user wakes the phone | the pending check is cancelled |
+| T65 | Clock up; power; plain screen-off; user wakes, screen off | one launch only until the wake; then a second launch |
+| T66 | Clock put away by power; plug-in with the screen dark and locked | launched again |
+| T67 | "Try it" with the clock on, 24-hour set | clock drawn as HH:MM with a date, the minute tick registered, keep-screen-on, brightness 0.2; finished after 8 s; the tick unregistered |
+| T68 | "Try it" with the clock off | no clock, no minute tick registered |
+| T69 | Charging clock launched, plugged and locked | not finished, keep-screen-on, brightness 0.01, no ring; still so 8 hours on |
+| T70 | Charging clock launched, plugged, not locked | finished at once |
+| T71 | Charging clock; a notification; 11 minutes; the notification removed; unplugged | ring at 0.2; held at 0.01 with the glow; clock stays, glow gone; keep-screen-on released, brightness still 0.01, not finished |
+| T72 | A notification launches a ring that never appears; 15 s later another notification | a new launch with only the new notification (not a join) |
 
 ## 6. The device setup card
 
@@ -692,6 +945,13 @@ Reset does not revoke WRITE_SECURE_SETTINGS, POST_NOTIFICATION, or the ring's ke
 | Grant rows shown while broker not verified OK | Broker button hidden; pairing hint and "Set up pairing" shown | Offering a grant that will silently fail was the 2.0.3 bug |
 | DND on during pairing | Card warns; watcher still arms | The code arrives as a notification DND can hide |
 | POST_NOTIFICATIONS denied | Card warns and requests it; watcher still arms | Never make the prompt a precondition |
+| Clock on, "Show app icons" off | Clock, date, no icons anywhere | Which apps are waiting is shown only by choice (5.11.1) |
+| "Stay on while charging" stored true, clock off (a restored backup) | Nothing happens; the row is greyed out | The charging clock needs the clock |
+| Screen times out on the charger while the phone is still in its lock delay | Checked again at 6, 16, 31, 61, 121, 301 s; comes up once locked; gives up after 5 minutes | Never hold the screen over an unlocked phone |
+| Power pressed on the charging clock | Dark until the user next wakes, unlocks or plugs in | Never fight the user (5.11.2) |
+| Phone face down on the charger | No charging clock | Same pocket check as the ring |
+| Unplugged while the charging clock shows | Keep-screen-on released at once, brightness stays at the floor; the phone's timeout ends it | Black to black |
+| A ring launch the system declines | After 15 s the next notification starts a new ring | Before 3.4 the session stayed "showing" and swallowed every later ring until the process restarted |
 | First-run defaults stamp | `smart_backlight_enabled` true, `notification_ring_enabled` true, `notification_ring_minutes` 2, written once per install when not already chosen | Maintainer's dialed-in config |
 
 ## 10. Test cases
@@ -764,6 +1024,7 @@ Each row is a JVM-encodable check. "switch" means `agui_keyboard_background_ligh
 | Per-app colours and colour wheel | Keep | Small, already shared with cursor colours |
 | "Show app icons" | Undecided | Off by default; icons at 42 % height are far from the ring and cost little; keep if cheap |
 | Pocket check | Keep | A screen lit in a pocket is worse than no ring |
+| The clock and "Stay on while charging" (5.11, 3.4) | Keep, off by default | The nearest thing to an always-on display this ROM allows; unproven on the phone |
 | Device setup card | Keep | Every privileged feature depends on it; belongs to the broker spec's pairing flow |
 | Smart backlight screen hosting the setup card when unconfigured | Drop | Keep one home for pairing (the hub header); route "Set up pairing" links there instead |
 | Reset to stock steps here | Keep | Anything that outlives an uninstall must be undoable |

@@ -296,6 +296,8 @@ All five rows are written synchronously.
 | `notification_ring_brightness` | string `DIM`, `NORMAL`, `BRIGHT`; anything else reads as `NORMAL` | `NORMAL` | | Screen brightness while ringing (0.05, 0.2, 0.6) | "Ring brightness" |
 | `notification_ring_icons` | boolean | false | | App icons under the ring | "Show app icons" |
 | `notification_ring_keyboard_dark` | boolean | true | | Keyboard stays unlit while ringing | "Keep the keyboard dark" |
+| `notification_ring_clock` (3.4) | boolean | false | | A dim clock, date and (with icons on) grey app icons on every ring screen (device-backlight-ring.md 5.11.1) | "Show the clock" |
+| `notification_ring_stay_on_charging` (3.4) | boolean | false | | While plugged in and locked, the clock comes up at every screen-off and holds the screen until unplugged, unlocked, touched or a key; does nothing unless `notification_ring_clock` and `notification_ring_enabled` are on (device-backlight-ring.md 5.11.2) | "Stay on while charging", greyed out with "Needs Show the clock." while the clock is off |
 | `notification_ring_default_color` | int ARGB | the ring policy's default (device-backlight-ring.md) | | Colour for apps without one or with one too dark | "Default colour" |
 | `notification_ring_app_colors` | string, JSON object package to ARGB int | `{}` | `co.kidcasa.app` 0xFFF474B6 (-757066), `com.google.android.apps.googlevoice` 0xFF34B7F1 (-13318311) | Per-app colours | "App colours" |
 | `notification_ring_cx`, `_cy`, `_radius`, `_stroke` | float window px; the override exists only when `_radius` is present | absent = the fitted default | 78.4834, 80.4834, 45.9375, 9.625 (D2) | A hand-fitted ring | "Fit the ring to the lens" |
