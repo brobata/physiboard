@@ -167,8 +167,9 @@ depending on it:
 - The text expansion popup is an overlay window of its own; it used to be drawn only while the
   keyboard's window or the strip was up, which since the bar went meant never, while its keys
   still acted on the invisible rows. It is now drawn for any editable field when "Display over
-  other apps" is on; without that permission it stays down, and its rows count as not visible
-  for the keys (expansion-clipboard-pickers-launcher.md SS11).
+  other apps" is on, placed by the caret rather than above a window; without that permission it
+  stays down, and its rows count as not visible for the keys (expansion-clipboard-pickers-launcher.md
+  SS11).
 - The Sym pages, the clipboard and emoji panels, the screen trackpad and the caret badge are
   overlay windows of their own.
 - The experimental inline suggestions raise a real window while they want their empty input
@@ -974,7 +975,7 @@ Each row is a pure decision that a JVM test can encode without a device.
 | T41 | All 24 presets | locked LED colors pairwise distinct |
 | T42 | Hex "#1A2B3C", "1a2b3c", "12345", "GGGGGG" | parsed, parsed, rejected, rejected |
 | T43 | Keyboard window for a field, mode never (any app, editable or not); mode always or a listed app | no window; window only for an editable field |
-| T44 | Applying a decision: editable field open before, none now, no window up; window up; next field editable | hidden-window handling runs once; not run (Android reports the hide); not run |
+| T44 | Applying a decision: editable field open before, none now, no window up; window up; next field editable; a real hide while the next field is still open, then that field is left | hidden-window handling runs once; not run (Android reports the hide); not run; runs once at the leave |
 
 ## 19. Keep / Drop for 3.0
 

@@ -1448,7 +1448,7 @@ The tutorial's "Typing sounds (gimmick)" page offers the same three modes with a
 | Text changes between the key down and the commit (the token no longer ends the text) | Nothing is typed; matches clear | the commit re-checks the text before deleting |
 | Popup without "Display over other apps" | Nothing is drawn, and the rows count as not visible: Up, Down and Escape go to the app, Space with the prefix option, Tab and Enter take only an exact match | 3.0's popup is its own overlay window and needs no keyboard window; through 3.3.0 it was drawn only while the keyboard window or the strip was up, which since the bar went was never, while its keys still acted on the hidden rows |
 | Suggestion bar presentation while suggestions are disabled for the app | The three slots still show the matches | expansion forces the suggestion row |
-| Popup position | Top center of the keyboard window, shifted up by its own height | as shipped; verified by a unit test |
+| Popup position | Centred, by the caret: its bottom edge 8 dp above the caret line; below the line (top edge 8 dp under it) when there is no room above under the status bar; at the top of the screen when the app reports no usable caret (the caret reports come with the modifier badge, `caret_modifier_badge`, on by default) | 3.0 has no keyboard window to stand on, and a popup at the bottom of the screen would cover a chat app's compose box; `SnippetPopupPlacement`, unit tested |
 | Copy of a password from a password manager | Stored in history and shown in full | no sensitive-content check exists |
 | Copy the same text twice | One entry, moved to the top | duplicates refresh the timestamp |
 | Pin an entry, wait past retention | It stays | retention skips pinned entries |
