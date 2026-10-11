@@ -86,4 +86,12 @@ class DeletedWordsNeverRetypedTest {
         val ended = handle(sessionWithComposingWords(), DictationEvent.FinalResult(null), now = 300L)
         assertEquals(listOf(DictationTextOp.SetComposingText("Delete me "), DictationTextOp.FinishComposing), ended.textOps)
     }
+
+    @Test
+    fun `an edit under the words leaves them as plain text, so the next insert lands at the cursor and not over them`() {
+        val edited = handle(sessionWithComposingWords(), DictationEvent.UserEditedComposingText, now = 200L)
+        assertEquals(listOf<DictationTextOp>(DictationTextOp.FinishComposing), edited.textOps)
+        // A second edit report in the same utterance has nothing left to finish.
+        assertTrue(handle(edited.session, DictationEvent.UserEditedComposingText, now = 250L).textOps.isEmpty())
+    }
 }

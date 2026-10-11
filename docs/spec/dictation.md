@@ -707,6 +707,13 @@ or segment (which normally repeats the very words the user removed) writes nothi
 ends at the utterance boundary; the next utterance composes normally. With the setting on
 (default) the key ends the session first, so this never arises.
 
+The same invalidation follows any result whose partial is no longer at the caret (SS3's field
+check): a tap that moves the cursor away counts. At that moment the composing span is finished
+(3.4): the words already on screen stay as the user's plain text, wherever they are. Left
+composing, the app kept them as the keyboard's span, so the next commit (a Sym-page symbol, a
+key, the next utterance) replaced the whole span and put the cursor there instead of where the
+user tapped (seen on the Titan in Google Messages, 2026-10-11).
+
 ### 7.5 Capitalisation of a final
 
 Skipped entirely when capitalisation is disabled for this field (raw-mode app; password field).
