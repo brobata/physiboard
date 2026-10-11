@@ -34,7 +34,8 @@ object StripVisibility {
      * into it, half cut off, whenever the address bar had focus (a Titan 2 user's report,
      * reproduced on Android 16, 2026-10-10). The status bar icon and dictation do not need the
      * window: their hold asks the input-method service, which counts the keyboard as shown
-     * without one (keys-and-modifiers.md SS13.1, dictation.md SS6.8).
+     * without one (keys-and-modifiers.md SS13.1, dictation.md SS6.8). The experimental inline
+     * suggestions' empty input view is the one window this does not govern.
      */
     fun keyboardWindowWanted(mode: StripVisibilityMode, apps: Set<String>, packageName: String?, fieldEditable: Boolean): Boolean =
         fieldEditable && isShownForApp(mode, apps, packageName)

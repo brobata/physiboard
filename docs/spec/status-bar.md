@@ -114,8 +114,9 @@ The window itself is a normal input method window that never uses fullscreen (ex
 - **The app requests input.** Android's own path. PhysiBoard does not gate on it.
 
 There is no "did anyone ask for a keyboard" gate: once a field is focused and the evaluation
-runs, the candidates surface is shown. This is why the strip floats over a launcher's home
-screen even though nobody requested input (section 3.6).
+runs, the candidates surface is shown wherever the strip could be drawn (section 3.4, "No
+strip, no window"; since the bar went, nowhere). This is why the strip floated over a
+launcher's home screen even though nobody requested input (section 3.6).
 
 ### 3.4 What takes it down
 
@@ -124,9 +125,10 @@ screen even though nobody requested input (section 3.6).
   (section 13) unless a nudge is in flight.
 - Nav mode is latched: the strip's root is made invisible in the layout (it contributes no
   height) but the window stays up.
-- The "Show status bar" setting says no for this app (section 3.5): the root collapses to
-  zero height. The window still exists, the input method is still active and hardware keys
-  still work; the strip has no footprint and its touchable band is empty.
+- The "Show status bar" setting says no for this app (section 3.5): no window is put up at
+  all (below, "No strip, no window"). The input method is still active and hardware keys
+  still work. Within a field whose window is up, the footprint decision (Sym page open, a
+  field with nothing to suggest) still collapses the root to zero height with the window up.
 - A key that closes the window from PhysiBoard's side (a keyboard-mode transition that
   requests hide) hides it.
 
@@ -134,7 +136,10 @@ screen even though nobody requested input (section 3.6).
 drawn there: the field is really editable and "Show status bar" says yes for the app
 (`StripVisibility.keyboardWindowWanted`, T43). Since the bar went for good the mode is
 hardwired to never (`ImeSettings.STRIP_VISIBILITY`), so the keyboard puts up no window of its
-own at all. An up-but-empty window is not free:
+own, with one exception: the experimental inline suggestions (`fill_inline_suggestions`, off
+by default, layers-sym-alt.md 4.7) still raise an empty input view while they want it, and on
+gesture navigation that window costs the same band described below. An up-but-empty window is
+not free:
 
 - On gesture navigation, Android 15 and later give any input-method window that is up a band of
   `navigation_bar_frame_height` (48 dp, 90 px on the Titan) for the keyboard's own navigation
@@ -155,8 +160,8 @@ to Back, and the navigation bar does not change. Nothing else
 needed the window: the status bar icon's and dictation's hold asks the input-method service to
 count the keyboard as shown (`requestShowSelf`), which grants the visible binding and the
 microphone capability without a window (seen on the emulator: `mInputShown=true`,
-`mVisibleBound=true`, `mDecorViewVisible=false` while Shift was held in a field whose app had
-not asked for a keyboard); the Sym pages, the clipboard and emoji panels, the screen trackpad
+`mVisibleBound=true`, `mDecorViewVisible=false` while Shift was held after Back had hidden the
+keyboard, and both false again 750 ms after it was let go); the Sym pages, the clipboard and emoji panels, the screen trackpad
 and the caret badge are overlay windows of their own. The one thing that does need the window
 is the native provider of the keyboard-surface swipes (trackpad-caret-nav.md SS3.3, off by
 default), which already only worked while the strip was on screen. Leaving an editable field
