@@ -364,6 +364,12 @@ data class SymPagePrefs(
      */
     val doubleTapChooser: Boolean = true,
     /**
+     * `sym_open_on_press`. spec: layers-sym-alt.md SS5.11: a Sym press shows its page on the way
+     * down rather than at the release; a Sym+key shortcut then flashes the page. Off by default
+     * (anything new that intercepts a modifier ships off until it is proven on the phone).
+     */
+    val openOnPress: Boolean = false,
+    /**
      * `emoji_default_skin_tone`. spec: expansion-clipboard-pickers-launcher.md SS4.7: the tone every
      * emoji that takes one is inserted and shown in (Emoji page keys, Sym chords, the picker and its
      * recents), unless the user picked a tone for it. [SkinTone.NONE] changes nothing.

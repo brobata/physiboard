@@ -277,6 +277,15 @@ fun CustomizeSymKeyboardScreen(
                         )
                     }
                     item {
+                        // layers-sym-alt.md SS5.11: off by default until proven on the phone.
+                        SwitchRow(
+                            label = "Open Sym pages on press",
+                            description = "The page shows as soon as Sym goes down, not when you let go. Faster, but a Sym+key shortcut flashes the page.",
+                            checked = symPages.openOnPress,
+                            onCheckedChange = { checked -> controller.update { it.copy(symPages = it.symPages.copy(openOnPress = checked)) } },
+                        )
+                    }
+                    item {
                         SwitchRow(
                             label = "Sym+C/V/X/A: copy, paste, cut, select all",
                             checked = keys.symEditShortcuts,

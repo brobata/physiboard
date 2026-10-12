@@ -190,6 +190,12 @@ class ImeSettingsTest {
     }
 
     @Test
+    fun `sym_open_on_press reaches the modifier bundle, off by default`() {
+        assertFalse(ImeSettings.keyboardSettings(Settings()).modifier.symOpenOnPress)
+        assertTrue(ImeSettings.keyboardSettings(Settings(symPages = SymPagePrefs(openOnPress = true))).modifier.symOpenOnPress)
+    }
+
+    @Test
     fun `rule sets follow auto_correct_enabled_languages with the user's substitutions overlaid, __name stripped`() {
         val bundled = mapOf("en" to RuleSet("en", null, mapOf("dont" to "don't")))
         val s = Settings(

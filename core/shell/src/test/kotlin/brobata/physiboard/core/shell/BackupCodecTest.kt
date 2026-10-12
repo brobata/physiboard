@@ -291,6 +291,17 @@ class BackupCodecTest {
     }
 
     @Test
+    fun `sym_open_on_press goes out in a backup and comes back through a restore`() {
+        val on = Settings().let { it.copy(symPages = it.symPages.copy(openOnPress = true)) }
+        val (_, entries) = BackupCodec.decodePrefsFile(BackupCodec.encodePrefsFile("physiboard_settings", on))!!
+        assertEquals("true", entries["sym_open_on_press"])
+        val backup = BackupFile(BackupMeta(versionCode = 1, versionName = "x", timestampIso = "t"), entries)
+        val outcome = BackupRestore.restore(Settings(), backup)
+        assertEquals(0, outcome.skippedCount)
+        assertTrue(outcome.settings.symPages.openOnPress)
+    }
+
+    @Test
     fun `the GIF page switch, kaomoji and sym_double_tap_chooser go out in a backup and come back through a restore`() {
         val changed = Settings().let {
             it.copy(symPages = it.symPages.copy(doubleTapChooser = false, kaomojiEnabled = true, pages = it.symPages.pages.copy(gifEnabled = false)))

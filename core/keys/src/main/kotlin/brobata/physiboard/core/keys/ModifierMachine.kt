@@ -319,11 +319,17 @@ object ModifierMachine {
     // Sym. spec: keys-and-modifiers.md SS4; layers-sym-alt.md SS5.
     // ---------------------------------------------------------------------
 
+    /**
+     * [pages] is the cycle a press steps through; it is needed only for `sym_open_on_press`
+     * (SS5.11), which takes the step here, on the way down. Without it the press steps at its
+     * release as always.
+     */
     fun symDown(
         state: ModifierState,
         stroke: KeyStroke,
         settings: ModifierSettings,
         hasEditableField: Boolean,
+        pages: SymPagesConfig? = null,
     ): Result {
         require(stroke.key == KeyId.Modifier(ModifierKey.SYM)) { "not a Sym stroke: ${stroke.key}" }
         if (stroke.repeatCount > 0) return Result(state, Action.Ignored)
@@ -337,16 +343,35 @@ object ModifierMachine {
         }
 
         val armAssistant = settings.symLongPressAssistantEnabled && !settings.symIsTrackpadTrigger
-        newState = newState.copy(
-            sym = newState.sym.copy(
-                togglePending = true,
-                chordUsed = false,
-                assistantArmedAtMs = if (armAssistant) stroke.timeMs else null,
-                assistantFired = false,
-                secondTapPending = isSecondTap(state.sym, stroke.timeMs, settings),
-            ),
+        val secondTap = isSecondTap(state.sym, stroke.timeMs, settings)
+        var sym = newState.sym.copy(
+            togglePending = true,
+            chordUsed = false,
+            assistantArmedAtMs = if (armAssistant) stroke.timeMs else null,
+            assistantFired = false,
+            secondTapPending = secondTap,
+            openedOnPress = false,
+            pressReverted = false,
         )
+        // spec layers-sym-alt.md SS5.11: the step a tap's release would take, taken now. The
+        // second tap of a double tap takes none: its release opens the chooser (SS5.10).
+        if (settings.symOpenOnPress && pages != null && !secondTap) {
+            sym = sym.copy(openedOnPress = true, pageBeforePress = sym.currentPageNumber, currentPageNumber = pages.nextPage(sym.currentPageNumber))
+            newState = newState.copy(sym = sym)
+            return Result(newState, Action.StateOnly)
+        }
+        newState = newState.copy(sym = sym)
         return Result(newState, Action.Ignored)
+    }
+
+    /**
+     * spec layers-sym-alt.md SS5.11: a page shown on the press is taken back (the page that was open
+     * before it returns, or none) when the press turns out to be a chord or the long hold.
+     * Unchanged for any other press.
+     */
+    fun revertPressStep(state: ModifierState): ModifierState {
+        if (!state.sym.openedOnPress || !state.sym.togglePending) return state
+        return state.copy(sym = state.sym.copy(currentPageNumber = state.sym.pageBeforePress, openedOnPress = false, pressReverted = true))
     }
 
     /**
@@ -384,11 +409,21 @@ object ModifierMachine {
                 val restored = SymSessionState(currentPageNumber = state.sym.pageBeforeLastTap)
                 return Result(state.copy(sym = restored), Action.RunCommand(KeyCommands.OPEN_SYM_PAGE_CHOOSER))
             }
+            if (state.sym.openedOnPress) {
+                // SS5.11: the step was taken on the way down; the release only records the tap.
+                val tapped = SymSessionState(currentPageNumber = state.sym.currentPageNumber, lastTapUpAtMs = stroke.timeMs, pageBeforeLastTap = state.sym.pageBeforePress)
+                return Result(state.copy(sym = tapped), Action.StateOnly)
+            }
+            if (state.sym.pressReverted) {
+                // SS5.11: a key went down under Sym (a chord in all but name) and took the step back.
+                val cleared = state.copy(sym = SymSessionState(currentPageNumber = state.sym.currentPageNumber))
+                return Result(cleared, Action.Ignored)
+            }
             val nextPage = pages.nextPage(state.sym.currentPageNumber)
             val tapped = SymSessionState(currentPageNumber = nextPage, lastTapUpAtMs = stroke.timeMs, pageBeforeLastTap = state.sym.currentPageNumber)
             return Result(state.copy(sym = tapped), Action.StateOnly)
         }
-        val cleared = state.copy(sym = state.sym.copy(togglePending = false, chordUsed = false, assistantArmedAtMs = null, lastTapUpAtMs = null, secondTapPending = false))
+        val cleared = state.copy(sym = state.sym.copy(togglePending = false, chordUsed = false, assistantArmedAtMs = null, lastTapUpAtMs = null, secondTapPending = false, openedOnPress = false, pressReverted = false))
         return Result(cleared, Action.Ignored)
     }
 
@@ -414,7 +449,9 @@ object ModifierMachine {
     fun symAssistantTimerFired(state: ModifierState, nowMs: Long, settings: ModifierSettings): Result {
         val armedAt = state.sym.assistantArmedAtMs ?: return Result(state, Action.Ignored)
         if (nowMs - armedAt < settings.symAssistantHoldMs) return Result(state, Action.Ignored)
-        val newState = state.copy(sym = state.sym.copy(togglePending = false, assistantArmedAtMs = null, assistantFired = true))
+        // SS5.11: a page shown on the press goes back first; the hold was never a tap.
+        val reverted = revertPressStep(state)
+        val newState = reverted.copy(sym = reverted.sym.copy(togglePending = false, assistantArmedAtMs = null, assistantFired = true))
         return Result(newState, Action.RunCommand(KeyCommands.LAUNCH_ASSISTANT))
     }
 
@@ -494,7 +531,10 @@ object ModifierMachine {
         if (stroke.repeatCount > 0) return state
         val fnBurst = if (state.fnBurst.count > 0) state.fnBurst.copy(blocked = true) else state.fnBurst
         // layers-sym-alt.md SS5.10: a key between two Sym taps makes them two taps, not a double tap.
-        val sym = if (state.sym.lastTapUpAtMs != null) state.sym.copy(lastTapUpAtMs = null) else state.sym
+        // SS5.11: a key under a Sym press that showed its page on the way down takes the page back
+        // before anything resolves the key, so a chord draws from the page that was open before.
+        val reverted = revertPressStep(state).sym
+        val sym = if (reverted.lastTapUpAtMs != null) reverted.copy(lastTapUpAtMs = null) else reverted
         return state.copy(
             holdBookkeeping = state.holdBookkeeping.copy(otherKeyDuringHold = true),
             fnBurst = fnBurst,

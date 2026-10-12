@@ -446,6 +446,13 @@ internal class KeyboardPipeline(
 
     private val symPageOpen: Boolean get() = modifierState.sym.currentPageNumber != 0
 
+    /**
+     * layers-sym-alt.md SS5.11: the current Sym press showed its page on the way down and a chord
+     * (or the long hold) has since taken it back. `:ime` reads it before and after a stroke: a
+     * change means the page that flashed goes at once, with no motion.
+     */
+    val symPressReverted: Boolean get() = modifierState.sym.pressReverted
+
     /** layers-sym-alt.md SS5.2: Sym steps the pages with a text box, and also while a page is open without one. */
     private val symSessionLive: Boolean get() = activeField.isReallyEditable || symPageOpen
 
@@ -1471,7 +1478,7 @@ internal class KeyboardPipeline(
             ModifierKey.CTRL -> if (down) ModifierMachine.ctrlDown(modifierState, stroke, settings.modifier) else ModifierMachine.ctrlUp(modifierState, stroke, settings.modifier)
             ModifierKey.ALT -> if (down) ModifierMachine.altDown(modifierState, stroke, settings.modifier, canSwitchLayout = chordCanSwitchLayout) else ModifierMachine.altUp(modifierState, stroke, settings.modifier)
             ModifierKey.SYM -> if (down) {
-                ModifierMachine.symDown(modifierState, stroke, settings.modifier, hasEditableField = symSessionLive)
+                ModifierMachine.symDown(modifierState, stroke, settings.modifier, hasEditableField = symSessionLive, pages = symPagesNow)
             } else {
                 ModifierMachine.symUp(modifierState, stroke, hasEditableField = symSessionLive, pages = symPagesNow)
             }

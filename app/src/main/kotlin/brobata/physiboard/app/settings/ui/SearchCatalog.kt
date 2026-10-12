@@ -82,6 +82,7 @@ object SearchCatalog {
         SearchEntry("One-time codes from notifications", SYM, Routes.CUSTOMIZE_SYM_KEYBOARD, "otp one-time code verification sms text message email 2fa two-factor notifications fill"),
         SearchEntry("Password manager suggestions", SYM, Routes.CUSTOMIZE_SYM_KEYBOARD, "password manager autofill inline suggestions logins bitwarden google fill experimental"),
         SearchEntry("Double-tap Sym for the page chooser", SYM, Routes.CUSTOMIZE_SYM_KEYBOARD, "sym double tap chooser page letter open kaomoji gif"),
+        SearchEntry("Open Sym pages on press", SYM, Routes.CUSTOMIZE_SYM_KEYBOARD, "sym open press down faster quick lag delay instant page emoji"),
         SearchEntry("Close Sym after typing a character", SYM, Routes.CUSTOMIZE_SYM_KEYBOARD, "sym auto close layout one-shot"),
         SearchEntry("Sym+C/V/X/A", SYM, Routes.CUSTOMIZE_SYM_KEYBOARD, "copy paste cut select all sym shortcuts edit"),
         SearchEntry("Clipboard history", "Clipboard history", Routes.CLIPBOARD_HISTORY, "clipboard copy paste history retention pin clips"),

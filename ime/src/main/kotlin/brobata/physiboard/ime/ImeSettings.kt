@@ -85,6 +85,8 @@ internal object ImeSettings {
                 symAutoCloseEnabled = s.symPages.autoClose,
                 // layers-sym-alt.md SS5.10: two quick Sym taps open the page chooser.
                 symDoubleTapChooser = s.symPages.doubleTapChooser,
+                // layers-sym-alt.md SS5.11: the page shows on the press (off by default).
+                symOpenOnPress = s.symPages.openOnPress,
                 // spec: keys-and-modifiers.md SS7.5, the three layout-switch chords; each still needs another subtype to exist (KeyboardPipeline.anotherSubtypeAvailable).
                 altShiftLayoutSwitch = s.languages.altShiftLayoutSwitch,
                 altEnterLayoutSwitch = s.languages.altEnterLayoutSwitch,

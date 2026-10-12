@@ -107,6 +107,7 @@ object SettingsKeys {
     const val SYM_AUTO_CLOSE = "sym_auto_close"
     const val SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch"
     const val SYM_DOUBLE_TAP_CHOOSER = "sym_double_tap_chooser"
+    const val SYM_OPEN_ON_PRESS = "sym_open_on_press"
     const val EMOJI_PICKER_EXPANDED = "emoji_picker_expanded_height"
     const val EMOJI_PICKER_KAOMOJI = "emoji_picker_kaomoji"
     const val OTP_FROM_NOTIFICATIONS = "otp_from_notifications"
@@ -501,6 +502,7 @@ object SettingsCodec {
         put(SettingsKeys.SYM_AUTO_CLOSE, s.autoClose.toString())
         put(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, s.autoCloseOnTouch.toString())
         put(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, s.doubleTapChooser.toString())
+        put(SettingsKeys.SYM_OPEN_ON_PRESS, s.openOnPress.toString())
         put(SettingsKeys.EMOJI_PICKER_EXPANDED, s.emojiPickerExpandedHeight.toString())
         put(SettingsKeys.EMOJI_PICKER_KAOMOJI, s.kaomojiEnabled.toString())
         put(SettingsKeys.OTP_FROM_NOTIFICATIONS, s.otpFromNotifications.toString())
@@ -520,6 +522,7 @@ object SettingsCodec {
             autoClose = r.bool(SettingsKeys.SYM_AUTO_CLOSE, d.autoClose),
             autoCloseOnTouch = r.bool(SettingsKeys.SYM_AUTO_CLOSE_ON_TOUCH, d.autoCloseOnTouch),
             doubleTapChooser = r.bool(SettingsKeys.SYM_DOUBLE_TAP_CHOOSER, d.doubleTapChooser),
+            openOnPress = r.bool(SettingsKeys.SYM_OPEN_ON_PRESS, d.openOnPress),
             emojiPickerExpandedHeight = r.bool(SettingsKeys.EMOJI_PICKER_EXPANDED, d.emojiPickerExpandedHeight),
             kaomojiEnabled = r.bool(SettingsKeys.EMOJI_PICKER_KAOMOJI, d.kaomojiEnabled),
             otpFromNotifications = r.bool(SettingsKeys.OTP_FROM_NOTIFICATIONS, d.otpFromNotifications),

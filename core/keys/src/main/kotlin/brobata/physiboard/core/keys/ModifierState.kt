@@ -77,6 +77,15 @@ data class SymSessionState(
     val pageBeforeLastTap: Int = 0,
     /** This press is the second tap of a double tap; its release opens the chooser instead of cycling. */
     val secondTapPending: Boolean = false,
+    /**
+     * spec layers-sym-alt.md SS5.11 (`sym_open_on_press`): this press already took its page step on
+     * the way down, so its release takes none.
+     */
+    val openedOnPress: Boolean = false,
+    /** The page open before that step, which a chord or the long hold puts back. */
+    val pageBeforePress: Int = 0,
+    /** A chord or the long hold took this press's step back; its release leaves the pages alone. */
+    val pressReverted: Boolean = false,
 )
 
 /**
@@ -176,6 +185,11 @@ data class ModifierSettings(
     val symDoubleTapChooser: Boolean = true,
     /** spec layers-sym-alt.md SS5.10: from the first tap's release to the second tap's press. */
     val symDoubleTapWindowMs: Long = 300,
+    /**
+     * `sym_open_on_press` (layers-sym-alt.md SS5.11): a Sym press shows its page on the way down
+     * instead of at the release; a chord or the long hold takes it back. Off by default.
+     */
+    val symOpenOnPress: Boolean = false,
     val symEditShortcutsEnabled: Boolean = true,
     val symAutoCloseEnabled: Boolean = true,
     /**

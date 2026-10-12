@@ -385,6 +385,15 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `sym_open_on_press defaults off and round-trips`() {
+        assertEquals(false, SettingsCodec.fromMap(emptyMap()).symPages.openOnPress, "new modifier behaviour ships off")
+        val on = Settings().let { it.copy(symPages = it.symPages.copy(openOnPress = true)) }
+        val map = SettingsCodec.toMap(on)
+        assertEquals("true", map[SettingsKeys.SYM_OPEN_ON_PRESS])
+        assertEquals(true, SettingsCodec.fromMap(map).symPages.openOnPress)
+    }
+
+    @Test
     fun `sym_double_tap_chooser defaults on and round-trips`() {
         assertEquals(true, SettingsCodec.fromMap(emptyMap()).symPages.doubleTapChooser)
         val off = Settings().let { it.copy(symPages = it.symPages.copy(doubleTapChooser = false)) }
