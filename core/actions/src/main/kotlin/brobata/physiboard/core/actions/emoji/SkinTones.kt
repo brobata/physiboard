@@ -78,6 +78,12 @@ object SkinTones {
 
     private fun formsOf(emoji: String): Forms? = if (emoji.isEmpty()) null else byKey[key(emoji)]
 
+    /**
+     * The one name every form of a toneable emoji shares (its untoned, fully-qualified form), or
+     * null for an emoji that takes no tone. ☝, ☝️ and ☝🏽 all answer ☝️.
+     */
+    fun toneKeyOf(emoji: String): String? = formsOf(emoji)?.untoned
+
     /** Whether Unicode tones [emoji] as a whole (in any of its forms, toned or not). */
     fun isToneable(emoji: String): Boolean = formsOf(emoji) != null
 
