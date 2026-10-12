@@ -567,7 +567,13 @@ chords draw from the key-layer maps, never from the kaomoji list.
 While loading, a centered progress indicator is shown; a failure to load anything shows "Unable
 to load emoji". Loading happens the first time the page opens, on every open when it was on
 another page last, and on a settings-triggered refresh; a reopen straight after the same page
-merely scrolls to the top. The selected tab follows the first visible item while the user
+merely scrolls to the top. 3.4 (layers-sym-alt.md 5.12): the page, its window and its grid are
+kept between opens and built ahead of the first one; the grid makes views only for the rows on
+screen and reuses them as it scrolls (it used to make one for every emoji, 1,905 of them, on
+every open); the categories are read once per process, a failed read is tried again on the next
+open, and an open with nothing changed (recents, remembered tones, default tone, columns) draws
+nothing new. Every open still starts as above: Emoji mode, search closed and empty, capture off,
+scrolled to the top. The selected tab follows the first visible item while the user
 scrolls (not while a tab-tap scroll is in flight); tapping a tab jumps to that category's first
 row. Tapping the Recents tab also asks for a recents refresh.
 
@@ -584,14 +590,19 @@ colour with a 1 dp divider outline and 6 dp corners, 12 dp elevation) above the 
 listing the untoned form, then the cell's own form, then each variant (duplicates once) at 24
 sp with 12 dp by 8 dp padding, scrolling sideways when it is wider than the screen (a pair such
 as 🧑‍🤝‍🧑 lists all 25 tone combinations); tapping one commits it the same way and dismisses
-the popup. Outside touches dismiss it. This is the touch skin-tone chooser: the chosen form is
-inserted and remembered in recents as chosen, whatever the default tone, and no tone preference
-is remembered per emoji. An emoji without variants ignores the long press.
+the popup. Outside touches dismiss it. The popup never takes window focus (3.4: a focusable popup
+took focus from the app, Android then finished the app's field, and the page and the popup
+closed before a tone could be picked). This is the touch skin-tone chooser: the chosen form is
+inserted whatever the default tone, and 3.4 remembers it for that emoji (4.7, "Remembered
+tones"). An emoji without variants ignores the long press.
 
 Recents: every chosen emoji goes to the front of a list of at most 40 kept in the separate
 preferences file `recent_emojis_prefs` under the key `recent_emojis` as a JSON array of strings,
 most recent first. A tap on a cell records the cell's untoned base, so a recent follows a later
-change of the default tone; a pick from the popup records the form picked. A recent with no
+change of the default tone; a pick from the popup records the untoned base too (3.4), so the
+recent shows the tone remembered for it; in private mode, where nothing is remembered, nothing
+is recorded at all. A recent recorded with a tone before 3.4 is shown as its emoji, once, in the
+tone remembered for it. A recent with no
 tone is shown and inserted in the default tone like any other cell; choosing one that is already
 first changes nothing; choosing one further down moves it to the front and drops nothing; a new
 one pushes the 41st off the end. The Recents section is rebuilt from that list with each entry's
@@ -657,9 +668,11 @@ search that cannot run because the index failed to build shows "Unable to load e
 | `emoji_picker_kaomoji` (3.0) | boolean | false | Kaomoji is a mode of page 4 and has the chooser's K row; off, the page shows emoji only and has no mode button. Backed up | Customize SYM Keyboard | Kaomoji on the Emoji page ("Adds a button on the Emoji page that switches to text faces like (^_^), and a K row in the chooser. Off: the Emoji page only ever shows emoji.") |
 | `recent_kaomoji` (file `recent_emojis_prefs`) | string, JSON array | absent | Kaomoji recents, most recent first, at most 40 | none | (Kaomoji Recents tab) |
 | `recent_symbols` (file `recent_emojis_prefs`) | string, JSON array | absent | Symbol recents, most recent first, at most 40 | none | (Symbols Recents tab) |
+| `emoji_skin_tones` (3.4, file `recent_emojis_prefs`) | string, one `emoji<TAB>form` line per emoji, most recently picked last | absent | The tone the user picked for each emoji in the popup, at most 400 (4.7, "Remembered tones") | none | (the picker's cells) |
 
 `sym_auto_close`, `sym_auto_close_on_touch` and `sym_pages_config` `emojiPickerEnabled` are in
-layers-sym-alt.md. The recents file is not part of backups; `emoji_default_skin_tone` is.
+layers-sym-alt.md. The recents file is not part of backups, and so neither are the remembered
+tones in it (they are learned from use, like the recents); `emoji_default_skin_tone` is.
 
 ### 4.7 Skin tones (3.0)
 
@@ -716,6 +729,27 @@ and release, so it never arms a hold. A key consumed by the chooser (the pick, B
 Shift) has its auto-repeats consumed too until it is released. It never opens on
 its own for anything but a held key or a touch, and it intercepts Space, Enter, Shift and
 Backspace only while it is open (Shift swallowed; the other three close it and act normally).
+
+**Remembered tones (3.4).** The tone picked for an emoji in the picker's long-press popup (4.4)
+is remembered for that emoji, the way a phone's own emoji keyboard keeps it:
+
+- From then on the picker's grid, its search results and its recents show and insert that form
+  for that emoji (when the device's font has it; otherwise the rules below apply). Every form of
+  the emoji (☝, ☝️, ☝🏽) shares the one memory; a mixed pair picked from the popup
+  (🧑🏻‍🤝‍🧑🏿) is remembered as picked.
+- Picking the plain (untoned, yellow) form forgets it; the emoji then follows the default tone
+  again, like every emoji the user never picked a tone for.
+- The default tone (`emoji_default_skin_tone`) still applies to every emoji with nothing
+  remembered; a remembered tone wins over it.
+- Nothing is remembered or forgotten in private mode or a field that asks for no learning
+  (app-shell.md SS31.1); what is already remembered is still shown there.
+- Stored on the phone only, in `recent_emojis_prefs` under `emoji_skin_tones` (4.6), at most
+  400 emoji, the oldest pick dropped first; not part of a backup, like the recents. There is no
+  setting and no screen: the popup is the only way in and out.
+- Only the picker remembers. The Emoji and Symbols key layers, Sym chords and the hardware-key
+  chooser keep using the default tone as above.
+- The cell on screen shows a new memory at once; the recents themselves still wait for the
+  deferred redraw (4.4).
 
 **Choosing a tone by touch on the Emoji page.** A long press on a grid key whose emoji takes a
 tone opens the same bar; a pick is committed like a grid tap (closing the page first when both
@@ -1610,6 +1644,13 @@ Each case is an input sequence and the expected outcome, written so a JVM test c
 | T95 | quick launcher key | Space = quick launcher: tap; hold | the quick launcher on the up; Space's sheet at the threshold |
 | T96 | pipeline, text field | Sym down, assigned Q down, repeats, timer, Q up, Sym up | every Q event consumed with no edit; the sheet once; no Sym page opens; the next plain Q types `q` |
 | T97 | pipeline, no text box, no connection (accessibility, 15.1) | Sym tap, Space down, timer, repeat, Space up | Space's sheet once; repeat and up consumed; a tap instead runs the quick launcher on the up |
+| T98 | remembered tone (4.7) | pick 👋🏽 from the popup | the 👋 cell shows and inserts 👋🏽; 👍 is unchanged |
+| T99 | forget | 👋🏿 remembered, pick plain 👋 | nothing remembered; with default medium the cell shows 👋🏽 |
+| T100 | default and memory | 👋🏿 remembered, default light | 👋 shows 👋🏿; 👍 shows 👍🏻 |
+| T101 | private mode | pick 👋🏽, or plain 👋, with learning off | the stored tones are unchanged |
+| T102 | unavailable form, no tones | 👋🏿 remembered but the font lacks it; pick ❤️ | 👋 shows untoned; ❤️ is never remembered or toned |
+| T103 | old recents | recents [👋🏽, 👍, 👋, 👋🏿] | drawn as 👋, 👍 (each once, in its remembered tone) |
+| T104 | storage | picks 👋🏿, 👍🏻, 👋🏽; 400 stored then one more | stored newest last as 👍🏻, 👋🏽; round-trips; still 400, the oldest dropped |
 
 ## 13. Keep / Drop for 3.0
 

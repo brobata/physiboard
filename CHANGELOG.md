@@ -19,6 +19,14 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
 - A ring Android declined to show no longer silences every ring after it.
 - After dictating, tapping elsewhere in the message leaves the cursor where you tapped, and a
   symbol from the Sym page goes in there instead of replacing the dictated sentence.
+- Sym pages open without the lag: the Emoji page and the key pages are kept ready instead of
+  being built on every press, the emoji grid only draws what is on screen, and a page is on
+  screen from its first frame.
+- "Open Sym pages on press" (Sym pages > Sym key) shows the page as soon as Sym goes down. Off
+  by default; with it on, a Sym+key shortcut flashes the page.
+- The emoji picker remembers the skin tone you pick for each emoji, like your phone's own emoji
+  keyboard; picking the plain one forgets it. The tone popup no longer closes the page before you
+  can pick.
 
 ## 3.3.0 (2026-10-10)
 

@@ -1517,6 +1517,7 @@ While learning is off, nothing new is remembered:
 | Personal words (autocorrect-suggestions.md section 6.2) | the add-word slot or gesture still types the word but does not save it; toast "Private: the word was typed but not saved" |
 | Clipboard history capture (expansion-clipboard-pickers-launcher.md section 3.1) | a copy is not kept |
 | Recent emoji (expansion-clipboard-pickers-launcher.md section 4.4) | choosing an emoji leaves the recents as they were |
+| Remembered emoji tones (expansion-clipboard-pickers-launcher.md section 4.7, 3.4) | a pick from the tone popup is inserted but neither remembered nor, for the plain form, forgotten; tones already remembered are still shown |
 | Debug capture (sections 10 and 11) | no key event, no field attach and no autocorrection record reaches the store, whether Diagnostics is open or not; the developer log trail (`ime_overlay_debug_logging`) is silent too |
 
 What is already known keeps working: the dictionaries, personal and default words, learned

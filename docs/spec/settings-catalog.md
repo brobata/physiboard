@@ -29,7 +29,7 @@ screen:
 | `embedded_adb` | `physiboard` (the pairing key material) | The wireless-debugging broker's pairing (see broker-privileged-toolbox.md) | Yes: every shared preferences file except the emoji one is exported, so a backup carries the pairing |
 | `physiboard_toolbox` | `pending_revert` (JSON object `{id, apply, revert}`), `removal_journal` (JSON array of `{pkg, prev, action, at}`) | The toolbox's undo records for a system change in flight and for removed packages | Yes |
 | `app_list_cache_prefs` | `package_change_sequence` (int), `package_change_boot_count` (int) | Invalidation counters for the cached app list (see per-app-behavior.md) | Yes |
-| `recent_emojis_prefs` | `recent_emojis` | Recently used emoji | No: explicitly excluded |
+| `recent_emojis_prefs` | `recent_emojis`, `recent_kaomoji`, `recent_symbols`; 3.4: `emoji_skin_tones` (the tone picked per emoji, expansion-clipboard-pickers-launcher.md 4.7) | Recently used emoji, and the tones the user picked for them | No: explicitly excluded |
 | `gif_prefs` (3.0) | `gif_favourites`, `gif_recents` (JSON arrays of the GIF's slug, title, preview and send URLs and sizes) | The GIF page's ★ favourites and recently sent (layers-sym-alt.md 4.5) | No: like the emoji recents, it is history, not a setting |
 
 Reads and writes are synchronous from the point of view of the caller; most writes are
@@ -194,6 +194,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `sym_auto_close` | boolean | true | | Sym page closes after a key | Sym pages > Sym key > "Close Sym after typing a character" |
 | `sym_auto_close_on_touch` | boolean | true | | Also after an on-screen Sym key | Sym pages > Sym key > "Also after tapping a key on screen" |
 | `sym_double_tap_chooser` (3.0) | boolean | true | | Two quick Sym taps (300 ms from the first release to the second press) open the Sym page chooser instead of stepping two pages (layers-sym-alt.md 5.10). Backed up. | Sym pages > Sym key > "Double-tap Sym for the page chooser" |
+| `sym_open_on_press` (3.4) | boolean | false | | A Sym press opens its page on the way down instead of at the release; a chord or the long hold takes it back at once (layers-sym-alt.md 5.11). Off until proven on the phone. Backed up. | Sym pages > Sym key > "Open Sym pages on press" ("The page shows as soon as Sym goes down, not when you let go. Faster, but a Sym+key shortcut flashes the page.") |
 | `emoji_picker_expanded_height` | boolean | true | false | Taller emoji picker | Sym pages > Emoji > "Larger emoji picker" |
 | `emoji_picker_kaomoji` (3.0) | boolean | false | false (baseline 8) | Kaomoji is a mode of the Emoji page and has the chooser's K row (expansion-clipboard-pickers-launcher.md 4.3). Backed up. | Sym pages > Emoji > "Kaomoji on the Emoji page" |
 | `otp_from_notifications` (3.0) | boolean | true | | One-time codes are read from notifications for the Fill page (layers-sym-alt.md 4.7). Inert until the user gives "PhysiBoard one-time codes" notification access; off, or private mode on, reads nothing and drops every code. Codes are memory only. Backed up. | Sym pages > Fill page > "One-time codes from notifications"; the "Notification access" row beside it (also on Privacy) opens Android's page for the listener |

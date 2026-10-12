@@ -526,7 +526,8 @@ With an editable field focused:
 3. Sym key up: if a toggle is pending and no chord was used, the page cycles one step
    (section 4.2) and the strip redraws; 3.0: unless this was the second tap of a double tap,
    which opens the page chooser instead (section 5.10). The pending and chord flags are
-   cleared. The key up is consumed.
+   cleared. The key up is consumed. 3.4: with `sym_open_on_press` on, the step is taken at the
+   key down instead (section 5.11).
 
 Without an editable field, Sym down and up do not touch the pages at all: the down goes to the
 launcher-shortcut logic (power shortcuts toggle, out of scope) or to the system, and the up
@@ -832,6 +833,75 @@ While the chooser is open:
 Tapping a row opens its page; the close button closes it. The chooser draws nothing that
 stays: it closes after a pick, after a dismissal, after 10 seconds without a key (a Shift press
 starts the 10 seconds over), when the field finishes, and when the keyboard window hides.
+
+### 5.11 Open on press (3.4, off by default)
+
+A tap opens its page at the release (5.2) because the press may still turn into a chord. A
+normal tap on the Titan is 100 to 170 ms from press to release (measured 2026-10-11), and that
+wait is part of what the maintainer felt as lag. `sym_open_on_press` (default off; anything new
+that intercepts a modifier ships off until it is proven on the phone) moves the step to the
+press, in an editable field (or with a page open, as 5.2):
+
+- Sym down (repeat 0) that is not the second tap of a double tap takes the cycle step at once:
+  the next page opens (or the last one closes) on the way down. The page that was open before is
+  remembered for the length of the press. Repeats of the held key take no further step.
+- Sym up after such a press takes no step: the page stays. The release still counts as a plain
+  tap for the double tap (5.10): it is remembered with the page that was open before the press.
+- The second tap of a double tap (within 300 ms of the last plain tap's release, 5.10) takes no
+  step at its press; its release opens the chooser over the page that was open before the first
+  tap, as always.
+- Any other non-modifier key down while Sym is held (a chord: an edit shortcut, a launcher key,
+  a Sym symbol, Sym+Enter, or a key that resolves to nothing) first puts back the page that was
+  open before the press, at once and with no motion and no page-change haptic, and then is
+  resolved exactly as today, so a chord draws from the page that was open before (5.3). The
+  release opens nothing.
+- The long hold (5.6, `sym_long_press_assistant`) takes the page back the same way before the
+  assistant launches. (The 3.0 keyboard does not drive the 600 ms timer yet, so today a long hold
+  simply keeps the page, as a tap does.)
+- Shift, Ctrl and Alt pressed under Sym are not chords (5.3): the page stays.
+- A page whose search field captures keys (the Emoji page opened into its search, the GIF page)
+  lets a key pressed while Sym is held go to the chord rules above, never into the search field;
+  with the press over, capture works as before.
+- Without an editable field and with no page open, nothing changes: the press goes to the
+  launcher logic as before.
+
+The cost is the one the row says: a Sym+key shortcut shows the page for the moment between the
+two presses. Settings row: Sym pages > Sym key > "Open Sym pages on press" ("The page shows as
+soon as Sym goes down, not when you let go. Faster, but a Sym+key shortcut flashes the page.").
+
+### 5.12 Speed of a page opening (3.4)
+
+Measured 2026-10-11, before this section: on the Titan the Sym release that opened a page spent
+36 to 60 ms on the main thread outside the key pipeline (the slow-keystroke log), and on the
+emulator the Emoji page then spent 0.8 to 1.4 s more drawing all of its 1,905 emoji as views,
+during which nothing else on the keyboard moved. What a page open must now do:
+
+- **Pages are kept, not rebuilt.** The Emoji page and each key-layer page are built once, with
+  their window, and kept between opens: a close hides the window (no surface, no touches) and
+  the next open shows it again. A theme change, a screen size or density change, the Emoji
+  page's height (`emoji_picker_expanded_height`), the rounded-corner insets, or a key layer's
+  characters changing (a Shift state, a customised page, the default skin tone) rebuild the page
+  concerned. All of it is dropped when the keyboard service goes. The clipboard, GIF, Fill and
+  chooser panels are still built on each open; they are small.
+- **The emoji grid draws only what is on screen** (expansion-clipboard-pickers-launcher.md 4.3):
+  views for the rows in view, reused as the grid scrolls. A reopen with nothing changed (same
+  recents, remembered tones, default tone and columns) draws nothing new.
+- **Built ahead of time.** About 400 ms after the first editable field of a settings state
+  starts, on the next moment the keyboard is idle, the Emoji page (when it is in the cycle) and
+  the switched-on Emoji and Symbols key layers are built and their windows added, hidden, so the
+  first Sym press of the session only shows one. The Emoji page is drawn once, invisibly and
+  ignoring touches, so its first open does not wait on the emoji glyphs either. This needs
+  "Display over other apps"; without it nothing is built ahead and no toast is shown (the toast
+  comes from a real open, as before).
+- **Nothing else waits on the page.** What follows a page change on the key path (the caret
+  badge, the status bar icon) is redrawn straight after the keystroke instead of inside it.
+- **The open motion starts visible.** A Sym page is fully drawn from its first frame and settles
+  the last 10 dp in 80 ms; a page stepped to in place fades from half to full in 80 ms; a page a
+  chord took back (5.11) goes with no motion (docs/design/design-system.md, "Motion").
+
+Result on the emulator (same build, same Messages field): Sym release 22 to 56 ms before, 3.5 to
+6.3 ms after; first frame of the Emoji page 41 to 259 ms after the key before, 10 to 38 ms
+after; the 0.8 to 1.4 s grid draw is gone.
 
 ## 6. The Alt layer
 
@@ -1398,6 +1468,7 @@ is empty.
 | `sym_auto_close_on_touch` | boolean | true | page closes after an on-screen key tap (needs the one above) | Customize SYM Keyboard | Also close after on-screen SYM keys |
 | `sym_edit_shortcuts` | boolean | true | Sym+C/V/X/A copy, paste, cut, select all | Customize SYM Keyboard | Sym+C/V/X/A: copy, paste, cut, select all |
 | `sym_double_tap_chooser` | boolean | true | 3.0: a Sym double tap opens the page chooser (5.10); off, two quick taps step two pages | Customize SYM Keyboard | Double-tap Sym for the page chooser |
+| `sym_open_on_press` | boolean | false | 3.4: a Sym press opens its page on the way down; a chord or the long hold takes it back (5.11) | Customize SYM Keyboard | Open Sym pages on press |
 | `emoji_picker_expanded_height` | boolean | true (baseline false) | page 4 height is 1.5 times compact | Customize SYM Keyboard | Larger emoji picker |
 | `restore_sym_page` | int | 0 | page to reopen at next input start; internal | none | none |
 | `pending_restore_sym_page` | int | 0 | page noted when leaving for customisation; internal | none | none |
@@ -1686,6 +1757,20 @@ The Fill page (3.0, section 4.7):
 86. Private mode on, or `otp_from_notifications` off: no notification is read and every code
     held is dropped. Screen off: every code is dropped.
 87. `fill_inline_suggestions` off: the keyboard answers Android's inline request with nothing.
+88. `sym_open_on_press` on, cycle Emoji, Symbols: Sym down at 0 opens page 1; Sym up at 120
+    leaves page 1 open and records a plain tap.
+89. `sym_open_on_press` off: Sym down at 0 leaves page 0; the up at 120 opens page 1.
+90. On, page 2 open: Sym down steps to closed; Q down puts page 2 back before the chord
+    resolves (the chord draws from page 2); Sym up leaves the pages alone.
+91. On: Sym down opens page 1, a key that is no chord (Ctrl active) goes down: page 0 is back
+    and the release opens nothing.
+92. On: tap at 0/60 opens page 1; Sym down at 250 takes no step; its up opens the chooser over
+    page 0.
+93. On, `sym_double_tap_chooser` off: taps at 0/60 and 250 give page 2 at the second press.
+94. On, `sym_long_press_assistant` on: Sym down opens page 1; the 600 ms timer launches the
+    assistant and page 0 is back.
+95. On: Sym down, a repeat at 400 (no further step), Shift down and up, Sym up: page 1 stays.
+96. On, no editable field and no page open: Sym down opens nothing.
 
 ## 15. Keep / Drop for 3.0
 
@@ -1700,6 +1785,8 @@ The Fill page (3.0, section 4.7):
 | The Fill page (one-time codes from notifications, a password manager's suggestions) | new in 3.0 | the bar other keyboards show them in is gone for good; Sym reaches them instead. Inline suggestions ship off until proven on the Titan (D15) |
 | GIF page (6), KLIPY, off by default (4.5) | new in 3.0 | maintainer's request; the only page that goes online, so it stays off until switched on and passes the network gate |
 | Page chooser on a Sym double tap (5.10) | new in 3.0 | the status bar's direct-open buttons are gone for good; the chooser is the transient replacement |
+| Open on press (5.11) | new in 3.4, off | the release-time open is part of the lag the maintainer felt; it changes what a modifier does, so it ships off until proven on the Titan |
+| Pages kept built and built ahead (5.12) | new in 3.4 | a page open cost 25 to 60 ms of key path plus up to a second and a half of emoji drawing |
 | Custom Emoji/Symbols maps, `sym_mappings_*` shape | keep | user content in backups |
 | Object-form `{lowercase, uppercase}` Sym entries | undecided | shipped files never use it; custom maps erase it; keep only if a Shift layer for symbols is wanted |
 | Sym+C/V/X/A edit shortcuts | keep | Titan has no Ctrl key (D5) |

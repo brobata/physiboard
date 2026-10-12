@@ -160,7 +160,8 @@ Motion says where a thing came from and that a touch landed. It never delays inp
 |---|---|---|
 | A panel opens | rises into place on a spring while fading in | 28 dp, stiffness 600, damping ratio 0.86 (no visible bounce); fade 140 ms decelerate |
 | A panel closes | drops and fades, ignoring touches from the first frame | 16 dp, 140 ms accelerate; the window is removed at the end |
-| A panel is replaced in place | fades in | 110 ms (the Sym key stepping pages, a reopened accent bar, a redrawn Fill page) |
+| A Sym page opens from the key | on screen in full from the first frame, settles into place | 10 dp in 80 ms decelerate (layers-sym-alt.md 5.12); a page a chord took back (5.11) goes with no motion |
+| A panel is replaced in place | fades in from half visible | 50 % to 100 % in 80 ms (the Sym key stepping pages, a reopened accent bar, a redrawn Fill page) |
 | A key, chip, card or cell is pressed | dips, takes an accent wash and outline; springs back on release | 94 % in 60 ms; release stiffness 900, damping 0.6; the wash fades out over 120 ms |
 | A switch flips (settings) | thumb slides | 180 ms ease |
 | The home cursor | breathes | 1.2 s each way, 100 % to 25 % |
