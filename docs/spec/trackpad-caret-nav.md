@@ -456,7 +456,7 @@ modifier, chosen by the first matching row:
 | Ctrl latched, and the latch is not nav mode | "CTRL" | locked colour, full |
 | Ctrl one-shot armed | "CTRL" | armed colour, full |
 | Ctrl physically held | "CTRL" | armed colour, faint |
-| Any Sym page open (page not 0) | "SYM" | armed colour, full |
+| Any Sym page open (page not 0) | nothing: the whole badge hides while a page is open (3.4; the page is its own indicator, and the badge drew over it when the caret sat low) | |
 
 Nav mode is the one exclusion: it holds Ctrl latched for as long as it is on, and reporting
 that would pin a "CTRL" badge beside the cursor permanently. Only the Shift arrow carries the

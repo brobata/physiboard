@@ -7,22 +7,26 @@ import kotlin.test.assertEquals
 class CaretBadgeTest {
 
     @Test
-    fun `T40 - caps lock, Alt one-shot, Ctrl held and an open Sym page all show in fixed order`() {
+    fun `T40 - caps lock, Alt one-shot and Ctrl held show in fixed order`() {
         val input = ModifierGlyphInput(
             capsLockOn = true,
             altOneShotArmed = true,
             ctrlPhysicallyHeld = true,
-            symPageOpen = true,
         )
         assertEquals(
             listOf(
                 BadgeItem(ModifierGlyph.SHIFT, GlyphStyle.LOCKED_FULL),
                 BadgeItem(ModifierGlyph.ALT, GlyphStyle.ARMED_FULL),
                 BadgeItem(ModifierGlyph.CTRL, GlyphStyle.ARMED_FAINT),
-                BadgeItem(ModifierGlyph.SYM, GlyphStyle.ARMED_FULL),
             ),
             CaretBadge.items(input),
         )
+    }
+
+    @Test
+    fun `T40b - an open Sym page hides the whole badge, whatever else is on`() {
+        val input = ModifierGlyphInput(capsLockOn = true, altOneShotArmed = true, symPageOpen = true, privateMode = true)
+        assertEquals(emptyList(), CaretBadge.items(input))
     }
 
     @Test

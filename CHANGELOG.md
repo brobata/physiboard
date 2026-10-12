@@ -27,6 +27,10 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
 - The emoji picker remembers the skin tone you pick for each emoji, like your phone's own emoji
   keyboard; picking the plain one forgets it. The tone popup no longer closes the page before you
   can pick.
+- Emoji that come in other skin tones show a small corner mark in the picker; long-press one to
+  pick a tone.
+- The Shift/Alt/Sym badge at the cursor hides while a Sym page is open, so it no longer draws
+  over the page.
 
 ## 3.3.0 (2026-10-10)
 

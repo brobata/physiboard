@@ -78,7 +78,7 @@ internal class EmojiPickerController(
     }
 
     /** One grid cell: what it shows and inserts, and what a long press does (null: nothing). [kind] picks its view type. */
-    private class Cell(val text: String, val kind: Int, val onTap: () -> Unit, val onLongPress: ((View) -> Unit)?)
+    private class Cell(val text: String, val kind: Int, val onTap: () -> Unit, val onLongPress: ((View) -> Unit)?, val hasTones: Boolean = false)
 
     /** One tab and the cells it jumps to. */
     private class Section(val id: String, val tabLabel: String, val cells: List<Cell>)
@@ -105,6 +105,9 @@ internal class EmojiPickerController(
     private var searchField: EditText? = null
     private var searchRow: View? = null
     private var skin: PanelSkin = PanelSkin(service, StripTheme.SLATE_DARK)
+
+    /** The corner mark on an emoji that has tones (SS4.7); one shared drawable, recoloured with the skin. */
+    private val toneMark = ToneMark()
     private var emojiColumns = G.MIN_COLUMNS
 
     /** What the kept view tree was built for; anything else rebuilds it. */
@@ -332,6 +335,8 @@ internal class EmojiPickerController(
     private fun build(): View {
         val context = panel.overlayContext
         val skin = PanelSkin(context, theme).also { skin = it }
+        toneMark.color = skin.mutedText
+        toneMark.sizePx = panel.dp(TONE_MARK_DP).toFloat()
         val root = FrameLayout(context).apply { background = skin.panelBackground() }
         val column = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         val adapter = CellAdapter().also { cells = it }
@@ -615,6 +620,8 @@ internal class EmojiPickerController(
             view.scaleX = 1f
             view.scaleY = 1f
             view.setOnClickListener { cell.onTap() }
+            // SS4.7: the small corner mark says a long press offers other tones, as stock keyboards do.
+            view.foreground = if (cell.hasTones) toneMark else null
             val longPress = cell.onLongPress
             if (longPress != null) {
                 view.setOnLongClickListener { longPress(it); true }
@@ -658,6 +665,7 @@ internal class EmojiPickerController(
             kind = KIND_EMOJI,
             onTap = { chooseEmoji(shown, recentAs = entry.base) },
             onLongPress = if (entry.hasVariants) ({ anchor -> showVariants(anchor, entry) }) else null,
+            hasTones = entry.hasVariants,
         )
     }
 
@@ -1100,6 +1108,8 @@ internal class EmojiPickerController(
     }
 
     private companion object {
+        /** SS4.7: the tone mark's triangle leg, small enough to stay out of the glyph. */
+        const val TONE_MARK_DP = 5
         const val TAG = "PhysiBoardEmojiPicker"
         const val RECENTS_FILE = "recent_emojis_prefs"
         const val RECENTS_GLYPH = "🕓"
@@ -1121,4 +1131,31 @@ internal class EmojiPickerController(
         /** The row break that starts a section on a row of its own. */
         val BREAK = Cell("", KIND_BREAK, {}, null)
     }
+}
+
+/** A small filled triangle in a cell's bottom-right corner: "long press for tones" (SS4.7). */
+private class ToneMark : android.graphics.drawable.Drawable() {
+    var color: Int = 0x99FFFFFF.toInt()
+        set(value) { field = value; paint.color = value; invalidateSelf() }
+    var sizePx: Float = 12f
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0x99FFFFFF.toInt() }
+    private val path = android.graphics.Path()
+
+    override fun draw(canvas: android.graphics.Canvas) {
+        val b = bounds
+        val inset = sizePx / 2f
+        val right = b.right - inset
+        val bottom = b.bottom - inset
+        path.reset()
+        path.moveTo(right, bottom - sizePx)
+        path.lineTo(right, bottom)
+        path.lineTo(right - sizePx, bottom)
+        path.close()
+        canvas.drawPath(path, paint)
+    }
+
+    override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+    override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
+    @Deprecated("Deprecated in Java")
+    override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
 }

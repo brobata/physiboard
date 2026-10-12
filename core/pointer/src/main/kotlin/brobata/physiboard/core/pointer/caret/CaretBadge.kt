@@ -56,14 +56,18 @@ data class ModifierGlyphInput(
  */
 object CaretBadge {
 
-    fun items(input: ModifierGlyphInput): List<BadgeItem> = listOfNotNull(
-        shiftItem(input),
-        altItem(input),
-        ctrlItem(input),
-        symItem(input),
-        privateItem(input),
-        fillItem(input),
-    )
+    fun items(input: ModifierGlyphInput): List<BadgeItem> {
+        // 3.4: an open Sym page is its own indicator, and the badge sat on top of it wherever the
+        // caret was low on the screen, so the badge stands down while any page is open.
+        if (input.symPageOpen) return emptyList()
+        return listOfNotNull(
+            shiftItem(input),
+            altItem(input),
+            ctrlItem(input),
+            privateItem(input),
+            fillItem(input),
+        )
+    }
 
     private fun shiftItem(input: ModifierGlyphInput): BadgeItem? = when {
         input.capsLockOn -> BadgeItem(ModifierGlyph.SHIFT, GlyphStyle.LOCKED_FULL)
@@ -86,8 +90,6 @@ object CaretBadge {
         else -> null
     }
 
-    private fun symItem(input: ModifierGlyphInput): BadgeItem? =
-        if (input.symPageOpen) BadgeItem(ModifierGlyph.SYM, GlyphStyle.ARMED_FULL) else null
 
     /** app-shell.md SS31.4: drawn in the locked colour, since it stays until switched off. */
     private fun privateItem(input: ModifierGlyphInput): BadgeItem? =

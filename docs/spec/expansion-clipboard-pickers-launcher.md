@@ -751,6 +751,10 @@ is remembered for that emoji, the way a phone's own emoji keyboard keeps it:
 - The cell on screen shows a new memory at once; the recents themselves still wait for the
   deferred redraw (4.4).
 
+**The tone mark (3.4).** Every picker cell whose emoji takes a tone carries a small filled
+triangle in its bottom-right corner (5 dp legs, the skin's muted text colour), the way stock
+keyboards say "long press for tones". Cells without tones, symbols and kaomoji carry none.
+
 **Choosing a tone by touch on the Emoji page.** A long press on a grid key whose emoji takes a
 tone opens the same bar; a pick is committed like a grid tap (closing the page first when both
 auto-close switches are on). A long press on any other key opens its picker in the
