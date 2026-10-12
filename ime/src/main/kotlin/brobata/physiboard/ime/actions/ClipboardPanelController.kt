@@ -57,7 +57,7 @@ internal class ClipboardPanelController(service: InputMethodService) {
         this.theme = theme
         if (!panel.isShown) {
             val root = build(listener)
-            if (!panel.show(root, heightPx = panel.dp(G.HEIGHT_DP), bottomMarginPx = aboveBottomPx)) return
+            if (!panel.show(root, heightPx = panel.dp(G.HEIGHT_DP), bottomMarginPx = aboveBottomPx, enter = DesignMotion.Enter.QUICK)) return
         }
         setNotSaving(notSaving)
         renderedCount = -1
@@ -110,8 +110,8 @@ internal class ClipboardPanelController(service: InputMethodService) {
         skin?.setComment(title, if (notSaving) G.TITLE_NOT_SAVING else G.TITLE)
     }
 
-    fun hide() {
-        panel.hide()
+    fun hide(animate: Boolean = true) {
+        panel.hide(animate)
         grid = null
         scroll = null
         clearAll = null

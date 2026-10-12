@@ -111,7 +111,7 @@ internal class GifPageController(
         val metrics = service.resources.displayMetrics
         columns = GifPage.columns(metrics.widthPixels, metrics.density.toDouble())
         cellWidthPx = (metrics.widthPixels - panel.dp(16)) / columns
-        if (!panel.show(build(), heightPx = panel.dp(GifPage.HEIGHT_DP), bottomMarginPx = aboveBottomPx)) return
+        if (!panel.show(build(), heightPx = panel.dp(GifPage.HEIGHT_DP), bottomMarginPx = aboveBottomPx, enter = DesignMotion.Enter.QUICK)) return
         setCapture(true)
         if (loadAtOnce) {
             handler.postDelayed(searchRunnable, GifPage.FIRST_LOAD_DELAY_MS)
@@ -120,7 +120,7 @@ internal class GifPageController(
         }
     }
 
-    fun hide() {
+    fun hide(animate: Boolean = true) {
         if (!panel.isShown) {
             // Called after every keystroke while another page is open: nothing to tear down.
             listener = null
@@ -129,7 +129,7 @@ internal class GifPageController(
         handler.removeCallbacks(searchRunnable)
         listJob?.cancel()
         previews.cancelAll()
-        panel.hide()
+        panel.hide(animate)
         captureOn = false
         consumedKeys.clear()
         grid = null

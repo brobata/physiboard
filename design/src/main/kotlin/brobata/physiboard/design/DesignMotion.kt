@@ -20,7 +20,12 @@ import brobata.physiboard.design.DesignTokens.Motion
  */
 object DesignMotion {
 
-    enum class Enter { SPRING, FADE, NONE }
+    /**
+     * [SPRING] rises on a spring while fading in; [QUICK] (a Sym page from the key) is fully
+     * visible from the first frame and settles a few dp in 80 ms; [FADE] swaps a panel in place,
+     * starting half visible; [NONE] appears in place.
+     */
+    enum class Enter { SPRING, QUICK, FADE, NONE }
 
     /** True when the system's animator duration scale is 0 (Remove animations, or battery saver's). */
     fun reduced(context: Context): Boolean {
@@ -39,11 +44,20 @@ object DesignMotion {
             view.translationY = 0f
             return
         }
-        view.alpha = 0f
+        view.animate().cancel()
+        if (style == Enter.QUICK) {
+            view.alpha = 1f
+            view.translationY = dp(view, Motion.QUICK_OFFSET_DP)
+            view.animate().translationY(0f).setDuration(Motion.QUICK_MS).setInterpolator(DecelerateInterpolator()).start()
+            return
+        }
         if (style == Enter.FADE) {
+            view.translationY = 0f
+            view.alpha = Motion.SWAP_FADE_FROM
             view.animate().alpha(1f).setDuration(Motion.SWAP_FADE_MS).setInterpolator(DecelerateInterpolator()).start()
             return
         }
+        view.alpha = 0f
         view.translationY = dp(view, Motion.OPEN_OFFSET_DP)
         view.animate().alpha(1f).setDuration(Motion.OPEN_FADE_MS).setInterpolator(DecelerateInterpolator()).start()
         SpringAnimation(view, DynamicAnimation.TRANSLATION_Y, 0f).apply {

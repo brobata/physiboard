@@ -1,7 +1,6 @@
 package brobata.physiboard.ime.actions
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
@@ -11,22 +10,25 @@ import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ProgressBar
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearSmoothScroller
+import androidx.recyclerview.widget.RecyclerView
 import brobata.physiboard.core.actions.emoji.CaptureResult
 import brobata.physiboard.core.actions.emoji.EmojiCategories
 import brobata.physiboard.core.actions.emoji.EmojiEntry
+import brobata.physiboard.core.actions.emoji.EmojiSearchLocales
 import brobata.physiboard.core.actions.emoji.EmojiPickerGeometry as G
 import brobata.physiboard.core.actions.emoji.EmojiTabIcon
 import brobata.physiboard.core.actions.emoji.PickerMode
 import brobata.physiboard.core.actions.emoji.PickerModeGeometry as M
 import brobata.physiboard.core.actions.emoji.PickerModes
 import brobata.physiboard.core.actions.emoji.RecentEmojis
+import brobata.physiboard.core.actions.emoji.RememberedSkinTones
 import brobata.physiboard.core.actions.emoji.SearchCapture
 import brobata.physiboard.core.actions.emoji.SearchFieldState
 import brobata.physiboard.core.actions.emoji.SkinTone
@@ -53,6 +55,12 @@ import org.json.JSONArray
  *
  * Dropped with the soft keyboard (SS13): the keyboard-switcher button and the software-keyboard
  * height. The picker is a [BottomOverlay] of [G.heightDp] like the clipboard panel.
+ *
+ * Speed (layers-sym-alt.md SS5.12): the view tree and its window are built once and kept, hidden,
+ * between opens ([prepare] builds them ahead of the first one); only a theme, screen or height
+ * change rebuilds them. The grid is a recycling list that makes views for the rows on screen
+ * only: drawing all 1,900 emoji as views took 0.8 to 1.4 s of main thread after every open on the
+ * emulator. A reopen with nothing changed (same recents, tones and default) draws nothing at all.
  */
 internal class EmojiPickerController(
     private val service: InputMethodService,
@@ -69,8 +77,8 @@ internal class EmojiPickerController(
         fun layoutText(key: KeyId, uppercase: Boolean): String?
     }
 
-    /** One grid cell: what it shows and inserts, and what a long press does (null: nothing). */
-    private class Cell(val text: String, val onTap: () -> Unit, val onLongPress: ((View) -> Unit)?)
+    /** One grid cell: what it shows and inserts, and what a long press does (null: nothing). [kind] picks its view type. */
+    private class Cell(val text: String, val kind: Int, val onTap: () -> Unit, val onLongPress: ((View) -> Unit)?)
 
     /** One tab and the cells it jumps to. */
     private class Section(val id: String, val tabLabel: String, val cells: List<Cell>)
@@ -86,8 +94,10 @@ internal class EmojiPickerController(
     private var symbolsLoading = false
     private var symbolsFailed = false
     private var symbolsTriedThisOpen = false
-    private var grid: GridLayout? = null
-    private var scroll: ScrollView? = null
+    private var root: View? = null
+    private var grid: RecyclerView? = null
+    private var gridLayout: GridLayoutManager? = null
+    private var cells = CellAdapter()
     private var tabRow: LinearLayout? = null
     private var status: TextView? = null
     private var progress: ProgressBar? = null
@@ -96,6 +106,14 @@ internal class EmojiPickerController(
     private var searchRow: View? = null
     private var skin: PanelSkin = PanelSkin(service, StripTheme.SLATE_DARK)
     private var emojiColumns = G.MIN_COLUMNS
+
+    /** What the kept view tree was built for; anything else rebuilds it. */
+    private data class BuildKey(val theme: StripTheme, val widthPx: Int, val density: Float, val expanded: Boolean, val roundedCorners: Boolean)
+    private var builtFor: BuildKey? = null
+
+    /** What the grid last drew in Emoji mode; a reopen that would draw the same draws nothing. */
+    private var drawnSignature: List<Any?>? = null
+    private var emojiLoading = false
     private var lastOpenedPage4 = false
     private var searchState = SearchFieldState.EMPTY
     private val searchRunnable = Runnable { runSearch() }
@@ -122,16 +140,17 @@ internal class EmojiPickerController(
 
     val isShown: Boolean get() = panel.isShown
 
-    fun show(expanded: Boolean, theme: StripTheme, aboveBottomPx: Int, skinTone: SkinTone, listener: Listener, kaomojiEnabled: Boolean = false) {
+    fun show(expanded: Boolean, theme: StripTheme, aboveBottomPx: Int, skinTone: SkinTone, listener: Listener, kaomojiEnabled: Boolean = false, enter: DesignMotion.Enter = DesignMotion.Enter.QUICK) {
         this.listener = listener
         this.theme = theme
         this.kaomojiEnabled = kaomojiEnabled
         if (panel.isShown) {
             // spec SS4.3: "a reopen straight after the same page merely scrolls to the top"
-            if (lastOpenedPage4) scroll?.scrollTo(0, 0)
+            if (lastOpenedPage4) scrollToTop()
             return
         }
         this.skinTone = skinTone
+        val build = ensureBuilt(expanded)
         // "it got rid of real emojis for kaomoji" (2026-10-07): the page used to reopen in whatever
         // mode the last visit ended in. It is the Emoji page: emoji, unless this open asked otherwise.
         mode = PickerModes.openingMode(requestedMode, kaomojiEnabled)
@@ -142,44 +161,119 @@ internal class EmojiPickerController(
         requestedSearch = false
         symbolsTriedThisOpen = false
         lastOpenedPage4 = true
-        captureOn = false
-        searchState = SearchFieldState.EMPTY
-        searching = false
-        val metrics = service.resources.displayMetrics
-        emojiColumns = G.columns(metrics.widthPixels, metrics.density.toDouble())
-        val root = build()
-        if (!panel.show(root, heightPx = panel.dp(G.heightDp(expanded)), bottomMarginPx = aboveBottomPx)) return
-        progress?.visibility = View.VISIBLE
-        val locales = service.resources.configuration.locales
-        val tags = (0 until locales.size()).map { locales.get(it).toLanguageTag() }
-        assets.loadAsync(tags) { loaded ->
-            if (!panel.isShown) return@loadAsync
-            data = loaded
-            emojiLoadFailed = loaded == null
-            if (mode != PickerMode.EMOJI) return@loadAsync
-            // A query typed while the emoji were loading had nothing to search yet: run it now.
-            if (searching) runSearch() else renderMode()
-        }
-        if (mode != PickerMode.EMOJI) renderMode()
+        resetForOpen()
+        // An emoji load that failed is tried again on the next open.
+        if (data == null && emojiLoadFailed) emojiLoadFailed = false
+        if (mode == PickerMode.EMOJI) renderEmojiIfChanged() else renderMode()
+        scrollToTop()
+        if (!panel.show(build, heightPx = panel.dp(G.heightDp(expanded)), bottomMarginPx = aboveBottomPx, enter = enter)) return
+        loadEmoji()
         if (openSearch) toggleSearch()
     }
 
-    fun hide() {
+    /**
+     * layers-sym-alt.md SS5.12: builds the page and adds its window, invisible, ahead of the first
+     * open, with the emoji drawn into it, so that open is only a reveal. Quiet without the overlay
+     * permission. Does nothing while the page is up.
+     */
+    fun prepare(expanded: Boolean, theme: StripTheme, skinTone: SkinTone, kaomojiEnabled: Boolean) {
+        if (panel.isShown) return
+        this.theme = theme
+        this.skinTone = skinTone
+        this.kaomojiEnabled = kaomojiEnabled
+        val build = ensureBuilt(expanded)
+        mode = PickerMode.EMOJI
+        resetForOpen()
+        renderEmojiIfChanged()
+        // The window is added once the emoji are drawn into it, so its warm-up draw has them.
+        if (data != null) panel.prepare(build, heightPx = panel.dp(G.heightDp(expanded))) else prepareWhenLoaded = true
+        loadEmoji()
+    }
+
+    /** [prepare] ran before the emoji were loaded: add the window when they are. */
+    private var prepareWhenLoaded = false
+
+    /**
+     * Takes the page off screen. The view tree and its window stay for the next open; [animate]
+     * false (a page a chord took back, layers-sym-alt.md SS5.11) goes at once.
+     */
+    fun hide(animate: Boolean = true) {
         handler.removeCallbacks(searchRunnable)
         searchGeneration++
-        panel.hide()
-        captureOn = false
+        variantPopup?.dismiss()
+        variantPopup = null
+        if (!panel.isShown) return
+        panel.hide(animate, keep = true)
+        setCapture(false)
+        listener = null
+    }
+
+    /** Drops the kept page and its window: the keyboard service is going, or the page must be rebuilt. */
+    fun release() {
+        hide(animate = false)
+        panel.release()
+        root = null
         grid = null
-        scroll = null
+        gridLayout = null
         tabRow = null
         status = null
         progress = null
         searchPanel = null
         searchField = null
         searchRow = null
-        listener = null
-        variantPopup?.dismiss()
-        variantPopup = null
+        builtFor = null
+        drawnSignature = null
+    }
+
+    /** Everything an open starts from (SS4.3, SS4.5): no search, no capture, nothing pending. */
+    private fun resetForOpen() {
+        captureOn = false
+        searchState = SearchFieldState.EMPTY
+        searching = false
+        pendingRecentsRedraw = false
+        deferRedrawUntilTabChange = false
+        tabScrollInFlight = false
+        searchPanel?.visibility = View.GONE
+        searchField?.let { field -> if (field.text.isNotEmpty()) field.setText("") }
+        setCapture(false)
+    }
+
+    private fun ensureBuilt(expanded: Boolean): View {
+        val metrics = service.resources.displayMetrics
+        val key = BuildKey(theme, metrics.widthPixels, metrics.density, expanded, BottomOverlay.roundedCornersEnabled)
+        root?.let { built -> if (builtFor == key) return built }
+        release()
+        emojiColumns = G.columns(metrics.widthPixels, metrics.density.toDouble())
+        val built = build()
+        root = built
+        builtFor = key
+        return built
+    }
+
+    /** spec SS4.1: the categories are read once per process; the first open (or [prepare]) asks for them. */
+    private fun loadEmoji() {
+        if (emojiLoading) return
+        val locales = service.resources.configuration.locales
+        val tags = (0 until locales.size()).map { locales.get(it).toLanguageTag() }
+        // spec SS4.2: the search index follows the system's languages; a change (the keyboard
+        // service lives through it) loads the index for the new chain, from the assets' cache.
+        if (data?.chain == EmojiSearchLocales.chain(tags)) return
+        emojiLoading = true
+        assets.loadAsync(tags) { loaded ->
+            emojiLoading = false
+            data = loaded
+            baseByKey = loaded?.let { RememberedSkinTones.baseByKey(it.categories) } ?: emptyMap()
+            emojiLoadFailed = loaded == null
+            if (root == null || mode != PickerMode.EMOJI) return@loadAsync
+            // A query typed while the emoji were loading had nothing to search yet: run it now.
+            if (searching) runSearch() else renderEmojiIfChanged()
+            if (prepareWhenLoaded && !panel.isShown) {
+                val built = root
+                val expanded = builtFor?.expanded
+                if (built != null && expanded != null) panel.prepare(built, heightPx = panel.dp(G.heightDp(expanded)))
+            }
+            prepareWhenLoaded = false
+        }
     }
 
     /** spec SS4.5: capture is dropped when the app's own caret moved between two captured keys, or when the session ends. */
@@ -240,19 +334,34 @@ internal class EmojiPickerController(
         val skin = PanelSkin(context, theme).also { skin = it }
         val root = FrameLayout(context).apply { background = skin.panelBackground() }
         val column = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        grid = GridLayout(context).apply {
+        val adapter = CellAdapter().also { cells = it }
+        val layout = GridLayoutManager(context, emojiColumns).also { gridLayout = it }
+        layout.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int = if (adapter.items.getOrNull(position)?.kind == KIND_BREAK) layout.spanCount else 1
+        }.apply {
+            isSpanIndexCacheEnabled = true
+            isSpanGroupIndexCacheEnabled = true
+        }
+        grid = RecyclerView(context).apply {
             val pad = panel.dp(G.GRID_PADDING_DP)
             setPadding(pad, pad, pad, pad + panel.dp(G.GRID_EXTRA_BOTTOM_DP))
-        }
-        scroll = ScrollView(context).apply {
-            addView(grid)
-            viewTreeObserver.addOnScrollChangedListener {
-                followScroll()
-                applyPendingRecentsRedrawIfNearTop()
-            }
+            clipToPadding = false
+            layoutManager = layout
+            this.adapter = adapter
+            // Rows are redrawn in place; nothing slides around when the recents change.
+            itemAnimator = null
+            setHasFixedSize(true)
+            recycledViewPool.setMaxRecycledViews(KIND_EMOJI, RECYCLED_CELLS)
+            addItemDecoration(CellGaps(layout, panel.dp(G.CELL_GAP_DP)))
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    followScroll()
+                    applyPendingRecentsRedrawIfNearTop()
+                }
+            })
         }
         val gridFrame = FrameLayout(context)
-        gridFrame.addView(scroll, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        gridFrame.addView(grid, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         status = skin.label("", DesignTokens.Type.BODY_SP, color = skin.mutedText).apply {
             gravity = Gravity.CENTER
             visibility = View.GONE
@@ -362,15 +471,36 @@ internal class EmojiPickerController(
         }
     }
 
-    /** spec SS4.3, SS4.4, SS4.7: recents first, then the nine categories; each emoji shown in the default tone. */
-    private fun renderEmoji(loaded: EmojiData) {
-        val recents = RecentEmojis.category(loadRecents(PickerMode.EMOJI), loaded.categories)
+    /** The recents list the grid last drew, so a tone change redraws the cells without reshuffling the recents (SS4.4). */
+    private var drawnRecents: List<String> = emptyList()
+
+    /** spec SS4.3, SS4.4, SS4.7: recents first, then the nine categories; each emoji in its remembered or default tone. */
+    private fun renderEmoji(loaded: EmojiData, recentsList: List<String> = RememberedSkinTones.collapseRecents(loadRecents(PickerMode.EMOJI), baseByKey)) {
+        drawnRecents = recentsList
+        drawnSignature = emojiSignature()
+        val recents = RecentEmojis.category(recentsList, loaded.categories)
         val all = listOfNotNull(recents) + loaded.categories
         renderSections(all.map { category -> Section(category.id, glyphFor(category.icon), category.entries.map(::emojiCell)) }, emojiColumns)
     }
 
-    /** spec SS4.9: recents first, then the twelve mood groups, every kaomoji drawn at once. */
+    /** What an Emoji-mode drawing depends on. */
+    private fun emojiSignature(): List<Any?> =
+        listOf(data?.let { System.identityHashCode(it) }, prefs.getString(PickerMode.EMOJI.recentsKey, null), prefs.getString(RememberedSkinTones.PREF_KEY, null), skinTone, emojiColumns)
+
+    /** spec SS4.3: a reopen straight after the same page draws nothing new when nothing changed. */
+    private fun renderEmojiIfChanged() {
+        if (mode != PickerMode.EMOJI) return
+        if (data != null && !searching && drawnSignature == emojiSignature()) {
+            selectedTab = sectionStarts.firstOrNull()?.first
+            highlightTab()
+            return
+        }
+        renderMode()
+    }
+
+    /** spec SS4.9: recents first, then the twelve mood groups. */
     private fun renderKaomoji() {
+        drawnSignature = null
         val recents = loadRecents(PickerMode.KAOMOJI)
         val sections = ArrayList<Section>()
         if (recents.isNotEmpty()) sections.add(Section(KaomojiCatalog.RECENTS_ID, RECENTS_GLYPH, recents.map { textCell(PickerMode.KAOMOJI, it) }))
@@ -384,6 +514,7 @@ internal class EmojiPickerController(
      * group shown.
      */
     private fun renderSymbols(catalog: UnicodeSymbols.Catalog) {
+        drawnSignature = null
         val recents = loadRecents(PickerMode.SYMBOLS)
         val tabs = ArrayList<Pair<String, String>>()
         if (recents.isNotEmpty()) tabs.add(SYMBOL_RECENTS_ID to RECENTS_GLYPH)
@@ -395,9 +526,7 @@ internal class EmojiPickerController(
         } else {
             catalog.symbolsOf(current.orEmpty()).map { textCell(PickerMode.SYMBOLS, it.text) }
         }
-        clearGrid()
-        val grid = grid ?: return
-        cells.forEachIndexed { index, cell -> addCell(grid, cell, index, emojiColumns) }
+        setCells(cells, emojiColumns)
         sectionStarts = listOfNotNull(current?.let { it to 0 })
         selectedTab = current
         renderTabRow(tabs)
@@ -405,27 +534,17 @@ internal class EmojiPickerController(
     }
 
     private fun renderSections(sections: List<Section>, columns: Int) {
-        clearGrid()
-        val grid = grid ?: return
-        var index = 0
-        var children = 0
-        // Each section's first cell as a child index of the grid (the spacer cells that end a
-        // short row are grid positions, not children), which is what a tab scrolls to and what
-        // the scroll follower reads back.
+        // Each section's first cell as a list position, which is what a tab scrolls to and what
+        // the scroll follower reads back. spec SS4.3: "Category headers are 1 dp spacers, not
+        // titles": a section starts on a row of its own after an empty full-width break.
+        val items = ArrayList<Cell>(sections.sumOf { it.cells.size + 1 })
         val starts = ArrayList<Pair<String, Int>>()
         for (section in sections) {
-            if (index > 0) {
-                // spec SS4.3: "Category headers are 1 dp spacers, not titles"
-                val remainder = index % columns
-                if (remainder != 0) index += columns - remainder
-            }
-            starts.add(section.id to children)
-            for (cell in section.cells) {
-                addCell(grid, cell, index, columns)
-                index++
-                children++
-            }
+            if (items.isNotEmpty()) items.add(BREAK)
+            starts.add(section.id to items.size)
+            items.addAll(section.cells)
         }
+        setCells(items, columns)
         sectionStarts = starts
         renderTabs(sections)
         if (selectedTab == null || sections.none { it.id == selectedTab }) selectedTab = sections.firstOrNull()?.id
@@ -433,43 +552,98 @@ internal class EmojiPickerController(
     }
 
     private fun clearGrid() {
-        grid?.removeAllViews()
-        status?.visibility = View.GONE
-        progress?.visibility = View.GONE
+        setCells(emptyList(), gridLayout?.spanCount ?: emojiColumns)
     }
 
-    private fun addCell(grid: GridLayout, cell: Cell, index: Int, columns: Int) {
-        if (grid.columnCount != columns) grid.columnCount = columns
-        val kaomoji = mode == PickerMode.KAOMOJI
-        val view = TextView(panel.overlayContext).apply {
-            text = cell.text
-            gravity = Gravity.CENTER
-            background = skin.cellDrawable()
-            when {
-                kaomoji -> {
-                    setTextColor(theme.textAndIcons)
-                    typeface = skin.face(PhysiFonts.Face.SANS)
-                    maxLines = 1
-                    setAutoSizeTextTypeUniformWithConfiguration(M.KAOMOJI_MIN_SP, M.KAOMOJI_MAX_SP, 1, TypedValue.COMPLEX_UNIT_SP)
-                }
-                mode == PickerMode.SYMBOLS -> {
-                    setTextColor(theme.textAndIcons)
-                    typeface = skin.face(PhysiFonts.Face.SANS)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, M.SYMBOL_GLYPH_SP.toFloat())
-                }
-                else -> setTextSize(TypedValue.COMPLEX_UNIT_SP, G.GLYPH_SP.toFloat())
+    /** Hands the list its cells; only the rows on screen get views (SS4.3's grid, recycled). */
+    private fun setCells(items: List<Cell>, columns: Int) {
+        status?.visibility = View.GONE
+        progress?.visibility = View.GONE
+        val layout = gridLayout ?: return
+        if (layout.spanCount != columns) layout.spanCount = columns
+        layout.spanSizeLookup.invalidateSpanIndexCache()
+        layout.spanSizeLookup.invalidateSpanGroupIndexCache()
+        cells.items = items
+        @Suppress("NotifyDataSetChanged") // the whole list is new: a different mode, section set or result list
+        cells.notifyDataSetChanged()
+    }
+
+    private fun scrollToTop() {
+        grid?.stopScroll()
+        gridLayout?.scrollToPositionWithOffset(0, 0)
+    }
+
+    /** The cells' views, made for the rows on screen and reused as the grid scrolls. */
+    private inner class CellAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        var items: List<Cell> = emptyList()
+
+        override fun getItemCount(): Int = items.size
+        override fun getItemViewType(position: Int): Int = items[position].kind
+
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val context = parent.context
+            if (viewType == KIND_BREAK) {
+                return object : RecyclerView.ViewHolder(View(context).apply { layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, 0) }) {}
             }
-            setOnClickListener { cell.onTap() }
-            cell.onLongPress?.let { action -> setOnLongClickListener { action(this); true } }
-            DesignMotion.pressable(this)
+            val view = TextView(context).apply {
+                gravity = Gravity.CENTER
+                background = skin.cellDrawable()
+                when (viewType) {
+                    KIND_KAOMOJI -> {
+                        setTextColor(theme.textAndIcons)
+                        typeface = skin.face(PhysiFonts.Face.SANS)
+                        maxLines = 1
+                        setAutoSizeTextTypeUniformWithConfiguration(M.KAOMOJI_MIN_SP, M.KAOMOJI_MAX_SP, 1, TypedValue.COMPLEX_UNIT_SP)
+                    }
+                    KIND_SYMBOL -> {
+                        setTextColor(theme.textAndIcons)
+                        typeface = skin.face(PhysiFonts.Face.SANS)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, M.SYMBOL_GLYPH_SP.toFloat())
+                    }
+                    else -> setTextSize(TypedValue.COMPLEX_UNIT_SP, G.GLYPH_SP.toFloat())
+                }
+                DesignMotion.pressable(this)
+                layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, panel.dp(if (viewType == KIND_KAOMOJI) M.KAOMOJI_CELL_DP else G.CELL_DP))
+            }
+            return object : RecyclerView.ViewHolder(view) {}
         }
-        val gap = panel.dp(G.CELL_GAP_DP)
-        val params = GridLayout.LayoutParams(GridLayout.spec(index / columns), GridLayout.spec(index % columns, 1f)).apply {
-            width = 0
-            height = panel.dp(if (kaomoji) M.KAOMOJI_CELL_DP else G.CELL_DP)
-            setMargins(if (index % columns == 0) 0 else gap, if (index < columns) 0 else gap, 0, 0)
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val view = holder.itemView as? TextView ?: return
+            val cell = items[position]
+            view.text = cell.text
+            view.scaleX = 1f
+            view.scaleY = 1f
+            view.setOnClickListener { cell.onTap() }
+            val longPress = cell.onLongPress
+            if (longPress != null) {
+                view.setOnLongClickListener { longPress(it); true }
+            } else {
+                view.setOnLongClickListener(null)
+                view.isLongClickable = false
+            }
         }
-        grid.addView(view, params)
+    }
+
+    /**
+     * spec SS4.3: 4 dp between cells and rows, none at the outer edges; each column gives up the
+     * same share of the gaps, so every cell is the same width.
+     */
+    private class CellGaps(private val layout: GridLayoutManager, private val gap: Int) : RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+            val params = view.layoutParams as? GridLayoutManager.LayoutParams
+            val position = parent.getChildAdapterPosition(view)
+            if (params == null || position == RecyclerView.NO_POSITION || params.spanSize != 1) {
+                outRect.set(0, 0, 0, 0)
+                return
+            }
+            val columns = layout.spanCount
+            val column = params.spanIndex
+            outRect.left = column * gap / columns
+            outRect.right = gap - (column + 1) * gap / columns
+            outRect.top = if (layout.spanSizeLookup.getSpanGroupIndex(position, columns) == 0) 0 else gap
+            outRect.bottom = 0
+        }
     }
 
     /**
@@ -478,22 +652,19 @@ internal class EmojiPickerController(
      * follows a later change of the default; a long press lists the base and every variant.
      */
     private fun emojiCell(entry: EmojiEntry): Cell {
-        val shown = displayForm(entry)
+        val shown = RememberedSkinTones.displayForm(entry.base, entry.variants, rememberedTones(), skinTone)
         return Cell(
             text = shown,
+            kind = KIND_EMOJI,
             onTap = { chooseEmoji(shown, recentAs = entry.base) },
             onLongPress = if (entry.hasVariants) ({ anchor -> showVariants(anchor, entry) }) else null,
         )
     }
 
-    private fun displayForm(entry: EmojiEntry): String {
-        val toned = SkinTones.withDefault(entry.base, skinTone)
-        return if (toned == entry.base || toned in entry.variants) toned else entry.base
-    }
-
     /** spec SS4.8, SS4.9: a kaomoji or a symbol: inserted as plain text; a long press names it. */
     private fun textCell(mode: PickerMode, text: String): Cell = Cell(
         text = text,
+        kind = if (mode == PickerMode.KAOMOJI) KIND_KAOMOJI else KIND_SYMBOL,
         onTap = { chooseText(mode, text) },
         onLongPress = { showName(mode, text) },
     )
@@ -582,7 +753,7 @@ internal class EmojiPickerController(
         } else {
             renderMode()
         }
-        scroll?.scrollTo(0, 0)
+        scrollToTop()
     }
 
     private var tabScrollInFlight = false
@@ -596,7 +767,7 @@ internal class EmojiPickerController(
             symbolGroup = id
             pendingRecentsRedraw = false
             symbols?.let(::renderSymbols)
-            scroll?.scrollTo(0, 0)
+            scrollToTop()
             return
         }
         val recentsId = if (mode == PickerMode.EMOJI) EmojiCategories.RECENTS_ID else KaomojiCatalog.RECENTS_ID
@@ -611,27 +782,23 @@ internal class EmojiPickerController(
             renderMode()
         }
         val start = sectionStarts.firstOrNull { it.first == id }?.second ?: return
+        val layout = gridLayout ?: return
         val grid = grid ?: return
-        val cell = grid.getChildAt(start) ?: return
         selectedTab = id
         highlightTab()
         tabScrollInFlight = true
-        scroll?.smoothScrollTo(0, cell.top)
+        val scroller = object : LinearSmoothScroller(grid.context) {
+            override fun getVerticalSnapPreference(): Int = SNAP_TO_START
+        }
+        scroller.targetPosition = start
+        layout.startSmoothScroll(scroller)
         handler.postDelayed({ tabScrollInFlight = false }, 300)
     }
 
     /** spec SS4.3: "The selected tab follows the first visible item while the user scrolls (not while a tab-tap scroll is in flight)". */
     private fun followScroll() {
         if (tabScrollInFlight || searching || mode == PickerMode.SYMBOLS) return
-        val grid = grid ?: return
-        val y = scroll?.scrollY ?: return
-        var visibleIndex = 0
-        for (i in 0 until grid.childCount) {
-            if (grid.getChildAt(i).bottom > y) {
-                visibleIndex = i
-                break
-            }
-        }
+        val visibleIndex = gridLayout?.findFirstVisibleItemPosition()?.takeIf { it != RecyclerView.NO_POSITION } ?: return
         val section = sectionStarts.lastOrNull { it.second <= visibleIndex }?.first ?: return
         if (section != selectedTab) {
             selectedTab = section
@@ -667,12 +834,52 @@ internal class EmojiPickerController(
      * Inserts [inserted] and, unless private mode or the field forbids learning, remembers
      * [recentAs] in the Emoji recents.
      */
-    private fun chooseEmoji(inserted: String, recentAs: String) {
+    private fun chooseEmoji(inserted: String, recentAs: String, fromPopup: Boolean = false) {
+        val learning = learningAllowed()
         val before = loadRecents(PickerMode.EMOJI)
-        val after = RecentEmojis.afterChoice(before, recentAs, learningAllowed())
+        val after = RecentEmojis.afterChoice(before, recentAs, learning)
         if (after !== before) saveRecents(PickerMode.EMOJI, after)
+        // spec SS4.7, "Remembered tones": a pick from the popup is this emoji's tone from now on;
+        // the plain form forgets it. Nothing is written in private mode.
+        val tonesBefore = rememberedTones()
+        val tonesAfter = if (fromPopup) RememberedSkinTones.afterPick(tonesBefore, inserted, learning) else tonesBefore
+        if (tonesAfter !== tonesBefore) saveRememberedTones(tonesAfter)
         listener?.onChosen(inserted)
+        if (tonesAfter !== tonesBefore) redrawTones()
         if (after !== before) scheduleRecentsRedraw(EmojiCategories.RECENTS_ID)
+    }
+
+    /** The tones in `recent_emojis_prefs`, parsed again only when the stored row changed. */
+    private var tonesRaw: String? = null
+    private var tones: Map<String, String> = emptyMap()
+    private var baseByKey: Map<String, String> = emptyMap()
+
+    private fun rememberedTones(): Map<String, String> {
+        val raw = prefs.getString(RememberedSkinTones.PREF_KEY, null)
+        if (raw != tonesRaw) {
+            tonesRaw = raw
+            tones = RememberedSkinTones.decode(raw)
+        }
+        return tones
+    }
+
+    private fun saveRememberedTones(next: Map<String, String>) {
+        val raw = RememberedSkinTones.encode(next)
+        prefs.edit().putString(RememberedSkinTones.PREF_KEY, raw).apply()
+        tonesRaw = raw
+        tones = next
+    }
+
+    /**
+     * A tone was just remembered or forgotten: the cells on screen show it at once. The recents
+     * are drawn as they were, so nothing moves under the finger (their own redraw stays deferred).
+     */
+    private fun redrawTones() {
+        val loaded = data ?: return
+        if (mode != PickerMode.EMOJI || searching || root == null) return
+        renderEmoji(loaded, drawnRecents)
+        // Drawn with the old recents: the next open must not take this drawing as current.
+        drawnSignature = null
     }
 
     /** The kaomoji and symbol counterpart of [chooseEmoji], under the same private-mode gate. */
@@ -702,7 +909,7 @@ internal class EmojiPickerController(
 
     private fun applyPendingRecentsRedrawIfNearTop() {
         if (!pendingRecentsRedraw || deferRedrawUntilTabChange || searching) return
-        val y = scroll?.scrollY ?: return
+        val y = grid?.computeVerticalScrollOffset() ?: return
         if (y <= panel.dp(G.CELL_DP)) {
             pendingRecentsRedraw = false
             renderMode()
@@ -713,8 +920,8 @@ internal class EmojiPickerController(
 
     /**
      * spec SS4.4, SS4.7: the skin-tone chooser, "a light popup above the cell... listing the base
-     * then each variant at 24 sp with 12 dp by 8 dp padding". What is picked here is inserted
-     * and remembered as picked, whatever the default tone.
+     * then each variant at 24 sp with 12 dp by 8 dp padding". What is picked here is inserted as
+     * picked, whatever the default tone, and becomes this emoji's remembered tone.
      */
     private fun showVariants(anchor: View, entry: EmojiEntry) {
         val context = panel.overlayContext
@@ -734,12 +941,22 @@ internal class EmojiPickerController(
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, G.VARIANT_POPUP_GLYPH_SP.toFloat())
                     setPadding(panel.dp(12), panel.dp(8), panel.dp(12), panel.dp(8))
                     background = skin.cellDrawable()
-                    setOnClickListener { popup.dismiss(); chooseEmoji(emoji, recentAs = emoji) }
+                    setOnClickListener {
+                        popup.dismiss()
+                        // The recent is the emoji itself, so it follows the tone remembered for it;
+                        // with nothing remembered (private mode) it stays as picked.
+                        val recentAs = if (SkinTones.toneKeyOf(emoji) != null && learningAllowed()) entry.base else emoji
+                        chooseEmoji(emoji, recentAs = recentAs, fromPopup = true)
+                    }
                 },
             )
         }
         val content = android.widget.HorizontalScrollView(context).apply { addView(row) }
-        popup = PopupWindow(content, FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, true)
+        // Not focusable: a popup that takes window focus took it from the app, and Android then
+        // finished the app's text field ("gained focus without editor"), which closed the page and
+        // the popup with it before a tone could be picked (2026-10-11, emulator). A touch outside
+        // still dismisses it.
+        popup = PopupWindow(content, FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, false)
         popup.isOutsideTouchable = true
         row.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val x = (anchor.width - row.measuredWidth) / 2
@@ -852,17 +1069,16 @@ internal class EmojiPickerController(
     /** [cells] null means the search could not run (its index failed to build): [failure] is shown. */
     private fun showResults(generation: Int, forMode: PickerMode, cells: List<Cell>?, failure: String) {
         if (generation != searchGeneration || forMode != mode || !panel.isShown || !searching) return
-        clearGrid()
-        val grid = grid ?: return
+        drawnSignature = null
         val columns = if (forMode == PickerMode.KAOMOJI) M.KAOMOJI_COLUMNS else emojiColumns
+        setCells(cells.orEmpty(), columns)
         when {
             cells == null -> setStatus(failure)
             cells.isEmpty() -> setStatus(forMode.noResults)
-            else -> cells.forEachIndexed { index, cell -> addCell(grid, cell, index, columns) }
         }
         sectionStarts = emptyList()
         highlightTab()
-        scroll?.scrollTo(0, 0)
+        scrollToTop()
     }
 
     private fun setStatus(text: String) {
@@ -883,8 +1099,6 @@ internal class EmojiPickerController(
         scheduleSearch()
     }
 
-    private fun withAlpha(color: Int, alpha: Int): Int = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
-
     private companion object {
         const val TAG = "PhysiBoardEmojiPicker"
         const val RECENTS_FILE = "recent_emojis_prefs"
@@ -895,5 +1109,16 @@ internal class EmojiPickerController(
 
         /** The mode button sits in the tab bar as a key, not a full-height block. */
         const val MODE_BUTTON_HEIGHT_DP = 32
+
+        const val KIND_EMOJI = 0
+        const val KIND_KAOMOJI = 1
+        const val KIND_SYMBOL = 2
+        const val KIND_BREAK = 3
+
+        /** Emoji cells kept for reuse: a few screens' worth, so a tab jump makes almost no new views. */
+        const val RECYCLED_CELLS = 120
+
+        /** The row break that starts a section on a row of its own. */
+        val BREAK = Cell("", KIND_BREAK, {}, null)
     }
 }

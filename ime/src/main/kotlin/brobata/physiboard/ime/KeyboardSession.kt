@@ -620,7 +620,10 @@ internal class KeyboardSession(
         shownHold.clear()
         dictationController.onServiceDestroyed()
         handler.removeCallbacks(expansionRefreshRunnable)
-        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); symGridPanel.hide(); skinTones.reset(); variationChooser.reset(); symChooser.reset(); gifPage.onServiceDestroyed(); gifSender.onServiceDestroyed(); quickLauncher.onServiceDestroyed() }
+        serviceGone = true
+        handler.removeCallbacks(preparePanelsRunnable)
+        handler.removeCallbacks(pageChangeRefreshRunnable)
+        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.release(); symGridPanel.release(); skinTones.reset(); variationChooser.reset(); symChooser.reset(); gifPage.onServiceDestroyed(); gifSender.onServiceDestroyed(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
         BottomOverlay.teardown = false
         clipboard.onServiceDestroyed()
@@ -1004,6 +1007,8 @@ internal class KeyboardSession(
         // status-bar.md SS4, layers-sym-alt.md SS5.7: the Sym panels keep clear of the rounded corners.
         brobata.physiboard.ime.actions.BottomOverlay.roundedCornersEnabled = settings.statusBar.roundedCornerInsets
         defaultSkinTone = settings.symPages.defaultSkinTone
+        // layers-sym-alt.md SS5.12: the kept pages are built again, ahead of time, for the new settings.
+        panelsPrepared = false
         variationChooserEnabled = settings.keys.variationChooser
         symAutoClose = settings.symPages.autoClose
         symAutoCloseOnTouch = settings.symPages.autoCloseOnTouch
@@ -1251,6 +1256,7 @@ internal class KeyboardSession(
             if (!(decision == ModifierHoldPolicy.Decision.REASSERT && dictationReasserted)) applyModifierHold(decision)
         }
         syncSymPanels()
+        if (field.isReallyEditable) schedulePreparePanels()
         // spec trackpad-caret-nav.md SS3.3: re-attached "whenever the editor starts".
         attachKeyboardSwipeListener()
     }
@@ -1865,9 +1871,11 @@ internal class KeyboardSession(
             if (symChooser.onKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount)) return@runCatching true
         }
         // spec expansion-clipboard-pickers-launcher.md SS4.5: while page 4's search captures, hardware keys type into it.
-        if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalized?.key)) return@runCatching true
+        // layers-sym-alt.md SS5.11: not while Sym is held: with `sym_open_on_press` the page is up
+        // during the press, and a key then is a Sym chord for the pipeline, never a search letter.
+        if (emojiPicker.isShown && emojiPicker.captureOn && !pipeline.symChordLive && emojiPicker.onHardwareKey(event, normalized?.key)) return@runCatching true
         // layers-sym-alt.md SS4.5: the GIF page's search field captures the same way.
-        if (gifPage.isShown && gifPage.captureOn && gifPage.onHardwareKey(event, normalized?.key)) return@runCatching true
+        if (gifPage.isShown && gifPage.captureOn && !pipeline.symChordLive && gifPage.onHardwareKey(event, normalized?.key)) return@runCatching true
         // layers-sym-alt.md SS4.7: on the Fill page the key printed with 1, 2, 3... types that code.
         normalized?.let { stroke -> if (onFillPageKey(stroke.key, down = event.action == KeyEvent.ACTION_DOWN, repeatCount = event.repeatCount, metaCtrl = event.isCtrlPressed)) return@runCatching true }
         if (interceptFirmwareSwipeKeycode(event)) return@runCatching true
@@ -2124,6 +2132,7 @@ internal class KeyboardSession(
         // was one time too many.
         val tStart = System.nanoTime()
         val symPageBefore = pipeline.currentSymPage
+        val symRevertedBefore = pipeline.symPressReverted
         // A key coming back up changes no text: its work is modifier bookkeeping and the
         // long-press timer, neither of which reads the field. Asking the app for its text again
         // there doubled what every character cost, 7 ms of it for an up that applied nothing
@@ -2217,10 +2226,17 @@ internal class KeyboardSession(
         if (stroke.key is KeyId.Modifier) {
             strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticLanguage.modifierChange(glyphBefore.modifierLevels(), pipeline.modifierGlyphInput().modifierLevels()))
         }
-        if (symPageChanged) strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticLanguage.symChange(symPageBefore, pipeline.currentSymPage))
+        // layers-sym-alt.md SS5.11: a page a chord took back was never meant; it goes at once and quietly.
+        val symTakenBack = !symRevertedBefore && pipeline.symPressReverted
+        if (symPageChanged && !symTakenBack) strokeHaptic = HapticLanguage.stronger(strokeHaptic, HapticLanguage.symChange(symPageBefore, pipeline.currentSymPage))
         strokeHaptic?.let(haptics::play)
-        if (symPageChanged) refreshCandidatesStrip()
-        syncSymPanels()
+        syncSymPanels(animate = !symTakenBack)
+        // The page goes up first; what follows it (the caret badge, the status icon) is redrawn
+        // straight after, off this keystroke (layers-sym-alt.md SS5.12).
+        if (symPageChanged) {
+            handler.removeCallbacks(pageChangeRefreshRunnable)
+            handler.post(pageChangeRefreshRunnable)
+        }
         // spec SS2.4: the lookup is "scheduled, coalesced to one run 24 ms after the last request: after every hardware key release that is not a pure modifier".
         if (stroke.edge == KeyEdge.UP && stroke.key !is KeyId.Modifier) {
             handler.removeCallbacks(expansionRefreshRunnable)
@@ -2486,8 +2502,9 @@ internal class KeyboardSession(
      * overlays on screen at once. This function dismisses the quick launcher when a Sym page opens;
      * [QuickLauncherController.onOpened] (wired to [closeSymPanel] below) does the reverse.
      */
-    private fun syncSymPanels() {
+    private fun syncSymPanels(animate: Boolean = true) {
         runCatching {
+            val enter = if (animate) brobata.physiboard.design.DesignMotion.Enter.QUICK else brobata.physiboard.design.DesignMotion.Enter.NONE
             val page = pipeline.currentSymPage
             // The strip collapses under every Sym page (status-bar.md 3.5), so a page sits on the
             // bottom edge whatever the strip measured a moment ago; reading its height here placed
@@ -2499,32 +2516,75 @@ internal class KeyboardSession(
                 clipboard.cleanup(forced = true)
                 clipboardPanel.show(clipboard.history, theme, pageBottomPx, clipboardPanelListener, notSaving = !privacy.learningAllowed)
             } else {
-                clipboardPanel.hide()
+                clipboardPanel.hide(animate)
             }
             if (page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
-                emojiPicker.show(emojiPickerExpanded, theme, pageBottomPx, defaultSkinTone, emojiPickerListener, kaomojiEnabled)
+                emojiPicker.show(emojiPickerExpanded, theme, pageBottomPx, defaultSkinTone, emojiPickerListener, kaomojiEnabled, enter)
             } else {
-                emojiPicker.hide()
+                emojiPicker.hide(animate)
             }
             if (page == SymPageId.GIF.pageNumber) {
                 // layers-sym-alt.md SS4.5: opened from the chooser while switched off for the cycle,
                 // the page asks KLIPY for nothing until the user searches.
                 gifPage.show(theme, pageBottomPx, gifPageListener, loadAtOnce = pipeline.layout.symPagesConfig.gifEnabled)
             } else {
-                gifPage.hide()
+                gifPage.hide(animate)
             }
             if (page == SymPageId.FILL.pageNumber) {
                 fillPage.show(theme, pageBottomPx, fillContent, fillPageListener)
             } else {
-                fillPage.hide()
+                fillPage.hide(animate)
             }
             val gridPage = SymGridPage.forPageNumber(page)
             if (gridPage != null) {
-                symGridPanel.show(gridPage, symGridCharacters(gridPage), theme, pageBottomPx, symGridListener)
+                symGridPanel.show(gridPage, symGridCharacters(gridPage), theme, pageBottomPx, symGridListener, enter)
             } else {
-                symGridPanel.hide()
+                symGridPanel.hide(animate)
             }
         }.onFailure { error -> Log.e(TAG, "sym panel sync crashed", error) }
+    }
+
+    /** Whether the kept Sym pages are built for the current settings (layers-sym-alt.md SS5.12). */
+    private var panelsPrepared = false
+
+    /** Set when the service is destroyed: an idle callback already queued must not add a window after that. */
+    private var serviceGone = false
+
+    private val preparePanelsRunnable = Runnable { preparePanelsWhenIdle() }
+
+    private val pageChangeRefreshRunnable = Runnable { runCatching { refreshCandidatesStrip() }.onFailure { error -> Log.e(TAG, "page change refresh crashed", error) } }
+
+    /**
+     * layers-sym-alt.md SS5.12: once a text box is up, the Sym pages the key opens first (the emoji
+     * picker and the key-layer pages in the cycle) are built and their windows added, invisible,
+     * as soon as the keyboard has nothing else to do, so even the first Sym press only reveals one.
+     * Posted, never run on the key path; at most once per settings change.
+     */
+    private fun schedulePreparePanels() {
+        if (panelsPrepared) return
+        handler.removeCallbacks(preparePanelsRunnable)
+        handler.postDelayed(preparePanelsRunnable, PREPARE_PANELS_DELAY_MS)
+    }
+
+    private fun preparePanelsWhenIdle() {
+        if (panelsPrepared || serviceGone || pipeline.currentSymPage != 0) return
+        android.os.Looper.myQueue().addIdleHandler {
+            runCatching {
+                if (!panelsPrepared && !serviceGone && pipeline.currentSymPage == 0) {
+                    panelsPrepared = true
+                    val theme = pipeline.settings.statusBar.theme
+                    val pages = pipeline.symPagesNow
+                    if (pages.emojiPickerEnabled) emojiPicker.prepare(emojiPickerExpanded, theme, defaultSkinTone, kaomojiEnabled)
+                    for (page in listOf(SymGridPage.EMOJI, SymGridPage.SYMBOLS)) {
+                        val id = SymPageId.entries.firstOrNull { it.pageNumber == page.pageNumber } ?: continue
+                        if (pages.isEnabled(id)) {
+                            symGridPanel.prepare(page, symGridCharacters(page), theme)
+                        }
+                    }
+                }
+            }.onFailure { error -> Log.e(TAG, "panel prepare crashed", error) }
+            false
+        }
     }
 
     /**
@@ -3836,6 +3896,9 @@ internal class KeyboardSession(
     private companion object {
         /** A keystroke slower than this is reported with its breakdown; a fast typist sends one every ~60 ms. */
         const val SLOW_KEYSTROKE_MS = 12.0
+
+        /** How long after a text box opens the Sym pages are built ahead of time (then on the next idle moment). */
+        const val PREPARE_PANELS_DELAY_MS = 400L
 
         /** per-app-behavior.md SS16.2: a field longer than this is not compared by its text (the box is then found by its place or hint alone). */
         const val FOCUS_TEXT_MAX_CHARS = 4_000

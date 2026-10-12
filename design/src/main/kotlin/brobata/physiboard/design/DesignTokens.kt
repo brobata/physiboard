@@ -173,8 +173,17 @@ object DesignTokens {
         /** How far a closing panel drops, in dp. */
         const val CLOSE_OFFSET_DP: Int = 16
 
-        /** A panel replaced in place (the Sym key stepping pages): a fade only. */
-        const val SWAP_FADE_MS: Long = 110
+        /** A panel replaced in place (the Sym key stepping pages): a fade only, from [SWAP_FADE_FROM], so it is on screen from the first frame. */
+        const val SWAP_FADE_MS: Long = 80
+        const val SWAP_FADE_FROM: Float = 0.5f
+
+        /**
+         * A Sym page opening from the key: visible and in full colour from the first frame, it
+         * settles the last [QUICK_OFFSET_DP] into place in [QUICK_MS]. The key is the user waiting
+         * on the page; nothing may hold it back (layers-sym-alt.md SS5.12).
+         */
+        const val QUICK_OFFSET_DP: Int = 10
+        const val QUICK_MS: Long = 80
 
         const val PRESS_SCALE: Float = 0.94f
         const val PRESS_IN_MS: Long = 60

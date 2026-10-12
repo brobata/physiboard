@@ -86,7 +86,7 @@ internal class SymPageChooserController(service: InputMethodService, private val
             grid.addView(cell, params)
         }
         column.addView(grid, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-        if (!panel.show(column, heightPx = null, bottomMarginPx = aboveBottomPx)) {
+        if (!panel.show(column, heightPx = null, bottomMarginPx = aboveBottomPx, enter = DesignMotion.Enter.QUICK)) {
             onPick = null
             return
         }

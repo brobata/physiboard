@@ -84,7 +84,7 @@ internal class FillPageController(service: InputMethodService, private val handl
         this.theme = theme
         shownSuggestions = content.inline.suggestions
         val root = build(content)
-        if (!panel.show(root, heightPx = null, bottomMarginPx = aboveBottomPx, enter = if (replacing) DesignMotion.Enter.FADE else DesignMotion.Enter.SPRING)) {
+        if (!panel.show(root, heightPx = null, bottomMarginPx = aboveBottomPx, enter = if (replacing) DesignMotion.Enter.FADE else DesignMotion.Enter.QUICK)) {
             codesBox = null
             return
         }

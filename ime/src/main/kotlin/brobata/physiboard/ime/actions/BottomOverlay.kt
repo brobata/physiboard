@@ -37,6 +37,13 @@ import brobata.physiboard.ime.pointer.OverlayPermission
  * (docs/design/design-system.md, "Motion"); with animations off they appear and go in place. A
  * closing panel stops taking touches at once and its window goes when the fade ends, so [isShown]
  * is false, and a new panel can open, the moment [hide] is called.
+ *
+ * A panel that opens often (the Sym pages, layers-sym-alt.md SS5.12) keeps its window: [hide] with
+ * `keep` leaves the window added with its content invisible (a window whose root is not visible
+ * has no surface and takes no touches), and the next [show] of the same content only makes it
+ * visible again. Adding a window and inflating its views cost a Sym press 25 to 60 ms on the
+ * main thread (2026-10-11); a reveal costs well under one. [prepare] adds such a window ahead of
+ * time, still invisible, so even the first open is a reveal. [release] removes it for good.
  */
 internal class BottomOverlay(private val service: InputMethodService, private val tag: String) {
 
@@ -48,6 +55,16 @@ internal class BottomOverlay(private val service: InputMethodService, private va
         private set
 
     val isShown: Boolean get() = view != null
+
+    /** The window's content while a window is added, shown or kept invisible. */
+    private var attached: View? = null
+    private var attachedParams: Geometry? = null
+
+    /** What the window was added with; a show that asks for anything else adds it again. */
+    private data class Geometry(val heightPx: Int?, val bottomMarginPx: Int, val focusable: Boolean, val widthPx: Int?)
+
+    /** The padding a view had before the corner insets were added to it, so a re-add never adds them twice. */
+    private val basePadding = java.util.WeakHashMap<View, IntArray>()
 
     /**
      * Shows [content] at the bottom of the screen, [heightPx] tall (or wrapping when null), above
@@ -63,20 +80,110 @@ internal class BottomOverlay(private val service: InputMethodService, private va
         enter: DesignMotion.Enter = DesignMotion.Enter.SPRING,
     ): Boolean {
         if (view != null) return true
+        val geometry = Geometry(heightPx, bottomMarginPx, focusable, widthPx)
+        if (attached === content && attachedParams == geometry && windowAlive(content)) {
+            if (OverlayPermission.availability(service) != OverlayAvailability.AVAILABLE) {
+                release()
+                brobata.physiboard.ime.pointer.OverlayPermission.explainAndOpenSettings(service, "This panel")
+                return false
+            }
+            reveal(content, enter)
+            return true
+        }
+        if (!add(content, geometry, explain = true)) return false
+        view = content
+        DesignMotion.enter(content, enter)
+        return true
+    }
+
+    /**
+     * Adds [content]'s window now, invisible, so a later [show] of it is only a reveal. Quiet: no
+     * toast when the permission is missing (the user did not ask for a panel). Returns whether
+     * the window is there.
+     */
+    fun prepare(content: View, heightPx: Int?, bottomMarginPx: Int = 0): Boolean {
+        val geometry = Geometry(heightPx, bottomMarginPx, focusable = false, widthPx = null)
+        if (attached === content && attachedParams == geometry && windowAlive(content)) return true
+        if (view != null) return false
+        // Drawn once, untouchable and with the WINDOW fully transparent, so the glyphs it shows are
+        // ready on the GPU before the first open (the first draw of a page of emoji cost about
+        // 200 ms on the emulator), then hidden until a show. Window alpha 0, not view alpha:
+        // Android 12+ lets touches through another app's untouchable overlay only when the window
+        // itself is at most 0.8 opaque, so a view-alpha warm-up would eat the app's taps.
+        content.visibility = View.VISIBLE
+        if (!add(content, geometry, explain = false, touchable = false, windowAlpha = 0f)) return false
+        val warm = object : android.view.ViewTreeObserver.OnDrawListener {
+            var done = false
+            override fun onDraw() {
+                if (done) return
+                done = true
+                content.post {
+                    runCatching { content.viewTreeObserver.removeOnDrawListener(this) }
+                    if (view !== content && attached === content) {
+                        content.visibility = View.INVISIBLE
+                        setTouchable(content, true)
+                    }
+                }
+            }
+        }
+        content.viewTreeObserver.addOnDrawListener(warm)
+        return true
+    }
+
+    /**
+     * Whether [content]'s window is still there: added and not removed. [View.isAttachedToWindow]
+     * only turns true after the first layout pass, so a window added this frame counts by its
+     * parent (the window's root, set by the add itself).
+     */
+    private fun windowAlive(content: View): Boolean = content.isAttachedToWindow || content.parent != null
+
+    /**
+     * Adds or clears `FLAG_NOT_TOUCHABLE` on [content]'s window, only when it changes. A touchable
+     * window is always fully opaque again (the warm-up of [prepare] draws at window alpha 0).
+     */
+    private fun setTouchable(content: View, touchable: Boolean) {
+        val params = content.layoutParams as? WindowManager.LayoutParams ?: return
+        val notTouchable = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE != 0
+        if (notTouchable == !touchable && (!touchable || params.alpha == 1f)) return
+        if (touchable) params.alpha = 1f
+        params.flags = if (touchable) params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv() else params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        val windowManager = overlayContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        runCatching { windowManager?.updateViewLayout(content, params) }
+    }
+
+    private fun reveal(content: View, enter: DesignMotion.Enter) {
+        content.animate().cancel()
+        // Normally already touchable again (the close cleared it once the panel was hidden); a
+        // show during the closing motion or the first warm-up draw clears it here.
+        setTouchable(content, true)
+        content.visibility = View.VISIBLE
+        view = content
+        DesignMotion.enter(content, enter)
+    }
+
+    private fun add(content: View, geometry: Geometry, explain: Boolean, touchable: Boolean = true, windowAlpha: Float = 1f): Boolean {
+        if (attached != null) release()
+        val heightPx = geometry.heightPx
+        val bottomMarginPx = geometry.bottomMarginPx
+        val widthPx = geometry.widthPx
+        val base = basePadding[content]
+        if (base != null) content.setPadding(base[0], base[1], base[2], base[3])
         val corners = if (widthPx == null) cornerInsets(bottomMarginPx) else RoundedCornerInsets.NONE
         if (corners != RoundedCornerInsets.NONE) {
+            basePadding[content] = intArrayOf(content.paddingLeft, content.paddingTop, content.paddingRight, content.paddingBottom)
             content.setPadding(
                 content.paddingLeft + corners.sidePx, content.paddingTop,
                 content.paddingRight + corners.sidePx, content.paddingBottom + corners.bottomPx,
             )
         }
         if (OverlayPermission.availability(service) != OverlayAvailability.AVAILABLE) {
-            brobata.physiboard.ime.pointer.OverlayPermission.explainAndOpenSettings(service, "This panel")
+            if (explain) brobata.physiboard.ime.pointer.OverlayPermission.explainAndOpenSettings(service, "This panel")
             return false
         }
         val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return false
         var flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-        if (!focusable) flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        if (!geometry.focusable) flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        if (!touchable) flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         val params = WindowManager.LayoutParams(
             widthPx ?: WindowManager.LayoutParams.MATCH_PARENT,
             heightPx?.let { it + corners.bottomPx } ?: WindowManager.LayoutParams.WRAP_CONTENT,
@@ -87,10 +194,11 @@ internal class BottomOverlay(private val service: InputMethodService, private va
         params.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         params.y = bottomMarginPx
         params.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
+        params.alpha = windowAlpha
         val added = runCatching { windowManager.addView(content, params) }.onFailure { Log.e(tag, "overlay refused", it) }.isSuccess
         if (added) {
-            view = content
-            DesignMotion.enter(content, enter)
+            attached = content
+            attachedParams = geometry
         }
         return added
     }
@@ -100,9 +208,17 @@ internal class BottomOverlay(private val service: InputMethodService, private va
      * from now on and is removed when the motion ends); without, at once, as a panel replaced in
      * place or a caller running its own motion needs.
      */
-    fun hide(animate: Boolean = true) {
+    fun hide(animate: Boolean = true, keep: Boolean = false) {
         val current = view ?: return
         view = null
+        if (keep && !teardown && attached === current) {
+            conceal(current, animate)
+            return
+        }
+        if (attached === current) {
+            attached = null
+            attachedParams = null
+        }
         val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return
         // Always removed, attached or not: a window added this frame is not "attached" until its
         // first layout, and skipping it then would leave it on screen with nothing holding it.
@@ -120,6 +236,46 @@ internal class BottomOverlay(private val service: InputMethodService, private va
             runCatching { windowManager.updateViewLayout(current, params) }
         }
         DesignMotion.exit(current, remove)
+    }
+
+    /**
+     * Takes a kept panel off screen and leaves its window: on the closing motion (no touches from
+     * now on) or at once. The content stays laid out but invisible, ready for the next [show].
+     */
+    private fun conceal(current: View, animate: Boolean) {
+        val windowManager = overlayContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        val settle = {
+            // A show of this same panel during the motion cancels it; this never runs then.
+            if (view !== current) {
+                current.visibility = View.INVISIBLE
+                current.alpha = 1f
+                current.translationY = 0f
+                // Hidden now, so touchable again: the next show needs no window update.
+                if (attached === current) setTouchable(current, true)
+            }
+            Unit
+        }
+        if (!animate) {
+            current.animate().cancel()
+            settle()
+            return
+        }
+        (current.layoutParams as? WindowManager.LayoutParams)?.let { params ->
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            runCatching { windowManager?.updateViewLayout(current, params) }
+        }
+        DesignMotion.exit(current, settle)
+    }
+
+    /** Removes the window for good, shown or kept. Called when a panel is rebuilt and when the keyboard service goes. */
+    fun release() {
+        val current = attached ?: view ?: return
+        attached = null
+        attachedParams = null
+        view = null
+        current.animate().cancel()
+        val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return
+        runCatching { windowManager.removeView(current) }.onFailure { Log.e(tag, "overlay removal crashed", it) }
     }
 
     /**
