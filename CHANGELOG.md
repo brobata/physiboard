@@ -3,7 +3,12 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
-## 3.4.0 (unreleased)
+## 3.4.0 (2026-10-11)
+
+A clock on the notification ring and a nightstand clock while charging, Sym pages that open at
+once, emoji tones remembered, and dictation that leaves your cursor where you put it.
+
+<!-- /card -->
 
 - A clock on the notification ring: a dim time, date and (optionally) grey icons of the apps
   waiting, never their text, shifting slightly every minute so nothing burns in. Notification
