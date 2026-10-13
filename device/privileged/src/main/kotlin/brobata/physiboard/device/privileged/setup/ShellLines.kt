@@ -47,6 +47,9 @@ object ShellLines {
     /** spec: SS7 step 2. */
     fun overlayGrant(identity: AppIdentity): String = "appops set ${identity.packageName} SYSTEM_ALERT_WINDOW allow"
 
+    /** spec: SS7 step 6, "Install unknown apps" for PhysiBoard itself, so its updates install silently. */
+    fun installUpdatesGrant(identity: AppIdentity): String = "appops set ${identity.packageName} REQUEST_INSTALL_PACKAGES allow"
+
     /** spec: SS7 step 3, one line for the three grants. */
     fun ringGrants(identity: AppIdentity): String = joined(
         "cmd notification allow_listener ${identity.ringListenerComponent}",

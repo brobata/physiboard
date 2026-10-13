@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Spellcheck
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.ToggleOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -234,6 +235,19 @@ private fun ExtrasPage(state: SetupState) {
             hint = null,
             on = state.spellCheckerOurs,
         ) { SpellCheckerSettings.open(context) }
+        RowDivider()
+        // SS32: the same switch as Help's "Allow PhysiBoard to install its updates".
+        ExtraRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "Updates on their own",
+            description = "Lets new versions install while your screen is off, with no tap",
+            hint = null,
+            on = state.canInstallUpdates,
+        ) {
+            runCatching {
+                context.startActivity(Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}")))
+            }
+        }
     }
 }
 
@@ -379,6 +393,7 @@ private data class SetupState(
     val accessibilityOn: Boolean,
     val overlayOn: Boolean,
     val spellCheckerOurs: Boolean,
+    val canInstallUpdates: Boolean,
 )
 
 private fun readSetupState(context: Context): SetupState {
@@ -388,6 +403,7 @@ private fun readSetupState(context: Context): SetupState {
         accessibilityOn = AndroidPermissionProbe.accessibilityServiceEnabled(context),
         overlayOn = OverlayPermission.availability(context) == OverlayAvailability.AVAILABLE,
         spellCheckerOurs = SpellCheckerSettings.state(context) == SpellCheckerSettings.State.OURS,
+        canInstallUpdates = context.packageManager.canRequestPackageInstalls(),
     )
 }
 

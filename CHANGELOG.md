@@ -3,6 +3,12 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
+## 3.5.0 (unreleased)
+
+- Paired Titan tools now also allow PhysiBoard to install its own updates, so they arrive with
+  no tap. Without Titan tools, the setup's extras page offers the same switch ("Updates on their
+  own").
+
 ## 3.4.0 (2026-10-11)
 
 A clock on the notification ring and a nightstand clock while charging, Sym pages that open at

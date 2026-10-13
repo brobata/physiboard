@@ -261,4 +261,29 @@ class PrivilegedSetupTest {
         assertTrue(c.spellCheckerPrevCaptured)
         assertEquals(null, c.spellCheckerPrevSelected)
     }
+
+    @Test
+    fun `step 6 allows installing PhysiBoard's own updates, judged by re-check`() {
+        shell.onLine = { line -> if (line == ShellLines.installUpdatesGrant(identity)) permissions.installPackages = true }
+        setup.run(SetupReasons.PAIRING_SUCCEEDED)
+        assertTrue(shell.lines.contains("appops set brobata.physiboard.dev3 REQUEST_INSTALL_PACKAGES allow"))
+        assertTrue(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
+    }
+
+    @Test
+    fun `step 6 sends nothing when already allowed, records a failure when the re-check says no, and skips when updates are off`() {
+        permissions.installPackages = true
+        setup.run(SetupReasons.IME_START)
+        assertFalse(shell.lines.any { it.contains("REQUEST_INSTALL_PACKAGES") })
+
+        permissions.installPackages = false
+        setup.run(SetupReasons.IME_START)
+        assertFalse(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
+
+        shell.lines.clear()
+        store.update { it.copy(updates = it.updates.copy(mode = brobata.physiboard.core.settings.UpdateMode.OFF)) }
+        setup.run(SetupReasons.IME_START)
+        assertFalse(shell.lines.any { it.contains("REQUEST_INSTALL_PACKAGES") })
+        assertTrue(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
+    }
 }

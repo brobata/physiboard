@@ -28,6 +28,9 @@ interface PermissionProbe {
 
     /** PhysiBoard's entry is in `enabled_accessibility_services`, whatever the master switch says. spec: SS10 step 7. */
     fun isAccessibilityServiceListed(): Boolean
+
+    /** "Install unknown apps" allowed for PhysiBoard, so its own updates install silently. spec: SS7 step 6; app-shell.md SS32. */
+    fun canInstallPackages(): Boolean
 }
 
 /** A probe with every answer settable; the JVM tests' stand-in. */
@@ -39,6 +42,7 @@ class FakePermissionProbe(
     @Volatile var writeSecureSettings: Boolean = false,
     @Volatile var accessibilityService: Boolean = false,
     @Volatile var accessibilityListed: Boolean = false,
+    @Volatile var installPackages: Boolean = false,
 ) : PermissionProbe {
     override fun canDrawOverlays(): Boolean = overlays
     override fun isNotificationListenerGranted(): Boolean = listener
@@ -47,4 +51,5 @@ class FakePermissionProbe(
     override fun hasWriteSecureSettings(): Boolean = writeSecureSettings
     override fun isAccessibilityServiceEnabled(): Boolean = accessibilityService
     override fun isAccessibilityServiceListed(): Boolean = accessibilityListed || accessibilityService
+    override fun canInstallPackages(): Boolean = installPackages
 }

@@ -340,8 +340,14 @@ Otherwise, in this order:
    step records `unreadable` and is retried, so a failed round trip can never take over a spell
    checker the user installed. Every value written goes in single quotes, so the device shell
    never expands a `$` in a class name.
+6. **Install updates** (3.5): unless `update_mode` is `off`, "Install unknown apps" for
+   PhysiBoard itself (`appops set <package> REQUEST_INSTALL_PACKAGES allow`), so an update
+   installs while the screen is off instead of waiting on a tap (app-shell.md SS32). Nothing is
+   sent when it is already allowed; the outcome is the re-check
+   (`PackageManager.canRequestPackageInstalls`), recorded as `install_updates`. Android lets no
+   app grant this to itself; the first-run extras page and Help offer the user's own switch.
 
-Steps 2 to 5 use "a key is stored" as their pre-flight, not the verified verdict; they are
+Steps 2 to 6 use "a key is stored" as their pre-flight, not the verified verdict; they are
 tolerant of failing. In 3.0 every step records its outcome (section 8).
 
 ## 8. Privileged diagnostics

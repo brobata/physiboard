@@ -37,6 +37,8 @@ class AndroidPermissionProbe(private val context: Context, private val ringListe
     override fun isAccessibilityServiceListed(): Boolean =
         AccessibilityServiceList.isListed(runCatching { Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) }.getOrNull(), context.packageName)
 
+    override fun canInstallPackages(): Boolean = context.packageManager.canRequestPackageInstalls()
+
     companion object {
         /** Both secure rows are readable by any app; the list is the truth, the master switch must agree. */
         fun accessibilityServiceEnabled(context: Context): Boolean {

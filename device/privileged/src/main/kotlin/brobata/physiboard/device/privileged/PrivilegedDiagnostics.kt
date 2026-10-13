@@ -12,6 +12,7 @@ enum class PrivilegedStep(val key: String) {
     NOTIFICATION_RING("notification_ring"),
     RING_BACKLIGHT("ring_backlight"),
     SPELL_CHECKER("spell_checker"),
+    INSTALL_UPDATES("install_updates"),
 }
 
 /** One step's last outcome. [reason] is one of [StepReasons] or free text. spec: SS8. */

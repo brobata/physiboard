@@ -59,6 +59,7 @@ class PrivilegedSetup(
         outcomes[PrivilegedStep.NOTIFICATION_RING] = guarded(PrivilegedStep.NOTIFICATION_RING) { ringGrantsStep(settings.device.ringEnabled) }
         outcomes[PrivilegedStep.RING_BACKLIGHT] = guarded(PrivilegedStep.RING_BACKLIGHT) { ringBacklightStep(settings.device.ringEnabled) }
         outcomes[PrivilegedStep.SPELL_CHECKER] = guarded(PrivilegedStep.SPELL_CHECKER) { spellCheckerStep(settings) }
+        outcomes[PrivilegedStep.INSTALL_UPDATES] = guarded(PrivilegedStep.INSTALL_UPDATES) { installUpdatesStep(settings.updates.mode) }
         return SetupReport(reason, outcomes)
     }
 
@@ -133,6 +134,22 @@ class PrivilegedSetup(
         if (!permissions.canDrawOverlays()) return record(PrivilegedStep.OVERLAY_GRANT, ok = false, reason = failureText(result))
         if (!trackpadEnabled) store.update { s -> s.copy(trackpad = s.trackpad.copy(enabled = true)) }
         return record(PrivilegedStep.OVERLAY_GRANT, ok = true, reason = StepReasons.OK)
+    }
+
+    /**
+     * spec: SS7 step 6: "Install unknown apps" for PhysiBoard, so an update installs while the
+     * screen is off instead of waiting on a tap (app-shell.md SS32). Skipped when updates are off;
+     * judged by re-checking, like the overlay.
+     */
+    private fun installUpdatesStep(mode: brobata.physiboard.core.settings.UpdateMode): StepOutcome {
+        if (mode == brobata.physiboard.core.settings.UpdateMode.OFF) return record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = SKIPPED_DISABLED)
+        if (permissions.canInstallPackages()) return record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = StepReasons.OK)
+        val result = shell.run(ShellLines.installUpdatesGrant(identity))
+        return if (permissions.canInstallPackages()) {
+            record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = StepReasons.OK)
+        } else {
+            record(PrivilegedStep.INSTALL_UPDATES, ok = false, reason = failureText(result))
+        }
     }
 
     /** spec: SS7 step 3, ring SS5.9: no-op when all three are in place, else one joined line, judged by re-checking. */
