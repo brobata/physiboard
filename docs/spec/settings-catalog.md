@@ -307,6 +307,7 @@ All five rows are written synchronously.
 | `qs_backlight_prev_captured` | boolean marker | false | | The quick-settings tile captured the vendor global | |
 | `qs_backlight_prev` | int; absent reads as the "unset" sentinel | | | The vendor global before the tile flipped it | |
 | `spell_checker_auto_select_done` | boolean marker | false | | The setup pass made its one spell checker decision | |
+| `install_updates_granted` (3.5) | boolean marker | false | | The setup pass allowed "Install unknown apps" for PhysiBoard once (broker-privileged-toolbox.md 7 step 6) | |
 | `spell_checker_prev_captured` | boolean marker | false | | The spell checker rows were recorded before the setup pass wrote them | |
 | `spell_checker_prev_selected`, `_enabled`, `_subtype` | string; absent = unset | | | `selected_spell_checker`, `spell_checker_enabled`, `selected_spell_checker_subtype` before the write, put back by reset to stock | |
 

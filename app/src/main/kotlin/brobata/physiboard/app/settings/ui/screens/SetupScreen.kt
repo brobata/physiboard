@@ -138,7 +138,7 @@ fun SetupScreen(onComplete: () -> Unit) {
             when (page) {
                 0 -> EnablePage(state.steps)
                 1 -> SelectPage(state.steps, onBackToEnable = { page = 0 })
-                else -> ExtrasPage(state)
+                else -> ExtrasPage(state, controller.current.value.updates.mode)
             }
         }
         val pageDone = when (page) {
@@ -203,7 +203,7 @@ private fun SelectPage(steps: FirstRunSteps, onBackToEnable: () -> Unit) {
 
 /** Page 3: the optional extras, each with its own way in and its own live state. */
 @Composable
-private fun ExtrasPage(state: SetupState) {
+private fun ExtrasPage(state: SetupState, updateMode: brobata.physiboard.core.settings.UpdateMode) {
     val context = LocalContext.current
     PageTitle("A few extras")
     PageText("All optional. Turn on what you like now, or later in Settings.")
@@ -235,17 +235,24 @@ private fun ExtrasPage(state: SetupState) {
             hint = null,
             on = state.spellCheckerOurs,
         ) { SpellCheckerSettings.open(context) }
-        RowDivider()
-        // SS32: the same switch as Help's "Allow PhysiBoard to install its updates".
-        ExtraRow(
-            icon = Icons.Outlined.SystemUpdate,
-            title = "Updates on their own",
-            description = "Lets new versions install while your screen is off, with no tap",
-            hint = null,
-            on = state.canInstallUpdates,
-        ) {
-            runCatching {
-                context.startActivity(Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}")))
+        // SS32: the same switch as Help's "Allow PhysiBoard to install its updates", offered under
+        // the same conditions: a build that installs its own updates, with updates not off.
+        if (state.autoUpdateBuild && updateMode != brobata.physiboard.core.settings.UpdateMode.OFF) {
+            RowDivider()
+            ExtraRow(
+                icon = Icons.Outlined.SystemUpdate,
+                title = "Updates on their own",
+                description = if (updateMode == brobata.physiboard.core.settings.UpdateMode.INSTALL_AUTOMATICALLY) {
+                    "Lets new versions install while your screen is off, with no tap"
+                } else {
+                    "Lets PhysiBoard install a new version when you say so"
+                },
+                hint = null,
+                on = state.canInstallUpdates,
+            ) {
+                runCatching {
+                    context.startActivity(Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}")))
+                }
             }
         }
     }
@@ -394,6 +401,7 @@ private data class SetupState(
     val overlayOn: Boolean,
     val spellCheckerOurs: Boolean,
     val canInstallUpdates: Boolean,
+    val autoUpdateBuild: Boolean,
 )
 
 private fun readSetupState(context: Context): SetupState {
@@ -404,6 +412,7 @@ private fun readSetupState(context: Context): SetupState {
         overlayOn = OverlayPermission.availability(context) == OverlayAvailability.AVAILABLE,
         spellCheckerOurs = SpellCheckerSettings.state(context) == SpellCheckerSettings.State.OURS,
         canInstallUpdates = context.packageManager.canRequestPackageInstalls(),
+        autoUpdateBuild = brobata.physiboard.app.shell.AutoUpdater.buildMayInstall(context),
     )
 }
 

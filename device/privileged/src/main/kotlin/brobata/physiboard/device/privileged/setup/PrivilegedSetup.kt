@@ -44,6 +44,8 @@ class PrivilegedSetup(
     private val backlight: KeyboardBacklightController,
     private val identity: AppIdentity,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Whether this build installs its own updates at all (release package, not F-Droid); the app answers it. */
+    private val selfUpdateInstalls: () -> Boolean = { false },
 ) {
 
     /** Blocking, never throws, never on the main thread. spec: SS7. */
@@ -59,7 +61,7 @@ class PrivilegedSetup(
         outcomes[PrivilegedStep.NOTIFICATION_RING] = guarded(PrivilegedStep.NOTIFICATION_RING) { ringGrantsStep(settings.device.ringEnabled) }
         outcomes[PrivilegedStep.RING_BACKLIGHT] = guarded(PrivilegedStep.RING_BACKLIGHT) { ringBacklightStep(settings.device.ringEnabled) }
         outcomes[PrivilegedStep.SPELL_CHECKER] = guarded(PrivilegedStep.SPELL_CHECKER) { spellCheckerStep(settings) }
-        outcomes[PrivilegedStep.INSTALL_UPDATES] = guarded(PrivilegedStep.INSTALL_UPDATES) { installUpdatesStep(settings.updates.mode) }
+        outcomes[PrivilegedStep.INSTALL_UPDATES] = guarded(PrivilegedStep.INSTALL_UPDATES) { installUpdatesStep(settings.updates.mode, settings.captures.installUpdatesGranted) }
         return SetupReport(reason, outcomes)
     }
 
@@ -138,18 +140,21 @@ class PrivilegedSetup(
 
     /**
      * spec: SS7 step 6: "Install unknown apps" for PhysiBoard, so an update installs while the
-     * screen is off instead of waiting on a tap (app-shell.md SS32). Skipped when updates are off;
-     * judged by re-checking, like the overlay.
+     * screen is off instead of waiting on a tap (app-shell.md SS32). Only for a build that installs
+     * its own updates, with updates not off, and only once: a user who later switches the
+     * permission off in Android's settings keeps that choice. Judged by re-checking.
      */
-    private fun installUpdatesStep(mode: brobata.physiboard.core.settings.UpdateMode): StepOutcome {
-        if (mode == brobata.physiboard.core.settings.UpdateMode.OFF) return record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = SKIPPED_DISABLED)
-        if (permissions.canInstallPackages()) return record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = StepReasons.OK)
-        val result = shell.run(ShellLines.installUpdatesGrant(identity))
-        return if (permissions.canInstallPackages()) {
-            record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = StepReasons.OK)
-        } else {
-            record(PrivilegedStep.INSTALL_UPDATES, ok = false, reason = failureText(result))
+    private fun installUpdatesStep(mode: brobata.physiboard.core.settings.UpdateMode, alreadyGranted: Boolean): StepOutcome {
+        if (mode == brobata.physiboard.core.settings.UpdateMode.OFF || !selfUpdateInstalls()) {
+            return record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = SKIPPED_DISABLED)
         }
+        if (alreadyGranted) return record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = StepReasons.OK)
+        if (!permissions.canInstallPackages()) {
+            val result = shell.run(ShellLines.installUpdatesGrant(identity))
+            if (!permissions.canInstallPackages()) return record(PrivilegedStep.INSTALL_UPDATES, ok = false, reason = failureText(result))
+        }
+        store.updateCaptures { it.copy(installUpdatesGranted = true) }
+        return record(PrivilegedStep.INSTALL_UPDATES, ok = true, reason = StepReasons.OK)
     }
 
     /** spec: SS7 step 3, ring SS5.9: no-op when all three are in place, else one joined line, judged by re-checking. */

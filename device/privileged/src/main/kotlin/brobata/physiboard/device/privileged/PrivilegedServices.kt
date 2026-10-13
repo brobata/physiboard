@@ -76,6 +76,8 @@ class PrivilegedServices(
     context: Context,
     val store: DeviceStateStore,
     val diagnostics: DiagnosticsStore = PreferencesDiagnosticsStore(context),
+    /** Whether this build installs its own updates (the app's AutoUpdater.buildMayInstall); gates setup step 6. */
+    selfUpdateInstalls: () -> Boolean = { false },
 ) {
     private val appContext: Context = context.applicationContext
 
@@ -95,7 +97,7 @@ class PrivilegedServices(
 
     val broker: PrivilegedBroker = PrivilegedBroker(AndroidAdbTransport(appContext), diagnostics)
     val backlight: KeyboardBacklightController = KeyboardBacklightController(broker, store, diagnostics)
-    val setup: PrivilegedSetup = PrivilegedSetup(broker, permissions, store, diagnostics, backlight, identity)
+    val setup: PrivilegedSetup = PrivilegedSetup(broker, permissions, store, diagnostics, backlight, identity, selfUpdateInstalls = selfUpdateInstalls)
     val reset: ResetToStock = ResetToStock(broker, permissions, masterSwitch, store, backlight, identity)
 
     /** "Turn on with pairing" for the accessibility service, only ever on the user's tap. spec: SS9. */

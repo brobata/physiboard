@@ -340,12 +340,17 @@ Otherwise, in this order:
    step records `unreadable` and is retried, so a failed round trip can never take over a spell
    checker the user installed. Every value written goes in single quotes, so the device shell
    never expands a `$` in a class name.
-6. **Install updates** (3.5): unless `update_mode` is `off`, "Install unknown apps" for
-   PhysiBoard itself (`appops set <package> REQUEST_INSTALL_PACKAGES allow`), so an update
-   installs while the screen is off instead of waiting on a tap (app-shell.md SS32). Nothing is
-   sent when it is already allowed; the outcome is the re-check
-   (`PackageManager.canRequestPackageInstalls`), recorded as `install_updates`. Android lets no
-   app grant this to itself; the first-run extras page and Help offer the user's own switch.
+6. **Install updates** (3.5): only on a build that installs its own updates (the release
+   package, not an F-Droid install; the app's `AutoUpdater.buildMayInstall`) with `update_mode`
+   not `off`, and only once (`install_updates_granted`): "Install unknown apps" for PhysiBoard
+   itself (`appops set <package> REQUEST_INSTALL_PACKAGES allow`), so an update installs while
+   the screen is off instead of waiting on a tap (app-shell.md SS32). Nothing is sent when it is
+   already allowed; the outcome is the re-check (`PackageManager.canRequestPackageInstalls`),
+   recorded as `install_updates`, and the marker is set only on success, so a failed pass is
+   retried. Once set, the step never sends the line again: a user who later switches the
+   permission off in Android's settings keeps that choice. Android lets no app grant this to
+   itself; the first-run extras page and Help offer the user's own switch, under the same
+   conditions.
 
 Steps 2 to 6 use "a key is stored" as their pre-flight, not the verified verdict; they are
 tolerant of failing. In 3.0 every step records its outcome (section 8).
@@ -354,7 +359,7 @@ tolerant of failing. In 3.0 every step records its outcome (section 8).
 
 Outcomes are persisted in the main preferences so they survive IME restarts and reach the debug
 export. For each step name in {`backlight`, `overlay_grant`, `notification_ring`,
-`ring_backlight`, `spell_checker`}: `privileged_<step>_ok` (boolean), `privileged_<step>_reason` (string; one of
+`ring_backlight`, `spell_checker`, `install_updates`}: `privileged_<step>_ok` (boolean), `privileged_<step>_reason` (string; one of
 `ok`, `not_paired`, `wireless_debugging_off`, `shell_failed`, or a free-text error), and
 `privileged_<step>_at` (epoch ms; 0 or absent means never run). The last observed backlight
 value is `privileged_backlight_device_value` (string, may be null) with
@@ -395,7 +400,7 @@ for `system`, `WRITE_SECURE_SETTINGS` for `global`/`secure` once granted); "brok
 | package manager | PhysiBoard's own installed version (3.3) | the downloaded release APK, after the checks of app-shell.md 32.3 | the automatic updater, with the screen off | broker, else Android's installer | no: an update is not undone; the previous APK is not kept |
 | secure | `selected_spell_checker`, `selected_spell_checker_subtype`, `spell_checker_enabled` | this build's spell checker, 0, 1 | `auto_select_spell_checker`: PhysiBoard as the phone's spell checker, once (section 7 step 5) | broker | yes: `spell_checker_prev_captured`, `spell_checker_prev_selected`, `_enabled`, `_subtype` (null = unset) |
 | secure | `enabled_accessibility_services`, `accessibility_enabled` | this build's accessibility service appended to the list (every other entry kept, in place), 1 | "Turn on with pairing" on the Accessibility service screen (per-app-behavior.md section 16): offered only when the service is off and a pairing is stored, run only on the user's tap, never by the setup pass. The list is read first (`settings get secure enabled_accessibility_services; settings get secure accessibility_enabled`); an entry that is not a plain `package/class` refuses the write ("Another app's accessibility entry looks unusual"), so another app's service can never be lost. Outcome is the re-read of both rows | broker | no: the revert removes only PhysiBoard's entry (section 10 step 7) |
-| app ops and grants | `SYSTEM_ALERT_WINDOW`, `USE_FULL_SCREEN_INTENT`, `POST_NOTIFICATION` for the app; notification listener allow-list; `WRITE_SECURE_SETTINGS` runtime grant | allow / granted | trackpad overlay, notification ring, ring backlight | broker | no |
+| app ops and grants | `SYSTEM_ALERT_WINDOW`, `USE_FULL_SCREEN_INTENT`, `POST_NOTIFICATION`, `REQUEST_INSTALL_PACKAGES` (3.5, section 7 step 6) for the app; notification listener allow-list; `WRITE_SECURE_SETTINGS` runtime grant | allow / granted | trackpad overlay, notification ring, ring backlight | broker | no |
 
 Side-key values are validated before they are written or restored: only strings up to 256
 characters matching `[A-Za-z0-9_][A-Za-z0-9_.$]*` are accepted, because the restore path feeds
@@ -464,7 +469,7 @@ fully apply."
 Not covered by reset to stock, despite the plan and the 1.1.0 change note saying "Restore all
 is wired into Reset device settings to stock": the bloat journal (packages stay disabled),
 display density, the three animation scales and the two secure toggles, the `WRITE_SECURE_SETTINGS`
-grant, the overlay grant, and `func1_shortcut_key_enable`. Each of the toolbox screens has its
+grant, the overlay grant, the install-updates grant (3.5; Android clears it at uninstall, and with updates on the next pass would only grant it again), and `func1_shortcut_key_enable`. Each of the toolbox screens has its
 own "back to stock" control instead.
 
 ## 11. Toolbox screens: common behavior
@@ -809,6 +814,7 @@ control.
 | `qs_backlight_prev` | int | Int.MIN_VALUE | original `agui_keyboard_background_light` | n/a | n/a |
 | `auto_select_spell_checker` | boolean | true | whether the setup pass makes PhysiBoard the phone's spell checker, once (section 7 step 5); reset to stock sets false | Autocorrect & words | "Choose PhysiBoard as the spell checker" / "Once Titan tools are paired, make PhysiBoard the phone's spell checker and turn spell checking on. Done once, and never over a spell checker you installed yourself." |
 | `spell_checker_auto_select_done` | boolean | false | the one-time spell checker decision was made; the step never looks again | n/a | n/a |
+| `install_updates_granted` | boolean | false | section 7 step 6 allowed "Install unknown apps" once; the step never sends it again | n/a | n/a |
 | `spell_checker_prev_captured` | boolean | false | the spell checker rows were recorded before the step wrote them | n/a | n/a |
 | `spell_checker_prev_selected` / `_enabled` / `_subtype` | string | absent (unset) | `selected_spell_checker`, `spell_checker_enabled`, `selected_spell_checker_subtype` before the write | n/a | n/a |
 | `side_key_original_captured` | boolean | false | original side-key pair was captured | n/a | n/a |

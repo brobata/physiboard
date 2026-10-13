@@ -868,6 +868,8 @@ data class DeviceCaptures(
     val smartBacklightApplied: Boolean = false,
     /** The setup pass made its one spell checker decision (selected, already ours, or another respected); it never looks again. */
     val spellCheckerDecided: Boolean = false,
+    /** The setup pass allowed "Install unknown apps" for PhysiBoard once; it never sends the line again, so the user's own later "off" stands. */
+    val installUpdatesGranted: Boolean = false,
     /** The setup pass wrote the spell checker rows; the three below are what was there, null meaning unset. */
     val spellCheckerPrevCaptured: Boolean = false,
     val spellCheckerPrevSelected: String? = null,

@@ -262,28 +262,47 @@ class PrivilegedSetupTest {
         assertEquals(null, c.spellCheckerPrevSelected)
     }
 
+    private fun installingSetup() = PrivilegedSetup(shell, permissions, store, diagnostics, backlight, identity, clock, selfUpdateInstalls = { true })
+
     @Test
-    fun `step 6 allows installing PhysiBoard's own updates, judged by re-check`() {
-        shell.onLine = { line -> if (line == ShellLines.installUpdatesGrant(identity)) permissions.installPackages = true }
+    fun `step 6 sends nothing on a build that never installs its own updates`() {
         setup.run(SetupReasons.PAIRING_SUCCEEDED)
-        assertTrue(shell.lines.contains("appops set brobata.physiboard.dev3 REQUEST_INSTALL_PACKAGES allow"))
+        assertFalse(shell.lines.any { it.contains("REQUEST_INSTALL_PACKAGES") })
         assertTrue(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
     }
 
     @Test
-    fun `step 6 sends nothing when already allowed, records a failure when the re-check says no, and skips when updates are off`() {
-        permissions.installPackages = true
-        setup.run(SetupReasons.IME_START)
-        assertFalse(shell.lines.any { it.contains("REQUEST_INSTALL_PACKAGES") })
+    fun `step 6 allows installing PhysiBoard's own updates once, judged by re-check`() {
+        shell.onLine = { line -> if (line == ShellLines.installUpdatesGrant(identity)) permissions.installPackages = true }
+        installingSetup().run(SetupReasons.PAIRING_SUCCEEDED)
+        assertTrue(shell.lines.contains("appops set brobata.physiboard.dev3 REQUEST_INSTALL_PACKAGES allow"))
+        assertTrue(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
+        assertTrue(store.snapshot().captures.installUpdatesGranted)
 
+        // The user switches it off in Android's settings: the next pass leaves that choice alone.
         permissions.installPackages = false
-        setup.run(SetupReasons.IME_START)
-        assertFalse(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
+        shell.lines.clear()
+        installingSetup().run(SetupReasons.IME_START)
+        assertFalse(shell.lines.any { it.contains("REQUEST_INSTALL_PACKAGES") })
+    }
 
+    @Test
+    fun `step 6 retries after a failed re-check, records an existing allow without sending, and skips when updates are off`() {
+        installingSetup().run(SetupReasons.IME_START)
+        assertFalse(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
+        assertFalse(store.snapshot().captures.installUpdatesGranted)
+
+        permissions.installPackages = true
+        shell.lines.clear()
+        installingSetup().run(SetupReasons.IME_START)
+        assertFalse(shell.lines.any { it.contains("REQUEST_INSTALL_PACKAGES") })
+        assertTrue(store.snapshot().captures.installUpdatesGranted)
+
+        store.update { it.copy(captures = it.captures.copy(installUpdatesGranted = false)) }
+        permissions.installPackages = false
         shell.lines.clear()
         store.update { it.copy(updates = it.updates.copy(mode = brobata.physiboard.core.settings.UpdateMode.OFF)) }
-        setup.run(SetupReasons.IME_START)
+        installingSetup().run(SetupReasons.IME_START)
         assertFalse(shell.lines.any { it.contains("REQUEST_INSTALL_PACKAGES") })
-        assertTrue(diagnostics.step(PrivilegedStep.INSTALL_UPDATES)!!.ok)
     }
 }

@@ -91,7 +91,9 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
     /** app-shell.md SS31.2: the keyboard's gated GET (the GIF page), built on [GatedHttp]. */
     override val gatedFetcher: GatedFetcher get() = GatedHttpFetcher
 
-    override val privileged: PrivilegedServices by lazy { PrivilegedServices(this, StoreBridge()) }
+    override val privileged: PrivilegedServices by lazy {
+        PrivilegedServices(this, StoreBridge(), selfUpdateInstalls = { brobata.physiboard.app.shell.AutoUpdater.buildMayInstall(this) })
+    }
 
     override fun onCreate() {
         super.onCreate()

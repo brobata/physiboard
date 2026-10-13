@@ -248,6 +248,7 @@ object SettingsKeys {
     const val RING_BACKLIGHT_PREV = "ring_backlight_prev"
     const val SMART_BACKLIGHT_APPLIED = "smart_backlight_applied"
     const val SPELL_CHECKER_DECIDED = "spell_checker_auto_select_done"
+    const val INSTALL_UPDATES_GRANTED = "install_updates_granted"
     const val SPELL_CHECKER_PREV_CAPTURED = "spell_checker_prev_captured"
     const val SPELL_CHECKER_PREV_SELECTED = "spell_checker_prev_selected"
     const val SPELL_CHECKER_PREV_ENABLED = "spell_checker_prev_enabled"
@@ -904,6 +905,7 @@ object SettingsCodec {
         c.ringBacklightPrev?.let { put(SettingsKeys.RING_BACKLIGHT_PREV, it.toString()) }
         put(SettingsKeys.SMART_BACKLIGHT_APPLIED, c.smartBacklightApplied.toString())
         put(SettingsKeys.SPELL_CHECKER_DECIDED, c.spellCheckerDecided.toString())
+        put(SettingsKeys.INSTALL_UPDATES_GRANTED, c.installUpdatesGranted.toString())
         put(SettingsKeys.SPELL_CHECKER_PREV_CAPTURED, c.spellCheckerPrevCaptured.toString())
         c.spellCheckerPrevSelected?.let { put(SettingsKeys.SPELL_CHECKER_PREV_SELECTED, it) }
         c.spellCheckerPrevEnabled?.let { put(SettingsKeys.SPELL_CHECKER_PREV_ENABLED, it) }
@@ -925,6 +927,7 @@ object SettingsCodec {
             ringBacklightPrev = r.intOrNull(SettingsKeys.RING_BACKLIGHT_PREV),
             smartBacklightApplied = r.bool(SettingsKeys.SMART_BACKLIGHT_APPLIED, d.smartBacklightApplied),
             spellCheckerDecided = r.bool(SettingsKeys.SPELL_CHECKER_DECIDED, d.spellCheckerDecided),
+            installUpdatesGranted = r.bool(SettingsKeys.INSTALL_UPDATES_GRANTED, d.installUpdatesGranted),
             spellCheckerPrevCaptured = r.bool(SettingsKeys.SPELL_CHECKER_PREV_CAPTURED, d.spellCheckerPrevCaptured),
             spellCheckerPrevSelected = r.string(SettingsKeys.SPELL_CHECKER_PREV_SELECTED),
             spellCheckerPrevEnabled = r.string(SettingsKeys.SPELL_CHECKER_PREV_ENABLED),
