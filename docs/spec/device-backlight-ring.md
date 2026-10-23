@@ -111,6 +111,42 @@ to be missing from the tile picker or to fail when added. Lint runs against a ba
 disabled for release builds, so nothing catches it. A rewrite must declare the tile under the
 name it compiles to and verify it on the phone.
 
+### 2.3 Android's screen saver puts the keyboard light out
+
+Found 2026-10-22 on firmware V02.00.04 (facts D35 to D38), from a report on the charger: "my
+screen flashes a clock then goes dark, but I can wake the screen without the keyboard light".
+
+Android's own screen saver (Settings > Display > Screen saver; `Settings.Secure`
+`screensaver_enabled` and `screensaver_activate_on_sleep`, which is "While charging") comes up
+when the screen times out on a charger. On this phone the vendor's framework sends the vendor
+broadcast `agui.action.CLOSE_KEYBOARD_LIGHT` from `DreamService.onAttachedToWindow`, so every
+screen saver puts the keyboard light out the moment it appears, and the vendor controller latches
+"off" until the next `SCREEN_ON` broadcast or key press (D36). A screen saver ended by a touch
+leaves the screen on and the keyboard dark until a key is pressed. The screen saver also replaces
+the screen-off: Android counts dreaming as interactive, so no `SCREEN_OFF` is broadcast, and the
+charging clock (5.11.2), which waits for one, never starts.
+
+PhysiBoard cannot relight the keyboard: the controller takes its cue only from the protected
+`SCREEN_ON` broadcast and from hardware key events, and the master switch is read by nothing
+that drives the LED (D38). What it does instead:
+
+1. The Smart backlight screen (3.4), when the switch is on and the screen saver runs while
+   charging, shows in the error colour: "! Android's screen saver is set to run while charging.
+   On this phone the screen saver turns the keyboard light off the moment it appears, and nothing
+   turns it back on when a touch ends the screen saver, so the keyboard sits dark with the screen
+   on until you press a key. Turn the screen saver off, or set it to never, under Display > Screen
+   saver." with an **Open screen saver settings** button (`android.settings.DREAM_SETTINGS`,
+   falling back to the Display settings).
+2. The Notification ring screen (5.11.5), when all three clock switches are on and the screen
+   saver runs while charging, shows under the "Stay on while charging" row: "! Android's screen
+   saver is set to run while charging, so it comes up instead of this clock: on the charger the
+   screen never goes off. Turn the screen saver off under Display > Screen saver." with the same
+   button.
+
+Both rows are re-read every time the screen resumes (the user is sent to Android's settings and
+comes straight back). A feature that is off has nothing to be broken, so neither notice shows for
+it. The decision is `AndroidScreenSaver.conflicts` in `:device:titan`; test cases T80 to T82.
+
 ## 3. Smart backlight (always-on timeout)
 
 ### 3.1 What it does
@@ -214,7 +250,9 @@ Layout from the top:
      in small muted text.
 2. Else, if the switch is on (latch false): the device setup card (section 6) is shown inline.
 3. Else (switch off): nothing above the switch.
-4. The switch row (section 3.3).
+4. If the switch is on and Android's screen saver runs while charging: the screen saver notice
+   of 2.3 with its **Open screen saver settings** button.
+5. The switch row (section 3.3).
 
 The readiness signal is deliberately the latch, not live wireless debugging: Android turns
 wireless debugging off across reboots, and the vendor value outlives that. The latch is a
@@ -755,6 +793,10 @@ existing cost and nothing else.
 | `notification_ring_clock` | boolean | false | Draw the clock (5.11.1) on every ring screen | Notification ring | "Show the clock", description "A dim clock and date on the ring's black screen, in the style of an always-on display. The Titan has no true always-on display, so the clock is only there while the ring is. With Show app icons on, the waiting apps appear under the date as small grey icons; never what the notifications say." |
 | `notification_ring_stay_on_charging` | boolean | false | The charging clock (5.11.2); does nothing unless `notification_ring_clock` and `notification_ring_enabled` are on | Notification ring | "Stay on while charging", description "While the phone is plugged in and locked, the clock comes up whenever the screen goes off and keeps the screen on, at its lowest brightness, until you unplug, unlock, touch the screen or press a key. Press power while it shows and it stays off until you next wake the phone."; greyed out with the note "Needs Show the clock." while the clock is off |
 
+When all three switches are on and Android's screen saver runs while charging, the screen saver
+notice of 2.3 (its charging-clock wording) follows the "Stay on while charging" row with its
+**Open screen saver settings** button: the screen saver takes the screen-off this clock waits for.
+
 Both rows sit in a "Clock" section between "Behaviour" and "Colour" (5.10). With the clock on,
 "Try it" reads "Shows the ring and the clock for a few seconds with PhysiBoard's own icon. Lock
 the phone first to see it the way it will really look." and the demo shows the clock (5.7.6;
@@ -926,6 +968,10 @@ the phone).
 | D32 | Per-app display density is impossible on Android: `wm density` is global only, the game downscale command refuses non-game apps, and a virtual display with its own density can host only the calling app. The only fake (switch global density on app focus) is too slow through a broker whose every call takes seconds. Verified 2026-08-24. | NOTES |
 | D33 | Notification-class vibration is muted when the system's notification vibration is off; dictation cues therefore use plain vibration. | CHANGES 1.0.5 |
 | D34 | Screen density on this phone pays off unusually: the screen is short, so every step down buys another line, and no space goes back to a soft keyboard. The density change is bounded to 0.6 x to 1.4 x of the physical density and auto-reverts after 15 s unless confirmed. | density source comment; CHANGES 1.1.0 (details in the toolbox spec) |
+| D35 | The vendor's `framework.jar` sends `agui.action.CLOSE_KEYBOARD_LIGHT` from `android.service.dreams.DreamService.onAttachedToWindow`, so every screen saver (and SystemUI's doze dream) puts the keyboard light out as it appears. Seen in logcat as `ActivityManager: Sending non-protected broadcast agui.action.CLOSE_KEYBOARD_LIGHT from system ...:com.android.deskclock/1000` 0.2 s after `PowerManagerService: Dreaming...`. | V02.00.04 framework.jar classes3.dex, decompiled 2026-10-22; logcat 2026-10-22 22:38:53 and 22:40:17 |
+| D36 | `com.agui.server.functional.KeyboardLightController` (services.jar): `SCREEN_OFF`, `ACTION_SHUTDOWN` and `CLOSE_KEYBOARD_LIGHT` set a latch `mKeyboardLightPowerOff` and write 0 to the sysfs node; only `SCREEN_ON` (500 ms later, if the display is on and the vendor timeout is not "0") and a hardware key press (`pressKeyToPowerOn`, called from `AguiKeyboardShortcut.keyboardShortcutFunc`) clear the latch and relight. A dream ending with the screen still on does neither, since Android counts dreaming as interactive and broadcasts no `SCREEN_ON`. | decompiled 2026-10-22 |
+| D37 | The same controller's "auto" mode (vendor store `keyboard_led_auto_switch` = 1, mirrored in `Settings.Global`) sets the LED level from the ambient light sensor as `clamp(lux / 10, 1, 100)`, re-evaluated at each sensor change and after each key press: in a dark room (lux under 10) the keyboard sits at level 1 of 100. With auto off the level is the fixed `keyboard_led_brightness` (default 50). Inferred from the code; the level on the real keys is unverified. | decompiled 2026-10-22 |
+| D38 | On V02.00.04 nothing that drives the LED reads `agui_keyboard_background_light`: the controller writes it to 1 at every boot, and the only reader found is the Settings app's `com.agui.settings.display.KeyboardBacklightController`, which uses 1 as "this phone has a keyboard LED" to show the Keyboard backlight preference. The vendor's own off switch is the vendor-store timeout `keyboard_brightness_timeout` = "0" (the controller then never lights the LED). If this holds on the phone, the ring's keyboard-dark write (5.8) is inert; to verify by hand: `settings put global agui_keyboard_background_light 0`, screen off, power key, does the keyboard light? | decompiled services.jar, framework.jar, MtkSettings, MtkSystemUI and every Agui apk, 2026-10-22; contradicts the 2.x note in D14 |
 
 ## 8. Reset device settings to stock (the parts owned here)
 
@@ -979,6 +1025,8 @@ Reset does not revoke WRITE_SECURE_SETTINGS, POST_NOTIFICATION, or the ring's ke
 | Unplugged while the charging clock shows | Keep-screen-on released at once, brightness stays at the floor; the phone's timeout ends it | Black to black |
 | A ring launch the system declines | After 15 s the next notification starts a new ring | Before 3.4 the session stayed "showing" and swallowed every later ring until the process restarted |
 | First-run defaults stamp | `smart_backlight_enabled` true, `notification_ring_enabled` true, `notification_ring_minutes` 2, written once per install when not already chosen | Maintainer's dialed-in config |
+| Android's screen saver set to "While charging"; screen times out on the charger | A clock flashes (Android's deskclock screen saver), the keyboard light goes out at once, and a touch brings the screen back with the keyboard still dark until a key is pressed; the charging clock never starts | D35, D36: the vendor framework puts the light out for every screen saver and relights only at SCREEN_ON or a key; dreaming is interactive, so no SCREEN_OFF. PhysiBoard cannot relight it; it names the conflict (2.3) |
+| Dark room with the vendor's keyboard LED auto brightness on | The keyboard sits at level 1 of 100 and can read as off | D37; the vendor's Keyboard LED settings own the switch, not PhysiBoard |
 
 ## 10. Test cases
 
@@ -1030,6 +1078,9 @@ Each row is a JVM-encodable check. "switch" means `agui_keyboard_background_ligh
 | T42 | Ring receives source B while showing A; then A removed | colour B, icons [A, B] then [B]; ring still up |
 | T43 | Ring showing A; A removed | ring finishes |
 | T44 | Four distinct packages added | icons show the last 3 |
+| T80 | `screensaver_enabled` and `screensaver_activate_on_sleep` in every combination | runs while charging only with both set |
+| T81 | Screen saver while charging; Smart backlight on, clock off; both on; clock on only | keyboard-light conflict; both, keyboard first; charging-clock conflict |
+| T82 | Screen saver not while charging with both features on; while charging with neither | no conflict either way |
 
 ## 11. Keep / Drop for 3.0
 

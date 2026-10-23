@@ -51,14 +51,19 @@ import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.MinTouchTarget
 import brobata.physiboard.app.settings.ui.RowList
+import brobata.physiboard.app.settings.ui.ScreenSaverConflictNotice
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.app.settings.ui.WideDialogProperties
+import brobata.physiboard.app.settings.ui.rememberScreenSaverRunsWhileCharging
 import brobata.physiboard.app.settings.ui.wideDialog
 import brobata.physiboard.core.settings.RingBrightness
 import brobata.physiboard.device.privileged.broker.BrokerVerdict
+import brobata.physiboard.device.titan.AndroidScreenSaver
+import brobata.physiboard.device.titan.Nightstand
+import brobata.physiboard.device.titan.ScreenSaverConflict
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -86,6 +91,12 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
     // spec broker-privileged-toolbox.md SS5.2: a screen showing a verdict polls for it.
     WatchBrokerVerdict(privileged)
     val verdict by privileged.broker.verdict.collectAsState()
+    // spec: device-backlight-ring.md SS2.3, SS5.11.5: Android's own screen saver takes the screen-off the clock waits for.
+    val screenSaverConflicts = AndroidScreenSaver.conflicts(
+        runsWhileCharging = rememberScreenSaverRunsWhileCharging(),
+        smartBacklightEnabled = false,
+        chargingClockOn = Nightstand.isEnabled(device.ringEnabled, device.ringClock, device.ringStayOnCharging),
+    )
 
     LaunchedEffect(Unit) {
         listenerGranted = privileged.permissions.isNotificationListenerGranted()
@@ -253,6 +264,9 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
                     enabled = device.ringClock,
                     onCheckedChange = { checked -> controller.update { it.copy(device = it.device.copy(ringStayOnCharging = checked)) } },
                 )
+            }
+            if (ScreenSaverConflict.CHARGING_CLOCK in screenSaverConflicts) {
+                item { ScreenSaverConflictNotice(ScreenSaverConflict.CHARGING_CLOCK) }
             }
             header("Colour")
             item {

@@ -23,10 +23,14 @@ import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.Routes
+import brobata.physiboard.app.settings.ui.ScreenSaverConflictNotice
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.app.settings.ui.rememberScreenSaverRunsWhileCharging
 import brobata.physiboard.device.privileged.PrivilegedStep
 import brobata.physiboard.device.privileged.broker.BrokerVerdict
+import brobata.physiboard.device.titan.AndroidScreenSaver
+import brobata.physiboard.device.titan.ScreenSaverConflict
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -53,6 +57,12 @@ fun SmartBacklightScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
     val latch = settings.captures.smartBacklightApplied
     WatchBrokerVerdict(privileged)
     val blocker = brokerBlockerState(privileged)
+    // spec: device-backlight-ring.md SS2.3, SS3.4: Android's screen saver puts the keyboard light out and leaves it out.
+    val screenSaverConflicts = AndroidScreenSaver.conflicts(
+        runsWhileCharging = rememberScreenSaverRunsWhileCharging(),
+        smartBacklightEnabled = enabled,
+        chargingClockOn = false,
+    )
 
     LaunchedEffect(enabled, latch, verdict) {
         while (true) {
@@ -128,6 +138,9 @@ fun SmartBacklightScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
                         else -> Unit
                     }
                 }
+            }
+            if (ScreenSaverConflict.KEYBOARD_LIGHT in screenSaverConflicts) {
+                item { ScreenSaverConflictNotice(ScreenSaverConflict.KEYBOARD_LIGHT) }
             }
             item {
                 SwitchRow(
