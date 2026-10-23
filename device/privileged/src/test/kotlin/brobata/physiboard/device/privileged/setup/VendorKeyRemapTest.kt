@@ -92,7 +92,10 @@ class SideKeyAssistantRemapTest {
         )
         val shell = FakeShell().apply {
             responses[line] = ShellResult.Ok("")
-            onLine = { settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName) }
+            onLine = {
+                settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+                settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.AssistantTriggerActivity")
+            }
         }
         val remap = SideKeyAssistantRemap(shell, settings, store, identity)
 
@@ -100,6 +103,40 @@ class SideKeyAssistantRemapTest {
         val captures = store.snapshot().captures
         assertTrue(captures.sideKeyOriginalCaptured)
         assertEquals("com.google.android.googlequicksearchbox", captures.sideKeyOriginalPackage)
+        assertTrue(remap.isBoundToThisApp(setOf("brobata.physiboard.AssistantTriggerActivity")))
+    }
+
+    @Test
+    fun `a row naming a class this build does not serve is not bound, even with PhysiBoard's package`() {
+        // The maintainer's phone on 2026-10-22: the row the 2.x line wrote, which 3.0.0 to 3.4.0 did
+        // not declare. The vendor's long press fired its haptic and then failed to start the class.
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+        settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.inputmethod.AssistantTriggerActivity")
+        val remap = SideKeyAssistantRemap(FakeShell(), settings, store, identity)
+
+        assertFalse(remap.isBoundToThisApp(setOf("brobata.physiboard.ime.AssistantTriggerActivity")))
+        assertTrue(remap.isBoundToThisApp(setOf("brobata.physiboard.ime.AssistantTriggerActivity", "brobata.physiboard.inputmethod.AssistantTriggerActivity")))
+    }
+
+    @Test
+    fun `a row with another package is not bound whatever the activity says`() {
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, "com.google.android.googlequicksearchbox")
+        settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.ime.AssistantTriggerActivity")
+        assertFalse(SideKeyAssistantRemap(FakeShell(), settings, store, identity).isBoundToThisApp(setOf("brobata.physiboard.ime.AssistantTriggerActivity")))
+    }
+
+    @Test
+    fun `bind whose read-back shows the activity row unchanged reports failure`() {
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+        settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.inputmethod.AssistantTriggerActivity")
+        val shell = FakeShell().apply { onLine = { } }
+        val line = ShellLines.joined(
+            ShellLines.systemPut(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName),
+            ShellLines.systemPut(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.ime.AssistantTriggerActivity"),
+            ShellLines.systemPut(VendorKeyRows.SIDE_KEY_SHORTCUT_ENABLE, "1"),
+        )
+        shell.responses[line] = ShellResult.Ok("")
+        assertEquals(RevertOutcome.FAILED, SideKeyAssistantRemap(shell, settings, store, identity).bind("brobata.physiboard.ime.AssistantTriggerActivity"))
     }
 
     @Test

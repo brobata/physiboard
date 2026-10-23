@@ -30,6 +30,7 @@ import brobata.physiboard.core.settings.DictationPrefs
 import brobata.physiboard.core.settings.SilenceSeconds
 import brobata.physiboard.device.privileged.setup.RevertOutcome
 import brobata.physiboard.ime.AssistantTriggerActivity
+import brobata.physiboard.ime.AssistantTriggerNames
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -38,7 +39,8 @@ import kotlinx.coroutines.launch
  * binds and unbinds the vendor's `func1_long_press_*` slot through `:device:privileged`'s
  * `SideKeyAssistantRemap` (dictation.md SS11.3, broker-privileged-toolbox.md SS9), pointing it at
  * [AssistantTriggerActivity]. spec SS11.3: "does not trust `side_key_assistant`: on opening it
- * reads the two slot keys and shows 'on' only when they point at PhysiBoard, correcting the
+ * reads the two slot keys and shows 'on' only when the package row is PhysiBoard's and the
+ * activity row is a name this build serves" ([AssistantTriggerNames.SERVED]), "correcting the
  * stored flag if they differ."
  */
 @Composable
@@ -53,12 +55,12 @@ fun VoiceScreen(onBack: () -> Unit) {
     val application = context.applicationContext as PhysiBoardApplication
     val sideKeyRemap = application.privileged.sideKeyAssistantRemap
     val scope = rememberCoroutineScope()
-    var sideKeyBound by remember { mutableStateOf(sideKeyRemap.isBoundToThisApp()) }
+    var sideKeyBound by remember { mutableStateOf(sideKeyRemap.isBoundToThisApp(AssistantTriggerNames.SERVED)) }
     var sideKeyWorking by remember { mutableStateOf(false) }
     var sideKeyMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        val actuallyBound = sideKeyRemap.isBoundToThisApp()
+        val actuallyBound = sideKeyRemap.isBoundToThisApp(AssistantTriggerNames.SERVED)
         sideKeyBound = actuallyBound
         if (actuallyBound != dictation.sideKeyAssistant) set { p -> p.copy(sideKeyAssistant = actuallyBound) }
     }
@@ -145,7 +147,7 @@ fun VoiceScreen(onBack: () -> Unit) {
                             } else {
                                 sideKeyRemap.unbind()
                             }
-                            val nowBound = sideKeyRemap.isBoundToThisApp()
+                            val nowBound = sideKeyRemap.isBoundToThisApp(AssistantTriggerNames.SERVED)
                             sideKeyBound = nowBound
                             set { p -> p.copy(sideKeyAssistant = nowBound) }
                             sideKeyMessage = sideKeyOutcomeMessage(outcome)

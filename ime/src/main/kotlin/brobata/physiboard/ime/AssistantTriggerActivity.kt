@@ -19,7 +19,9 @@ import kotlinx.coroutines.launch
  * `SideKeyAssistantRemap.bind` (`:device:privileged`) points that slot's long press at this
  * activity, which launches the assistant per SS11.2 and finishes at once: run in its own task and
  * drawing no preview window (see the manifest entry) is what stops PhysiBoard's own screens
- * flashing on the way through (D12).
+ * flashing on the way through (D12). The names the slot may carry are [AssistantTriggerNames]:
+ * the vendor row outlives every update, so this class's name, and the 2.x name an alias serves,
+ * are a contract (dictation.md SS11.3).
  *
  * The vendor starts this directly, with no [PhysiBoardInputMethodService] session necessarily
  * running, so `assistant_action` is read through the same [SettingsSourceOwner] seam the IME

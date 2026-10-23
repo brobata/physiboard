@@ -8,6 +8,11 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
 - Paired Titan tools now also allow PhysiBoard to install its own updates, so they arrive with
   no tap. Without Titan tools, the setup's extras page offers the same switch ("Updates on their
   own").
+- Holding the orange side key opens the assistant again. The phone's own setting for that key
+  still named the trampoline by the name the 2.x line had given it, which 3.0 to 3.4 no longer
+  declared, so the hold gave a short vibration and nothing more. That name is served again, and
+  "Orange key opens the assistant" now reads "on" only when the key points at something this
+  build can open.
 
 ## 3.4.0 (2026-10-11)
 

@@ -56,4 +56,13 @@ object ScanCodes {
 object VendorKeyCodes {
     const val SWIPE_TO_DELETE_PRIMARY = 322
     const val SWIPE_TO_DELETE_SECONDARY = 404
+
+    /**
+     * The orange side key ([ScanCodes.ORANGE_SIDE_KEY]): `/system/usr/keylayout/Generic.kl` maps
+     * `key 249 FUNC1`, and the vendor's key handler logs it as `keyCode=401` (2026-10-22, Android
+     * 16). No [KeyId] for it, ever: the vendor owns the key (keys-and-modifiers.md SS17), and the
+     * accessibility relay, which sees it before the vendor's handler does, passes an unrecognised
+     * key untouched (SS15.1).
+     */
+    const val ORANGE_SIDE_KEY = 401
 }

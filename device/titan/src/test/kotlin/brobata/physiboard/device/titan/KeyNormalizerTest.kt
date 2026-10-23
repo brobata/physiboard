@@ -99,6 +99,16 @@ class KeyNormalizerTest {
     }
 
     @Test
+    fun `the orange side key, FUNC1 keycode 401 on scancode 249, is nobody's and produces no stroke`() {
+        // keys-and-modifiers.md SS17 and SS15.1: the vendor owns the key; the accessibility relay sees
+        // it first and must pass it on untouched, and a null stroke is what makes it pass the key on.
+        val stroke = KeyNormalizer.normalize(
+            keyCode = VendorKeyCodes.ORANGE_SIDE_KEY, scanCode = ScanCodes.ORANGE_SIDE_KEY, action = 0, repeatCount = 0, metaState = 0, deviceId = 7, eventTimeMs = 0,
+        )
+        assertNull(stroke)
+    }
+
+    @Test
     fun `a keycode with no KeyId mapping produces no stroke`() {
         val stroke = KeyNormalizer.normalize(keyCode = 999_999, scanCode = 0, action = 0, repeatCount = 0, metaState = 0, deviceId = 1, eventTimeMs = 0)
         assertNull(stroke)
