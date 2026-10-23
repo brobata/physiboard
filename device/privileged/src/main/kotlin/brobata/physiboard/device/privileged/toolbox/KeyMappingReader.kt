@@ -16,7 +16,8 @@ import brobata.physiboard.device.privileged.setup.VendorKeyRows
  * spec: broker-privileged-toolbox.md SS15.
  */
 class KeyMappingReader(private val settings: SystemSettingsAccess, private val identity: AppIdentity) {
-    fun read(current: Settings): List<KeyMappingRow> {
+    /** [ownAssistantActivities]: the trampoline names the app's manifest serves (dictation.md SS11.3), which only the app knows. */
+    fun read(current: Settings, ownAssistantActivities: Set<String>): List<KeyMappingRow> {
         val trackpad = current.trackpad
         val dictation = current.dictation
         val snapshot = KeyMappingSnapshot(
@@ -31,6 +32,7 @@ class KeyMappingReader(private val settings: SystemSettingsAccess, private val i
             orangeLongPressPackage = settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE),
             orangeLongPressActivity = settings.getString(VendorKeyRows.SIDE_KEY_ACTIVITY),
             ownPackageName = identity.packageName,
+            ownAssistantActivities = ownAssistantActivities,
             spaceTrackpadTriggerOn = trackpad.enabled && trackpad.triggerKey == TriggerKey.SPACE,
             shiftRightRemapped = settings.getInt(SHIFT_RIGHT_ENABLE) == 1,
             homeRemapped = settings.getInt(HOME_ENABLE) == 1,

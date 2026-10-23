@@ -70,7 +70,8 @@ class FnCtrlRemap(
  * PhysiBoard's own trigger and putting it back. [assistantTriggerActivity] is the fully-qualified
  * class name of the app's own trampoline activity; that activity is dictation.md's own feature
  * and does not exist in this module, so [bind] only renders and sends the three-key write a
- * caller who owns that activity can drive. Nothing in this module calls [bind] yet.
+ * caller who owns that activity can drive, and [isBoundToThisApp] is told which names that
+ * caller serves. Nothing in this module calls [bind] itself.
  *
  * spec: broker-privileged-toolbox.md SS9 (`func1_long_press_package`, `func1_long_press_activity`,
  * `func1_shortcut_key_enable`), SS10 step 4; dictation.md SS11.3.
@@ -81,8 +82,17 @@ class SideKeyAssistantRemap(
     private val store: DeviceStateStore,
     private val identity: AppIdentity,
 ) {
-    /** spec: dictation.md SS11.3 ("shows 'on' only when they point at PhysiBoard"). */
-    fun isBoundToThisApp(): Boolean = settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE) == identity.packageName
+    /**
+     * spec: dictation.md SS11.3 ("shows 'on' only when the package row is PhysiBoard's and the
+     * activity row is a name this build serves"). [servedActivities] are the trampoline's class
+     * names the caller's manifest declares (its own and any alias). The package alone is not
+     * enough: a row left by an older build can name a class this one no longer has, and the
+     * vendor's start of it fails with nothing to show for it but the long press's haptic. Such a
+     * row must read as unbound so the switch offers to write it again.
+     */
+    fun isBoundToThisApp(servedActivities: Set<String>): Boolean =
+        settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE) == identity.packageName &&
+            settings.getString(VendorKeyRows.SIDE_KEY_ACTIVITY) in servedActivities
 
     /** spec: dictation.md SS11.3 ("Binding writes three `Settings.System` keys..."). */
     fun bind(assistantTriggerActivity: String): RevertOutcome {
@@ -94,13 +104,17 @@ class SideKeyAssistantRemap(
             ShellLines.systemPut(VendorKeyRows.SIDE_KEY_SHORTCUT_ENABLE, "1"),
         )
         if (!shell.run(line).isOk) return RevertOutcome.FAILED
-        return if (isBoundToThisApp()) RevertOutcome.SUCCESS else RevertOutcome.FAILED
+        return if (isBoundToThisApp(setOf(assistantTriggerActivity))) RevertOutcome.SUCCESS else RevertOutcome.FAILED
     }
 
-    /** spec: dictation.md SS11.3 ("Unbinding restores the captured pair and clears the capture"); same shape as [ResetToStock]'s side-key revert. */
+    /**
+     * spec: dictation.md SS11.3 ("Unbinding restores the captured pair and clears the capture; with
+     * nothing captured and the slot still PhysiBoard's, the vendor's own unassigned pair"); same
+     * shape as [ResetToStock]'s side-key revert, through [RevertValues.sideKeyTargets].
+     */
     fun unbind(): RevertOutcome {
         val captures = store.snapshot().captures
-        val targets = RevertValues.sideKeyTargets(captures)
+        val targets = RevertValues.sideKeyTargets(captures, settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE), identity.packageName)
         if (targets == null) {
             store.updateCaptures { it.copy(sideKeyOriginalCaptured = false, sideKeyOriginalPackage = "", sideKeyOriginalActivity = "") }
             return RevertOutcome.SUCCESS
@@ -116,13 +130,19 @@ class SideKeyAssistantRemap(
         return RevertOutcome.SUCCESS
     }
 
-    /** spec: dictation.md SS11.3 ("captured once... but only if both values are well-formed... Any value that fails is neither recorded nor ever written"). */
+    /**
+     * spec: dictation.md SS11.3 ("captured once... but only if both values are well-formed... Any
+     * value that fails is neither recorded nor ever written"; "never PhysiBoard's own row": a slot
+     * an older build left pointing at this app is not an original, and recording it would make
+     * every later unbind write PhysiBoard back).
+     */
     private fun captureIfNeeded() {
         val captures = store.snapshot().captures
         if (captures.sideKeyOriginalCaptured) return
         val currentPackage = settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE)
         val currentActivity = settings.getString(VendorKeyRows.SIDE_KEY_ACTIVITY)
         if (currentPackage == null || currentActivity == null) return
+        if (currentPackage == identity.packageName) return
         if (!SideKeyValue.isSafe(currentPackage) || !SideKeyValue.isSafe(currentActivity)) return
         store.updateCaptures { it.copy(sideKeyOriginalCaptured = true, sideKeyOriginalPackage = currentPackage, sideKeyOriginalActivity = currentActivity) }
     }

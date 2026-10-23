@@ -901,15 +901,32 @@ settings, or a paired wireless-debugging session." and opens the system "modify 
 page for the package; when that page returns, the toggle the user asked for is retried once
 automatically. A write failure toasts "Could not change the side key setting."
 
-Unbinding restores the captured pair and clears the capture; with nothing captured it is a no-op
-success (the slot is left as is rather than guessed); with a malformed capture the capture is
-dropped and nothing is written. "Reset device settings to stock" (Advanced) also turns
-`side_key_assistant` off and restores the slot. The system-level change survives an uninstall.
+Unbinding restores the captured pair and clears the capture. With nothing to restore (never
+captured, or a malformed capture, which is dropped) and the slot still PhysiBoard's, the vendor's
+own unassigned pair is written, `com.agui.shortcutsettings` / `NoOperate` (what its key handler
+logs for a slot with nothing assigned), so the switch really turns off and an uninstall leaves no
+key that vibrates and opens nothing (D27); with nothing to restore and the slot someone else's it
+is a no-op success (left as is rather than guessed). The capture never records PhysiBoard's own
+row: a slot an older build left pointing at this app is not an original, and recording it would
+make every later unbind write PhysiBoard back. "Reset device settings to stock" (Advanced) also
+turns `side_key_assistant` off and restores the slot by the same rule. The system-level change
+survives an uninstall.
 
 The Voice screen's switch does not trust `side_key_assistant`: on opening it reads the two slot
-keys and shows "on" only when they point at PhysiBoard, correcting the stored flag if they
-differ (a system update or another app can take the slot back silently, D13). The first-run
-defaults no longer set `side_key_assistant` (section 17).
+keys and shows "on" only when the package row is PhysiBoard's and the activity row is a name
+this build serves (below), correcting the stored flag if they differ (a system update or another
+app can take the slot back silently, D13; a row left by an older build can name a class this one
+no longer has, D27). The first-run defaults no longer set `side_key_assistant` (section 17).
+
+**The trampoline's name is a contract.** The row is written once and outlives every update of the
+app, and even an uninstall. A build that stops declaring a name the row carries breaks the key
+with nothing to show for it: the vendor's long press still fires its haptic, then its start of
+the missing class fails (D27). So every name ever written stays declared, exported: the
+activity's own, `brobata.physiboard.ime.AssistantTriggerActivity`, and the name the 2.x line
+wrote, `brobata.physiboard.inputmethod.AssistantTriggerActivity`, served by an exported
+`activity-alias` of the same activity. `:ime` `AssistantTriggerNames` lists them; its test reads
+the manifest, so a rename or a dropped alias fails the build. Binding writes the activity's own
+name; a row carrying either name reads as bound.
 
 ## 12. Screens
 
@@ -1007,6 +1024,7 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | D24 | 2026-10-07 17:21, PersaLink, the first build sending the lengths as ints: `applicationDomain: AMBIENT_CONTINUOUS`; one request from 17.940 ran across every pause with `onStartOfSpeech`/`onEndOfSpeech` pairs and `#handlePartialResult` throughout; finals created with text at 30.643 (131 bytes), 37.185 (60) and 48.987 (128), of which only the first and third reached `#handleFinalResult`/`#onResults` (31.027, 49.024; a third delivery at 52.043); `onSegmentResults` never. The keyboard's `StartListening` after the 31.027 result produced no `onStartListening` at all (ignored by the service) but had set the latch. Messages, 17:24 (screenshot): mid-sentence capitals at every result start, the last sentence re-inserted into the compose box after a send, the microphone indicator still on. | scratchpad `fourth.log` lines 36070 to 40857; the screenshot |
 | D25 | 2026-10-07 19:58, Messages, build ec0b3a2b (trace `PhysiBoardDictationTrace`): session 2 composed partials only (no finished segment); Bugle `Preparing to send DraftData` at 21.629 and `Draft text field onTextChanged ... null, null` at 21.661 (the box emptied) with no keyboard reaction, since the cleared rule counted finished words only; Fn at 22.934 (`StopListening`); the stop's result at 22.973 `segment len=47 ... ops=[compose48,finish]` typed the sent words into the empty box. At 19:59:01.735 a stop press, the session ended at 01.802, and a new session started at 02.341 from the same press's trailing repeats (a repeat gap wide enough to read as a new press once the session was gone). | scratchpad `trace5.log`, `fifth.log` |
 | D26 | AOSP's audio policy routes `AUDIO_SOURCE_VOICE_RECOGNITION` to a Bluetooth SCO microphone only while the communication route is SCO (`AudioDeviceBroker` sets the record force-use with it); otherwise the built-in microphone, a wired or USB headset. Telecom's ringtone and call focus is transient. `AudioRecordingConfiguration` for another app's recording keeps its input device and `isClientSilenced` while anonymising the app. Not yet observed in the truck: the first in-car trace settles which microphone the recognizer gets there and how Android Auto treats the keyboard's focus. | Android reference (`AudioManager`, `AudioRecordingConfiguration`, `AudioDeviceInfo`); AOSP `AudioDeviceBroker`, audio policy `Engine::getDeviceForInputSource` |
+| D27 | 2026-10-22, release 3.4.0 on the maintainer's Titan 2 (Android 16): `settings get system func1_long_press_activity` = `brobata.physiboard.inputmethod.AssistantTriggerActivity`, the 2.x line's class, with the package row `brobata.physiboard`; `cmd package resolve-activity` on that component: "No activity found". A long press at 22:38:03 logged `A85ShortcutFunction: shortcutInterceptKeyInternal >> prefix = func1_ keyCode=401`, `openApp pkg=brobata.physiboard cls=brobata.physiboard.inputmethod.AssistantTriggerActivity`, `ActivityTaskManager: START ... cmp=brobata.physiboard/.inputmethod.AssistantTriggerActivity ... from uid 1000 result code=-92`, and `dumpsys vibrator_manager` a CLICK from uid 1000 at 22:38:03.937: the "short vibrate, then nothing" the maintainer reported, inside and outside text fields alike. `Generic.kl` maps `key 249 FUNC1`; `KeyNormalizer` has no `KeyId` for 401, so the accessibility relay passes the key. | the phone's settings, logcat and dumpsys, read-only |
 | D22 | 2026-10-07 16:30, PersaLink (Chrome WebAPK, strip collapsed to a 0 by 0 window, `InputDispatcher ... info.frame: (2, 1200, 2, 1200)`): at each PhysiBoard request (16:30:27.548, 37.330, 48.977, 58.759) audioserver logged `App op 27 missing, silencing record AttributionSourceState{... packageName: com.google.android.tts ... next: ...}` within ~15 ms, the engine heard nothing, and `appops get brobata.physiboard.dev3 RECORD_AUDIO` showed `Uid mode: foreground` with a fresh `rejectTime`. `dumpsys input_method` read `mVisibleBound=false`, `dumpsys activity processes` `curProcState=16 curCapability=--------` with one IME connection (`!FG IMPB SLTA !VIS`, flags 0x40880005); later, with Chrome having shown the keyboard, `mVisibleBound=true`, `curProcState=5` and a second connection `FGS LACT UI CAPS` (flags 0x2c001001). The 16:28:43 session in Messages (Messages had sent `SHOW_SOFT_INPUT fromUser true`) was not silenced and reached `#onResults withSpeech: true`; the 16:31:11 session was Chrome's own Web Speech, not the keyboard's. | scratchpad `dictation-evidence-2.log`; the read-only `dumpsys`/`appops` queries of the same day; AOSP `InputMethodBindingController.IME_VISIBLE_BIND_FLAGS`, `InputMethodManagerService.showCurrentInputLocked`/`hideCurrentInputLocked`, `AppOpsUidStateTrackerImpl.evalModeInternal` |
 
 ## 15. Edge cases, quirks, known bugs

@@ -5,7 +5,9 @@ package brobata.physiboard.core.toolbox
  * (`Settings.System`, no broker) by `:device:privileged` and handed here as data so the per-row
  * text is a pure function. [ownPackageName] is never a literal: the sideload build has another
  * applicationId, so "hold: the assistant, listening" must compare against the running app's own
- * identity, not a hard-coded string.
+ * identity, not a hard-coded string. [ownAssistantActivities] are the trampoline's names this
+ * build serves (dictation.md SS11.3): a slot naming this app but a class it no longer has opens
+ * nothing, and must not be described as the assistant.
  *
  * spec: broker-privileged-toolbox.md SS15.
  */
@@ -21,6 +23,7 @@ data class KeyMappingSnapshot(
     val orangeLongPressPackage: String?,
     val orangeLongPressActivity: String?,
     val ownPackageName: String,
+    val ownAssistantActivities: Set<String>,
     val spaceTrackpadTriggerOn: Boolean,
     val shiftRightRemapped: Boolean,
     val homeRemapped: Boolean,
@@ -44,6 +47,8 @@ data class KeyMappingRow(val label: String, val hardwareText: String, val bindin
 object KeyMappingInventory {
     const val ROUTE_FN_LAYER = "fn_layer"
     const val ROUTE_VOICE = "voice"
+    /** The slot names this app but a trampoline this build does not declare: the hold vibrates and opens nothing (dictation.md D27). */
+    const val HOLD_OPENS_NOTHING_OF_OURS = "hold: nothing opens (an older PhysiBoard name)"
     const val ROUTE_SCREEN_TRACKPAD = "screen_trackpad"
 
     /** The segment after the last dot, spec's "activity values are shown as the segment after the last dot". */
@@ -93,7 +98,8 @@ object KeyMappingInventory {
             tail(s.orangeDoublePressActivity)?.let { add("double: $it") }
             add(
                 when {
-                    s.orangeLongPressPackage == s.ownPackageName -> "hold: the assistant, listening"
+                    s.orangeLongPressPackage == s.ownPackageName && s.orangeLongPressActivity in s.ownAssistantActivities -> "hold: the assistant, listening"
+                    s.orangeLongPressPackage == s.ownPackageName -> HOLD_OPENS_NOTHING_OF_OURS
                     tail(s.orangeLongPressActivity) != null -> "hold: ${tail(s.orangeLongPressActivity)}"
                     else -> "hold: nothing"
                 },

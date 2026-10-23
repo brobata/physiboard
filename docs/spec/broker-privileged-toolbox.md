@@ -434,8 +434,10 @@ never throwing:
    when never captured or unset). Direct if `WRITE_SECURE_SETTINGS` is held, else broker, else
    NEEDS_PERMISSION. Capture cleared on success.
 4. **Orange side key**: set `side_key_assistant` false, then restore the captured long-press
-   package and activity (nothing captured: SUCCESS without writing; malformed capture: dropped,
-   SUCCESS). Direct with `WRITE_SETTINGS`, else broker, else NEEDS_PERMISSION.
+   package and activity (nothing captured, or a malformed capture dropped: the vendor's own
+   unassigned pair `com.agui.shortcutsettings` / `NoOperate` when the slot is still the app's,
+   else SUCCESS without writing; dictation.md SS11.3). Direct with `WRITE_SETTINGS`, else broker,
+   else NEEDS_PERMISSION.
 5. **Notification ring**: set `notification_ring_enabled` false. If neither notification access
    nor the full-screen permission is held: SUCCESS. Else, with no key stored:
    NEEDS_PERMISSION; otherwise send
@@ -713,7 +715,7 @@ type; rows with an editor show an arrow and navigate:
 |---|---|---|---|
 | Fn | "scancode 251 (FUNC3)" | "Acts as Ctrl" when `fn_programmable_key_enable` = 1 and `fn_programmable_key_function` = 1, else "Fn layer"; plus " · hold to dictate" if Fn long-press speech is on; plus " · long press opens <activity tail>" from `fn_long_press_activity` when not remapped | Fn layer (nav mode) screen |
 | Hold Sym: assistant (the Sym key; labelled for the Voice screen it opens) | "scancode 253 (AGUI_SYM)" | "Symbol and emoji pages"; " · hold for the assistant" if Sym long-press assistant is on; " · hold for the trackpad" if the trackpad is on with Sym as trigger | Voice screen |
-| Orange side key | "ff_key 249" | "tap: <tail of func1_short_press_activity>" · "double: <tail of func1_double_press_activity>" · "hold: the assistant, listening" when `func1_long_press_package` is `brobata.physiboard`, else "hold: <tail of func1_long_press_activity>", else "hold: nothing" | Voice screen |
+| Orange side key | "ff_key 249" | "tap: <tail of func1_short_press_activity>" · "double: <tail of func1_double_press_activity>" · "hold: the assistant, listening" when `func1_long_press_package` is `brobata.physiboard` and `func1_long_press_activity` is a trampoline name this build serves (dictation.md SS11.3), "hold: nothing opens (an older PhysiBoard name)" when the package is the app's but the activity is not, else "hold: <tail of func1_long_press_activity>", else "hold: nothing" | Voice screen |
 | Space | "keyboard matrix, also the fingerprint sensor" | "Space · hold for the trackpad" if the trackpad is on with Space as trigger, else "Space" | Screen trackpad screen |
 | Right Shift | "keyboard matrix" | "Vendor remapping enabled" if `shift_r_programmable_key_enable` = 1 else "Types Shift" | none |
 | Home | "scancode 102" | same rule with `home_programmable_key_enable`, else "Home" | none |
@@ -928,7 +930,7 @@ density range, the animation snapping, and the reset-to-stock outcome aggregatio
 | T49 | side-key safe value? for `com.google.android.apps.bard.MainActivity`, `a$b`, `x; rm`, 257-char string | true, true, false, false |
 | T50 | blocker with key and debugging on | null; with key and debugging off | `wireless_debugging_off`; no key | `not_paired` |
 | T51 | key mapping Fn row with enable=1, function=1, speech on | "Acts as Ctrl · hold to dictate" |
-| T52 | orange key row with package = app and short press `com.x.FooActivity` | "tap: FooActivity · hold: the assistant, listening" |
+| T52 | orange key row with package = app, activity = the served trampoline, and short press `com.x.FooActivity` | "tap: FooActivity · hold: the assistant, listening" |
 
 ## 23. Keep / Drop for 3.0
 

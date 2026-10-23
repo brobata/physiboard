@@ -91,6 +91,16 @@
             android:launchMode="singleInstance"
             android:noHistory="true" />
 
+        <!-- spec dictation.md SS11.3, "The trampoline's name is a contract": the vendor row the 2.x
+             line wrote names this class, and the row outlives every update. A phone carrying it got
+             a haptic and then nothing from 3.0.0 on (the start failed: no such class). The alias
+             serves that name with the same activity. AssistantTriggerNames lists both; its test reads
+             this file. -->
+        <activity-alias
+            android:name="brobata.physiboard.inputmethod.AssistantTriggerActivity"
+            android:targetActivity="brobata.physiboard.ime.AssistantTriggerActivity"
+            android:exported="true" />
+
         <!-- layers-sym-alt.md SS4.7, app-shell.md SS31.6: one-time codes for the Fill page. The
              system binds it only after the user gives this entry notification access in Android's
              settings (BIND_NOTIFICATION_LISTENER_SERVICE means only the system can bind it). It
