@@ -14,6 +14,10 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
   "Orange key opens the assistant" now reads "on" only when the key points at something this
   build can open. Turning it off hands the key back to the phone even when PhysiBoard never
   recorded what it replaced, and the Key mapping screen says the same.
+- Android's screen saver set to "While charging" turns the Titan's keyboard light off and leaves
+  it off when a touch ends the screen saver, and it comes up instead of PhysiBoard's nightstand
+  clock. The Smart backlight and Notification ring screens now say so and open the screen saver
+  setting; PhysiBoard itself cannot relight the keyboard.
 
 ## 3.4.0 (2026-10-11)
 
