@@ -386,16 +386,22 @@ object DictationEngine {
      */
     private fun finishFromResult(rawText: String?, utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
         if (utterance.pending is PendingUtterance.Invalidated) return UtteranceFinisher.NOTHING
-        // The echo of what this session already finished is not part of this utterance (SessionEcho).
-        val text = rawText?.trim()?.let { SessionEcho.strip(it, utterance.finishedThisSession) }?.trim()
+        val raw = rawText?.trim()
         val live = (utterance.pending as? PendingUtterance.Live)?.text
+        // spec SS7.3, D28: the repeat is judged on the result as delivered, before the echo is
+        // stripped. For the session's first utterance the repeat is the whole of what is finished,
+        // strips to nothing, and would otherwise read as a "final without text" that finishes the
+        // next utterance's first partial early.
+        if (!raw.isNullOrBlank() && isRepeat(raw, live, utterance)) return UtteranceFinisher.NOTHING
+        // The echo of what this session already finished is not part of this utterance (SessionEcho).
+        val text = raw?.let { SessionEcho.strip(it, utterance.finishedThisSession) }?.trim()
         // A whitespace-only final carries no words of its own (SS7.3's "final without text").
         if (text.isNullOrBlank()) return live?.let { UtteranceFinisher.finish(it, utterance.context, textSettings) } ?: UtteranceFinisher.NOTHING
         // spec SS7.3, D28: the engine delivering the utterance it has just finalized a second time
         // (a flagged partial, then its final) writes nothing, and leaves a partial of the next
         // utterance composing. A result that is the composing partial's own words is that
         // partial's finish, not a repeat.
-        if (SessionEcho.repeatsTail(text, utterance.finishedThisSession) && (live == null || wordKey(live) != wordKey(text))) return UtteranceFinisher.NOTHING
+        if (isRepeat(text, live, utterance)) return UtteranceFinisher.NOTHING
         // spec SS7.3, D24: a final that is not the composing partial's own finishes that partial
         // first, as its own utterance, instead of replacing its words.
         if (live != null && UtteranceOverlap.isDifferentUtterance(live, text)) {
@@ -405,6 +411,9 @@ object DictationEngine {
         }
         return UtteranceFinisher.finish(text, utterance.context, textSettings)
     }
+
+    private fun isRepeat(text: String, live: String?, utterance: UtteranceState): Boolean =
+        SessionEcho.repeatsTail(text, utterance.finishedThisSession) && (live == null || wordKey(live) != wordKey(text))
 
     /** The state after an utterance finished: context extended, nothing pending, and the finished words remembered for [SessionEcho]. */
     private fun afterFinish(utterance: UtteranceState, finished: UtteranceFinisher.Finished): UtteranceState = UtteranceState(

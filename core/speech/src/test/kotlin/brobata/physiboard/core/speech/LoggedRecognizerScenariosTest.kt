@@ -490,6 +490,22 @@ class LoggedRecognizerScenariosTest {
     }
 
     @Test
+    fun `D28 - the first utterance's repeat after the next utterance started composing leaves that partial alone`() {
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("sounds good"), now = 1_000L)
+        h.send(DictationEvent.SegmentResult("Sounds good."), now = 1_800L)
+        h.send(DictationEvent.PartialResult("I'll"), now = 3_000L)
+        // The repeat is the whole session so far: stripped of the echo it is empty, which must
+        // not read as a "final without text" that finishes "I'll" early (review, 2026-10-22).
+        h.send(DictationEvent.FinalResult("Sounds good."), now = 3_100L)
+        assertEquals("Sounds good. I'll", h.field.text)
+        h.send(DictationEvent.PartialResult("I'll be there at"), now = 3_600L)
+        h.send(DictationEvent.SegmentResult("I'll be there at noon."), now = 5_000L)
+        assertEquals("Sounds good. I'll be there at noon. ", h.field.text)
+        assertEquals(1, h.starts())
+    }
+
+    @Test
     fun `D28 - the engine is asked for its longest session and never for a silence ending, whatever the limit`() {
         for (silence in listOf(0L, 2_500L, 10_000L, 60_000L)) {
             val h = harness(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = silence)).start()
