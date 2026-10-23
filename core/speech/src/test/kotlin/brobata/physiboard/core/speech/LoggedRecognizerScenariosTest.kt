@@ -471,7 +471,21 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.EngineActivity, now = 2_400L)
         h.send(DictationEvent.PartialResult("see you"), now = 4_000L)
         h.send(DictationEvent.SegmentResult("See you then."), now = 5_000L)
-        assertEquals("Sounds good. See you then. ", h.field.text)
+        // The second utterance's repeat is shorter than everything finished (the review of
+        // 2026-10-22): it is the tail of the session's words, and writes nothing too.
+        h.send(DictationEvent.FinalResult("See you then."), now = 5_400L)
+        assertEquals("Sounds good. See you then. ", h.field.text, "the second utterance lands once as well")
+        // And a repeat that arrives after the next utterance has started composing leaves that
+        // partial where it is instead of replacing it (D24's reordered deliveries).
+        h.send(DictationEvent.PartialResult("I'll"), now = 7_000L)
+        h.send(DictationEvent.FinalResult("See you then."), now = 7_100L)
+        assertEquals("Sounds good. See you then. I'll", h.field.text)
+        h.send(DictationEvent.SegmentResult("I'll be there."), now = 8_000L)
+        assertEquals("Sounds good. See you then. I'll be there. ", h.field.text)
+        // A repeat the user actually says, with its own partial first, is new speech.
+        h.send(DictationEvent.PartialResult("I'll be there"), now = 9_000L)
+        h.send(DictationEvent.SegmentResult("I'll be there."), now = 9_800L)
+        assertEquals("Sounds good. See you then. I'll be there. I'll be there. ", h.field.text)
         assertEquals(1, h.starts())
     }
 

@@ -24,6 +24,21 @@ object SessionEcho {
         return said.drop(done.size).joinToString(" ")
     }
 
+    /**
+     * Whether [result] is exactly the last words of [finished], case and punctuation aside: the
+     * engine delivering one utterance a second time (spec SS7.3, D28: Google finalizes an
+     * utterance through a flagged partial and may send its `onResults` for the same words after,
+     * one utterance at a time, D24). [strip] only knows the whole transcript; from the second
+     * utterance on the repeat is shorter than everything finished and would be committed again.
+     */
+    fun repeatsTail(result: String, finished: String): Boolean {
+        val said = words(result)
+        val done = words(finished)
+        if (said.isEmpty() || said.size > done.size) return false
+        val tail = done.subList(done.size - said.size, done.size)
+        return said.indices.all { bare(said[it]).equals(bare(tail[it]), ignoreCase = true) }
+    }
+
     /** [finished] extended by the words of [plainText], the form [strip] compares against. */
     fun extend(finished: String, plainText: String?): String =
         if (plainText.isNullOrBlank()) finished else (words(finished) + words(plainText)).joinToString(" ")

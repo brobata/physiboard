@@ -391,6 +391,11 @@ object DictationEngine {
         val live = (utterance.pending as? PendingUtterance.Live)?.text
         // A whitespace-only final carries no words of its own (SS7.3's "final without text").
         if (text.isNullOrBlank()) return live?.let { UtteranceFinisher.finish(it, utterance.context, textSettings) } ?: UtteranceFinisher.NOTHING
+        // spec SS7.3, D28: the engine delivering the utterance it has just finalized a second time
+        // (a flagged partial, then its final) writes nothing, and leaves a partial of the next
+        // utterance composing. A result that is the composing partial's own words is that
+        // partial's finish, not a repeat.
+        if (SessionEcho.repeatsTail(text, utterance.finishedThisSession) && (live == null || wordKey(live) != wordKey(text))) return UtteranceFinisher.NOTHING
         // spec SS7.3, D24: a final that is not the composing partial's own finishes that partial
         // first, as its own utterance, instead of replacing its words.
         if (live != null && UtteranceOverlap.isDifferentUtterance(live, text)) {

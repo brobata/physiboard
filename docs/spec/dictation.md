@@ -709,10 +709,15 @@ share "my"), the final being plain words (digits or symbols in it are a reformat
 five dollars" to "$25"); a shorter partial, or one that shares more with the final (the engine
 correcting a homophone keeps the rest), is replaced as before.
 
-A late final that is the exact echo of the words already in the field writes nothing (7.2). A
+A late final that is the exact echo of the words already in the field writes nothing (7.2), and
+so does a final that is exactly the **last utterance's words** again (D28: Google finalizes an
+utterance through a flagged partial and may send its `onResults` for the same words after, one
+utterance at a time), unless those words are the composing partial's own, which is that
+partial's finish; a partial of the next utterance already composing is left where it is. A
 re-worded repeat is not treated as an echo: ordinary speech repeats recent words ("add two cups
-of sugar" after "add two cups of flour"), and a send, the case such a late final came from, now
-ends the session on its own (section 3).
+of sugar" after "add two cups of flour"), and a repeat the user says with its own partial first
+is new speech. A send, the case such a late final came from, ends the session on its own
+(section 3).
 
 "Finishing the utterance" with text T:
 
