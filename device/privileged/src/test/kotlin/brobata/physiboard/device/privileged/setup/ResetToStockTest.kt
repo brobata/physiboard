@@ -27,7 +27,8 @@ class ResetToStockTest {
     private val store = InMemoryDeviceStateStore(Settings())
     private val diagnostics = InMemoryDiagnosticsStore()
     private val backlight = KeyboardBacklightController(shell, store, diagnostics, FakeClock(), Executors.newSingleThreadExecutor())
-    private val reset = ResetToStock(shell, permissions, masterSwitch, store, backlight, identity)
+    private val systemSettings = FakeSystemSettingsAccess()
+    private val reset = ResetToStock(shell, permissions, masterSwitch, store, backlight, identity, systemSettings)
 
     private fun captures(transform: (DeviceCaptures) -> DeviceCaptures) = store.update { it.copy(captures = transform(it.captures)) }
 
@@ -183,9 +184,20 @@ class ResetToStockTest {
     }
 
     @Test
-    fun `side key revert with nothing captured succeeds without writing`() {
+    fun `side key revert with nothing captured and someone else's slot succeeds without writing`() {
+        systemSettings.put(VendorKeyRows.SIDE_KEY_PACKAGE, "com.google.android.googlequicksearchbox")
         assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.SIDE_KEY])
         assertFalse(shell.lines.any { it.contains("func1") })
+    }
+
+    @Test
+    fun `side key revert with nothing captured but the slot still ours writes the vendor's unassigned pair`() {
+        // A row an older build left behind, with no capture in this build's store: after an
+        // uninstall it would be a key that vibrates and opens nothing (dictation.md D27).
+        systemSettings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+        systemSettings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.inputmethod.AssistantTriggerActivity")
+        assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.SIDE_KEY])
+        assertTrue(shell.lines.contains("settings put system func1_long_press_package com.agui.shortcutsettings; settings put system func1_long_press_activity NoOperate"))
     }
 
     @Test

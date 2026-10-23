@@ -98,7 +98,9 @@ class PrivilegedServices(
     val broker: PrivilegedBroker = PrivilegedBroker(AndroidAdbTransport(appContext), diagnostics)
     val backlight: KeyboardBacklightController = KeyboardBacklightController(broker, store, diagnostics)
     val setup: PrivilegedSetup = PrivilegedSetup(broker, permissions, store, diagnostics, backlight, identity, selfUpdateInstalls = selfUpdateInstalls)
-    val reset: ResetToStock = ResetToStock(broker, permissions, masterSwitch, store, backlight, identity)
+    /** `Settings.System` needs no broker to read (SS15); the reset, the Key mapping screen and the Fn/side-key remaps share this one seam. */
+    val systemSettings: SystemSettingsAccess = AndroidSystemSettingsAccess(appContext)
+    val reset: ResetToStock = ResetToStock(broker, permissions, masterSwitch, store, backlight, identity, systemSettings)
 
     /** "Turn on with pairing" for the accessibility service, only ever on the user's tap. spec: SS9. */
     val accessibilitySwitch: AccessibilityServiceSwitch = AccessibilityServiceSwitch(broker, permissions, identity.packageName)
@@ -159,11 +161,9 @@ class PrivilegedServices(
     val density: DisplayDensityController = DisplayDensityController(broker, toolboxStore)
     val tweaks: SystemTweaksController = SystemTweaksController(broker)
 
-    /** `Settings.System` needs no broker to read (SS15); the Key mapping screen and the Fn/side-key remaps share this one seam. */
-    val systemSettings: SystemSettingsAccess = AndroidSystemSettingsAccess(appContext)
     val keyMapping: KeyMappingReader = KeyMappingReader(systemSettings, identity)
 
-    /** "Set Fn key to Ctrl" (keys-and-modifiers.md SS3.6) and the orange key's vendor slot (dictation.md SS11.3, unwired: see that class's own note). */
+    /** "Set Fn key to Ctrl" (keys-and-modifiers.md SS3.6) and the orange key's vendor slot (dictation.md SS11.3). */
     val fnCtrlRemap: FnCtrlRemap = FnCtrlRemap(broker, systemSettings, store)
     val sideKeyAssistantRemap: SideKeyAssistantRemap = SideKeyAssistantRemap(broker, systemSettings, store, identity)
 

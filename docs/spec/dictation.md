@@ -901,10 +901,16 @@ settings, or a paired wireless-debugging session." and opens the system "modify 
 page for the package; when that page returns, the toggle the user asked for is retried once
 automatically. A write failure toasts "Could not change the side key setting."
 
-Unbinding restores the captured pair and clears the capture; with nothing captured it is a no-op
-success (the slot is left as is rather than guessed); with a malformed capture the capture is
-dropped and nothing is written. "Reset device settings to stock" (Advanced) also turns
-`side_key_assistant` off and restores the slot. The system-level change survives an uninstall.
+Unbinding restores the captured pair and clears the capture. With nothing to restore (never
+captured, or a malformed capture, which is dropped) and the slot still PhysiBoard's, the vendor's
+own unassigned pair is written, `com.agui.shortcutsettings` / `NoOperate` (what its key handler
+logs for a slot with nothing assigned), so the switch really turns off and an uninstall leaves no
+key that vibrates and opens nothing (D27); with nothing to restore and the slot someone else's it
+is a no-op success (left as is rather than guessed). The capture never records PhysiBoard's own
+row: a slot an older build left pointing at this app is not an original, and recording it would
+make every later unbind write PhysiBoard back. "Reset device settings to stock" (Advanced) also
+turns `side_key_assistant` off and restores the slot by the same rule. The system-level change
+survives an uninstall.
 
 The Voice screen's switch does not trust `side_key_assistant`: on opening it reads the two slot
 keys and shows "on" only when the package row is PhysiBoard's and the activity row is a name

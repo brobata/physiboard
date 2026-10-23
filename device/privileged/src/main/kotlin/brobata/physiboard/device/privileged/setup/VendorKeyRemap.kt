@@ -107,10 +107,14 @@ class SideKeyAssistantRemap(
         return if (isBoundToThisApp(setOf(assistantTriggerActivity))) RevertOutcome.SUCCESS else RevertOutcome.FAILED
     }
 
-    /** spec: dictation.md SS11.3 ("Unbinding restores the captured pair and clears the capture"); same shape as [ResetToStock]'s side-key revert. */
+    /**
+     * spec: dictation.md SS11.3 ("Unbinding restores the captured pair and clears the capture; with
+     * nothing captured and the slot still PhysiBoard's, the vendor's own unassigned pair"); same
+     * shape as [ResetToStock]'s side-key revert, through [RevertValues.sideKeyTargets].
+     */
     fun unbind(): RevertOutcome {
         val captures = store.snapshot().captures
-        val targets = RevertValues.sideKeyTargets(captures)
+        val targets = RevertValues.sideKeyTargets(captures, settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE), identity.packageName)
         if (targets == null) {
             store.updateCaptures { it.copy(sideKeyOriginalCaptured = false, sideKeyOriginalPackage = "", sideKeyOriginalActivity = "") }
             return RevertOutcome.SUCCESS
@@ -126,13 +130,19 @@ class SideKeyAssistantRemap(
         return RevertOutcome.SUCCESS
     }
 
-    /** spec: dictation.md SS11.3 ("captured once... but only if both values are well-formed... Any value that fails is neither recorded nor ever written"). */
+    /**
+     * spec: dictation.md SS11.3 ("captured once... but only if both values are well-formed... Any
+     * value that fails is neither recorded nor ever written"; "never PhysiBoard's own row": a slot
+     * an older build left pointing at this app is not an original, and recording it would make
+     * every later unbind write PhysiBoard back).
+     */
     private fun captureIfNeeded() {
         val captures = store.snapshot().captures
         if (captures.sideKeyOriginalCaptured) return
         val currentPackage = settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE)
         val currentActivity = settings.getString(VendorKeyRows.SIDE_KEY_ACTIVITY)
         if (currentPackage == null || currentActivity == null) return
+        if (currentPackage == identity.packageName) return
         if (!SideKeyValue.isSafe(currentPackage) || !SideKeyValue.isSafe(currentActivity)) return
         store.updateCaptures { it.copy(sideKeyOriginalCaptured = true, sideKeyOriginalPackage = currentPackage, sideKeyOriginalActivity = currentActivity) }
     }

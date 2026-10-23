@@ -148,7 +148,54 @@ class SideKeyAssistantRemapTest {
     }
 
     @Test
-    fun `unbind with nothing captured is a no-op success`() {
-        assertEquals(RevertOutcome.SUCCESS, SideKeyAssistantRemap(FakeShell(), settings, store, identity).unbind())
+    fun `unbind with nothing captured and someone else's slot is a no-op success`() {
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, "com.google.android.googlequicksearchbox")
+        val shell = FakeShell()
+        assertEquals(RevertOutcome.SUCCESS, SideKeyAssistantRemap(shell, settings, store, identity).unbind())
+        assertFalse(shell.lines.any { it.contains("func1") })
+    }
+
+    @Test
+    fun `unbind with nothing captured but the slot still ours writes the vendor's unassigned pair, so the switch really turns off`() {
+        // The maintainer's phone: the row an older build wrote, nothing captured by this one. A
+        // silent "success" here would leave the row ours and the Voice switch snapping back to on.
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+        settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.inputmethod.AssistantTriggerActivity")
+        val shell = FakeShell().apply {
+            onLine = {
+                settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, VendorKeyRows.SIDE_KEY_UNASSIGNED_PACKAGE)
+                settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, VendorKeyRows.SIDE_KEY_UNASSIGNED_ACTIVITY)
+            }
+        }
+        val remap = SideKeyAssistantRemap(shell, settings, store, identity)
+        assertEquals(RevertOutcome.SUCCESS, remap.unbind())
+        assertTrue(shell.lines.contains("settings put system func1_long_press_package com.agui.shortcutsettings; settings put system func1_long_press_activity NoOperate"))
+        assertFalse(remap.isBoundToThisApp(setOf("brobata.physiboard.ime.AssistantTriggerActivity", "brobata.physiboard.inputmethod.AssistantTriggerActivity")))
+    }
+
+    @Test
+    fun `unbind drops a malformed capture and, with the slot still ours, writes the unassigned pair instead`() {
+        store.updateCaptures { it.copy(sideKeyOriginalCaptured = true, sideKeyOriginalPackage = "x; rm -rf /", sideKeyOriginalActivity = "Main") }
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+        val shell = FakeShell()
+        assertEquals(RevertOutcome.SUCCESS, SideKeyAssistantRemap(shell, settings, store, identity).unbind())
+        assertTrue(shell.lines.contains("settings put system func1_long_press_package com.agui.shortcutsettings; settings put system func1_long_press_activity NoOperate"))
+        assertFalse(shell.lines.any { it.contains("rm -rf") })
+        assertFalse(store.snapshot().captures.sideKeyOriginalCaptured)
+    }
+
+    @Test
+    fun `unbind with nothing captured and the slot ours needs a pairing`() {
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+        assertEquals(RevertOutcome.NEEDS_PERMISSION, SideKeyAssistantRemap(FakeShell.notPaired(), settings, store, identity).unbind())
+    }
+
+    @Test
+    fun `bind never captures PhysiBoard's own row as the original`() {
+        settings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
+        settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.inputmethod.AssistantTriggerActivity")
+        val shell = FakeShell().apply { onLine = { settings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.ime.AssistantTriggerActivity") } }
+        assertEquals(RevertOutcome.SUCCESS, SideKeyAssistantRemap(shell, settings, store, identity).bind("brobata.physiboard.ime.AssistantTriggerActivity"))
+        assertFalse(store.snapshot().captures.sideKeyOriginalCaptured, "an older build's row is not an original to put back")
     }
 }

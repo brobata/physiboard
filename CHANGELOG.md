@@ -12,7 +12,8 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
   still named the trampoline by the name the 2.x line had given it, which 3.0 to 3.4 no longer
   declared, so the hold gave a short vibration and nothing more. That name is served again, and
   "Orange key opens the assistant" now reads "on" only when the key points at something this
-  build can open.
+  build can open. Turning it off hands the key back to the phone even when PhysiBoard never
+  recorded what it replaced, and the Key mapping screen says the same.
 
 ## 3.4.0 (2026-10-11)
 

@@ -46,6 +46,15 @@ object VendorKeyRows {
 
     /** spec: SS9 ("the vendor ignores every slot unless this is on; stock already has it on"); dictation.md SS11.3. */
     const val SIDE_KEY_SHORTCUT_ENABLE = "func1_shortcut_key_enable"
+
+    /**
+     * The vendor's own value for a slot with nothing assigned: its shortcut app's package and
+     * `NoOperate`, as its key handler logs them for an unassigned slot (`A85ShortcutFunction:
+     * mLongPressPackage=com.agui.shortcutsettings mLongPressActivity=NoOperate`, 2026-10-22).
+     * Written when PhysiBoard lets the slot go with no original to put back (dictation.md SS11.3).
+     */
+    const val SIDE_KEY_UNASSIGNED_PACKAGE = "com.agui.shortcutsettings"
+    const val SIDE_KEY_UNASSIGNED_ACTIVITY = "NoOperate"
 }
 
 /**
@@ -57,10 +66,19 @@ object RevertValues {
         if (!captures.fnCtrlPrevCaptured) 0 to 0 else (captures.fnCtrlPrevEnable ?: 0) to (captures.fnCtrlPrevFunction ?: 0)
 
     /**
-     * spec: SS10 step 4: nothing captured, or a malformed capture, restores nothing. Returns the
-     * package and activity to write, or null for "nothing to write" (which is still SUCCESS).
+     * spec: SS10 step 4; dictation.md SS11.3. The captured pair when there is a well-formed one.
+     * With none (never captured, or a malformed capture dropped): the vendor's own unassigned
+     * pair when the slot still points at this app, since leaving it there after a reset or an
+     * uninstall leaves a key that vibrates and opens nothing; and null, "nothing to write" (still
+     * SUCCESS), when the slot is someone else's, which is not ours to guess at.
      */
-    fun sideKeyTargets(captures: DeviceCaptures): Pair<String, String>? {
+    fun sideKeyTargets(captures: DeviceCaptures, currentPackage: String?, ownPackage: String): Pair<String, String>? {
+        captured(captures)?.let { return it }
+        if (currentPackage == ownPackage) return VendorKeyRows.SIDE_KEY_UNASSIGNED_PACKAGE to VendorKeyRows.SIDE_KEY_UNASSIGNED_ACTIVITY
+        return null
+    }
+
+    private fun captured(captures: DeviceCaptures): Pair<String, String>? {
         if (!captures.sideKeyOriginalCaptured) return null
         val pkg = captures.sideKeyOriginalPackage
         val activity = captures.sideKeyOriginalActivity
@@ -92,6 +110,8 @@ class ResetToStock(
     private val store: DeviceStateStore,
     private val backlight: KeyboardBacklightController,
     private val identity: AppIdentity,
+    /** `Settings.System` reads need no broker (SS15): the side-key step reads whose slot it is before deciding what to write. */
+    private val settings: SystemSettingsAccess,
 ) {
 
     /** Blocking, never throws, never on the main thread. spec: SS10. */
@@ -157,9 +177,9 @@ class ResetToStock(
     private fun revertSideKey(): RevertOutcome {
         store.update { it.copy(dictation = it.dictation.copy(sideKeyAssistant = false)) }
         val captures = store.snapshot().captures
-        val targets = RevertValues.sideKeyTargets(captures)
+        val targets = RevertValues.sideKeyTargets(captures, settings.getString(VendorKeyRows.SIDE_KEY_PACKAGE), identity.packageName)
         if (targets == null) {
-            // Nothing captured, or a malformed capture dropped: SUCCESS without writing.
+            // Nothing captured, or a malformed capture dropped, and the slot is not ours: SUCCESS without writing.
             store.updateCaptures { it.copy(sideKeyOriginalCaptured = false, sideKeyOriginalPackage = "", sideKeyOriginalActivity = "") }
             return RevertOutcome.SUCCESS
         }

@@ -37,6 +37,7 @@ import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.Spacing
 import brobata.physiboard.core.toolbox.KeyMappingInventory
 import brobata.physiboard.core.toolbox.KeyMappingRow
+import brobata.physiboard.ime.AssistantTriggerNames
 
 /**
  * "Key mapping" (broker-privileged-toolbox.md SS15): a read-only inventory, read once, needing no
@@ -47,7 +48,7 @@ fun KeyMappingScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val context = LocalContext.current
     val application = context.applicationContext as PhysiBoardApplication
     val controller = LocalSettingsController.current
-    val rows = remember { application.privileged.keyMapping.read(controller.current.value) }
+    val rows = remember { application.privileged.keyMapping.read(controller.current.value, AssistantTriggerNames.SERVED) }
 
     SettingsScreenScaffold(title = "Key mapping", onBack = onBack) {
         RowList {
