@@ -19,7 +19,7 @@ class SummariesTest {
         assertEquals("QWERTY · follows the language", Summaries.languages(defaults))
         assertEquals("Alt symbol · 500 ms", Summaries.longPress(defaults))
         assertEquals("Emoji → Symbols", Summaries.symPages(defaults))
-        assertEquals("Hold Fn · stops after 2.5 s", Summaries.voice(defaults))
+        assertEquals("Hold Fn · stops after 10 s", Summaries.voice(defaults))
         assertEquals("Fn layer on · trackpad off", Summaries.keys(defaults))
         assertEquals("No terminal apps · Enter sends", Summaries.apps(defaults))
         assertEquals("Private mode off · clean links on", Summaries.privacy(defaults))

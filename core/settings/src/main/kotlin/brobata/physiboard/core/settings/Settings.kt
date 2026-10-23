@@ -606,8 +606,8 @@ data class DictationPrefs(
     val fnLongPressSpeech: Boolean = true,
     val haptics: Boolean = true,
     val hapticStrength: HapticStrength = HapticStrength.STRONG,
-    /** `dictation_stop_after_silence_ms`: 15 s by the maintainer's decision; 0 means the session runs until stopped (dictation.md SS6.4). */
-    val stopAfterSilenceMs: Int = 2500,
+    /** `dictation_stop_after_silence_ms`: 10 s (dictation.md SS6.4); 0 means the session runs until stopped. */
+    val stopAfterSilenceMs: Int = SilenceSeconds.DEFAULT_MS,
     val maskOffensive: Boolean = false,
     /** `""` system default, `ondevice`, or a flattened recognition-service component name. */
     val engine: String = "",
