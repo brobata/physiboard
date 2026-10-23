@@ -8,6 +8,17 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
 - Paired Titan tools now also allow PhysiBoard to install its own updates, so they arrive with
   no tap. Without Titan tools, the setup's extras page offers the same switch ("Updates on their
   own").
+- Dictation no longer cuts you off at a pause. The engine is asked for its longest session (the
+  same request Google's own voice typing clients make) instead of one that ends after a few
+  seconds of silence, and the keyboard's own "Stop after silence" moves to 10 seconds, so a
+  think between two sentences survives. Existing installs are moved once; a number you type in
+  Voice > Transcription afterwards stands.
+- Short dictated sentences no longer go missing when the next one starts: the engine's "this
+  utterance is final" mark on a partial result is honoured, and the words still being
+  recognised are shown as you speak them.
+- An ending that found the field emptied (a send) lets the words go instead of deleting them,
+  so an app that misreports its text can no longer take a sentence you can see; moving to
+  another app's field mid-dictation touches nothing in that field.
 
 ## 3.4.0 (2026-10-11)
 

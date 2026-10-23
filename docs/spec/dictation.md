@@ -9,7 +9,10 @@ burst and the Sym hold are detected at the key level is specified in the keys do
 document picks up at the moment a trigger fires.
 
 Sections 1 to 9 and 13 to 17 describe 3.0 as built on 2026-10-07, after the root cause of the
-maintainer's "it cuts me off" report was found in the phone's log (section 14, D14 to D18).
+maintainer's "it cuts me off" report was found in the phone's log (section 14, D14 to D18), and
+amended on 2026-10-22 for the "still spotty, cuts me off a lot" report on 3.4.0 (D27, D28: the
+request now has the shape of Google's own continuous client, a partial flagged final is a
+segment, the silence limit is 10 s by default, and no ending deletes words from a field).
 Sections 10 to 12 carry the 2.x behaviour that 3.0 kept. Where a 2.x rule was dropped, section 17
 says why.
 
@@ -124,14 +127,14 @@ a fresh one (D20).
 | The silence limit (6.4) | graceful stop | committed |
 | The 10-minute session cap (6.4) | graceful stop | committed |
 | A phone call rings or is answered (6.7) | immediate end | committed |
-| The app empties the field itself: a send button. Seen as the caret at 0 with nothing before or after it, or the same app's field restarting empty, in a field this session has put text into (finished or still composing) and that has since reported a caret past 0; never in a field that cannot hold a composing region (a terminal empties its box after every character). Checked again, by reading the field, before any result is applied over a composing partial, whatever the phase | immediate end, recognizer cancelled; nothing the engine says afterwards lands (the sent words went with the message) | cleared (nothing is there) |
+| The app empties the field itself: a send button. Seen as the caret at 0 with nothing before or after it, or the same app's field restarting empty, in a field this session has put text into (finished or still composing) and that has since reported a caret past 0; never in a field that cannot hold a composing region (a terminal empties its box after every character). Checked again, by reading the field, before any result is applied over a composing partial, whatever the phase | immediate end, recognizer cancelled; nothing the engine says afterwards lands (the sent words went with the message) | a composing span is released where it stands, never replaced: in the emptied field that writes nothing, and a field that answered the read wrongly (web fields have answered "" for the text before the cursor, 2026-09-25) keeps the words as plain text |
 | The field has text but no longer holds the composing partial at the caret (read before a result or an engine error is applied, and when a selection report puts the caret off the words, 7.4) | the utterance is dead: its composing span is released where it stands, and that result and every later one of it write nothing (7.4); the session goes on, or ends if it was stopping | kept as plain text where they are; nothing re-inserted |
 | Real error (6.6) | session ends; message | committed |
 | Five fast failures or busy answers in a row (6.6) | session ends; "Speech recognition error." | committed |
 | Offline language pack missing and nothing else allowed (4.3) | session ends; message | committed |
 | The field rejected an insert (exception while writing) | recognizer cancelled; session ends | cleared |
-| Editor gone: the app closes its text field and no new field replaces it within 500 ms | recognizer cancelled; session ends | cleared |
-| Another app takes the editor (a new field whose package differs from the owner's) | immediately as above | cleared |
+| Editor gone: the app closes its text field and no new field replaces it within 500 ms | recognizer cancelled; session ends | left as they stood; no text op (there is no connection for one to reach) |
+| Another app takes the editor (a new field whose package differs from the owner's) | immediately as above | left as they stood in the old field; no text op (the connection is already the other app's field, and a clear sent now would replace that field's own composing text) |
 | The request could not be issued (2.4 step 5) | session ends; message | cleared |
 | Keyboard service destroyed | timers cancelled, recognizer destroyed, focus given back; no cue | left as is |
 
@@ -240,44 +243,50 @@ with:
   masking on; the first-run default is off);
 - prefer offline: per 4.3 (on by default; forced on in private mode; turned off for the one
   online fallback);
-- complete silence length: the silence limit (section 1) plus 1000 ms, as an **int**. This is
-  the length that ends a segmented session; the margin keeps the keyboard's own silence timer
-  (6.4) ahead of the engine's, so the keyboard decides. Google reads it with `getIntExtra`
-  (D23): the long that 2.x and the first two 3.0 builds sent was thrown away ("expected Integer
-  but value was a java.lang.Long. The default value 0 was returned"), after which the service
-  ignored the segmented request too ("EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS is not
-  set with positive value; ignoring EXTRA_SEGMENTED_SESSION"). So no build had ever actually
-  asked Google for a segmented session, and every request ran in its `AMBIENT_ONESHOT` domain
-  and ended at the first breath; that, not the keyboard's timers, is the restart the user sees
-  as the privacy indicator blinking;
-- minimum length: the same value, as an **int** (`EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS`,
-  "the recognizer will not stop recognizing speech before this amount of time"), so that even an
-  engine that ignores the segmented request keeps one request open across pauses and streams
-  its hypothesis as partials (which 7.2 and 7.3 already handle); Fn's stop still ends it at
-  once through `stopListening`;
+- minimum length: **five minutes**, as an **int** (`EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS`,
+  "the recognizer will not stop recognizing speech before this amount of time"). This is the
+  value Google's own continuous client sends and names as the most the Google service accepts
+  (D28), and it is what keeps one request open across every pause: the engine never ends the
+  session on silence, so the keyboard's limit (6.4) is the only silence stop. An engine that
+  reaches it ends its segmented session, which 6.2 re-listens. Google reads the lengths with
+  `getIntExtra` (D23): the long that 2.x and the first two 3.0 builds sent was thrown away
+  ("expected Integer but value was a java.lang.Long. The default value 0 was returned"), after
+  which the service ignored the segmented request too ("... is not set with positive value;
+  ignoring EXTRA_SEGMENTED_SESSION"). So no build before 2026-10-07 had ever actually asked
+  Google for a segmented session, and every request ran in its `AMBIENT_ONESHOT` domain and
+  ended at the first breath; that, not the keyboard's timers, is the restart the user sees as
+  the privacy indicator blinking;
+- **no complete silence length.** The 3.1 to 3.4 builds sent the silence limit plus 1000 ms as
+  `EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS` and keyed the segmented session on it,
+  which asked the engine to end its session at a pause of that length; the keyboard's timer
+  fired 1 s earlier, so every pause ended the session one way or the other (D27). Nor the
+  "possibly complete silence" hint (the platform says to leave it alone);
 - `android.speech.extra.DICTATION_MODE` = true: Google's own continuous-dictation flag, the one
   Chrome's Web Speech glue sets for a continuous session (D17). Undocumented, so nothing depends
   on it; it is sent because it costs nothing and the engine that ignores it ignores it;
 - on Android 13 or later, when `dictation_auto_punctuation` is on: `EXTRA_ENABLE_FORMATTING` =
   `quality` (the engine punctuates and capitalises; the result list then carries the formatted
-  hypothesis first and the raw one second, and only the first is used);
+  hypothesis first and the raw one second, and only the first is used) and
+  `EXTRA_HIDE_PARTIAL_TRAILING_PUNCTUATION` = true (a partial ends on its last word, as Gboard
+  shows it; the punctuation comes with the segment);
 - on Android 13 or later, for a segmented request: `EXTRA_SEGMENTED_SESSION` =
-  `EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS`, that is, the **name of the extra** that
-  ends the session, as a String. The platform documents the value as "the extra used as the
-  string value here"; 2.x and the first 3.0 build put the pause itself (a long) here, which
+  `EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS`, that is, the **name of the extra** that ends the
+  session, as a String. The platform documents the value as "the extra used as the string value
+  here"; keyed on the minimum length (D28) the session ends only when the five minutes are up
+  or the keyboard asks. 2.x and the first 3.0 build put the pause itself (a long) here, which
   Google's service rejected on every single request ("Key android.speech.extra.SEGMENTED_SESSION
   expected String but value was a java.lang.Long ... Wrong value passed to
   EXTRA_SEGMENTED_SESSION; ignoring it", D15). Segmented mode had therefore never once been in
-  force.
+  force before 2026-10-07, and from then until 2026-10-22 it was keyed on a silence length.
 
-Not sent: the "possibly complete silence" hint (the platform says to leave it alone), a prompt,
-a maximum-results count (with formatting the engine returns two hypotheses by design).
+Not sent: a prompt, a maximum-results count (with formatting the engine returns two hypotheses
+by design), language detection or switching (one language per session, the subtype's),
+biasing strings, word timing or confidence, an audio source of the keyboard's own.
 
-Whether Google honours the segmented request or the minimum length once they are sent as ints
-is not yet observed on the Titan (every earlier log had them discarded); the first log with
-`applicationDomain` other than `AMBIENT_ONESHOT`, or a `SODA session` outliving a pause,
-settles it. If it honours neither, the next step is the seamless restart of 6.2's last
-paragraph.
+Google honours the segmented request once the lengths go as ints: D24 saw `applicationDomain:
+AMBIENT_CONTINUOUS` and one request across every pause, and on 2026-10-22 every session took
+the engine's audio focus exactly once (D27). What the engine delivers inside that session is
+6.2's business: a segment, an ordinary final, or a partial flagged final.
 
 A request is segmented when the Android version is 13 or later and the engine has not refused
 segmented sessions (6.3). `dictation_continuous_session` is gone: segmented mode is simply used
@@ -336,6 +345,20 @@ after which the engine's silence was reported as "No speech input detected", is 
 exactly that: two five-second engine timeouts and the toast). The only thing that ends a silent
 session is the silence limit (6.4).
 
+**A partial flagged final is a segment.** Google's continuous session does not only report
+provisional text through `onPartialResults`: it finalizes an utterance through a partial whose
+bundle carries its own boolean `final_result`, and it splits a provisional hypothesis into the
+stable text (`RESULTS_RECOGNITION`) and an unstable tail (`android.speech.extra.UNSTABLE_TEXT`)
+that concatenate to the whole (D28: this is how Chromium's `SpeechRecognitionImpl`, the one
+public continuous client Google maintains, reads it). A flagged partial is handed to the
+session as a segment and committed (7.3); a provisional one is composed with its tail
+appended; a bundle with no words is ignored. Treating the flagged partial as provisional is how
+an utterance went missing between 3.0 and 3.4: the next utterance's first partial replaced its
+composing text, and 7.3's word-overlap rescue needs a partial of three words none of which the
+next utterance shares, so "Sounds good." followed by "I'll be there" was lost (D24 had already
+shown three finals created and two delivered). The rule is `RecognizerPartial` in
+`:core:speech`, tested there.
+
 An ending that **brought no words and arrived within 700 ms of its request** (a quiet error, an
 empty final, an instant end of the segmented session) is the engine failing fast, not silence:
 the re-listen waits 500 ms and the failure is counted; five in a row end the session with
@@ -385,7 +408,7 @@ Two timers, both the keyboard's own, both ending the session **gracefully** (6.5
 last words still land:
 
 - **Silence limit**: the session stops once nothing has been heard for the silence limit
-  (`dictation_stop_after_silence_ms`, 2.5 s by default; or 60 s when it is 0). "Heard" means new
+  (`dictation_stop_after_silence_ms`, 10 s by default; or 60 s when it is 0). "Heard" means new
   words: a partial whose text differs from the last one, or a segment or final that adds words
   the partials had not shown (its tidied copy of words already shown arrives seconds later and
   does not count; Titan 2026-10-07: it pushed the stop 2.6 s late); the
@@ -399,15 +422,20 @@ last words still land:
   session with the setting at 0, and ends it only with the setting at 20 s or below.
 - **Session cap**: 10 minutes after the start, whatever is heard.
 
-The engine's own complete-silence length is the keyboard's limit plus 1000 ms (section 5), so
-the keyboard's timer fires first; should the engine end first anyway, 6.2 re-listens and the
-keyboard's timer still ends the session on time.
+The engine is given no silence length at all (section 5): its session is as long as it allows,
+so the keyboard's timer is the only silence stop. Should an engine end first anyway, 6.2
+re-listens and the keyboard's timer still ends the session on time.
 
-With the default (2.5 s after the last word, the maintainer's number 2026-10-07, first set at 5 s: "15 seconds of silence sounds like
-forever"; Google's one-shot endpointing is about 1.5-2 s), the session runs until Fn, a key, five
-seconds without new words (a breath or a short think survives; a longer think wants 8 s or 15 s), ten minutes, or the field going away; "Never" makes it a minute of silence. That is
-the toggle-microphone model the maintainer asked for, with a safety net for a microphone left
-open.
+The default is **10 s** after the last new words (2026-10-22). The 2.5 s of 3.1 to 3.4 was the
+maintainer's number of 2026-10-07 (first set at 5 s: "15 seconds of silence sounds like
+forever"), chosen while the engine itself still ended every request at a breath. Once the
+engine held its session, that timer was the one thing left that ended a session on a pause:
+every session of 2026-10-22 lasted 5 to 12 s and ended by it (D27), which the maintainer
+reported as "cuts me off a lot". Ten seconds is a think between two sentences, not a session
+forgotten; the stop is still Fn, a key, or the field going away, and "Never" makes it a minute
+of silence. That is the toggle-microphone model the maintainer asked for, with a safety net for
+a microphone left open. The value a Pixel uses is not documented anywhere public; Google's own
+continuous client asks the engine for five minutes and leaves the stopping to its caller.
 
 ### 6.5 Explicit stop
 
@@ -954,7 +982,7 @@ buttons screen places or removes the `microphone` slot (status-bar document).
 | `dictation_engine` | string | empty | which recognizer: empty = system default, `ondevice`, or `package/class` | Voice > Transcription | Speech engine |
 | `dictation_auto_punctuation` | boolean | true | asks the engine to punctuate and capitalise (Android 13+) | Voice > Transcription | Automatic punctuation |
 | `dictation_mask_offensive` | boolean | false | per-request profanity masking | Voice > Transcription | Block offensive words |
-| `dictation_stop_after_silence_ms` | int | 2500; stored clamped to 0..60000 | the silence limit; 0 = the session runs until stopped (60 s safety) | Voice > Transcription | Stop after silence |
+| `dictation_stop_after_silence_ms` | int | 10000 (2500 in 3.1 to 3.4); stored clamped to 0..60000 | the silence limit; 0 = the session runs until stopped (60 s safety) | Voice > Transcription | Stop after silence |
 | `dictation_stop_on_typing` | boolean | true | any key other than a modifier ends the session before doing its work | Voice > Transcription | Typing stops dictation |
 | `dictation_prefer_offline` | boolean | true | `EXTRA_PREFER_OFFLINE` on the request; one online fallback when the pack is missing | Voice > Transcription | Keep speech on the phone |
 | `dictation_pause_media` | boolean | true | exclusive transient audio focus for the session | Voice > Transcription | Pause music while dictating |
@@ -1007,6 +1035,8 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | D24 | 2026-10-07 17:21, PersaLink, the first build sending the lengths as ints: `applicationDomain: AMBIENT_CONTINUOUS`; one request from 17.940 ran across every pause with `onStartOfSpeech`/`onEndOfSpeech` pairs and `#handlePartialResult` throughout; finals created with text at 30.643 (131 bytes), 37.185 (60) and 48.987 (128), of which only the first and third reached `#handleFinalResult`/`#onResults` (31.027, 49.024; a third delivery at 52.043); `onSegmentResults` never. The keyboard's `StartListening` after the 31.027 result produced no `onStartListening` at all (ignored by the service) but had set the latch. Messages, 17:24 (screenshot): mid-sentence capitals at every result start, the last sentence re-inserted into the compose box after a send, the microphone indicator still on. | scratchpad `fourth.log` lines 36070 to 40857; the screenshot |
 | D25 | 2026-10-07 19:58, Messages, build ec0b3a2b (trace `PhysiBoardDictationTrace`): session 2 composed partials only (no finished segment); Bugle `Preparing to send DraftData` at 21.629 and `Draft text field onTextChanged ... null, null` at 21.661 (the box emptied) with no keyboard reaction, since the cleared rule counted finished words only; Fn at 22.934 (`StopListening`); the stop's result at 22.973 `segment len=47 ... ops=[compose48,finish]` typed the sent words into the empty box. At 19:59:01.735 a stop press, the session ended at 01.802, and a new session started at 02.341 from the same press's trailing repeats (a repeat gap wide enough to read as a new press once the session was gone). | scratchpad `trace5.log`, `fifth.log` |
 | D26 | AOSP's audio policy routes `AUDIO_SOURCE_VOICE_RECOGNITION` to a Bluetooth SCO microphone only while the communication route is SCO (`AudioDeviceBroker` sets the record force-use with it); otherwise the built-in microphone, a wired or USB headset. Telecom's ringtone and call focus is transient. `AudioRecordingConfiguration` for another app's recording keeps its input device and `isClientSilenced` while anonymising the app. Not yet observed in the truck: the first in-car trace settles which microphone the recognizer gets there and how Android Auto treats the keyboard's focus. | Android reference (`AudioManager`, `AudioRecordingConfiguration`, `AudioDeviceInfo`); AOSP `AudioDeviceBroker`, audio policy `Engine::getDeviceForInputSource` |
+| D27 | 2026-10-22, release 3.4.0, the maintainer's own sessions as `dumpsys audio`'s focus log recorded them: five sessions between 18:52 and 19:23 of 5.0, 8.3, 11.5, 6.6 and 12.3 s. In each the keyboard took focus (`req=4`, media/speech), Google's recognizer (`com.google.android.tts`) took its own 40 to 130 ms later and **once only**: the continuous session held across the whole session, no per-breath restart. Four ended with Google's abandon and the keyboard's 40 to 70 ms after it (the graceful stop: the keyboard's silence timer, then the engine's last words); one ended with the keyboard's abandon first (an immediate end: a key, or a field change). `appops get brobata.physiboard RECORD_AUDIO`: `allow`, last used 19:23 for 12.2 s, last `rejectTime` 27 days earlier, so the release package's microphone has not been silenced (D22) since 2026-09-25. Gboard (`com.google.android.inputmethod.latin`) is installed but not the current keyboard; the Google app runs a software hotword capture (`AUDIO_SOURCE_HOTWORD`, uid 99003) at all times, which Android allows beside any other recording. The main log buffer is 1 MiB and held five minutes, so no `PhysiBoardDictationTrace` line of those sessions survived. | `dumpsys audio` (MediaFocusControl event log, lines 63 to 102), `appops get`, `dumpsys input_method`, `dumpsys media.audio_policy`, `logcat -g`, read-only over adb 22:37 |
+| D28 | Chromium's `SpeechRecognitionImpl.java` (content/public/android, main branch, 2026-10-22), the one public continuous client Google maintains against its own recognizer: in continuous mode it sends `EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS` = 5 minutes ("Maximum value accepted by the Google recognition service ... In continuous mode, this keeps the session open across pauses between utterances while each utterance is finalized and delivered via onSegmentResults() (or onPartialResults() with EXTRA_FINAL_RESULT before Android T)"), on Android 13+ `EXTRA_SEGMENTED_SESSION` = `EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS`, `android.speech.extra.DICTATION_MODE` ("Older Google recognizers used this extra for continuous recognition; current ones ignore it"), partial results, and no silence length. It reads two Google-private extras off partial bundles: `final_result` (boolean; "the recognizer delivers the finalized utterances of a continuous session through onPartialResults() flagged as final, instead of through onSegmentResults(), and ends the session with an empty onResults()") and `android.speech.extra.UNSTABLE_TEXT` (a provisional hypothesis is "stable text and low-confidence text ... formatted so that concatenating them gives the complete hypothesis so far"). It ignores `onEndOfSpeech` and `onRmsChanged` in continuous mode, treats an empty result list as metadata, and stops with `stopListening`. | the file itself, fetched read-only; `RecognizerIntent.java` and `RecognitionService.java` of AOSP main for the extras' documentation and `dispatchStartListening` |
 | D22 | 2026-10-07 16:30, PersaLink (Chrome WebAPK, strip collapsed to a 0 by 0 window, `InputDispatcher ... info.frame: (2, 1200, 2, 1200)`): at each PhysiBoard request (16:30:27.548, 37.330, 48.977, 58.759) audioserver logged `App op 27 missing, silencing record AttributionSourceState{... packageName: com.google.android.tts ... next: ...}` within ~15 ms, the engine heard nothing, and `appops get brobata.physiboard.dev3 RECORD_AUDIO` showed `Uid mode: foreground` with a fresh `rejectTime`. `dumpsys input_method` read `mVisibleBound=false`, `dumpsys activity processes` `curProcState=16 curCapability=--------` with one IME connection (`!FG IMPB SLTA !VIS`, flags 0x40880005); later, with Chrome having shown the keyboard, `mVisibleBound=true`, `curProcState=5` and a second connection `FGS LACT UI CAPS` (flags 0x2c001001). The 16:28:43 session in Messages (Messages had sent `SHOW_SOFT_INPUT fromUser true`) was not silenced and reached `#onResults withSpeech: true`; the 16:31:11 session was Chrome's own Web Speech, not the keyboard's. | scratchpad `dictation-evidence-2.log`; the read-only `dumpsys`/`appops` queries of the same day; AOSP `InputMethodBindingController.IME_VISIBLE_BIND_FLAGS`, `InputMethodManagerService.showCurrentInputLocked`/`hideCurrentInputLocked`, `AppOpsUidStateTrackerImpl.evalModeInternal` |
 
 ## 15. Edge cases, quirks, known bugs
@@ -1025,6 +1055,9 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | Engine reports busy five times in a row | toast "Speech recognition error.", session ends | 6.6 rule 4 |
 | Quiet errors every five seconds with nobody speaking | re-listened each time; session ends after the silence limit with no message | 6.2, 6.4 |
 | "Stop after silence" 5 s, a 4 s pause between sentences | session continues | the limit counts from the last speech |
+| A 9 s think between two sentences at the default | session continues; the second sentence lands | 6.4: 10 s, and the engine itself never ends on silence |
+| The engine finalizes a two-word utterance through a flagged partial, then the next utterance starts | both land | 6.2: the flagged partial is a segment |
+| The field is read as emptied while a partial is composing | the span is released; nothing is deleted | 3: a verdict from a read never costs words |
 | Offline pack missing, private mode off | the same session goes online once, silently | 4.3 |
 | Offline pack missing, private mode on | toast about the pack; session ends | private mode never goes online |
 | Audible or another player with focus | pauses at the trigger, resumes at the stop cue | 6.7 |
@@ -1060,7 +1093,7 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 
 | # | Input | Expected |
 |---|---|---|
-| T1 | trigger with no session, stop-after-silence 10 s | `STARTING`; silence limit 10 000; engine silence 11 000; segmented request |
+| T1 | trigger with no session, stop-after-silence 10 s | `STARTING`; silence limit 10 000; engine minimum length 300 000, no silence length; segmented request |
 | T2 | ready | `LISTENING`; cue fallback armed at +300 ms |
 | T3 | first audio | start cue; fallback cleared |
 | T4 | trigger while `LISTENING` | `STOPPING`; `StopListening`; watchdog at +1500 ms; no silence deadline |
@@ -1111,6 +1144,13 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | car 6 | a call (by mode, or a loss during one) | ends at once, words kept |
 | caret | partial composing; the user taps inside or before the words; then a quiet error, or a key, or a Sym grid tap (stop-on-typing on and off) | the words stay as plain text; the error writes nothing and the cursor stays; the key or symbol lands at the tapped cursor; a grid tap with no tap away lands after the words (`DictationCaretTest`, against an editor that keeps a real composing span) |
 | shell | direct-commit field, stop-on-typing off: a partial staged, then a key | the key alone; the staged words are never typed after it (`DirectCommitTest`, `DictationCaretTest`) |
+| D28 | segment "Sounds good." (a flagged partial), then partials "I'll", "I'll be there at", segment "I'll be there at noon." | "Sounds good. I'll be there at noon. "; one request; no latch; no probe |
+| D28 twice | segment "Sounds good.", then the same text as a final | lands once; the next segment follows it |
+| D28 request | any silence setting, latch on or off | minimum length 300 000; segmented when not latched |
+| D27 | the 10 s default, a segment at 2 s, a 9 s pause, two more results at 10 and 11 s | no stop in the pause; both sentences land; `StopListening` at 21 s |
+| release | a partial composing; the field read as emptied | ops = [release]; never a replace |
+| no op | a partial composing; another app's field, or the field gone 500 ms | the session ends with no text op |
+| partial | `RecognizerPartial`: flagged -> segment; stable + unstable tail -> partial of the whole; no words -> nothing (`RecognizerPartialTest`) |
 
 Plus the text tests kept from before (capitalisation, spacing, the frozen context, the session
 echo, direct commit, deleted words never typed back) and the cue table.
@@ -1141,6 +1181,10 @@ echo, direct commit, deleted words never typed back) and the cue table.
 | Undo the engine's segment-start capital mid-sentence | new | the Messages screenshot |
 | The app emptying the field ends the session | new | the sentence re-inserted after a send |
 | Stop after silence, default 5 s, counted from new words | changed | the maintainer's decision 2026-10-07; the engine's voice detector no longer resets it |
+| Stop after silence, default 10 s | changed 2026-10-22 | with the engine holding its session, the 2.5 s timer was the whole of "cuts me off a lot" (D27) |
+| The engine's complete-silence length and the session keyed on it | drop 2026-10-22 | it asked the engine to end at a pause; the request now has Google's own client's shape (D28) |
+| A partial flagged `final_result` is a segment; the unstable tail is shown | new 2026-10-22 | the lost short utterances (D24, D28) |
+| An ending that clears the composing words | drop 2026-10-22 | a verdict reached by reading the field must never delete words; released or left instead |
 | Fresh recognizer per session | keep | D20 |
 | Session echo stripping | keep | D21 |
 | Partials as composing text with the cursor after | keep | D3 |
