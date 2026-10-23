@@ -261,7 +261,7 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `fn_long_press_speech` | boolean | false | true | Holding Fn dictates | Voice > Triggers > "Long-press Fn for speech input" |
 | `dictation_haptics` | boolean | true | same | Vibrate on start and stop (also gated on the system haptic setting) | Look & feel > Sound & haptics > Dictation > "Vibrate when dictation starts and stops" |
 | `dictation_haptic_strength` | string `light`, `standard`, `strong` | `strong` | | Pulse length | Look & feel > Sound & haptics > Dictation > "Vibration strength" (only while the row above is on) |
-| `dictation_stop_after_silence_ms` | int 0 to 60000; 0 = runs until stopped (60 s safety) | 10000 (2500 in 3.1 to 3.4; baseline version 11 moves an existing store once) | | Silence limit (dictation.md 6.4) | Voice > Transcription > "Stop after silence" (switch "Stop when I go quiet" + typed seconds, 1 to 60, decimals) |
+| `dictation_stop_after_silence_ms` | int 0 to 60000; 0 = runs until stopped (60 s safety) | 10000 (2500 in 3.1 to 3.4; baseline version 11 moves a store still at 2500 once) | | Silence limit (dictation.md 6.4) | Voice > Transcription > "Stop after silence" (switch "Stop when I go quiet" + typed seconds, 1 to 60, decimals) |
 | `dictation_stop_on_typing` | boolean | true | | Any key other than a modifier ends the session before doing its work | Voice > "Typing stops dictation" |
 | `dictation_prefer_offline` | boolean | true | | The engine's on-device recognizer first; one online fallback when the pack is missing | Voice > "Keep speech on the phone" |
 | `dictation_pause_media` | boolean | true | | Exclusive transient audio focus for the session | Voice > "Pause music while dictating" |
@@ -396,7 +396,7 @@ section "On-screen Keyboard") is not reachable from any row in 2.x.
 | `impact_defaults_applied` | boolean marker | false | Section 4.3 ran |
 | `prefs_migrated_v2` | boolean marker | false | Section 5 ran |
 | `v2_migration_notice_seen` | boolean marker | false | The rename notice was dismissed |
-| `settings_baseline_version` | int marker | 0 | Which baseline version has been applied; 3.0's current is 11 (version 11 sets `dictation_stop_after_silence_ms` to 10000, dictation.md 6.4; version 8 sets `sym_pages_config` to Emoji, Symbols, GIFs, except on a store the 2.x importer filled in the same start, and `emoji_picker_kaomoji` false) |
+| `settings_baseline_version` | int marker | 0 | Which baseline version has been applied; 3.0's current is 11 (version 11 sets `dictation_stop_after_silence_ms` to 10000 where it still reads 2500, dictation.md 6.4; version 8 sets `sym_pages_config` to Emoji, Symbols, GIFs, except on a store the 2.x importer filled in the same start, and `emoji_picker_kaomoji` false) |
 
 ### 2.16 Rows that exist only in the restore schema
 

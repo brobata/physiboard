@@ -11,8 +11,8 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
 - Dictation no longer cuts you off at a pause. The engine is asked for its longest session (the
   same request Google's own voice typing clients make) instead of one that ends after a few
   seconds of silence, and the keyboard's own "Stop after silence" moves to 10 seconds, so a
-  think between two sentences survives. Existing installs are moved once; a number you type in
-  Voice > Transcription afterwards stands.
+  think between two sentences survives. An install still on the old 2.5 s is moved once; a
+  number you set yourself, before or after, stands.
 - Short dictated sentences no longer go missing when the next one starts: the engine's "this
   utterance is final" mark on a partial result is honoured, and the words still being
   recognised are shown as you speak them.
