@@ -193,7 +193,7 @@ class ResetToStockTest {
     @Test
     fun `side key revert with nothing captured but the slot still ours writes the vendor's unassigned pair`() {
         // A row an older build left behind, with no capture in this build's store: after an
-        // uninstall it would be a key that vibrates and opens nothing (dictation.md D27).
+        // uninstall it would be a key that vibrates and opens nothing (dictation.md D29).
         systemSettings.put(VendorKeyRows.SIDE_KEY_PACKAGE, identity.packageName)
         systemSettings.put(VendorKeyRows.SIDE_KEY_ACTIVITY, "brobata.physiboard.inputmethod.AssistantTriggerActivity")
         assertEquals(RevertOutcome.SUCCESS, reset.run().outcomes[RevertStep.SIDE_KEY])

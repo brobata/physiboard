@@ -45,6 +45,7 @@ import brobata.physiboard.core.speech.DirectCommitState
 import brobata.physiboard.core.speech.DictationPartialDisplay
 import brobata.physiboard.core.speech.LanguageTagResolver
 import brobata.physiboard.core.speech.PendingUtterance
+import brobata.physiboard.core.speech.RecognizerPartial
 import brobata.physiboard.core.speech.RecognizerRequest
 import brobata.physiboard.core.speech.SessionAudioRoute
 import brobata.physiboard.core.speech.RecognizerResolution
@@ -491,7 +492,7 @@ internal class DictationController(
     // -----------------------------------------------------------------------------------------
 
     private fun startListening(request: RecognizerRequest) {
-        DiagnosticLog.i(TAG) { "start listening segmented=${request.segmented} offline=${request.preferOffline} silenceMs=${request.completeSilenceMs} minimumMs=${request.minimumLengthMs}" }
+        DiagnosticLog.i(TAG) { "start listening segmented=${request.segmented} offline=${request.preferOffline} minimumMs=${request.minimumLengthMs}" }
         audioWatch.noteListenStarted()
         val speechRecognizer = ensureRecognizer()
         if (speechRecognizer == null) {
@@ -577,25 +578,35 @@ internal class DictationController(
             // format (punctuate) unless this is set (D15's "EXTRA_ENABLE_FORMATTING can't be
             // used when EXTRA_PREFER_OFFLINE is false").
             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, request.preferOffline)
-            // SS5, D23: INTS. Google reads both lengths with getIntExtra; a long is thrown away
+            // SS5, D23: an INT. Google reads the lengths with getIntExtra; a long is thrown away
             // ("expected Integer but value was a java.lang.Long. The default value 0 was
             // returned" ... "is not set with positive value; ignoring EXTRA_SEGMENTED_SESSION"),
             // which is why no build, 2.x included, had ever asked for a segmented session, and
             // why the engine ended every request at the first breath.
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, request.completeSilenceMs.toInt())
+            // SS5, D28: the request's shape is the one Google's own continuous client (Chromium's
+            // SpeechRecognitionImpl) sends: the longest minimum length the service accepts, and
+            // the segmented session keyed on it, so the engine holds one session across every
+            // pause and finalizes each utterance as a segment. No complete-silence length: the
+            // 3.1 to 3.4 builds keyed the session on one (the silence limit plus a second), which
+            // told the engine to end at a pause; the keyboard's own limit is the only silence stop.
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, request.minimumLengthMs.toInt())
             // SS5: Google's own dictation-mode flag, the one Chrome's Web Speech glue sets for a
             // continuous session (D17). Undocumented, so nothing here depends on it; the
             // segmented-session extra below is the documented request for the same thing.
             putExtra(GOOGLE_DICTATION_MODE_EXTRA, true)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (request.enableFormatting) putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
+                if (request.enableFormatting) {
+                    putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
+                    // SS5: a partial ends on its last word, as Gboard shows it; the punctuation
+                    // comes with the segment. The silence limit ignores punctuation either way.
+                    putExtra(RecognizerIntent.EXTRA_HIDE_PARTIAL_TRAILING_PUNCTUATION, true)
+                }
                 // SS5: the value of EXTRA_SEGMENTED_SESSION is the NAME of the extra that ends the
                 // session, as a String. 2.x and the first 3.0 build put the pause itself (a Long)
                 // here, which Google's service rejected on every request ("expected String but
                 // value was a java.lang.Long ... ignoring it", D15): segmented mode was never in
                 // force and every session was a one-shot.
-                if (request.segmented) putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS)
+                if (request.segmented) putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS)
             }
         }
     }
@@ -627,10 +638,17 @@ internal class DictationController(
             dispatch(DictationEvent.FinalResult(firstResult(results)))
         }
         override fun onPartialResults(partialResults: Bundle?) {
-            firstResult(partialResults)?.let {
-                beforeResult()
-                dispatch(DictationEvent.PartialResult(it))
-            }
+            // SS6.2, D28: Google finalizes an utterance of its continuous session through a
+            // partial flagged final, and splits a provisional one into stable text and an
+            // unstable tail; RecognizerPartial decides which event that is. Read as Chromium's
+            // SpeechRecognitionImpl reads them.
+            val event = RecognizerPartial.toEvent(
+                stableText = firstResult(partialResults),
+                unstableTail = partialResults?.getStringArrayList(GOOGLE_UNSTABLE_TEXT_EXTRA)?.firstOrNull(),
+                flaggedFinal = partialResults?.getBoolean(GOOGLE_FINAL_RESULT_EXTRA, false) == true,
+            ) ?: return
+            beforeResult()
+            dispatch(event)
         }
         override fun onEvent(eventType: Int, params: Bundle?) = Unit
         override fun onSegmentResults(segmentResults: Bundle) {
@@ -682,6 +700,10 @@ internal class DictationController(
         const val TAG = "PhysiBoardDictation"
         /** Google's recognizer's own continuous-dictation flag; see [buildRecognizerIntent]. */
         const val GOOGLE_DICTATION_MODE_EXTRA = "android.speech.extra.DICTATION_MODE"
+        /** Google's recognizer's own: the low-confidence tail of a partial, which concatenated to the stable text is the whole hypothesis (D28). */
+        const val GOOGLE_UNSTABLE_TEXT_EXTRA = "android.speech.extra.UNSTABLE_TEXT"
+        /** Google's recognizer's own: a partial so flagged is a finalized utterance of the continuous session, not a provisional one (D28). */
+        const val GOOGLE_FINAL_RESULT_EXTRA = "final_result"
     }
 }
 

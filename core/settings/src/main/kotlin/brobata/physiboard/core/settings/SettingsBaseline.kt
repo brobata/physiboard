@@ -25,8 +25,8 @@ package brobata.physiboard.core.settings
  */
 object SettingsBaseline {
 
-    /** The baseline version this build ships with; version 10 turns the mix-up fix on. */
-    const val CURRENT_VERSION: Int = 10
+    /** The baseline version this build ships with; version 11 moves the dictation silence limit to 10 s. */
+    const val CURRENT_VERSION: Int = 11
 
     /** One entry per baseline version above 0: the flat-map keys that version forces back to a corrected value. */
     val CORRECTIONS: Map<Int, Map<String, String>> = mapOf(
@@ -84,6 +84,22 @@ object SettingsBaseline {
         // stored "false" is almost always the old default, not a choice; turning it off again
         // afterwards stands.
         10 to mapOf(SettingsKeys.FIX_WORD_MIXUPS to "true"),
+        // Version 11, 2026-10-22: dictation stops 10 s after the last new words, not 2.5 s. The
+        // 2.5 s of versions 7 to 10 was chosen while the engine itself still ended every request
+        // at a breath; once the engine held its session (dictation.md D27), that timer was the
+        // one thing left cutting a pause short ("cuts me off a lot"). Every 3.1 to 3.4 install
+        // stored 2500 through version 7, so a store still holding 2500 is moved once; any other
+        // value ("Never", 30 s) is someone's own choice and stands (REPLACE_ONLY_WHEN).
+        11 to mapOf(SettingsKeys.DICTATION_STOP_AFTER_SILENCE to "10000"),
+    )
+
+    /**
+     * Corrections that replace a key only while it still holds the value given here: the one a
+     * version itself shipped and wrote, never a value the user chose since. A version absent here
+     * replaces its keys whatever they hold.
+     */
+    val REPLACE_ONLY_WHEN: Map<Int, Map<String, String>> = mapOf(
+        11 to mapOf(SettingsKeys.DICTATION_STOP_AFTER_SILENCE to "2500"),
     )
 
     /**
@@ -138,13 +154,20 @@ object SettingsBaseline {
         corrections: Map<Int, Map<String, String>> = CORRECTIONS,
         toVersion: Int = CURRENT_VERSION,
         keepOnFreshImport: Map<Int, Set<String>> = KEEP_ON_FRESH_IMPORT,
+        replaceOnlyWhen: Map<Int, Map<String, String>> = REPLACE_ONLY_WHEN,
     ): Map<String, String> {
         if (storedVersion >= toVersion) return flatMap
         val freshImport = storedVersion == 0 && flatMap[LEGACY_IMPORT_STATE_KEY] == LEGACY_IMPORT_STATE_IMPORTED
         val result = flatMap.toMutableMap()
         for (version in (storedVersion + 1)..toVersion) {
             val kept = if (freshImport) keepOnFreshImport[version].orEmpty() else emptySet()
-            corrections[version]?.let { table -> table.forEach { (key, value) -> if (key !in kept) result[key] = value } }
+            val onlyWhen = replaceOnlyWhen[version].orEmpty()
+            corrections[version]?.let { table ->
+                table.forEach { (key, value) ->
+                    val stillShipped = onlyWhen[key]?.let { shipped -> result[key] == shipped } ?: true
+                    if (key !in kept && stillShipped) result[key] = value
+                }
+            }
         }
         result[SettingsKeys.BASELINE_VERSION] = toVersion.toString()
         return result

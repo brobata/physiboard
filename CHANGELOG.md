@@ -18,6 +18,17 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
   it off when a touch ends the screen saver, and it comes up instead of PhysiBoard's nightstand
   clock. The Smart backlight and Notification ring screens now say so and open the screen saver
   setting; PhysiBoard itself cannot relight the keyboard.
+- Dictation no longer cuts you off at a pause. The engine is asked for its longest session (the
+  same request Google's own voice typing clients make) instead of one that ends after a few
+  seconds of silence, and the keyboard's own "Stop after silence" moves to 10 seconds, so a
+  think between two sentences survives. An install still on the old 2.5 s is moved once; a
+  number you set yourself, before or after, stands.
+- Short dictated sentences no longer go missing when the next one starts: the engine's "this
+  utterance is final" mark on a partial result is honoured, and the words still being
+  recognised are shown as you speak them.
+- An ending that found the field emptied (a send) lets the words go instead of deleting them,
+  so an app that misreports its text can no longer take a sentence you can see; moving to
+  another app's field mid-dictation touches nothing in that field.
 
 ## 3.4.0 (2026-10-11)
 

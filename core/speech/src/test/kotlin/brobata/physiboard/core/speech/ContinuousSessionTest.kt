@@ -339,12 +339,15 @@ class ContinuousSessionTest {
     }
 
     @Test
-    fun `the 2_5 s default stops two and a half seconds after the last word`() {
+    fun `the default stops ten seconds after the last word - a pause to think survives`() {
         val h = started(DictationSettings(androidApiLevel = 36))
         h.send(DictationEvent.PartialResult("see you at noon"), now = 1_000L)
         h.send(DictationEvent.BeginningOfSpeech, now = 1_100L)
         h.drainEffects()
-        assertTrue(h.runClockTo(3_499L).all { it.effects.isEmpty() })
-        assertEquals(listOf(DictationEffect.StopListening), h.runClockTo(3_500L).single().effects)
+        // The 2.5 s default of 3.1 to 3.4 ended the session here, in the pause between two
+        // sentences (the maintainer, 2026-10-22: "cuts me off a lot"; every session that day
+        // lasted 5 to 12 s and ended by this timer, D27).
+        assertTrue(h.runClockTo(10_999L).all { it.effects.isEmpty() })
+        assertEquals(listOf(DictationEffect.StopListening), h.runClockTo(11_000L).single().effects)
     }
 }

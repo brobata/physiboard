@@ -9,8 +9,8 @@ package brobata.physiboard.core.speech
  * this module never needs an `android.*` import to make the API-33 decisions in SS5.
  */
 data class DictationSettings(
-    /** `dictation_stop_after_silence_ms`: 15 s by the maintainer's decision; 0 means never (the session runs until stopped, within the safety limits of SS6.4). */
-    val stopAfterSilenceMs: Long = 2_500L,
+    /** `dictation_stop_after_silence_ms`: 10 s (SS6.4, 2026-10-22); 0 means never (the session runs until stopped, within the safety limits of SS6.4). */
+    val stopAfterSilenceMs: Long = 10_000L,
     val androidApiLevel: Int = 0,
     /** `dictation_mask_offensive`, the per-request profanity masking (spec SS5). */
     val maskOffensive: Boolean = false,
@@ -44,9 +44,13 @@ data class RecognizerRequest(
     /** SS5: ask the engine to punctuate and capitalise (Android 13+). */
     val enableFormatting: Boolean,
     val maskOffensive: Boolean,
-    /** SS5: the complete-silence length the engine is given, as an int on the wire (D23); the keyboard's own silence limit plus a margin. */
-    val completeSilenceMs: Long,
-    /** SS5: the minimum length of the request, as an int on the wire; the engine "will not stop recognizing speech before this amount of time". */
+    /**
+     * SS5: the minimum length of the request, as an int on the wire (D23): the engine "will not
+     * stop recognizing speech before this amount of time". It is also the extra a segmented
+     * request is keyed on, so the engine holds one session open across every pause and ends it
+     * only when this much time has passed or the keyboard asks (D28). No silence length is sent:
+     * the keyboard's own limit (SS6.4) is the only silence stop.
+     */
     val minimumLengthMs: Long,
 )
 
@@ -64,8 +68,7 @@ object RecognizerRequestPlanner {
         preferOffline = settings.preferOffline || settings.privateMode,
         enableFormatting = settings.autoPunctuation && settings.androidApiLevel >= MIN_API_LEVEL_FOR_FORMATTING,
         maskOffensive = settings.maskOffensive,
-        completeSilenceMs = DictationTiming.engineSilenceMs(settings.stopAfterSilenceMs),
-        minimumLengthMs = DictationTiming.engineSilenceMs(settings.stopAfterSilenceMs),
+        minimumLengthMs = DictationTiming.ENGINE_SESSION_MINIMUM_MS,
     )
 }
 

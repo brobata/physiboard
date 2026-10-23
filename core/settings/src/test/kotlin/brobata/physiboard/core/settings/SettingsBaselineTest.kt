@@ -124,6 +124,24 @@ class SettingsBaselineTest {
     }
 
     /**
+     * Version 11 (2026-10-22): the dictation silence limit moves from the 2.5 s every 3.1 to 3.4
+     * install stored to 10 s, but only where the store still holds 2500. "Never" (0) or a typed
+     * 45 s is a choice, and the strongest "don't cut me off" setting must not be undone by the
+     * change meant to stop the cut-offs.
+     */
+    @Test
+    fun `version 11 moves a store still at 2_5 s to 10 s and leaves any chosen value alone`() {
+        val key = SettingsKeys.DICTATION_STOP_AFTER_SILENCE
+        assertEquals("10000", SettingsBaseline.apply(mapOf(key to "2500"), storedVersion = 10)[key])
+        assertEquals("0", SettingsBaseline.apply(mapOf(key to "0"), storedVersion = 10)[key], "Never stands")
+        assertEquals("45000", SettingsBaseline.apply(mapOf(key to "45000"), storedVersion = 10)[key], "a typed value stands")
+        assertEquals("11", SettingsBaseline.apply(mapOf(key to "45000"), storedVersion = 10)[SettingsKeys.BASELINE_VERSION])
+        assertEquals("2500", SettingsBaseline.apply(mapOf(key to "2500"), storedVersion = 11)[key], "typed back to 2.5 s after version 11: stands")
+        assertEquals(null, SettingsBaseline.apply(emptyMap(), storedVersion = 10)[key], "an absent key reads the code default already")
+        assertEquals("10000", SettingsBaseline.apply(mapOf(key to "15000"), storedVersion = 5)[key], "a dev store from before version 6 still walks 6, 7 and 11")
+    }
+
+    /**
      * Version 8: the maintainer's dev build stored GIFs off and the picker first, so GIFs were
      * reachable only through a double tap. The correction puts Emoji, Symbols, GIFs on in that
      * order, the rest off, and kaomoji back to opt-in; a fresh install reads the same.

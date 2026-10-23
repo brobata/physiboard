@@ -47,7 +47,7 @@ data class KeyMappingRow(val label: String, val hardwareText: String, val bindin
 object KeyMappingInventory {
     const val ROUTE_FN_LAYER = "fn_layer"
     const val ROUTE_VOICE = "voice"
-    /** The slot names this app but a trampoline this build does not declare: the hold vibrates and opens nothing (dictation.md D27). */
+    /** The slot names this app but a trampoline this build does not declare: the hold vibrates and opens nothing (dictation.md D29). */
     const val HOLD_OPENS_NOTHING_OF_OURS = "hold: nothing opens (an older PhysiBoard name)"
     const val ROUTE_SCREEN_TRACKPAD = "screen_trackpad"
 

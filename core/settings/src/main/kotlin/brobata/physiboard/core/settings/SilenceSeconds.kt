@@ -5,8 +5,12 @@ package brobata.physiboard.core.settings
  * allowed (dictation.md SS12.1). Stored as `dictation_stop_after_silence_ms`.
  */
 object SilenceSeconds {
-    /** The maintainer's number (2026-10-07): 2.5 s after the last word. */
-    const val DEFAULT_MS: Int = 2500
+    /**
+     * 10 s after the last word (dictation.md SS6.4, 2026-10-22). The 2.5 s of 3.1 to 3.4 was set
+     * on 2026-10-07 while the engine itself still ended every request at a breath; once the
+     * engine held its session, that timer was the one thing still cutting a pause short.
+     */
+    const val DEFAULT_MS: Int = 10_000
 
     /** Typed seconds as milliseconds; null while the text is not yet a number from 1 to 60. */
     fun parse(typed: String): Int? {

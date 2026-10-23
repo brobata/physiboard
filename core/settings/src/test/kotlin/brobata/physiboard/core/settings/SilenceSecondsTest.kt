@@ -19,10 +19,11 @@ class SilenceSecondsTest {
     }
 
     @Test
-    fun `stored milliseconds show as plain seconds, and the default is 2_5`() {
+    fun `stored milliseconds show as plain seconds, and the default is 10`() {
         assertEquals("2.5", SilenceSeconds.format(2500))
         assertEquals("5", SilenceSeconds.format(5000))
         assertEquals("3.2", SilenceSeconds.format(3200))
+        assertEquals("10", SilenceSeconds.format(SilenceSeconds.DEFAULT_MS))
         assertEquals(SilenceSeconds.DEFAULT_MS, Settings().dictation.stopAfterSilenceMs)
     }
 }

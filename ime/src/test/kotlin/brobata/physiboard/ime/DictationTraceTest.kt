@@ -129,7 +129,7 @@ class DictationTraceTest {
         assertEquals("commit5", DictationTrace.opLabel(DictationTextOp.CommitText("hello")))
         assertEquals("del3", DictationTrace.opLabel(DictationTextOp.DeleteBeforeCursor(3)))
 
-        val request = RecognizerRequest(segmented = true, preferOffline = false, enableFormatting = true, maskOffensive = false, completeSilenceMs = 1_000, minimumLengthMs = 1_000)
+        val request = RecognizerRequest(segmented = true, preferOffline = false, enableFormatting = true, maskOffensive = false, minimumLengthMs = 300_000)
         val effects = mapOf(
             DictationEffect.StartListening(request) to "StartListening",
             DictationEffect.StopListening to "StopListening",

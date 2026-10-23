@@ -43,7 +43,7 @@ class KeyMappingInventoryTest {
 
     @Test
     fun `orange key hold naming this app but a trampoline this build does not serve is not called the assistant`() {
-        // dictation.md D27: the row an older build left behind; the hold vibrates and opens nothing.
+        // dictation.md D29: the row an older build left behind; the hold vibrates and opens nothing.
         val snapshot = baseSnapshot().copy(orangeLongPressPackage = "brobata.physiboard", orangeLongPressActivity = "brobata.physiboard.old.AssistantTriggerActivity")
         val row = KeyMappingInventory.rows(snapshot).first { it.label == "Orange side key" }
         assertEquals(KeyMappingInventory.HOLD_OPENS_NOTHING_OF_OURS, row.bindingText)
