@@ -26,7 +26,7 @@ class DictationEngineLifecycleTest {
         assertEquals("app", session.ownerPackage)
         assertEquals("Hello ", session.utterance.context.textBeforeUtterance)
         assertEquals(10_000L, session.silenceLimitMs)
-        assertEquals(11_000L, session.request.completeSilenceMs)
+        assertEquals(DictationTiming.ENGINE_SESSION_MINIMUM_MS, session.request.minimumLengthMs, "the engine is never given a silence length; its session is as long as it allows")
         assertEquals(true, session.request.segmented)
     }
 

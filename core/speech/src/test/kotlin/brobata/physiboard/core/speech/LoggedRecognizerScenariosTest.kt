@@ -436,4 +436,100 @@ class LoggedRecognizerScenariosTest {
         val taken = other.send(DictationEvent.EditorFieldOpened("another.app"), now = 1_000L)
         assertNull(taken.session)
     }
+
+    // -------------------------------------------------------------------------------------
+    // 2026-10-22, the "still spotty, cuts me off" report on 3.4.0 (D27, D28).
+    // -------------------------------------------------------------------------------------
+
+    @Test
+    fun `D28 - a short utterance finalized through a flagged partial survives the next utterance's first partial`() {
+        // Google's continuous session finalizes an utterance through a partial flagged
+        // `final_result` (Chromium's SpeechRecognitionImpl); :ime hands that in as a segment.
+        // Composed as a provisional partial instead, "Sounds good." was replaced by "I'll" (two
+        // words: SS7.3's overlap rescue needs three), and the sentence went missing.
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("sounds"), now = 1_000L)
+        h.send(DictationEvent.SegmentResult("Sounds good."), now = 1_800L)
+        assertEquals("Sounds good. ", h.field.text)
+        h.send(DictationEvent.PartialResult("I'll"), now = 3_000L)
+        assertEquals("Sounds good. I'll", h.field.text)
+        h.send(DictationEvent.PartialResult("I'll be there at"), now = 3_600L)
+        h.send(DictationEvent.SegmentResult("I'll be there at noon."), now = 5_000L)
+        assertEquals("Sounds good. I'll be there at noon. ", h.field.text)
+        assertEquals(1, h.starts(), "one request for the whole session")
+        assertEquals(false, h.segmentedRefusalLatch, "a flagged partial proves the engine continuous")
+        assertNull(h.session?.continuationProbeDeadlineMs)
+    }
+
+    @Test
+    fun `D28 - an utterance the engine delivers twice, as a flagged partial and again as its final, lands once`() {
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("sounds good"), now = 1_000L)
+        h.send(DictationEvent.SegmentResult("Sounds good."), now = 1_800L)
+        h.send(DictationEvent.FinalResult("Sounds good."), now = 2_300L)
+        assertEquals("Sounds good. ", h.field.text, "the echo writes nothing")
+        h.send(DictationEvent.EngineActivity, now = 2_400L)
+        h.send(DictationEvent.PartialResult("see you"), now = 4_000L)
+        h.send(DictationEvent.SegmentResult("See you then."), now = 5_000L)
+        assertEquals("Sounds good. See you then. ", h.field.text)
+        assertEquals(1, h.starts())
+    }
+
+    @Test
+    fun `D28 - the engine is asked for its longest session and never for a silence ending, whatever the limit`() {
+        for (silence in listOf(0L, 2_500L, 10_000L, 60_000L)) {
+            val h = harness(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = silence)).start()
+            val request = h.effects.filterIsInstance<DictationEffect.StartListening>().single().request
+            assertEquals(DictationTiming.ENGINE_SESSION_MINIMUM_MS, request.minimumLengthMs)
+            assertEquals(true, request.segmented)
+        }
+    }
+
+    @Test
+    fun `D27 - the engine holding its session, only the keyboard's limit ends a pause - a 9 s think survives the 10 s default`() {
+        // Every session of 2026-10-22 lasted 5 to 12 s and ended by the keyboard's own stop
+        // (D27): the engine never ended one. With the engine never ending on silence, the
+        // silence limit is the whole of "cuts me off", so it is long enough to think in.
+        val h = harness(DictationSettings(androidApiLevel = 36)).start()
+        h.send(DictationEvent.PartialResult("the first sentence"), now = 1_000L)
+        h.send(DictationEvent.SegmentResult("The first sentence."), now = 2_000L)
+        h.drainEffects()
+        assertTrue(h.runClockTo(10_000L).all { it.effects.isEmpty() }, "a 9 s pause after the last new words is not the end")
+        h.send(DictationEvent.PartialResult("and the"), now = 10_000L)
+        h.send(DictationEvent.SegmentResult("And the second."), now = 11_000L)
+        assertEquals("The first sentence. And the second. ", h.field.text)
+        assertTrue(h.runClockTo(20_999L).all { it.effects.isEmpty() })
+        assertEquals(listOf(DictationEffect.StopListening), h.runClockTo(21_000L).single().effects, "10 s after the last new words (the segment at 11 s added them)")
+    }
+
+    @Test
+    fun `a field read as emptied releases the composing words instead of deleting them - a field that lied costs nothing`() {
+        // The verdict comes from reading the field (SS3). Web fields have answered "" for the
+        // text before the cursor on this phone (2026-09-25); in a truly empty field a release
+        // writes nothing, in one that lied the words stay as the user's plain text.
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("hello there"), now = 1_000L)
+        val cleared = h.send(DictationEvent.FieldClearedByApp, now = 2_000L)
+        assertNull(cleared.session)
+        assertEquals(listOf(DictationTextOp.ReleaseComposing), cleared.textOps)
+        assertTrue(cleared.textOps.none { it is DictationTextOp.SetComposingText }, "never a replace")
+    }
+
+    @Test
+    fun `another app's field, or no field, gets no text op from the ending`() {
+        // By the time another app's field is current the connection is that field's: a clear
+        // sent then would replace whatever it has composing.
+        val other = harness().start()
+        other.send(DictationEvent.PartialResult("hello there"), now = 1_000L)
+        val taken = other.send(DictationEvent.EditorFieldOpened("another.app"), now = 2_000L)
+        assertNull(taken.session)
+        assertTrue(taken.textOps.isEmpty())
+
+        val gone = harness().start()
+        gone.send(DictationEvent.PartialResult("hello there"), now = 1_000L)
+        gone.send(DictationEvent.EditorFieldClosed, now = 2_000L)
+        val ended = gone.runClockTo(2_500L).single()
+        assertNull(ended.session)
+        assertTrue(ended.textOps.isEmpty())
+    }
 }

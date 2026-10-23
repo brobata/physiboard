@@ -51,11 +51,14 @@ object DictationTiming {
     const val SESSION_CAP_MS = 10 * 60_000L
 
     /**
-     * spec SS5: the engine is asked to end its segmented session this much later than the
-     * keyboard's own silence limit, so the keyboard's timer is the one that decides and the
-     * engine's own ending never races it.
+     * spec SS5, D28: the minimum length asked of the engine, and the extra the segmented session
+     * is keyed on. Five minutes is what Google's own continuous client (Chromium's
+     * `SpeechRecognitionImpl`) sends and names as the most the Google service accepts; with it
+     * the engine holds one session open across every pause, finalizes each utterance as a
+     * segment, and nothing of the engine's ends the session on silence. An engine that reaches
+     * it ends its segmented session, which SS6.2 re-listens.
      */
-    const val ENGINE_SILENCE_MARGIN_MS = 1_000L
+    const val ENGINE_SESSION_MINIMUM_MS = 5 * 60_000L
 
     /**
      * spec SS6.3: after an ordinary final on a segmented request, how long the keyboard waits for
@@ -75,8 +78,8 @@ object DictationTiming {
     /**
      * spec SS6.10: on a car or Bluetooth route, the silence limit before the first words is at
      * least this long, counted from the start cue: the microphone, the engine and the person
-     * driving are all slower to begin there, and the 2.5 s default ended sessions before the
-     * first partial arrived.
+     * driving are all slower to begin there, and the 2.5 s default of 3.1 to 3.4 ended sessions
+     * before the first partial arrived.
      */
     const val REMOTE_ROUTE_FIRST_WORDS_GRACE_MS = 6_000L
 
@@ -88,7 +91,4 @@ object DictationTiming {
 
     /** spec SS6.4: how long the session waits in silence before stopping by itself; `stopAfterSilenceMs` 0 means the safety limit. */
     fun silenceLimitMs(stopAfterSilenceMs: Long): Long = if (stopAfterSilenceMs > 0L) stopAfterSilenceMs else SAFETY_SILENCE_MS
-
-    /** spec SS5: the complete-silence length handed to the engine for a given silence limit. */
-    fun engineSilenceMs(stopAfterSilenceMs: Long): Long = silenceLimitMs(stopAfterSilenceMs) + ENGINE_SILENCE_MARGIN_MS
 }

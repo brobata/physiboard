@@ -207,16 +207,19 @@ class CarAudioScenariosTest {
 
     @Test
     fun `at home the silence limit before the first words is unchanged, but counts from the cue`() {
-        val h = DictationHarness()
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 2_500L))
         h.send(DictationEvent.Trigger("app", "", SessionAudioRoute.LOCAL), now = 0L)
         h.send(DictationEvent.FirstAudio, now = 40L)
+        assertTrue(h.runClockTo(2_500L).none { DictationEffect.StopListening in it.effects }, "not from the trigger")
         val stops = h.runClockTo(2_600L).filter { DictationEffect.StopListening in it.effects }
         assertEquals(1, stops.size, "2.5 s after the cue at 40 ms")
     }
 
     @Test
-    fun `in the car the silence limit before the first words is six seconds, after them the usual 2_5 s`() {
-        val h = car(SessionAudioRoute.CAR)
+    fun `in the car the silence limit before the first words is at least six seconds, after them the set limit`() {
+        // A 2.5 s limit, the one the floor was written for; the 10 s default is already above it.
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36, stopAfterSilenceMs = 2_500L))
+        h.send(DictationEvent.Trigger("app", "", SessionAudioRoute.CAR), now = 0L)
         h.send(DictationEvent.FirstAudio, now = 40L)
         assertTrue(h.runClockTo(6_000L).none { DictationEffect.StopListening in it.effects })
         h.send(DictationEvent.PartialResult("turn left"), now = 6_000L)
