@@ -47,7 +47,11 @@ object DictationEngine {
             // anything was said; only new words restart the silence limit (spec SS6.4).
             DictationEvent.BeginningOfSpeech -> DictationOutcome(alive(session).copy(consecutiveFailures = 0))
             DictationEvent.EngineActivity -> DictationOutcome(alive(session))
-            DictationEvent.FieldClearedByApp -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
+            // spec SS3: the words went with the message, so there is nothing to clear; a composing
+            // span is only released. The field was read to reach this verdict, and a field that
+            // lied (web fields answer "" for the text before the cursor, 2026-09-25) must never
+            // cost the user words they can see: a release in a truly empty field writes nothing.
+            DictationEvent.FieldClearedByApp -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), releaseComposingOps(session.utterance.pending))
             DictationEvent.EndOfSpeech -> DictationOutcome(session)
             is DictationEvent.PartialResult -> handlePartialResult(session, event.text, now, textSettings)
             is DictationEvent.FinalResult -> handleFinalResult(session, event.text, now, textSettings)
@@ -510,14 +514,20 @@ object DictationEngine {
     private fun clearComposingOps(pending: PendingUtterance): List<DictationTextOp> =
         if (pending is PendingUtterance.Live) listOf(DictationTextOp.SetComposingText(""), DictationTextOp.FinishComposing) else emptyList()
 
+    /** spec SS3: the composing span is let go where it stands; nothing is replaced, so a verdict reached by reading the field can never delete words. */
+    private fun releaseComposingOps(pending: PendingUtterance): List<DictationTextOp> =
+        if (pending is PendingUtterance.Live) listOf(DictationTextOp.ReleaseComposing) else emptyList()
+
     // ---------------------------------------------------------------------------------------
     // Editor lifecycle. spec SS3.
     // ---------------------------------------------------------------------------------------
 
     private fun handleEditorFieldOpened(session: DictationSession, ownerPackage: String?): DictationOutcome {
         if (ownerPackage != session.ownerPackage) {
-            // "Another app takes the editor ... immediately", no grace.
-            return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
+            // "Another app takes the editor ... immediately", no grace. No text op: the input
+            // connection is already the other app's field, and a clear sent now would replace
+            // whatever that field has composing. The old field keeps the words as they stood.
+            return DictationOutcome(null, endEffects(session, cancelRecognizer = true))
         }
         // Same app, a new field: the 500 ms grace is cancelled and dictation continues.
         return DictationOutcome(session.copy(editorGoneDeadlineMs = null))
@@ -575,7 +585,9 @@ object DictationEngine {
         }
         session.editorGoneDeadlineMs?.let { deadline ->
             if (now >= deadline) {
-                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
+                // spec SS3: the field is gone; there is no connection for a text op to reach, and
+                // one that did reach a field would be some other field's.
+                return DictationOutcome(null, endEffects(session, cancelRecognizer = true))
             }
         }
         // spec SS6.4: the silence limit and the session cap both stop gracefully, so the engine's

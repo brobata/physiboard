@@ -47,10 +47,10 @@ class DictationEndingsTest {
     }
 
     @Test
-    fun `another app taking the field clears a live partial`() {
+    fun `another app taking the field writes nothing - the connection is already that app's field`() {
         val ended = composing().send(DictationEvent.EditorFieldOpened("other.app"), now = 300L)
         assertNull(ended.session)
-        assertEquals(clear, ended.textOps)
+        assertTrue(ended.textOps.isEmpty(), "a clear sent now would replace the other field's own composing text")
     }
 
     @Test
