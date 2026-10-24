@@ -3296,8 +3296,9 @@ internal class KeyboardSession(
      * [exactCaret]: the caret must sit right at the end of the partial. Asked when a selection
      * report put the caret elsewhere (dictation.md SS7.4): a tap just past a newline or a space
      * after the words is a move, which the trailing-whitespace tolerance of the result check
-     * would read as "still there". The partial itself never ends in whitespace (results are
-     * trimmed, SS7.1).
+     * would read as "still there". The partial itself never ends in a space (results are
+     * trimmed, SS7.1); it may end in a spoken line break (SS7.7), which the exact check matches
+     * as any other character.
      */
     private fun verifyDictationField(exactCaret: Boolean = false): FieldVerdict {
         val composing = dictationController.composingTextInField ?: return FieldVerdict.INTACT

@@ -15,12 +15,12 @@ package brobata.physiboard.core.speech
  * The rules, in the order they are applied to the words of one result:
  *
  * - A phrase of the English table ([Vocabulary.ENGLISH]) becomes its mark. "Three exclamation
- *   points" (a count word or digit, then the plural) repeats it; two phrases in a row join
- *   ("question mark exclamation point" is "?!").
- * - A phrase said directly after a determiner ("a period of time", "the comma in that sentence",
- *   "that question mark") is the noun, and stays a word. So does a plural with no count
- *   ("commas"). This is the whole of the ambiguity rule: Gboard converts every time; here one
- *   word of warning keeps the word.
+ *   points" (a count word or digits, then the plural) repeats it; a number before the singular
+ *   is dictation ("see you at 5 period"); two phrases in a row join ("question mark exclamation
+ *   point" is "?!").
+ * - A phrase said directly after a determiner ("a period of time", "the comma in that sentence")
+ *   is the noun, and stays a word. So does a plural with no count ("commas"). This is the whole
+ *   of the ambiguity rule: Gboard converts every time; here one word of warning keeps the word.
  * - The spoken mark wins over the engine's: a mark the engine attached to the phrase itself
  *   ("comma," or "Period.") or to the word before it ("appear. Period") is dropped. When the
  *   dropped mark was a sentence end and the spoken mark is not, the capital the engine put on
@@ -120,10 +120,10 @@ object SpokenPunctuation {
                     "semicolons" to SEMICOLON,
                     "new lines" to NEW_LINE,
                 ),
-                determiners = setOf(
-                    "a", "an", "the", "this", "that", "these", "those", "each", "every", "another", "any", "some", "no",
-                    "my", "your", "his", "her", "its", "our", "their",
-                ),
+                // Only the words that are nothing but a determiner. "her", "that", "no" and
+                // their kin end sentences too often ("I told her period", "don't do that
+                // period", "the answer is no period") to be allowed to keep the word.
+                determiners = setOf("a", "an", "the", "each", "every", "another", "my", "your", "our", "their"),
                 counts = mapOf("two" to 2, "three" to 3, "four" to 4, "five" to 5, "six" to 6, "seven" to 7, "eight" to 8, "nine" to 9, "ten" to 10),
             )
         }
@@ -144,9 +144,26 @@ object SpokenPunctuation {
         return if (language.isNullOrEmpty() || language == "en") Vocabulary.ENGLISH else null
     }
 
-    /** [text] with its spoken punctuation converted, or [text] itself when nothing in it is a phrase of [vocabulary]. */
-    fun apply(text: String, vocabulary: Vocabulary): String {
-        if (text.isEmpty()) return text
+    /**
+     * A result after conversion, with what the spacing of SS7.6 needs to know about its edges:
+     * the placement of the mark it opens with and of the mark it ends with, `null` for a word.
+     * Read from what was converted, never from the text's characters, so the engine's own
+     * "'Cause" or "-5 degrees" opens with a word, not a mark.
+     */
+    data class Converted(val text: String, val opening: Placement? = null, val closing: Placement? = null) {
+        /** Opens with a mark that sits against the word before it, or with a line break: no leading space, and the field's end is joined over. */
+        val joinsToPrevious: Boolean get() = opening == Placement.CLOSE || opening == Placement.GLUE || opening == Placement.BREAK
+
+        /** Ends where nothing may follow on the same line, or on a mark that wants its word right after it: no trailing space. */
+        val endsWithoutSpace: Boolean get() = closing == Placement.OPEN || closing == Placement.GLUE || closing == Placement.BREAK
+
+        /** Ends on a mark the user said, which the next utterance's spoken mark joins onto rather than replaces. */
+        val endsWithSpokenMark: Boolean get() = closing != null
+    }
+
+    /** [text] with its spoken punctuation converted; [text] itself, as a plain word, when nothing in it is a phrase of [vocabulary]. */
+    fun apply(text: String, vocabulary: Vocabulary): Converted {
+        if (text.isEmpty()) return Converted(text)
         val tokens = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }.map(Token::parse)
         val out = Assembler()
         var i = 0
@@ -170,22 +187,26 @@ object SpokenPunctuation {
             lowerNextCapital = absorbedSentenceEnd && !match.mark.endsSentence
             i += match.consumed
         }
-        return if (converted) out.toString() else text
+        return if (converted) out.result() else Converted(text)
     }
 
     private class Match(val mark: Mark, val repeat: Int, val consumed: Int, val attachedMark: String)
 
     /**
-     * The phrase starting at [start], longest first, with a count before a plural. `null` when
-     * the words are not a phrase or the ambiguity rule keeps them as words: a determiner before
-     * them, or a plural with no count.
+     * The phrase starting at [start], longest first, with a count before a plural only: a number
+     * before the singular is dictation ("see you at 5 period", "step two period"), and the
+     * plural is what says the number counts marks. `null` when the words are not a phrase or
+     * the ambiguity rule keeps them as words: a determiner before them, a plural with no count,
+     * or the engine's own opening punctuation on them.
      */
     private fun matchAt(tokens: List<Token>, start: Int, vocabulary: Vocabulary): Match? {
         val previous = tokens.getOrNull(start - 1)
         // A word the engine ended its sentence on cannot be this phrase's determiner ("That. Period" is a mark).
         val afterDeterminer = previous != null && previous.trailing.isEmpty() && previous.core.lowercase() in vocabulary.determiners
+        if (tokens[start].leading.isNotEmpty()) return null
         val count = countOf(tokens[start], vocabulary)
         val phraseStart = if (count != null) start + 1 else start
+        if (count != null && tokens.getOrNull(phraseStart)?.leading?.isNotEmpty() == true) return null
         for (length in vocabulary.longestPhrase downTo 1) {
             if (phraseStart + length > tokens.size) continue
             val words = tokens.subList(phraseStart, phraseStart + length)
@@ -193,7 +214,7 @@ object SpokenPunctuation {
             if (words.dropLast(1).any { it.trailing.isNotEmpty() }) continue
             val key = words.map { it.core.lowercase() }
             if (count != null) {
-                val mark = vocabulary.plurals[key] ?: vocabulary.phrases[key] ?: continue
+                val mark = vocabulary.plurals[key] ?: continue
                 if (afterDeterminer) return null
                 return Match(mark, count, length + 1, words.last().trailing)
             }
@@ -232,6 +253,9 @@ object SpokenPunctuation {
         private val out = StringBuilder()
         private var last: Placement? = null // null: a word, or nothing yet
         private var lastWordEnd = -1 // where the last word's letters end, for taking back the engine's mark on it
+        private var opening: Placement? = null // the first piece, when it was a mark
+        private var closing: Placement? = null // the last piece, when it was a mark
+        private var empty = true
 
         fun word(token: Token) {
             if (out.isNotEmpty() && last != Placement.OPEN && last != Placement.GLUE && last != Placement.BREAK) out.append(' ')
@@ -239,6 +263,8 @@ object SpokenPunctuation {
             lastWordEnd = out.length
             out.append(token.trailing)
             last = null
+            closing = null
+            empty = false
         }
 
         /** Drops the engine's mark on the word just written (the spoken mark replaces it); true when that mark ended a sentence. */
@@ -265,6 +291,9 @@ object SpokenPunctuation {
             }
             last = if (mark.placement == Placement.SPACED) null else mark.placement
             lastWordEnd = -1
+            if (empty) opening = mark.placement
+            closing = mark.placement
+            empty = false
         }
 
         /** Characters that ride on the mark just written, with no space and no change of placement. */
@@ -272,33 +301,10 @@ object SpokenPunctuation {
             out.append(text)
         }
 
-        override fun toString(): String = out.toString()
+        fun result(): Converted = Converted(out.toString(), opening, closing)
     }
 
     private val WHITESPACE = Regex("\\s+")
-
-    // ---------------------------------------------------------------------------------------
-    // The edges of a converted text, read by DictationSpacing and UtteranceFinisher.
-    // ---------------------------------------------------------------------------------------
-
-    /** The text begins with a mark that sits against the word before it (a spoken "comma" as the first word of an utterance), or with a line break. */
-    fun joinsToPrevious(text: String): Boolean {
-        val first = text.firstOrNull() ?: return false
-        if (first == '\n') return true
-        if (first == '-' && text.length > 1 && text[1] != ' ') return true
-        return first in JOINING_STARTS
-    }
-
-    /** The text ends where nothing may follow on the same line, or on an opening mark that wants its word right after it. */
-    fun endsWithoutSpace(text: String): Boolean {
-        val last = text.lastOrNull() ?: return false
-        if (last == '\n' || last == '(') return true
-        // A quote with a space (or nothing) before it is an opening one; after a letter it closes.
-        if (last == '"') return text.length == 1 || text[text.length - 2] == ' '
-        return false
-    }
-
-    private const val JOINING_STARTS = ",.?!:;)'"
 }
 
 /**

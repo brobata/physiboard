@@ -29,4 +29,6 @@ data class UtteranceContext(
      * the field under an utterance (SS7.4), since the field's end is then no longer this text.
      */
     val writtenBySession: String = "",
+    /** [writtenBySession] ends on a mark the user spoke (SS7.7); the next spoken mark joins onto it rather than replacing it, as "Wow!!!" is built. */
+    val sessionTailIsSpokenMark: Boolean = false,
 )

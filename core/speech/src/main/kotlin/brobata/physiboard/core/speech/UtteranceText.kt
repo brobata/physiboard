@@ -46,7 +46,7 @@ internal fun lowerEngineSegmentCapital(text: String): String {
 object DictationPartialDisplay {
     fun display(rawPartial: String, context: UtteranceContext, settings: DictationTextSettings): String {
         if (rawPartial.isEmpty()) return rawPartial
-        val partial = spokenWordsToText(rawPartial, settings)
+        val partial = spokenWordsToText(rawPartial, settings).text
         if (!settings.capitalizationAllowed) return partial
         if (!shouldCapitaliseAt(context.textBeforeUtterance)) return if (settings.undoEngineSegmentCapitals) lowerEngineSegmentCapital(partial) else partial
         return if (settings.capitalizeFirstLetter) titleCaseFirst(partial) else partial
@@ -59,11 +59,10 @@ object DictationPartialDisplay {
  * finish will land. The [PendingUtterance] keeps the engine's own words; only what is shown and
  * written is converted, which is what keeps [SessionEcho]'s word-for-word comparison honest.
  */
-internal fun spokenWordsToText(rawText: String, settings: DictationTextSettings): String {
-    var text = rawText
-    settings.spokenPunctuationVocabulary?.let { text = SpokenPunctuation.apply(text, it) }
-    if (settings.textingStyleInForce) text = TextingStyle.apply(text)
-    return text
+internal fun spokenWordsToText(rawText: String, settings: DictationTextSettings): SpokenPunctuation.Converted {
+    val converted = settings.spokenPunctuationVocabulary?.let { SpokenPunctuation.apply(rawText, it) } ?: SpokenPunctuation.Converted(rawText)
+    // The spellings change words, never the edges the marks decided.
+    return if (settings.textingStyleInForce) converted.copy(text = TextingStyle.apply(converted.text)) else converted
 }
 
 /** spec: dictation.md SS7.5: first-letter, after-sentence-end and after-line-break capitalisation of a finished utterance. */
@@ -98,9 +97,10 @@ object DictationCapitalization {
  * read before the cursor includes the composing partial, whose last character is a letter"): the
  * frozen snapshot never contains this utterance's own partial, so it cannot trigger that.
  *
- * spec SS7.7 adds the marks' edges: a text that opens with a mark that sits against the word
- * before it gets no leading space and instead takes back what this session left after that
- * word ([joinOver]); a text that ends with a line break or an opening mark gets no trailing space.
+ * spec SS7.7 adds the marks' edges, as the converter reported them: a text that opens with a
+ * mark that sits against the word before it gets no leading space and instead takes back what
+ * this session left after that word ([joinOver]); a text that ends with a line break or an
+ * opening mark gets no trailing space.
  */
 object DictationSpacing {
     private const val LOOKBACK = 10
@@ -108,26 +108,32 @@ object DictationSpacing {
     /** The most characters a leading mark joins over: the engine's mark and the finisher's space, or a few of the user's own spaces. */
     private const val MAX_JOIN = 4
 
-    fun apply(text: String, context: UtteranceContext): String {
-        val leadingSpace = !SpokenPunctuation.joinsToPrevious(text) && context.textBeforeUtterance?.takeLast(LOOKBACK)?.lastOrNull()?.isLetter() == true
-        val trailingSpace = !SpokenPunctuation.endsWithoutSpace(text)
-        return (if (leadingSpace) " " else "") + text + (if (trailingSpace) " " else "")
+    /** How much of the frozen context a join is checked against in the field, so that two matching characters somewhere else can never pass for the right place. */
+    internal const val JOIN_ANCHOR = 16
+
+    fun apply(text: String, context: UtteranceContext): String = apply(SpokenPunctuation.Converted(text), context)
+
+    fun apply(converted: SpokenPunctuation.Converted, context: UtteranceContext): String {
+        val leadingSpace = !converted.joinsToPrevious && context.textBeforeUtterance?.takeLast(LOOKBACK)?.lastOrNull()?.isLetter() == true
+        val trailingSpace = !converted.endsWithoutSpace
+        return (if (leadingSpace) " " else "") + converted.text + (if (trailingSpace) " " else "")
     }
 
     /**
-     * What a [text] opening with a spoken mark takes back from the end of the field (spec SS7.7):
-     * the trailing spaces, and, when the end of the field is this session's own writing, the
-     * engine's mark before them ("appear. " then "period" is "appear. ", not "appear. . "). The
-     * user's own mark before the session is never touched. Empty when nothing is to be joined.
+     * What a text opening with a spoken mark takes back from the end of the field (spec SS7.7):
+     * the trailing spaces, and, when the end of the field is this session's own writing ending
+     * on the engine's mark, that mark too ("appear. " then "period" is "appear. ", not
+     * "appear. . "). A mark the user spoke ([UtteranceContext.sessionTailIsSpokenMark]) and the
+     * user's own mark before the session are never touched. Empty when nothing is to be joined.
      */
-    fun joinOver(text: String, context: UtteranceContext): String {
-        if (!SpokenPunctuation.joinsToPrevious(text)) return ""
+    fun joinOver(converted: SpokenPunctuation.Converted, context: UtteranceContext): String {
+        if (!converted.joinsToPrevious) return ""
         val before = context.textBeforeUtterance ?: return ""
         val spaces = before.takeLastWhile { it == ' ' }.take(MAX_JOIN)
-        if (text.startsWith("\n")) return spaces // a line break takes the spaces, keeps the mark
+        if (converted.opening == SpokenPunctuation.Placement.BREAK) return spaces // a line break takes the spaces, keeps the mark
         val own = context.writtenBySession
-        if (own.isEmpty() || !before.endsWith(own)) return spaces
-        // The engine's mark sits alone on a word ("appear."); a run of spoken marks ("Wow!!!") is the user's and stays.
+        if (own.isEmpty() || context.sessionTailIsSpokenMark || !before.endsWith(own)) return spaces
+        // The engine's mark sits alone on a word ("appear."); anything else there is left as it is.
         val written = own.dropLast(spaces.length)
         val mark = written.lastOrNull()?.takeIf { it in SpokenPunctuation.ENGINE_MARKS } ?: return spaces
         if (written.getOrNull(written.length - 2)?.isLetterOrDigit() != true) return spaces
@@ -146,30 +152,38 @@ object UtteranceFinisher {
      * utterance's [UtteranceContext] can be computed by simple append rather than a fresh read.
      * [spokenWords] is what the engine said, before conversion, which is what [SessionEcho] must
      * compare against. [joinedOver] is what a leading spoken mark deleted from the end of the
-     * field before [plainText] was written (SS7.7).
+     * field before [plainText] was written, and [endsWithSpokenMark] whether the text ends on a
+     * mark the user said (SS7.7).
      */
-    data class Finished(val ops: List<DictationTextOp>, val plainText: String?, val spokenWords: String? = plainText, val joinedOver: String = "")
+    data class Finished(
+        val ops: List<DictationTextOp>,
+        val plainText: String?,
+        val spokenWords: String? = plainText,
+        val joinedOver: String = "",
+        val endsWithSpokenMark: Boolean = false,
+    )
 
     val NOTHING = Finished(emptyList(), null, null)
 
     fun finish(rawText: String, context: UtteranceContext, settings: DictationTextSettings): Finished {
         val converted = spokenWordsToText(rawText, settings)
-        val capitalized = DictationCapitalization.apply(converted, context, settings)
+        val capitalized = converted.copy(text = DictationCapitalization.apply(converted.text, context, settings))
         val spaced = DictationSpacing.apply(capitalized, context)
         val joinedOver = DictationSpacing.joinOver(capitalized, context)
         val ops = buildList {
             if (joinedOver.isNotEmpty()) {
                 // The partial of this utterance may still be composing, and on an editor the
                 // composing text sits before the cursor: it would be what the join reads and
-                // deletes. The region is emptied and closed first, then the field's end is checked.
+                // deletes. The region is emptied and closed first, then the field's end is checked
+                // against the frozen context's tail, of which the joined part is the end.
                 add(DictationTextOp.SetComposingText(""))
                 add(DictationTextOp.FinishComposing)
-                add(DictationTextOp.DeleteBeforeCursorIfText(joinedOver))
+                add(DictationTextOp.DeleteBeforeCursorIfText(joinedOver, anchor = context.textBeforeUtterance.orEmpty().takeLast(DictationSpacing.JOIN_ANCHOR)))
             }
             add(DictationTextOp.SetComposingText(spaced))
             add(DictationTextOp.FinishComposing)
         }
-        return Finished(ops, plainText = spaced, spokenWords = rawText, joinedOver = joinedOver)
+        return Finished(ops, plainText = spaced, spokenWords = rawText, joinedOver = joinedOver, endsWithSpokenMark = converted.endsWithSpokenMark)
     }
 }
 

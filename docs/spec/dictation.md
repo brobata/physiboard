@@ -819,18 +819,26 @@ and a trailing space. So dictating "world" after "Hello" gives "Hello world "; a
 "World " with no leading space (the 2.x leading-space quirk came from reading the live field,
 whose last character was the partial's own).
 
-The marks of 7.7 have edges of their own. A text that opens with a mark that sits against the
-word before it (`, . ? ! : ;`, a closing quote or parenthesis, an apostrophe, a hyphen) or with a
-line break gets no leading space, and instead **joins over** the end of the field: the trailing
-spaces there and, when the end of the field is this session's own writing and the character
-before the spaces is the engine's single mark on a word, that mark as well (the spoken mark
-wins: "I went home. " then "exclamation point" is "I went home! "). A run of spoken marks
-("Wow!!! ") and the user's own text before the session are never joined over beyond their
-spaces; a line break takes only the spaces. The join is a verified delete: `:ime` reads that many
-characters before the cursor and deletes them only when they are exactly the expected ones, so
-a cursor the user moved between utterances can never cost a letter. In a direct-commit field
-(7.3) nothing is ever deleted, and the mark lands after the space. A text that ends with a line
-break, an opening quote or an opening parenthesis gets no trailing space.
+The marks of 7.7 have edges of their own, reported by the conversion itself (never read off the
+text's first character: the engine's own "'Cause" or "-5 degrees" opens with a word). A text
+that opens with a spoken mark that sits against the word before it (`, . ? ! : ;`, a closing
+quote or parenthesis, an apostrophe, a hyphen) or with a line break gets no leading space, and
+instead **joins over** the end of the field: the trailing spaces there and, when the end of the
+field is this session's own writing and the character before the spaces is the engine's single
+mark on a word, that mark as well (the spoken mark wins: "I went home. " then "exclamation
+point" is "I went home! "). A mark the user spoke is joined onto, not replaced ("wow
+exclamation point", a pause, "question mark" is "Wow!? ", as "exclamation point exclamation
+point" is `!!` inside one utterance); the user's own text before the session, and the field
+after the user edited it or moved to another field of the same app, are never joined over beyond
+their spaces; a line break takes only the spaces. The join is a verified delete: the op carries
+the last 16 characters of the frozen context as its anchor, `:ime` reads that many characters
+before the cursor and deletes the joined part only when they are exactly the anchor (a no-break
+space, which web editors store for the finisher's space, counts as a space), so a cursor the
+user moved between utterances to some other ". " can never cost them a mark or a letter. In a
+direct-commit field (7.3) nothing is ever deleted, and the mark lands after the space; a join
+the field declined leaves "home . " and a frozen context that believes "home. ", which costs
+nothing but a capital decision. A text that ends with a line break, an opening quote, an
+opening parenthesis, a hyphen or an apostrophe gets no trailing space.
 
 ### 7.7 Spoken punctuation
 
@@ -864,19 +872,23 @@ The English table (the only one; see below):
 
 Rules, applied to the words of one result in order:
 
-- **Multiples.** A count word ("two" to "ten") or digits before the plural repeat the mark:
-  "three exclamation points" is `!!!`, "2 question marks" is `??`; at most ten. Phrases in a row
-  join with no space: "question mark exclamation point" is `?!`, "exclamation point exclamation
-  point" is `!!`.
-- **The ambiguity rule.** A phrase said directly after a determiner (a, an, the, this, that,
-  these, those, each, every, another, any, some, no, my, your, his, her, its, our, their) is the
-  noun and stays a word: "a period of time", "the comma in that sentence", "that question mark".
-  So does a plural with no count ("too many commas"). Nothing else protects the word: "the word
-  comma" is "the word," as it is on a Pixel, and the way to keep the word is one determiner
-  before it. Gboard converts every time; this one rule is the whole of the difference, and it
-  is chosen because the two phrases the maintainer wrote about ("a period", "the comma") both
-  carry one. A determiner the engine ended its sentence on ("I like that. Period") is not the
-  phrase's determiner.
+- **Multiples.** A count word ("two" to "ten") or digits before the **plural** repeat the mark:
+  "three exclamation points" is `!!!`, "2 question marks" is `??`; at most ten. A number before
+  the singular is dictation, since the engine writes numbers as digits: "see you at 5 period"
+  is "see you at 5.", "step two period" is "step two.". Phrases in a row join with no space:
+  "question mark exclamation point" is `?!`, "exclamation point exclamation point" is `!!`.
+- **The ambiguity rule.** A phrase said directly after a determiner (a, an, the, each, every,
+  another, my, your, our, their) is the noun and stays a word: "a period of time", "the comma
+  in that sentence". So does a plural with no count ("too many commas"), and a phrase the engine
+  put its own opening punctuation on ("(comma)"). Only the words that are nothing but a
+  determiner count: "her", "his", "that", "this", "no", "some" end sentences far too often
+  ("I told her period", "don't do that period", "the answer is no period") to keep the word.
+  Nothing else protects the word: "the word comma" is "the word,", "grace period" is "grace.",
+  "missed two periods" is "missed..", "dash cam" is "- cam", exactly as on a Pixel, and the way
+  to keep the word is one determiner before it. Gboard converts every time; this one rule is the
+  whole of the difference, and it is chosen because the two phrases the maintainer wrote about
+  ("a period", "the comma") both carry one. A determiner the engine ended its sentence on ("I
+  like that. Period") is not the phrase's determiner.
 - **The spoken mark wins.** The engine's own mark attached to the phrase ("comma," / "Period.")
   or to the word before it ("appear. Period") is dropped and the spoken mark stands alone. When
   the dropped mark ended a sentence and the spoken one does not, the capital the engine put on
@@ -1312,6 +1324,8 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | D29 off | `dictation_spoken_punctuation` off; segment "hello comma world period" | "Hello comma world period " |
 | D29 edit | stop-on-typing off; a segment; a partial; a key and the user's edit; then "Exclamation point." | the invalidated utterance writes nothing; the mark joins over at most a space, never the mark before the user's edit |
 | D29 laughs | segments "Ha ha ha that was great.", "Aw, thank you."; a partial echoing both plus "I stood in awe of the dog" | "Hahaha that was great. Aww, thank you. I stood in awe of the dog" |
+| D29 run | segments "Wow exclamation point", "Exclamation point.", "Question mark"; the cursor moved after the user's own "Thanks. "; segment "Comma" | "Wow!!? "; then "Thanks. , Wow!!? ": the user's full stop is kept |
+| D29 bridge | the join ops against an editor with a composing span: the cursor at the session's words; moved to the user's "Thanks. "; a partial still composing; a no-break space | "I went home! "; nothing deleted and "! " at the cursor; the partial closed first; the no-break space joined over (`SpeechEditorBridgeTest`) |
 | 7.7, 7.8 | every row of the tables and rules of 7.7 and 7.8 (`SpokenPunctuationTest`) | as the rows say, including the real-word negatives |
 
 Plus the text tests kept from before (capitalisation, spacing, the frozen context, the session

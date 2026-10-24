@@ -609,7 +609,7 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.PartialResult("period"), now = 4_000L)
         assertEquals("I went home .", h.field.text, "the preview sits where the composing text is; the join comes with the finish")
         val finished = h.send(DictationEvent.SegmentResult("Period."), now = 4_600L)
-        assertEquals(DictationTextOp.DeleteBeforeCursorIfText(" "), finished.textOps.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().single())
+        assertEquals(DictationTextOp.DeleteBeforeCursorIfText(" ", anchor = "I went home "), finished.textOps.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().single())
         assertEquals("I went home. ", h.field.text)
         h.send(DictationEvent.PartialResult("then I"), now = 6_000L)
         assertEquals("I went home. Then I", h.field.text)
@@ -651,6 +651,26 @@ class LoggedRecognizerScenariosTest {
         assertEquals("I went home. And", h.field.text, "the invalidated utterance writes nothing after its partial")
         val finished = h.send(DictationEvent.SegmentResult("Exclamation point."), now = 6_000L)
         assertEquals(emptyList(), finished.textOps.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().filter { it.expected != " " })
+    }
+
+    @Test
+    fun `D29 - a run of marks is built across pauses, and a cursor moved elsewhere costs nothing`() {
+        val h = harness()
+        h.field.preset("Thanks. ")
+        h.send(DictationEvent.Trigger("app", "Thanks. "), now = 0L)
+        h.send(DictationEvent.ReadyForSpeech, now = 10L)
+        h.send(DictationEvent.SegmentResult("Wow exclamation point"), now = 2_000L)
+        // Said again as its own utterance, with its partial first: new speech, not D28's repeat
+        // of the last utterance (SS7.3; a segment alone repeating the last words is the engine's).
+        h.send(DictationEvent.PartialResult("exclamation point"), now = 3_500L)
+        h.send(DictationEvent.SegmentResult("Exclamation point."), now = 4_000L)
+        h.send(DictationEvent.SegmentResult("Question mark"), now = 6_000L)
+        assertEquals("Thanks. Wow!!? ", h.field.text)
+        // The user taps the cursor to just after their own "Thanks. " (not reported between
+        // utterances) and says "comma": the anchor does not match there.
+        h.field.moveCursorIntoEarlierText("Thanks. ")
+        h.send(DictationEvent.SegmentResult("Comma"), now = 8_000L)
+        assertEquals("Thanks. , Wow!!? ", h.field.text, "the user's full stop is kept; only the mark lands")
     }
 
     @Test

@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 class SpokenPunctuationTest {
 
     private val english = SpokenPunctuation.Vocabulary.ENGLISH
-    private fun convert(text: String) = SpokenPunctuation.apply(text, english)
+    private fun convert(text: String) = SpokenPunctuation.apply(text, english).text
     private fun finish(raw: String, before: String?, settings: DictationTextSettings = DictationTextSettings()) =
         UtteranceFinisher.finish(raw, UtteranceContext(before, writtenBySession = ""), settings)
 
@@ -51,7 +51,10 @@ class SpokenPunctuationTest {
     @Test
     fun `a result with no phrase in it is returned untouched`() {
         val text = "Hold on,  I need to finish this thought."
-        assertTrue(convert(text) === text)
+        val converted = SpokenPunctuation.apply(text, english)
+        assertTrue(converted.text === text)
+        assertNull(converted.opening)
+        assertNull(converted.closing)
     }
 
     // --- multiples --------------------------------------------------------------------------
@@ -62,7 +65,11 @@ class SpokenPunctuationTest {
         assertEquals("yes!!!", convert("yes 3 exclamation points"))
         assertEquals("yes!!", convert("yes two exclamation marks"))
         assertEquals("what??", convert("what two question marks"))
-        assertEquals("yes!!!", convert("yes three exclamation point"))
+        // A number before the singular is dictation; only the plural says the number counts marks.
+        assertEquals("yes three!", convert("yes three exclamation point"))
+        assertEquals("see you at 5.", convert("see you at 5 period"))
+        assertEquals("step two.", convert("step two period"))
+        assertEquals("I'm 40, and", convert("I'm 40 comma and"))
     }
 
     @Test
@@ -83,10 +90,27 @@ class SpokenPunctuationTest {
     fun `after a determiner the phrase is the noun and stays a word`() {
         assertEquals("a period of time", convert("a period of time"))
         assertEquals("the comma in that sentence", convert("the comma in that sentence"))
-        assertEquals("that question mark", convert("that question mark"))
+        assertEquals("the question mark", convert("the question mark"))
+        assertEquals("another comma", convert("another comma"))
         assertEquals("every full stop", convert("every full stop"))
         assertEquals("my apostrophe", convert("my apostrophe"))
         assertEquals("the three exclamation points", convert("the three exclamation points"))
+    }
+
+    @Test
+    fun `a pronoun or a word that merely can be a determiner does not keep the word`() {
+        // "her", "that", "no" end sentences far more often than they name a mark (review, 2026-10-23).
+        assertEquals("I told her.", convert("I told her period"))
+        assertEquals("I called her, but", convert("I called her comma but"))
+        assertEquals("don't do that.", convert("don't do that period"))
+        assertEquals("the answer is no.", convert("the answer is no period"))
+        assertEquals("is this?", convert("is this question mark"))
+    }
+
+    @Test
+    fun `the engine's opening punctuation on the phrase keeps it a word`() {
+        assertEquals("the word (comma) here", convert("the word (comma) here"))
+        assertEquals("say \"period\" to end", convert("say \"period\" to end"))
     }
 
     @Test
@@ -167,7 +191,7 @@ class SpokenPunctuationTest {
         assertEquals(
             listOf(
                 DictationTextOp.SetComposingText(""), DictationTextOp.FinishComposing, // the partial's region, out of the way of the read
-                DictationTextOp.DeleteBeforeCursorIfText(" "),
+                DictationTextOp.DeleteBeforeCursorIfText(" ", anchor = "I went home "),
                 DictationTextOp.SetComposingText(". "), DictationTextOp.FinishComposing,
             ),
             finished.ops,
@@ -198,6 +222,49 @@ class SpokenPunctuationTest {
         val finished = UtteranceFinisher.finish("new line next", own, DictationTextSettings())
         assertEquals(" ", finished.joinedOver)
         assertEquals("\nNext ", finished.plainText)
+    }
+
+    @Test
+    fun `the join is decided by what was converted, never by the first character of the engine's text`() {
+        // Review, 2026-10-23: "'Cause", "'90s" and "-5 degrees" are the engine's own words.
+        val own = UtteranceContext("I went home. ", writtenBySession = "I went home. ")
+        for (engineText in listOf("'Cause I wanted to", "'90s music", "-5 degrees")) {
+            val finished = UtteranceFinisher.finish(engineText, own, DictationTextSettings())
+            assertEquals("", finished.joinedOver, engineText)
+            assertEquals(listOf(DictationTextOp.SetComposingText("${lowerEngineSegmentCapital(engineText)} "), DictationTextOp.FinishComposing), finished.ops, engineText)
+        }
+    }
+
+    @Test
+    fun `a mark the user spoke is joined onto, not replaced - as a run of marks is built across pauses`() {
+        val wow = finish("wow exclamation point", "", DictationTextSettings())
+        assertEquals("Wow! ", wow.plainText)
+        assertTrue(wow.endsWithSpokenMark)
+        val own = UtteranceContext("Wow! ", writtenBySession = "Wow! ", sessionTailIsSpokenMark = true)
+        val then = UtteranceFinisher.finish("question mark", own, DictationTextSettings())
+        assertEquals(" ", then.joinedOver, "the spoken ! stays")
+        assertEquals("? ", then.plainText)
+        // The engine's own mark is still replaced.
+        val engine = UtteranceContext("Wow. ", writtenBySession = "Wow. ", sessionTailIsSpokenMark = false)
+        assertEquals(". ", UtteranceFinisher.finish("question mark", engine, DictationTextSettings()).joinedOver)
+    }
+
+    @Test
+    fun `the join carries the frozen context's tail as its anchor, so the field is checked at the right place`() {
+        val before = "Thanks. I told them I went home. "
+        val finished = finish("period", before)
+        val join = finished.ops.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().single()
+        assertEquals(" ", join.expected)
+        assertEquals(before.takeLast(DictationSpacing.JOIN_ANCHOR), join.anchor)
+        assertTrue(join.anchor.endsWith(join.expected))
+    }
+
+    @Test
+    fun `a hyphen said alone glues to both sides`() {
+        val finished = finish("hyphen", "twenty ")
+        assertEquals(" ", finished.joinedOver)
+        assertEquals("-", finished.plainText, "no trailing space either: the next word joins on")
+        assertEquals("one ", finish("one", "twenty-").plainText, "and the next utterance gets no leading space after it")
     }
 
     @Test

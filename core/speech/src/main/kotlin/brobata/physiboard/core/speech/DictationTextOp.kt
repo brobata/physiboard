@@ -40,15 +40,21 @@ sealed class DictationTextOp {
     data class DeleteBeforeCursor(val count: Int) : DictationTextOp()
 
     /**
-     * Deletes [expected] before the cursor, and only if the field really holds exactly that there
-     * (spec SS7.7): an utterance that starts with a spoken mark ("period" said after a pause)
-     * takes back the space, and the engine's own mark, this session left after the word before.
-     * `:ime` reads that many characters before the cursor first and deletes nothing when they
-     * differ, so a cursor the user moved between utterances can never cost a letter; the
-     * session's own record of the field ([UtteranceContext]) is what [expected] comes from.
+     * Deletes [expected] before the cursor, and only if the text before the cursor ends with
+     * [anchor] (spec SS7.7): an utterance that starts with a spoken mark ("period" said after a
+     * pause) takes back the space, and the engine's own mark, this session left after the word
+     * before. [anchor] is the tail of the session's frozen record of the field
+     * ([UtteranceContext.textBeforeUtterance]) and ends with [expected]; `:ime` reads that many
+     * characters first and deletes nothing when they differ, so a cursor the user moved between
+     * utterances to some other ". " can never cost them a mark or a letter. A no-break space in
+     * the field counts as a space (web editors store the one the finisher wrote that way).
      * Never applied in a direct-commit field, where nothing is ever deleted ([DirectCommit]).
      */
-    data class DeleteBeforeCursorIfText(val expected: String) : DictationTextOp()
+    data class DeleteBeforeCursorIfText(val expected: String, val anchor: String) : DictationTextOp() {
+        init {
+            require(anchor.endsWith(expected)) { "the anchor must end with the text to delete" }
+        }
+    }
 
     /** Commits [text] at the cursor directly, for the rare case nothing was composing to replace. */
     data class CommitText(val text: String) : DictationTextOp()

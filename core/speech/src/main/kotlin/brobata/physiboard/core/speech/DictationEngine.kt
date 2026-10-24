@@ -75,7 +75,7 @@ object DictationEngine {
             DictationEvent.UserEditedComposingText -> DictationOutcome(
                 // The field's end is the user's edit now, not this session's last words: a
                 // spoken mark opening the next utterance has nothing of its own to join over (SS7.7).
-                session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated, context = session.utterance.context.copy(writtenBySession = ""))),
+                session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated, context = session.utterance.context.copy(writtenBySession = "", sessionTailIsSpokenMark = false))),
                 textOps = if (session.utterance.pending is PendingUtterance.Live) listOf(DictationTextOp.ReleaseComposing) else emptyList(),
             )
             DictationEvent.EditorRejectedInsert -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
@@ -414,6 +414,7 @@ object DictationEngine {
                 plainText = (first.plainText ?: "").removeSuffix(second.joinedOver) + (second.plainText ?: ""),
                 spokenWords = listOfNotNull(first.spokenWords, second.spokenWords).joinToString(" "),
                 joinedOver = first.joinedOver,
+                endsWithSpokenMark = second.endsWithSpokenMark,
             )
         }
         return UtteranceFinisher.finish(text, utterance.context, textSettings)
@@ -440,7 +441,11 @@ object DictationEngine {
      */
     private fun extendContext(context: UtteranceContext, finished: UtteranceFinisher.Finished): UtteranceContext {
         val added = finished.plainText ?: return context
-        return UtteranceContext((context.textBeforeUtterance ?: "").removeSuffix(finished.joinedOver) + added, writtenBySession = added)
+        return UtteranceContext(
+            (context.textBeforeUtterance ?: "").removeSuffix(finished.joinedOver) + added,
+            writtenBySession = added,
+            sessionTailIsSpokenMark = finished.endsWithSpokenMark,
+        )
     }
 
     private fun finishPendingIfAny(utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
@@ -560,8 +565,12 @@ object DictationEngine {
             // whatever that field has composing. The old field keeps the words as they stood.
             return DictationOutcome(null, endEffects(session, cancelRecognizer = true))
         }
-        // Same app, a new field: the 500 ms grace is cancelled and dictation continues.
-        return DictationOutcome(session.copy(editorGoneDeadlineMs = null))
+        // Same app, a new field: the 500 ms grace is cancelled and dictation continues. The new
+        // field's end is not this session's last words: a spoken mark opening the next utterance
+        // joins over spaces at most (SS7.7).
+        val context = session.utterance.context
+        val next = if (context.writtenBySession.isEmpty()) session else session.copy(utterance = session.utterance.copy(context = context.copy(writtenBySession = "", sessionTailIsSpokenMark = false)))
+        return DictationOutcome(next.copy(editorGoneDeadlineMs = null))
     }
 
     // ---------------------------------------------------------------------------------------
