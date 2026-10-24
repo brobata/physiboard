@@ -3,7 +3,12 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
-## 3.5.0 (unreleased)
+## 3.5.0 (2026-10-23)
+
+Dictation that waits through your pauses, the orange key opens the assistant again, autocorrect
+that stays closer to the word you meant, and updates that install themselves.
+
+<!-- /card -->
 
 - Paired Titan tools now also allow PhysiBoard to install its own updates, so they arrive with
   no tap. Without Titan tools, the setup's extras page offers the same switch ("Updates on their
@@ -31,8 +36,8 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
   another app's field mid-dictation touches nothing in that field.
 - Autocorrect reaches less far. How far a fix may go now depends on the word: a word of four
   letters or fewer is changed only when the sentence makes the fix clear, a correction may add or
-  drop one letter but never two (missing halves of doubled letters aside), and a fix two edits away is made only
-  in a word of seven letters or more, only when both edits are the kind a thumb makes on the
+  drop one letter but never two (missing halves of doubled letters aside), and a fix two edits
+  away is made only in a word of seven letters or more, only when both edits are the kind a thumb makes on the
   Titan's keys (a neighbouring key, two letters swapped, a doubled or dropped letter), and only
   when the word before has been seen with it. On the sentence harness this halves the wrong
   fixes (one commit in 48 was wrong; now one in 90) and leaves a few more correct words alone,
