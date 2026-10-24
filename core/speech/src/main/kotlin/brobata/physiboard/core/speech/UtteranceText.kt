@@ -15,8 +15,14 @@ internal fun shouldCapitaliseAt(textBefore: String?): Boolean {
     return trimmed.lastOrNull()?.let { it == '.' || it == '!' || it == '?' } == true
 }
 
-private fun titleCaseFirst(text: String): String =
-    text.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+/** The first letter, past a spoken opening quote or parenthesis (SS7.7: "open quote hello" starts the sentence at "hello"). */
+private fun titleCaseFirst(text: String): String {
+    val at = text.indexOfFirst { it !in OPENING_MARKS }
+    if (at < 0 || !text[at].isLowerCase()) return text
+    return text.substring(0, at) + text[at].titlecase() + text.substring(at + 1)
+}
+
+private const val OPENING_MARKS = "\"("
 
 /**
  * spec: dictation.md SS7.5: the engine capitalises the first word of every result it formats,
@@ -46,7 +52,7 @@ internal fun lowerEngineSegmentCapital(text: String): String {
 object DictationPartialDisplay {
     fun display(rawPartial: String, context: UtteranceContext, settings: DictationTextSettings): String {
         if (rawPartial.isEmpty()) return rawPartial
-        val partial = spokenWordsToText(rawPartial, settings).text
+        val partial = spokenWordsToText(rawPartial, context, settings).text
         if (!settings.capitalizationAllowed) return partial
         if (!shouldCapitaliseAt(context.textBeforeUtterance)) return if (settings.undoEngineSegmentCapitals) lowerEngineSegmentCapital(partial) else partial
         return if (settings.capitalizeFirstLetter) titleCaseFirst(partial) else partial
@@ -59,18 +65,21 @@ object DictationPartialDisplay {
  * finish will land. The [PendingUtterance] keeps the engine's own words; only what is shown and
  * written is converted, which is what keeps [SessionEcho]'s word-for-word comparison honest.
  */
-internal fun spokenWordsToText(rawText: String, settings: DictationTextSettings): SpokenPunctuation.Converted {
+internal fun spokenWordsToText(rawText: String, context: UtteranceContext, settings: DictationTextSettings): SpokenPunctuation.Converted {
     val converted = settings.spokenPunctuationVocabulary?.let { SpokenPunctuation.apply(rawText, it) } ?: SpokenPunctuation.Converted(rawText)
-    // The spellings change words, never the edges the marks decided.
-    return if (settings.textingStyleInForce) converted.copy(text = TextingStyle.apply(converted.text)) else converted
+    if (!settings.textingStyleInForce) return converted
+    // The spellings change words, never the edges the marks decided; whether the result opens
+    // a sentence is the frozen context's answer, as for the capital.
+    return converted.copy(text = TextingStyle.apply(converted.text, atSentenceStart = shouldCapitaliseAt(context.textBeforeUtterance)))
 }
 
 /** spec: dictation.md SS7.5: first-letter, after-sentence-end and after-line-break capitalisation of a finished utterance. */
 object DictationCapitalization {
-    private val AFTER_SENTENCE_END = Regex("([.!?]\\s+)([a-z])")
+    /** An opening quote or parenthesis (spoken, SS7.7) may stand between the boundary and the letter. */
+    private val AFTER_SENTENCE_END = Regex("([.!?]\\s+[\"(]*)([a-z])")
 
     /** spec SS7.7: a spoken "new line" or "new paragraph" is the same boundary as the one [shouldCapitaliseAt] sees across utterances. */
-    private val AFTER_LINE_BREAK = Regex("(\\n+)([a-z])")
+    private val AFTER_LINE_BREAK = Regex("(\\n+[\"(]*)([a-z])")
 
     fun apply(text: String, context: UtteranceContext, settings: DictationTextSettings): String {
         if (text.isEmpty() || !settings.capitalizationAllowed) return text
@@ -166,7 +175,7 @@ object UtteranceFinisher {
     val NOTHING = Finished(emptyList(), null, null)
 
     fun finish(rawText: String, context: UtteranceContext, settings: DictationTextSettings): Finished {
-        val converted = spokenWordsToText(rawText, settings)
+        val converted = spokenWordsToText(rawText, context, settings)
         val capitalized = converted.copy(text = DictationCapitalization.apply(converted.text, context, settings))
         val spaced = DictationSpacing.apply(capitalized, context)
         val joinedOver = DictationSpacing.joinOver(capitalized, context)

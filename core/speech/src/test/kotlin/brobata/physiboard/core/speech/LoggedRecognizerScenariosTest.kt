@@ -650,7 +650,21 @@ class LoggedRecognizerScenariosTest {
         h.send(DictationEvent.SegmentResult("and then."), now = 4_000L)
         assertEquals("I went home. And", h.field.text, "the invalidated utterance writes nothing after its partial")
         val finished = h.send(DictationEvent.SegmentResult("Exclamation point."), now = 6_000L)
-        assertEquals(emptyList(), finished.textOps.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().filter { it.expected != " " })
+        assertEquals(" ", finished.textOps.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().single().expected, "a space, never the mark before the user's edit")
+    }
+
+    @Test
+    fun `D29 - a restart of the same field (a web field on every change) keeps the join whole`() {
+        // onStartInput with restarting=true reaches the engine as a same-app field (KeyboardSession);
+        // Chrome restarts on every change. The session's record of the field's end must survive it,
+        // or "period" after "then appear." would land as "then appear.. " (review, 2026-10-23).
+        val h = harness().start()
+        h.send(DictationEvent.SegmentResult("then appear."), now = 2_000L)
+        h.send(DictationEvent.EditorFieldClosed, now = 2_100L)
+        h.send(DictationEvent.EditorFieldOpened("app"), now = 2_110L)
+        h.send(DictationEvent.PartialResult("period"), now = 4_000L)
+        h.send(DictationEvent.SegmentResult("Period."), now = 4_500L)
+        assertEquals("Then appear. ", h.field.text)
     }
 
     @Test

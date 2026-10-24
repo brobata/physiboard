@@ -849,7 +849,7 @@ description is the screen title.
 | How the assistant opens | Voice | Voice | assistant action intent listening gemini voice command hands free assist |
 | Speech engine | Voice | Voice | engine recognizer speech service google on-device offline dictation voice |
 | Automatic punctuation | Voice | Voice | punctuation comma period capitalization formatting dictation voice |
-| Spoken punctuation | Voice | Voice | spoken punctuation say comma period question mark exclamation new line paragraph dictation voice |
+| Spoken punctuation | Voice | Voice | spoken punctuation say comma period question mark exclamation colon semicolon quote paren dash hyphen new line paragraph dictation voice |
 | Texting style for laughs and aww | Voice | Voice | texting haha hahaha laugh aww aw awe dictation voice |
 | Capitalize at text start | Smart Features | Smart Features | capital uppercase sentence autocap |
 | Double Space inserts period | Smart Features | Smart Features | period full stop double space |

@@ -162,6 +162,37 @@ class SpokenPunctuationTest {
     }
 
     @Test
+    fun `a line break, an opening mark or a dash stands after the engine's mark instead of replacing it`() {
+        // Review, 2026-10-23: across utterances the full stop was kept; inside one it was lost.
+        assertEquals("See you then.\n\nThanks, Bob.", convert("See you then. New paragraph. Thanks, Bob."))
+        assertEquals("He said. \"hi", convert("He said. Open quote hi"))
+        assertEquals("one. - two", convert("one. dash two"))
+        // A mark that takes the engine's place still replaces it.
+        assertEquals("See you then! Thanks", convert("See you then. Exclamation point Thanks"))
+    }
+
+    @Test
+    fun `a sentence that opens with a spoken quote or parenthesis is capitalised at its first letter`() {
+        assertEquals("\"Hello\" she said ", finish("open quote hello close quote she said", "").plainText)
+        assertEquals("\"Hello", DictationPartialDisplay.display("open quote hello", UtteranceContext(""), DictationTextSettings()))
+        assertEquals("Fine. \"Hello\" ", finish("fine period open quote hello close quote", "").plainText)
+        assertEquals("Fine\n(Hello) ", finish("fine new line open paren hello close paren", "").plainText)
+    }
+
+    @Test
+    fun `a phrase followed by of is the noun`() {
+        assertEquals("a long period of time", convert("a long period of time"))
+        assertEquals("two periods of silence", convert("two periods of silence"))
+        assertEquals(".", convert("period."), "the engine's mark on it is not 'of'")
+        assertEquals("the end. Of course", convert("the end period. Of course"), "a mark between them is a sentence end, not a complement")
+    }
+
+    @Test
+    fun `new lines is prose, not a count of breaks`() {
+        assertEquals("I added two new lines of code", convert("I added two new lines of code"))
+    }
+
+    @Test
     fun `a closing quote the engine hung on the phrase is kept after the mark`() {
         assertEquals("she said \"hello.\"", convert("she said open quote hello period\""))
     }
@@ -353,6 +384,11 @@ class SpokenPunctuationTest {
         assertEquals("the dog barked", TextingStyle.apply("the dog barked"))
         assertEquals("a daw is a bird", TextingStyle.apply("a daw is a bird"))
         assertEquals("Daw is a bird", TextingStyle.apply("Daw is a bird"))
+        // The start of a result is a sentence start only when the context says so: "I was in", a pause, "Awe.".
+        assertEquals("Awe.", TextingStyle.apply("Awe.", atSentenceStart = false))
+        assertEquals("Awe. ", finish("Awe.", "I was in ").plainText)
+        assertEquals("Aww. ", finish("Awe.", "I was. ").plainText)
+        assertEquals("aww. ", finish("aw.", "I was in ").plainText, "aw is no word: a sigh anywhere")
     }
 
     @Test

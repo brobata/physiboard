@@ -98,7 +98,7 @@ object SearchCatalog {
         SearchEntry("How the assistant opens", VOICE, Routes.VOICE, "assistant action intent listening gemini voice command hands free assist"),
         SearchEntry("Speech engine", VOICE, Routes.VOICE, "engine recognizer speech service google on-device offline dictation voice"),
         SearchEntry("Automatic punctuation", VOICE, Routes.VOICE, "punctuation comma period capitalization formatting dictation voice"),
-        SearchEntry("Spoken punctuation", VOICE, Routes.VOICE, "spoken punctuation say comma period question mark exclamation new line paragraph dictation voice"),
+        SearchEntry("Spoken punctuation", VOICE, Routes.VOICE, "spoken punctuation say comma period question mark exclamation colon semicolon quote paren dash hyphen new line paragraph dictation voice"),
         SearchEntry("Texting style for laughs and aww", VOICE, Routes.VOICE, "texting haha hahaha laugh aww aw awe dictation voice"),
         // Keys & shortcuts.
         SearchEntry("Key mapping", KEYS, Routes.KEY_MAPPING, "key mapping fn sym orange side key vendor inventory"),

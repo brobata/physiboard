@@ -565,12 +565,11 @@ object DictationEngine {
             // whatever that field has composing. The old field keeps the words as they stood.
             return DictationOutcome(null, endEffects(session, cancelRecognizer = true))
         }
-        // Same app, a new field: the 500 ms grace is cancelled and dictation continues. The new
-        // field's end is not this session's last words: a spoken mark opening the next utterance
-        // joins over spaces at most (SS7.7).
-        val context = session.utterance.context
-        val next = if (context.writtenBySession.isEmpty()) session else session.copy(utterance = session.utterance.copy(context = context.copy(writtenBySession = "", sessionTailIsSpokenMark = false)))
-        return DictationOutcome(next.copy(editorGoneDeadlineMs = null))
+        // Same app, a new field: the 500 ms grace is cancelled and dictation continues. The
+        // session's record of the field's end is kept: this is also every restart of the same
+        // field (web fields restart on every change), and a field that really is new fails the
+        // anchor check of a spoken mark's join (SS7.7), so nothing in it is deleted either way.
+        return DictationOutcome(session.copy(editorGoneDeadlineMs = null))
     }
 
     // ---------------------------------------------------------------------------------------

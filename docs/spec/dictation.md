@@ -829,16 +829,19 @@ mark on a word, that mark as well (the spoken mark wins: "I went home. " then "e
 point" is "I went home! "). A mark the user spoke is joined onto, not replaced ("wow
 exclamation point", a pause, "question mark" is "Wow!? ", as "exclamation point exclamation
 point" is `!!` inside one utterance); the user's own text before the session, and the field
-after the user edited it or moved to another field of the same app, are never joined over beyond
-their spaces; a line break takes only the spaces. The join is a verified delete: the op carries
-the last 16 characters of the frozen context as its anchor, `:ime` reads that many characters
-before the cursor and deletes the joined part only when they are exactly the anchor (a no-break
-space, which web editors store for the finisher's space, counts as a space), so a cursor the
-user moved between utterances to some other ". " can never cost them a mark or a letter. In a
-direct-commit field (7.3) nothing is ever deleted, and the mark lands after the space; a join
-the field declined leaves "home . " and a frozen context that believes "home. ", which costs
-nothing but a capital decision. A text that ends with a line break, an opening quote, an
-opening parenthesis, a hyphen or an apostrophe gets no trailing space.
+after the user edited it under an utterance (7.4), are never joined over beyond their spaces; a
+line break takes only the spaces. The join is a verified delete: the op carries the last 16
+characters of the frozen context as its anchor, `:ime` reads that many characters before the
+cursor and deletes the joined part only when they are exactly the anchor (a no-break space,
+which web editors store for the finisher's space, counts as a space), so a cursor the user
+moved between utterances to some other ". " can never cost them a mark or a letter, and a
+field that is really new (the same app's, which the engine cannot tell from the restart a web
+field reports on every change) has nothing deleted. In a direct-commit field (7.3) nothing is
+ever deleted, and the mark lands after the space; a join the field declined (a web field that
+answers "" for the text before the cursor, 2026-09-25) leaves "home. . " and a frozen context
+that believes "home. ", which costs nothing but a capital decision. A text that ends with a
+line break, an opening quote, an opening parenthesis, a hyphen or an apostrophe gets no
+trailing space.
 
 ### 7.7 Spoken punctuation
 
@@ -879,8 +882,10 @@ Rules, applied to the words of one result in order:
   "question mark exclamation point" is `?!`, "exclamation point exclamation point" is `!!`.
 - **The ambiguity rule.** A phrase said directly after a determiner (a, an, the, each, every,
   another, my, your, our, their) is the noun and stays a word: "a period of time", "the comma
-  in that sentence". So does a plural with no count ("too many commas"), and a phrase the engine
-  put its own opening punctuation on ("(comma)"). Only the words that are nothing but a
+  in that sentence". So does a phrase followed by "of" ("a long period of time"), a plural with
+  no count ("too many commas"; "new lines" is not a plural of the table at all, since "two new
+  lines of code" is prose), and a phrase the engine put its own opening punctuation on
+  ("(comma)"). Only the words that are nothing but a
   determiner count: "her", "his", "that", "this", "no", "some" end sentences far too often
   ("I told her period", "don't do that period", "the answer is no period") to keep the word.
   Nothing else protects the word: "the word comma" is "the word,", "grace period" is "grace.",
@@ -890,11 +895,14 @@ Rules, applied to the words of one result in order:
   ("a period", "the comma") both carry one. A determiner the engine ended its sentence on ("I
   like that. Period") is not the phrase's determiner.
 - **The spoken mark wins.** The engine's own mark attached to the phrase ("comma," / "Period.")
-  or to the word before it ("appear. Period") is dropped and the spoken mark stands alone. When
-  the dropped mark ended a sentence and the spoken one does not, the capital the engine put on
-  the next word is lowered by the rule of 7.5 step 1 ("comma. Then" reads ", then"); a spoken
-  sentence end keeps it. Anything else the engine attached to the phrase (a closing quote) is
-  kept after the mark. The engine mishearing the phrase itself ("period" as another word) is a
+  is dropped; so is one on the word before it ("appear. Period") when the spoken mark takes its
+  place (`, . ? ! : ;`, a closing mark, a hyphen, an apostrophe), while a line break, an opening
+  mark or a dash stands after it ("See you then. New paragraph. Thanks" keeps the full stop, as
+  it does across utterances). When the dropped mark ended a sentence and the spoken one does
+  not, the capital the engine put on the next word is lowered by the rule of 7.5 step 1
+  ("comma. Then" reads ", then"); a spoken sentence end keeps it. Anything else the engine
+  attached to the phrase (a closing quote) is kept after the mark. A sentence that opens with a
+  spoken quote or parenthesis is capitalised at its first letter. The engine mishearing the phrase itself ("period" as another word) is a
   word error of the engine's and is not corrected here; the maintainer's "appear" for "a period"
   stays as heard.
 - **Capitalisation and spacing** are 7.5's and 7.6's: after `.`, `?`, `!` and a line break the
@@ -923,8 +931,9 @@ partials and finals alike, line by line so a spoken line break survives:
   alone, "lol" and anything already joined are left as they are.
 - **Sighs.** "aw" and "aww" (with any number of w's; not words otherwise) are spelled "aww"
   wherever they stand, in the case they came in. "awe" and "daw", which are words, become "aww"
-  and "daww" only as an interjection: first in the sentence (the start of the result or of a
-  line, or after `.`, `!`, `?`) or standing alone, **and** followed by nothing, by a mark, by a
+  and "daww" only as an interjection: first in the sentence (the start of a result whose frozen
+  context says "capitalise here", the start of a line, or after `.`, `!`, `?`) or standing
+  alone, **and** followed by nothing, by a mark, by a
   capitalised word (a name) or by one of the words such a sigh leads into ("that's", "that",
   "this", "so", "poor", "thanks", "thank", "you", "how", "what", "he's", "she's", "it's",
   "they're", "look", "bless", "sweet", "cute", "man", "shucks", "no", "yes", "yeah", "well",

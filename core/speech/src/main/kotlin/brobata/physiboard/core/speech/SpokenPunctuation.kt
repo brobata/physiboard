@@ -67,6 +67,8 @@ object SpokenPunctuation {
         plurals: Map<String, Mark>,
         /** The words that make the following phrase a noun ("a period", "the comma"). */
         val determiners: Set<String>,
+        /** The words that make the phrase before them a noun ("period of time"). */
+        val nounFollowers: Set<String>,
         /** Count words that repeat the plural after them ("three exclamation points"); digits always count. */
         val counts: Map<String, Int>,
     ) {
@@ -118,12 +120,13 @@ object SpokenPunctuation {
                     "exclamation points" to EXCLAMATION, "exclamation marks" to EXCLAMATION,
                     "colons" to COLON,
                     "semicolons" to SEMICOLON,
-                    "new lines" to NEW_LINE,
+                    // not "new lines": "two new lines of code" is prose far more often than two breaks.
                 ),
                 // Only the words that are nothing but a determiner. "her", "that", "no" and
                 // their kin end sentences too often ("I told her period", "don't do that
                 // period", "the answer is no period") to be allowed to keep the word.
                 determiners = setOf("a", "an", "the", "each", "every", "another", "my", "your", "our", "their"),
+                nounFollowers = setOf("of"),
                 counts = mapOf("two" to 2, "three" to 3, "four" to 4, "five" to 5, "six" to 6, "seven" to 7, "eight" to 8, "nine" to 9, "ten" to 10),
             )
         }
@@ -179,7 +182,10 @@ object SpokenPunctuation {
                 continue
             }
             converted = true
-            val absorbedSentenceEnd = out.dropTrailingEngineMark() || match.attachedMark.any { it in SENTENCE_ENDS }
+            // Only a mark that takes the engine's place replaces it; a line break, an opening
+            // mark or a dash stands after it ("See you then. New paragraph" keeps the full stop).
+            val replacesEngineMark = match.mark.placement == Placement.CLOSE || match.mark.placement == Placement.GLUE
+            val absorbedSentenceEnd = (replacesEngineMark && out.dropTrailingEngineMark()) || match.attachedMark.any { it in SENTENCE_ENDS }
             repeat(match.repeat) { out.mark(match.mark) }
             // The engine's own mark on the phrase goes with the phrase; anything else on it (a closing quote) stays.
             out.append(match.attachedMark.filter { it !in ENGINE_MARKS })
@@ -204,6 +210,13 @@ object SpokenPunctuation {
         // A word the engine ended its sentence on cannot be this phrase's determiner ("That. Period" is a mark).
         val afterDeterminer = previous != null && previous.trailing.isEmpty() && previous.core.lowercase() in vocabulary.determiners
         if (tokens[start].leading.isNotEmpty()) return null
+        fun isNoun(end: Int): Boolean {
+            if (afterDeterminer) return true
+            // "a long period of time": the noun's own complement follows it, with no mark between.
+            val last = tokens[end - 1]
+            val next = tokens.getOrNull(end) ?: return false
+            return last.trailing.isEmpty() && next.core.lowercase() in vocabulary.nounFollowers
+        }
         val count = countOf(tokens[start], vocabulary)
         val phraseStart = if (count != null) start + 1 else start
         if (count != null && tokens.getOrNull(phraseStart)?.leading?.isNotEmpty() == true) return null
@@ -215,11 +228,11 @@ object SpokenPunctuation {
             val key = words.map { it.core.lowercase() }
             if (count != null) {
                 val mark = vocabulary.plurals[key] ?: continue
-                if (afterDeterminer) return null
+                if (isNoun(phraseStart + length)) return null
                 return Match(mark, count, length + 1, words.last().trailing)
             }
             val mark = vocabulary.phrases[key] ?: continue
-            if (afterDeterminer) return null
+            if (isNoun(phraseStart + length)) return null
             return Match(mark, 1, length, words.last().trailing)
         }
         return null
@@ -335,13 +348,17 @@ object TextingStyle {
         "look", "bless", "sweet", "cute", "man", "shucks", "no", "yes", "yeah", "well", "come", "okay", "ok", "babe", "baby", "honey", "i",
     )
 
-    /** Line by line, so a spoken "new line" (SS7.7) survives and starts a sentence of its own. */
-    fun apply(text: String): String {
-        if (text.isEmpty() || !text.contains('\n')) return applyLine(text)
-        return text.split('\n').joinToString("\n", transform = ::applyLine)
+    /**
+     * Line by line, so a spoken "new line" (SS7.7) survives and starts a sentence of its own.
+     * [atSentenceStart] is whether the result itself begins a sentence (the frozen context's
+     * answer, [shouldCapitaliseAt]): "I was in", a pause, "awe." is not a sigh.
+     */
+    fun apply(text: String, atSentenceStart: Boolean = true): String {
+        if (text.isEmpty() || !text.contains('\n')) return applyLine(text, atSentenceStart)
+        return text.split('\n').mapIndexed { index, line -> applyLine(line, atSentenceStart || index > 0) }.joinToString("\n")
     }
 
-    private fun applyLine(text: String): String {
+    private fun applyLine(text: String, atSentenceStart: Boolean): String {
         if (text.isEmpty()) return text
         val tokens = text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.map(SpokenPunctuation.Token::parse)
         val out = mutableListOf<String>()
@@ -362,7 +379,7 @@ object TextingStyle {
                 i = end
                 continue
             }
-            val sigh = sighFor(tokens, i)
+            val sigh = sighFor(tokens, i, atSentenceStart)
             if (sigh != null) {
                 out += token.leading + matchCase(token.core, sigh) + token.trailing
                 changed = true
@@ -374,7 +391,7 @@ object TextingStyle {
         return if (changed) out.joinToString(" ") else text
     }
 
-    private fun sighFor(tokens: List<SpokenPunctuation.Token>, i: Int): String? {
+    private fun sighFor(tokens: List<SpokenPunctuation.Token>, i: Int, atSentenceStart: Boolean): String? {
         val core = tokens[i].core
         if (AW.matches(core)) return "aww"
         val replacement = when {
@@ -382,12 +399,12 @@ object TextingStyle {
             DAW.matches(core) -> "daww"
             else -> return null
         }
-        if (!startsSentence(tokens, i) || !leadsIntoSigh(tokens, i)) return null
+        if (!startsSentence(tokens, i, atSentenceStart) || !leadsIntoSigh(tokens, i)) return null
         return replacement
     }
 
-    private fun startsSentence(tokens: List<SpokenPunctuation.Token>, i: Int): Boolean {
-        if (i == 0) return true
+    private fun startsSentence(tokens: List<SpokenPunctuation.Token>, i: Int, atSentenceStart: Boolean): Boolean {
+        if (i == 0) return atSentenceStart
         return tokens[i - 1].trailing.any { it == '.' || it == '!' || it == '?' }
     }
 
