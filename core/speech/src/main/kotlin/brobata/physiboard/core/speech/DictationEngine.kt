@@ -73,7 +73,9 @@ object DictationEngine {
             // there instead of where the user tapped. Released, not finished: a finish is a commit
             // in a direct-commit field, which would type the staged words after the user's edit.
             DictationEvent.UserEditedComposingText -> DictationOutcome(
-                session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated)),
+                // The field's end is the user's edit now, not this session's last words: a
+                // spoken mark opening the next utterance has nothing of its own to join over (SS7.7).
+                session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated, context = session.utterance.context.copy(writtenBySession = ""))),
                 textOps = if (session.utterance.pending is PendingUtterance.Live) listOf(DictationTextOp.ReleaseComposing) else emptyList(),
             )
             DictationEvent.EditorRejectedInsert -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
@@ -406,8 +408,13 @@ object DictationEngine {
         // first, as its own utterance, instead of replacing its words.
         if (live != null && UtteranceOverlap.isDifferentUtterance(live, text)) {
             val first = UtteranceFinisher.finish(live, utterance.context, textSettings)
-            val second = UtteranceFinisher.finish(text, extendContext(utterance.context, first.plainText), textSettings)
-            return UtteranceFinisher.Finished(first.ops + second.ops, (first.plainText ?: "") + (second.plainText ?: ""))
+            val second = UtteranceFinisher.finish(text, extendContext(utterance.context, first), textSettings)
+            return UtteranceFinisher.Finished(
+                ops = first.ops + second.ops,
+                plainText = (first.plainText ?: "").removeSuffix(second.joinedOver) + (second.plainText ?: ""),
+                spokenWords = listOfNotNull(first.spokenWords, second.spokenWords).joinToString(" "),
+                joinedOver = first.joinedOver,
+            )
         }
         return UtteranceFinisher.finish(text, utterance.context, textSettings)
     }
@@ -415,16 +422,26 @@ object DictationEngine {
     private fun isRepeat(text: String, live: String?, utterance: UtteranceState): Boolean =
         SessionEcho.repeatsTail(text, utterance.finishedThisSession) && (live == null || wordKey(live) != wordKey(text))
 
-    /** The state after an utterance finished: context extended, nothing pending, and the finished words remembered for [SessionEcho]. */
+    /**
+     * The state after an utterance finished: context extended, nothing pending, and the words
+     * remembered for [SessionEcho] as the engine spoke them, not as written: the engine repeats
+     * its transcript ("three exclamation points"), never the marks the keyboard made of it (SS7.7).
+     */
     private fun afterFinish(utterance: UtteranceState, finished: UtteranceFinisher.Finished): UtteranceState = UtteranceState(
-        context = extendContext(utterance.context, finished.plainText),
+        context = extendContext(utterance.context, finished),
         pending = PendingUtterance.None,
-        finishedThisSession = SessionEcho.extend(utterance.finishedThisSession, finished.plainText),
+        finishedThisSession = SessionEcho.extend(utterance.finishedThisSession, finished.spokenWords),
     )
 
-    /** The next utterance's frozen context is this utterance's context plus whatever this module itself just wrote; never a fresh read. See [UtteranceContext]'s KDoc. */
-    private fun extendContext(context: UtteranceContext, addedPlainText: String?): UtteranceContext =
-        if (addedPlainText == null) context else UtteranceContext((context.textBeforeUtterance ?: "") + addedPlainText)
+    /**
+     * The next utterance's frozen context is this utterance's context plus whatever this module
+     * itself just wrote (less what a spoken mark joined over, SS7.7); never a fresh read. See
+     * [UtteranceContext]'s KDoc.
+     */
+    private fun extendContext(context: UtteranceContext, finished: UtteranceFinisher.Finished): UtteranceContext {
+        val added = finished.plainText ?: return context
+        return UtteranceContext((context.textBeforeUtterance ?: "").removeSuffix(finished.joinedOver) + added, writtenBySession = added)
+    }
 
     private fun finishPendingIfAny(utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
         val live = utterance.pending as? PendingUtterance.Live ?: return UtteranceFinisher.NOTHING

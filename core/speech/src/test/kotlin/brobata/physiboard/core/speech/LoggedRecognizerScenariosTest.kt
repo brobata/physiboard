@@ -562,4 +562,104 @@ class LoggedRecognizerScenariosTest {
         assertNull(ended.session)
         assertTrue(ended.textOps.isEmpty())
     }
+
+    // -------------------------------------------------------------------------------------
+    // 2026-10-23, "it just wrote the word comma" (SS7.7, SS7.8, D29).
+    // -------------------------------------------------------------------------------------
+
+    @Test
+    fun `D29 - the maintainer's dictated report lands with its marks, through the partials and the segment`() {
+        // The engine writes the words out; its own formatting put a full stop after "appear" and a
+        // capital on the word "Period". Spoken marks win, the comma gets no capital after it.
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("right now it just wrote the word"), now = 1_000L)
+        h.send(DictationEvent.PartialResult("right now it just wrote the word comma then"), now = 1_600L)
+        assertEquals("Right now it just wrote the word, then", h.field.text, "the preview shows the mark as it will land")
+        h.send(DictationEvent.PartialResult("right now it just wrote the word comma then appear period then started"), now = 2_200L)
+        assertEquals("Right now it just wrote the word, then appear. then started", h.field.text)
+        h.send(DictationEvent.SegmentResult("Right now it just wrote the word comma, then appear. Period, then started a new sentence."), now = 3_000L)
+        assertEquals("Right now it just wrote the word, then appear. Then started a new sentence. ", h.field.text)
+    }
+
+    @Test
+    fun `D29 - three exclamation points, and the echo of them is still recognised as the engine's repeat`() {
+        // Google's segmented session repeats the whole transcript in later results (SS7.2), as
+        // the words it heard; the field holds the marks. The echo is compared against the words.
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("that is great three"), now = 1_000L)
+        h.send(DictationEvent.PartialResult("that is great three exclamation points"), now = 1_400L)
+        assertEquals("That is great!!!", h.field.text)
+        h.send(DictationEvent.SegmentResult("That is great three exclamation points."), now = 2_000L)
+        assertEquals("That is great!!! ", h.field.text)
+        // The echo (D21) and the repeat (D28), both in the engine's own words.
+        h.send(DictationEvent.FinalResult("That is great three exclamation points."), now = 2_300L)
+        assertEquals("That is great!!! ", h.field.text, "the repeat writes nothing")
+        h.send(DictationEvent.PartialResult("that is great three exclamation points see you"), now = 4_000L)
+        assertEquals("That is great!!! See you", h.field.text, "the echo is stripped, the rest is capitalised after the spoken marks")
+        h.send(DictationEvent.SegmentResult("See you then period"), now = 5_000L)
+        assertEquals("That is great!!! See you then. ", h.field.text)
+    }
+
+    @Test
+    fun `D29 - a period said after a pause joins onto the sentence it ends, and the next sentence is capitalised`() {
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("I went home"), now = 1_000L)
+        h.send(DictationEvent.SegmentResult("I went home"), now = 2_000L)
+        assertEquals("I went home ", h.field.text)
+        h.send(DictationEvent.PartialResult("period"), now = 4_000L)
+        assertEquals("I went home .", h.field.text, "the preview sits where the composing text is; the join comes with the finish")
+        val finished = h.send(DictationEvent.SegmentResult("Period."), now = 4_600L)
+        assertEquals(DictationTextOp.DeleteBeforeCursorIfText(" "), finished.textOps.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().single())
+        assertEquals("I went home. ", h.field.text)
+        h.send(DictationEvent.PartialResult("then I"), now = 6_000L)
+        assertEquals("I went home. Then I", h.field.text)
+        h.send(DictationEvent.SegmentResult("then I slept"), now = 7_000L)
+        assertEquals("I went home. Then I slept ", h.field.text)
+    }
+
+    @Test
+    fun `D29 - a spoken mark after a pause replaces the engine's own mark, and the echo still strips`() {
+        val h = harness().start()
+        h.send(DictationEvent.SegmentResult("I went home."), now = 2_000L)
+        assertEquals("I went home. ", h.field.text)
+        h.send(DictationEvent.SegmentResult("Exclamation point."), now = 4_000L)
+        assertEquals("I went home! ", h.field.text, "the spoken mark wins over the engine's full stop")
+        // The engine's transcript of the whole session so far, as a partial of the next utterance.
+        h.send(DictationEvent.PartialResult("I went home exclamation point and then"), now = 6_000L)
+        assertEquals("I went home! And then", h.field.text)
+        h.send(DictationEvent.SegmentResult("And then I slept."), now = 7_000L)
+        assertEquals("I went home! And then I slept. ", h.field.text)
+    }
+
+    @Test
+    fun `D29 - with the setting off the words land as the engine gave them`() {
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36), DictationTextSettings(spokenPunctuation = false)).start()
+        h.send(DictationEvent.SegmentResult("hello comma world period"), now = 2_000L)
+        assertEquals("Hello comma world period ", h.field.text)
+    }
+
+    @Test
+    fun `D29 - the user's own edit under an utterance means the next spoken mark joins over nothing but a space`() {
+        // Stop-on-typing off: the user types after the first sentence landed. The session's record
+        // of the field's end is gone with that edit, so a later "period" replaces no mark of its own.
+        val h = DictationHarness(DictationSettings(androidApiLevel = 36, stopOnTyping = false)).start()
+        h.send(DictationEvent.SegmentResult("I went home."), now = 2_000L)
+        h.send(DictationEvent.PartialResult("and"), now = 3_000L)
+        h.send(DictationEvent.KeyDown, now = 3_500L)
+        h.send(DictationEvent.UserEditedComposingText, now = 3_500L)
+        h.send(DictationEvent.SegmentResult("and then."), now = 4_000L)
+        assertEquals("I went home. And", h.field.text, "the invalidated utterance writes nothing after its partial")
+        val finished = h.send(DictationEvent.SegmentResult("Exclamation point."), now = 6_000L)
+        assertEquals(emptyList(), finished.textOps.filterIsInstance<DictationTextOp.DeleteBeforeCursorIfText>().filter { it.expected != " " })
+    }
+
+    @Test
+    fun `D29 - laughs and sighs land the way people text them`() {
+        val h = harness().start()
+        h.send(DictationEvent.SegmentResult("Ha ha ha that was great."), now = 2_000L)
+        h.send(DictationEvent.SegmentResult("Aw, thank you."), now = 4_000L)
+        assertEquals("Hahaha that was great. Aww, thank you. ", h.field.text)
+        h.send(DictationEvent.PartialResult("ha ha ha that was great aw thank you I stood in awe of the dog"), now = 6_000L)
+        assertEquals("Hahaha that was great. Aww, thank you. I stood in awe of the dog", h.field.text, "the echo strips; the real words stay")
+    }
 }

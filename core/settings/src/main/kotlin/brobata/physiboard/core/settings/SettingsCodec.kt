@@ -150,6 +150,8 @@ object SettingsKeys {
     const val DICTATION_PAUSE_MEDIA = "dictation_pause_media"
     const val DICTATION_STOP_ON_TYPING = "dictation_stop_on_typing"
     const val DICTATION_AUTO_PUNCTUATION = "dictation_auto_punctuation"
+    const val DICTATION_SPOKEN_PUNCTUATION = "dictation_spoken_punctuation"
+    const val DICTATION_TEXTING_STYLE = "dictation_texting_style"
     const val SYM_LONG_PRESS_ASSISTANT = "sym_long_press_assistant"
     const val SIDE_KEY_ASSISTANT = "side_key_assistant"
     const val ASSISTANT_ACTION = "assistant_action"
@@ -618,6 +620,8 @@ object SettingsCodec {
         put(SettingsKeys.DICTATION_PAUSE_MEDIA, x.pauseMedia.toString())
         put(SettingsKeys.DICTATION_STOP_ON_TYPING, x.stopOnTyping.toString())
         put(SettingsKeys.DICTATION_AUTO_PUNCTUATION, x.autoPunctuation.toString())
+        put(SettingsKeys.DICTATION_SPOKEN_PUNCTUATION, x.spokenPunctuation.toString())
+        put(SettingsKeys.DICTATION_TEXTING_STYLE, x.textingStyle.toString())
         put(SettingsKeys.SYM_LONG_PRESS_ASSISTANT, x.symLongPressAssistant.toString())
         put(SettingsKeys.SIDE_KEY_ASSISTANT, x.sideKeyAssistant.toString())
         put(SettingsKeys.ASSISTANT_ACTION, x.assistantAction.storedValue)
@@ -636,6 +640,8 @@ object SettingsCodec {
             pauseMedia = r.bool(SettingsKeys.DICTATION_PAUSE_MEDIA, d.pauseMedia),
             stopOnTyping = r.bool(SettingsKeys.DICTATION_STOP_ON_TYPING, d.stopOnTyping),
             autoPunctuation = r.bool(SettingsKeys.DICTATION_AUTO_PUNCTUATION, d.autoPunctuation),
+            spokenPunctuation = r.bool(SettingsKeys.DICTATION_SPOKEN_PUNCTUATION, d.spokenPunctuation),
+            textingStyle = r.bool(SettingsKeys.DICTATION_TEXTING_STYLE, d.textingStyle),
             symLongPressAssistant = r.bool(SettingsKeys.SYM_LONG_PRESS_ASSISTANT, d.symLongPressAssistant),
             sideKeyAssistant = r.bool(SettingsKeys.SIDE_KEY_ASSISTANT, d.sideKeyAssistant),
             assistantAction = AssistantAction.fromStored(r.string(SettingsKeys.ASSISTANT_ACTION)) ?: d.assistantAction,

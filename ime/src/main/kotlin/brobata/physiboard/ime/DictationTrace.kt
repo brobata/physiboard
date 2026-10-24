@@ -122,6 +122,7 @@ internal object DictationTrace {
         DictationTextOp.ReleaseComposing -> "release"
         is DictationTextOp.CommitText -> "commit${op.text.length}"
         is DictationTextOp.DeleteBeforeCursor -> "del${op.count}"
+        is DictationTextOp.DeleteBeforeCursorIfText -> "join${op.expected.length}"
     }
 
     internal fun effectLabel(effect: DictationEffect): String = when (effect) {

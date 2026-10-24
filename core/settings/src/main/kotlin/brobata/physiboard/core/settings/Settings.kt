@@ -612,6 +612,10 @@ data class DictationPrefs(
     /** `""` system default, `ondevice`, or a flattened recognition-service component name. */
     val engine: String = "",
     val autoPunctuation: Boolean = true,
+    /** `dictation_spoken_punctuation`: "comma", "period", "new line" said while dictating become the marks (dictation.md SS7.7). */
+    val spokenPunctuation: Boolean = true,
+    /** `dictation_texting_style`: laugh runs joined, a sighed "aw" spelled "aww" (dictation.md SS7.8). */
+    val textingStyle: Boolean = true,
     /** `dictation_prefer_offline`: the engine's on-device recognizer first (dictation.md SS4.3). */
     val preferOffline: Boolean = true,
     /** `dictation_pause_media`: hold exclusive audio focus for the session (dictation.md SS6.7). */

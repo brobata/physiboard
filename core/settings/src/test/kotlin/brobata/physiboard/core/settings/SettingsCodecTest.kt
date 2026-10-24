@@ -81,7 +81,8 @@ class SettingsCodecTest {
         ),
         dictation = DictationPrefs(
             fnLongPressSpeech = false, haptics = false, hapticStrength = HapticStrength.LIGHT, stopAfterSilenceMs = 15000,
-            maskOffensive = true, engine = "ondevice", autoPunctuation = false, preferOffline = false, pauseMedia = false, stopOnTyping = false,
+            maskOffensive = true, engine = "ondevice", autoPunctuation = false, spokenPunctuation = false, textingStyle = false,
+            preferOffline = false, pauseMedia = false, stopOnTyping = false,
             symLongPressAssistant = true, sideKeyAssistant = true, assistantAction = AssistantAction.HANDS_FREE,
         ),
         trackpad = TrackpadPrefs(enabled = true, triggerKey = TriggerKey.SHIFT_EITHER, activation = ActivationMode.DOUBLE_TAP, stepPx = 48, showHint = false),

@@ -3,6 +3,20 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
+## 3.6.0 (unreleased)
+
+- Dictation types the punctuation you say. "Comma", "period" (or "full stop"), "question mark",
+  "exclamation point", "colon", "semicolon", "dash", "hyphen", "apostrophe", "open quote" and
+  "close quote", "open paren" and "close paren", "dot dot dot", "new line" and "new paragraph"
+  become the marks, with the right spacing and a capital after a full stop but never after a
+  comma. "Three exclamation points" gives three. Google's engine writes these words out, and the
+  3.0 to 3.5 builds trusted its own punctuation to cover them; the engine's mark gives way to the
+  one you said, so "appear. Period" no longer starts a sentence with the word "Period". Said
+  after a determiner ("a period of time", "the comma") the word stays a word. English only for
+  now; the "Spoken punctuation" switch under Voice turns it off.
+- "Ha ha ha" lands as "hahaha", and an "aw" or "awe" said as a sigh as "aww"; "in awe of" and
+  "the dog" are left alone. Its own switch, "Texting style for laughs and aww", under Voice.
+
 ## 3.5.0 (2026-10-23)
 
 Dictation that waits through your pauses, the orange key opens the assistant again, autocorrect

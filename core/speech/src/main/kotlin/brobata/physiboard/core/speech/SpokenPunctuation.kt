@@ -1,0 +1,399 @@
+package brobata.physiboard.core.speech
+
+/**
+ * Spoken punctuation: the words "comma", "period", "question mark" and their kin, said while
+ * dictating, become the marks they name. spec: dictation.md SS7.7.
+ *
+ * Why the keyboard does this itself: Google's recognizer, asked through the public API, writes
+ * the words out. `EXTRA_ENABLE_FORMATTING` documents "unspoken punctuation" only (the marks the
+ * engine infers from the speech), nothing in `RecognizerIntent` names spoken punctuation, and
+ * Chromium's own continuous client sets no extra for it; Gboard's "say comma" runs inside Gboard
+ * (D29). The maintainer's dictated report of 2026-10-23 is the symptom: "then a period" came out
+ * as "then appear. Period", the word written, capitalised as a new sentence after the engine's
+ * own full stop.
+ *
+ * The rules, in the order they are applied to the words of one result:
+ *
+ * - A phrase of the English table ([Vocabulary.ENGLISH]) becomes its mark. "Three exclamation
+ *   points" (a count word or digit, then the plural) repeats it; two phrases in a row join
+ *   ("question mark exclamation point" is "?!").
+ * - A phrase said directly after a determiner ("a period of time", "the comma in that sentence",
+ *   "that question mark") is the noun, and stays a word. So does a plural with no count
+ *   ("commas"). This is the whole of the ambiguity rule: Gboard converts every time; here one
+ *   word of warning keeps the word.
+ * - The spoken mark wins over the engine's: a mark the engine attached to the phrase itself
+ *   ("comma," or "Period.") or to the word before it ("appear. Period") is dropped. When the
+ *   dropped mark was a sentence end and the spoken mark is not, the capital the engine put on
+ *   the next word is lowered ("comma. Then" reads ", then").
+ * - Spacing: none before `, . ? ! : ;`, the closing quote and parenthesis, and the ellipsis; a
+ *   space after. A space before the opening quote and parenthesis, none after. None either side
+ *   of a hyphen or an apostrophe; a dash is spaced on both sides. A new line or paragraph takes
+ *   the spaces before it with it and is followed by none.
+ * - Capitalisation after a converted mark is [DictationCapitalization]'s business, by the same
+ *   rule as typing: after `.`, `?`, `!` and a new line or paragraph, never after a comma.
+ *
+ * English only: the table is looked up by the dictation language, and any other language passes
+ * through untouched (spec SS7.7 says so; the words of other languages are a later table, not a
+ * guess made here). Pure Kotlin, so every row is a unit test.
+ */
+object SpokenPunctuation {
+
+    /** How a mark sits against its neighbours. */
+    enum class Placement {
+        /** No space before, a space after: `, . ? ! : ;`, a closing quote or parenthesis, an ellipsis. */
+        CLOSE,
+
+        /** A space before, none after: an opening quote or parenthesis. */
+        OPEN,
+
+        /** No space either side: a hyphen, an apostrophe. */
+        GLUE,
+
+        /** A space either side: a dash said as such. */
+        SPACED,
+
+        /** Ends the line: spaces before it go, nothing follows on the same line. */
+        BREAK,
+    }
+
+    data class Mark(val symbol: String, val placement: Placement) {
+        /** A mark after which the next sentence starts: capitalised by [DictationCapitalization], and the engine's capital after it is left alone. */
+        val endsSentence: Boolean get() = placement == Placement.BREAK || symbol in SENTENCE_ENDS
+    }
+
+    /** One language's table: phrases (lower case, single spaces) to marks, plus the plural forms a count may precede. */
+    class Vocabulary(
+        phrases: Map<String, Mark>,
+        plurals: Map<String, Mark>,
+        /** The words that make the following phrase a noun ("a period", "the comma"). */
+        val determiners: Set<String>,
+        /** Count words that repeat the plural after them ("three exclamation points"); digits always count. */
+        val counts: Map<String, Int>,
+    ) {
+        val phrases: Map<List<String>, Mark> = phrases.mapKeys { it.key.split(' ') }
+        val plurals: Map<List<String>, Mark> = plurals.mapKeys { it.key.split(' ') }
+        val longestPhrase: Int = (this.phrases.keys + this.plurals.keys).maxOf { it.size }
+
+        companion object {
+            private val COMMA = Mark(",", Placement.CLOSE)
+            private val PERIOD = Mark(".", Placement.CLOSE)
+            private val QUESTION = Mark("?", Placement.CLOSE)
+            private val EXCLAMATION = Mark("!", Placement.CLOSE)
+            private val COLON = Mark(":", Placement.CLOSE)
+            private val SEMICOLON = Mark(";", Placement.CLOSE)
+            private val ELLIPSIS = Mark("...", Placement.CLOSE)
+            private val OPEN_QUOTE = Mark("\"", Placement.OPEN)
+            private val CLOSE_QUOTE = Mark("\"", Placement.CLOSE)
+            private val OPEN_PAREN = Mark("(", Placement.OPEN)
+            private val CLOSE_PAREN = Mark(")", Placement.CLOSE)
+            private val HYPHEN = Mark("-", Placement.GLUE)
+            private val DASH = Mark("-", Placement.SPACED)
+            private val APOSTROPHE = Mark("'", Placement.GLUE)
+            private val NEW_LINE = Mark("\n", Placement.BREAK)
+            private val NEW_PARAGRAPH = Mark("\n\n", Placement.BREAK)
+
+            val ENGLISH = Vocabulary(
+                phrases = mapOf(
+                    "comma" to COMMA,
+                    "period" to PERIOD, "full stop" to PERIOD, "fullstop" to PERIOD,
+                    "question mark" to QUESTION,
+                    "exclamation point" to EXCLAMATION, "exclamation mark" to EXCLAMATION,
+                    "colon" to COLON,
+                    "semicolon" to SEMICOLON, "semi colon" to SEMICOLON,
+                    "ellipsis" to ELLIPSIS, "dot dot dot" to ELLIPSIS,
+                    "open quote" to OPEN_QUOTE, "open quotes" to OPEN_QUOTE, "begin quote" to OPEN_QUOTE, "open quotation mark" to OPEN_QUOTE,
+                    "close quote" to CLOSE_QUOTE, "close quotes" to CLOSE_QUOTE, "end quote" to CLOSE_QUOTE, "unquote" to CLOSE_QUOTE, "close quotation mark" to CLOSE_QUOTE,
+                    "open paren" to OPEN_PAREN, "open parenthesis" to OPEN_PAREN, "left paren" to OPEN_PAREN, "left parenthesis" to OPEN_PAREN,
+                    "close paren" to CLOSE_PAREN, "close parenthesis" to CLOSE_PAREN, "right paren" to CLOSE_PAREN, "right parenthesis" to CLOSE_PAREN,
+                    "hyphen" to HYPHEN,
+                    "dash" to DASH,
+                    "apostrophe" to APOSTROPHE,
+                    "new line" to NEW_LINE, "newline" to NEW_LINE,
+                    "new paragraph" to NEW_PARAGRAPH,
+                ),
+                plurals = mapOf(
+                    "commas" to COMMA,
+                    "periods" to PERIOD, "full stops" to PERIOD,
+                    "question marks" to QUESTION,
+                    "exclamation points" to EXCLAMATION, "exclamation marks" to EXCLAMATION,
+                    "colons" to COLON,
+                    "semicolons" to SEMICOLON,
+                    "new lines" to NEW_LINE,
+                ),
+                determiners = setOf(
+                    "a", "an", "the", "this", "that", "these", "those", "each", "every", "another", "any", "some", "no",
+                    "my", "your", "his", "her", "its", "our", "their",
+                ),
+                counts = mapOf("two" to 2, "three" to 3, "four" to 4, "five" to 5, "six" to 6, "seven" to 7, "eight" to 8, "nine" to 9, "ten" to 10),
+            )
+        }
+    }
+
+    private const val SENTENCE_ENDS = ".?!"
+
+    /** The engine's own marks a spoken one replaces when they touch it. */
+    internal const val ENGINE_MARKS = ",.?!;:"
+
+    /** The most repeats a count may ask for; "a hundred exclamation points" is not a sentence anyone wants typed. */
+    private const val MAX_REPEAT = 10
+
+    /** The table for [languageTag] (spec SS5.1's tag, or a bare language), or `null` when this module has none for it. */
+    fun vocabularyFor(languageTag: String?): Vocabulary? {
+        val language = languageTag?.trim()?.replace('_', '-')?.substringBefore('-')?.lowercase()
+        // The keyboard ships one language, English; a missing tag is that language, as the rest of this module assumes.
+        return if (language.isNullOrEmpty() || language == "en") Vocabulary.ENGLISH else null
+    }
+
+    /** [text] with its spoken punctuation converted, or [text] itself when nothing in it is a phrase of [vocabulary]. */
+    fun apply(text: String, vocabulary: Vocabulary): String {
+        if (text.isEmpty()) return text
+        val tokens = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }.map(Token::parse)
+        val out = Assembler()
+        var i = 0
+        var lowerNextCapital = false
+        var converted = false
+        while (i < tokens.size) {
+            val match = matchAt(tokens, i, vocabulary)
+            if (match == null) {
+                val token = tokens[i]
+                out.word(if (lowerNextCapital) token.lowerEngineCapital() else token)
+                lowerNextCapital = false
+                i++
+                continue
+            }
+            converted = true
+            val absorbedSentenceEnd = out.dropTrailingEngineMark() || match.attachedMark.any { it in SENTENCE_ENDS }
+            repeat(match.repeat) { out.mark(match.mark) }
+            // The engine's own mark on the phrase goes with the phrase; anything else on it (a closing quote) stays.
+            out.append(match.attachedMark.filter { it !in ENGINE_MARKS })
+            // The capital after an absorbed sentence end was the engine's; a comma does not start a sentence.
+            lowerNextCapital = absorbedSentenceEnd && !match.mark.endsSentence
+            i += match.consumed
+        }
+        return if (converted) out.toString() else text
+    }
+
+    private class Match(val mark: Mark, val repeat: Int, val consumed: Int, val attachedMark: String)
+
+    /**
+     * The phrase starting at [start], longest first, with a count before a plural. `null` when
+     * the words are not a phrase or the ambiguity rule keeps them as words: a determiner before
+     * them, or a plural with no count.
+     */
+    private fun matchAt(tokens: List<Token>, start: Int, vocabulary: Vocabulary): Match? {
+        val previous = tokens.getOrNull(start - 1)
+        // A word the engine ended its sentence on cannot be this phrase's determiner ("That. Period" is a mark).
+        val afterDeterminer = previous != null && previous.trailing.isEmpty() && previous.core.lowercase() in vocabulary.determiners
+        val count = countOf(tokens[start], vocabulary)
+        val phraseStart = if (count != null) start + 1 else start
+        for (length in vocabulary.longestPhrase downTo 1) {
+            if (phraseStart + length > tokens.size) continue
+            val words = tokens.subList(phraseStart, phraseStart + length)
+            // A phrase carries at most the engine's mark on its last word; one inside it is two words, not a phrase.
+            if (words.dropLast(1).any { it.trailing.isNotEmpty() }) continue
+            val key = words.map { it.core.lowercase() }
+            if (count != null) {
+                val mark = vocabulary.plurals[key] ?: vocabulary.phrases[key] ?: continue
+                if (afterDeterminer) return null
+                return Match(mark, count, length + 1, words.last().trailing)
+            }
+            val mark = vocabulary.phrases[key] ?: continue
+            if (afterDeterminer) return null
+            return Match(mark, 1, length, words.last().trailing)
+        }
+        return null
+    }
+
+    private fun countOf(token: Token, vocabulary: Vocabulary): Int? {
+        if (token.trailing.isNotEmpty()) return null
+        val word = token.core.lowercase()
+        val count = vocabulary.counts[word] ?: word.toIntOrNull()?.takeIf { word.all(Char::isDigit) } ?: return null
+        return count.coerceIn(1, MAX_REPEAT)
+    }
+
+    /** One whitespace-delimited word of the result: the engine's punctuation either side of its letters, kept apart so a mark on it can be judged. */
+    internal class Token(val leading: String, val core: String, val trailing: String) {
+        fun lowerEngineCapital(): Token = Token(leading, lowerEngineSegmentCapital(core), trailing)
+
+        override fun toString(): String = leading + core + trailing
+
+        companion object {
+            fun parse(word: String): Token {
+                val coreStart = word.indexOfFirst { it.isLetterOrDigit() }
+                if (coreStart < 0) return Token("", word, "")
+                val coreEnd = word.indexOfLast { it.isLetterOrDigit() } + 1
+                return Token(word.substring(0, coreStart), word.substring(coreStart, coreEnd), word.substring(coreEnd))
+            }
+        }
+    }
+
+    /** Builds the converted text, deciding the space before each piece from the piece before it. */
+    private class Assembler {
+        private val out = StringBuilder()
+        private var last: Placement? = null // null: a word, or nothing yet
+        private var lastWordEnd = -1 // where the last word's letters end, for taking back the engine's mark on it
+
+        fun word(token: Token) {
+            if (out.isNotEmpty() && last != Placement.OPEN && last != Placement.GLUE && last != Placement.BREAK) out.append(' ')
+            out.append(token.leading).append(token.core)
+            lastWordEnd = out.length
+            out.append(token.trailing)
+            last = null
+        }
+
+        /** Drops the engine's mark on the word just written (the spoken mark replaces it); true when that mark ended a sentence. */
+        fun dropTrailingEngineMark(): Boolean {
+            if (last != null || lastWordEnd < 0 || lastWordEnd >= out.length) return false
+            val attached = out.substring(lastWordEnd)
+            if (attached.isEmpty() || !attached.all { it in ENGINE_MARKS }) return false
+            out.setLength(lastWordEnd)
+            return attached.any { it in SENTENCE_ENDS }
+        }
+
+        fun mark(mark: Mark) {
+            when (mark.placement) {
+                Placement.CLOSE -> out.append(mark.symbol)
+                Placement.OPEN, Placement.SPACED -> {
+                    if (out.isNotEmpty() && last != Placement.OPEN && last != Placement.GLUE && last != Placement.BREAK) out.append(' ')
+                    out.append(mark.symbol)
+                }
+                Placement.GLUE -> out.append(mark.symbol)
+                Placement.BREAK -> {
+                    while (out.isNotEmpty() && out.last() == ' ') out.setLength(out.length - 1)
+                    out.append(mark.symbol)
+                }
+            }
+            last = if (mark.placement == Placement.SPACED) null else mark.placement
+            lastWordEnd = -1
+        }
+
+        /** Characters that ride on the mark just written, with no space and no change of placement. */
+        fun append(text: String) {
+            out.append(text)
+        }
+
+        override fun toString(): String = out.toString()
+    }
+
+    private val WHITESPACE = Regex("\\s+")
+
+    // ---------------------------------------------------------------------------------------
+    // The edges of a converted text, read by DictationSpacing and UtteranceFinisher.
+    // ---------------------------------------------------------------------------------------
+
+    /** The text begins with a mark that sits against the word before it (a spoken "comma" as the first word of an utterance), or with a line break. */
+    fun joinsToPrevious(text: String): Boolean {
+        val first = text.firstOrNull() ?: return false
+        if (first == '\n') return true
+        if (first == '-' && text.length > 1 && text[1] != ' ') return true
+        return first in JOINING_STARTS
+    }
+
+    /** The text ends where nothing may follow on the same line, or on an opening mark that wants its word right after it. */
+    fun endsWithoutSpace(text: String): Boolean {
+        val last = text.lastOrNull() ?: return false
+        if (last == '\n' || last == '(') return true
+        // A quote with a space (or nothing) before it is an opening one; after a letter it closes.
+        if (last == '"') return text.length == 1 || text[text.length - 2] == ' '
+        return false
+    }
+
+    private const val JOINING_STARTS = ",.?!:;)'"
+}
+
+/**
+ * Texting-style spellings for the sounds people make and want written the way they text them.
+ * spec: dictation.md SS7.8. Two conservative rewrites and nothing more:
+ *
+ * - A run of two or more laugh syllables ("ha ha ha", "Ha ha", "heh heh") is joined ("hahaha",
+ *   "Haha", "hehheh"). One syllable alone, "lol", and anything already joined are left as they
+ *   are. The syllables are the ones a recognizer can emit for laughter: `ha`, `hah`, `heh`,
+ *   `hee`, and `haha`/`hehe` with any number of repeats; never `he`, a pronoun.
+ * - "aw" and "aww" (not words otherwise) become "aww" wherever they stand. "awe" and "daw",
+ *   which are words, become "aww" and "daww" only as an interjection: first in the sentence
+ *   (the start of the result, or after `.`, `!`, `?` or a line break) or standing alone, and
+ *   followed by nothing, a mark, a capitalised word (a name), or one of the words such a sigh
+ *   leads into ("that's", "so", "poor", "thanks", ...). "In awe of" and "a jackdaw" are never
+ *   touched, nor is "dog", which is what a long "dawww" most likely comes back as.
+ *
+ * One fixed spelling each. The transcript carries no durations, so how long a vowel was held
+ * cannot be known; "aww" and "daww" are the texting spellings, and no heuristic guesses longer.
+ */
+object TextingStyle {
+    private val LAUGH_SYLLABLE = Regex("(?i)^(ha|hah|heh|hee|(?:ha){2,}|(?:he){2,}h?)$")
+    private val AW = Regex("(?i)^aw+$")
+    private val AWE = Regex("(?i)^awe$")
+    private val DAW = Regex("(?i)^daw+$")
+    private val FOLLOWERS = setOf(
+        "that's", "thats", "that", "this", "so", "poor", "thanks", "thank", "you", "how", "what", "he's", "she's", "it's", "they're",
+        "look", "bless", "sweet", "cute", "man", "shucks", "no", "yes", "yeah", "well", "come", "okay", "ok", "babe", "baby", "honey", "i",
+    )
+
+    /** Line by line, so a spoken "new line" (SS7.7) survives and starts a sentence of its own. */
+    fun apply(text: String): String {
+        if (text.isEmpty() || !text.contains('\n')) return applyLine(text)
+        return text.split('\n').joinToString("\n", transform = ::applyLine)
+    }
+
+    private fun applyLine(text: String): String {
+        if (text.isEmpty()) return text
+        val tokens = text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.map(SpokenPunctuation.Token::parse)
+        val out = mutableListOf<String>()
+        var changed = false
+        var i = 0
+        while (i < tokens.size) {
+            val token = tokens[i]
+            // A laugh run: syllables with no mark between them; the last may carry the engine's mark.
+            var end = i
+            while (end < tokens.size &&
+                LAUGH_SYLLABLE.matches(tokens[end].core) &&
+                (end == i || (tokens[end].leading.isEmpty() && tokens[end - 1].trailing.isEmpty()))
+            ) end++
+            if (end - i >= 2) {
+                val joined = tokens.subList(i, end)
+                out += joined.first().leading + joined.first().core + joined.drop(1).joinToString("") { it.core.lowercase() } + joined.last().trailing
+                changed = true
+                i = end
+                continue
+            }
+            val sigh = sighFor(tokens, i)
+            if (sigh != null) {
+                out += token.leading + matchCase(token.core, sigh) + token.trailing
+                changed = true
+            } else {
+                out += token.toString()
+            }
+            i++
+        }
+        return if (changed) out.joinToString(" ") else text
+    }
+
+    private fun sighFor(tokens: List<SpokenPunctuation.Token>, i: Int): String? {
+        val core = tokens[i].core
+        if (AW.matches(core)) return "aww"
+        val replacement = when {
+            AWE.matches(core) -> "aww"
+            DAW.matches(core) -> "daww"
+            else -> return null
+        }
+        if (!startsSentence(tokens, i) || !leadsIntoSigh(tokens, i)) return null
+        return replacement
+    }
+
+    private fun startsSentence(tokens: List<SpokenPunctuation.Token>, i: Int): Boolean {
+        if (i == 0) return true
+        return tokens[i - 1].trailing.any { it == '.' || it == '!' || it == '?' }
+    }
+
+    private fun leadsIntoSigh(tokens: List<SpokenPunctuation.Token>, i: Int): Boolean {
+        if (tokens[i].trailing.isNotEmpty()) return true
+        val next = tokens.getOrNull(i + 1) ?: return true
+        if (next.leading.isNotEmpty()) return true
+        if (next.core.firstOrNull()?.isUpperCase() == true) return true
+        return next.core.lowercase() in FOLLOWERS
+    }
+
+    /** [replacement] in the case of [original]'s first letter, so "Aw" stays a sentence start. */
+    private fun matchCase(original: String, replacement: String): String =
+        if (original.firstOrNull()?.isUpperCase() == true) replacement.replaceFirstChar { it.titlecase() } else replacement
+}

@@ -65,6 +65,10 @@ class FakeField {
                 is DictationTextOp.DeleteBeforeCursor -> {
                     if (composing.isNotEmpty()) composing = composing.dropLast(op.count) else committed.setLength((committed.length - op.count).coerceAtLeast(0))
                 }
+                // As `:ime` applies it: only when the text before the cursor is exactly the expected one.
+                is DictationTextOp.DeleteBeforeCursorIfText -> {
+                    if (composing.isEmpty() && committed.endsWith(op.expected)) committed.setLength(committed.length - op.expected.length)
+                }
             }
         }
     }

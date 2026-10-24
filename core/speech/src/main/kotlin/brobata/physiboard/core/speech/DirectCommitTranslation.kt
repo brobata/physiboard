@@ -57,6 +57,9 @@ object DirectCommit {
                 }
                 // Never produced by the engine, and nothing here asks for one any more.
                 is DictationTextOp.DeleteBeforeCursor -> out += op
+                // A field that cannot take anything back gets the spoken mark after the space
+                // it left (spec SS7.7); the join is for fields with a region.
+                is DictationTextOp.DeleteBeforeCursorIfText -> Unit
             }
         }
         return DirectCommitTranslation(out, DirectCommitState(pending))

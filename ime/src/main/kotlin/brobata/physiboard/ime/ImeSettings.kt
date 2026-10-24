@@ -453,13 +453,20 @@ internal object ImeSettings {
         engineId = s.dictation.engine,
     )
 
-    /** spec: dictation.md SS7.1: dictation capitalises by the same two auto-cap rows as typing; `capitalizationAllowed` stays the field's own answer. */
+    /**
+     * spec: dictation.md SS7.1: dictation capitalises by the same two auto-cap rows as typing;
+     * `capitalizationAllowed` stays the field's own answer. SS7.7, SS7.8: the two spoken-word
+     * switches, and the language their tables are looked up by.
+     */
     fun dictationTextSettings(current: DictationTextSettings, s: Settings, languageTag: String? = null): DictationTextSettings =
         current.copy(
             capitalizeFirstLetter = s.typing.capitalizeAtTextStart,
             capitalizeAfterSentenceEnd = s.typing.capitalizeAfterSentenceEnd,
             // dictation.md SS7.5: German nouns carry their own capital; the engine's cannot be told from it.
             undoEngineSegmentCapitals = DictationTextSettings.undoEngineCapitalsFor(languageTag),
+            spokenPunctuation = s.dictation.spokenPunctuation,
+            textingStyle = s.dictation.textingStyle,
+            languageTag = languageTag,
         )
 
     /** The one bundled language's locale, what `:ime` scores theme overrides and extra-language lookups against until a subtype module exists. */

@@ -39,6 +39,17 @@ sealed class DictationTextOp {
     /** Deletes [count] characters before the cursor, so a direct commit can replace what the previous one left (see [DirectCommit]). */
     data class DeleteBeforeCursor(val count: Int) : DictationTextOp()
 
+    /**
+     * Deletes [expected] before the cursor, and only if the field really holds exactly that there
+     * (spec SS7.7): an utterance that starts with a spoken mark ("period" said after a pause)
+     * takes back the space, and the engine's own mark, this session left after the word before.
+     * `:ime` reads that many characters before the cursor first and deletes nothing when they
+     * differ, so a cursor the user moved between utterances can never cost a letter; the
+     * session's own record of the field ([UtteranceContext]) is what [expected] comes from.
+     * Never applied in a direct-commit field, where nothing is ever deleted ([DirectCommit]).
+     */
+    data class DeleteBeforeCursorIfText(val expected: String) : DictationTextOp()
+
     /** Commits [text] at the cursor directly, for the rare case nothing was composing to replace. */
     data class CommitText(val text: String) : DictationTextOp()
 }

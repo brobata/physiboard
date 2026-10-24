@@ -45,6 +45,8 @@ import brobata.physiboard.device.titan.TitanLayouts
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Every stored row [ImeSettings] maps lands in the pipeline field it names, and the store's defaults reproduce the shipped [KeyboardSettings]. */
@@ -416,9 +418,16 @@ class ImeSettingsTest {
         assertFalse(d.stopOnTyping)
         assertFalse(d.privateMode, "layered on by the session, not the store mapping")
         assertEquals(34, d.androidApiLevel)
-        val t = ImeSettings.dictationTextSettings(DictationTextSettings(capitalizationAllowed = false), s)
+        val t = ImeSettings.dictationTextSettings(DictationTextSettings(capitalizationAllowed = false), s, languageTag = "en_US")
         assertFalse(t.capitalizeFirstLetter)
         assertTrue(t.capitalizeAfterSentenceEnd)
         assertFalse(t.capitalizationAllowed)
+        // dictation.md SS7.7, SS7.8: both spoken-word switches, on by default, looked up by the subtype's language.
+        assertTrue(t.spokenPunctuation && t.textingStyle)
+        assertEquals("en_US", t.languageTag)
+        assertNotNull(t.spokenPunctuationVocabulary)
+        val off = ImeSettings.dictationTextSettings(t, Settings(dictation = DictationPrefs(spokenPunctuation = false, textingStyle = false)), languageTag = "it_IT")
+        assertNull(off.spokenPunctuationVocabulary)
+        assertFalse(off.textingStyleInForce)
     }
 }

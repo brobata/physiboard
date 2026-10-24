@@ -36,25 +36,42 @@ internal fun lowerEngineSegmentCapital(text: String): String {
 }
 
 /**
- * spec: dictation.md SS7.1: "a partial gets first-letter capitalisation only... No punctuation-word
- * replacement and no after-sentence capitalisation is applied to partials." Evaluated once, against
- * the utterance's frozen [UtteranceContext], so a second or later partial in the same utterance
- * keeps the same answer a naive re-read would have lost the moment earlier partials of this same
- * utterance were on screen (the fragility SS7.1 itself documents as the reason 2.x's capital was
- * lost on later partials).
+ * spec: dictation.md SS7.1: a partial gets its spoken words converted (SS7.7, SS7.8) and
+ * first-letter capitalisation only; no after-sentence capitalisation is applied to partials.
+ * Evaluated once, against the utterance's frozen [UtteranceContext], so a second or later partial
+ * in the same utterance keeps the same answer a naive re-read would have lost the moment earlier
+ * partials of this same utterance were on screen (the fragility SS7.1 itself documents as the
+ * reason 2.x's capital was lost on later partials).
  */
 object DictationPartialDisplay {
     fun display(rawPartial: String, context: UtteranceContext, settings: DictationTextSettings): String {
         if (rawPartial.isEmpty()) return rawPartial
-        if (!settings.capitalizationAllowed) return rawPartial
-        if (!shouldCapitaliseAt(context.textBeforeUtterance)) return if (settings.undoEngineSegmentCapitals) lowerEngineSegmentCapital(rawPartial) else rawPartial
-        return if (settings.capitalizeFirstLetter) titleCaseFirst(rawPartial) else rawPartial
+        val partial = spokenWordsToText(rawPartial, settings)
+        if (!settings.capitalizationAllowed) return partial
+        if (!shouldCapitaliseAt(context.textBeforeUtterance)) return if (settings.undoEngineSegmentCapitals) lowerEngineSegmentCapital(partial) else partial
+        return if (settings.capitalizeFirstLetter) titleCaseFirst(partial) else partial
     }
 }
 
-/** spec: dictation.md SS7.5: first-letter and after-sentence-end capitalisation of a finished utterance. */
+/**
+ * spec: dictation.md SS7.7, SS7.8: the spoken words that are not words. Applied to a partial and
+ * to a finished utterance alike, before capitalisation, so the preview shows the marks the
+ * finish will land. The [PendingUtterance] keeps the engine's own words; only what is shown and
+ * written is converted, which is what keeps [SessionEcho]'s word-for-word comparison honest.
+ */
+internal fun spokenWordsToText(rawText: String, settings: DictationTextSettings): String {
+    var text = rawText
+    settings.spokenPunctuationVocabulary?.let { text = SpokenPunctuation.apply(text, it) }
+    if (settings.textingStyleInForce) text = TextingStyle.apply(text)
+    return text
+}
+
+/** spec: dictation.md SS7.5: first-letter, after-sentence-end and after-line-break capitalisation of a finished utterance. */
 object DictationCapitalization {
     private val AFTER_SENTENCE_END = Regex("([.!?]\\s+)([a-z])")
+
+    /** spec SS7.7: a spoken "new line" or "new paragraph" is the same boundary as the one [shouldCapitaliseAt] sees across utterances. */
+    private val AFTER_LINE_BREAK = Regex("(\\n+)([a-z])")
 
     fun apply(text: String, context: UtteranceContext, settings: DictationTextSettings): String {
         if (text.isEmpty() || !settings.capitalizationAllowed) return text
@@ -67,41 +84,92 @@ object DictationCapitalization {
         if (settings.capitalizeAfterSentenceEnd) {
             result = AFTER_SENTENCE_END.replace(result) { it.groupValues[1] + it.groupValues[2].uppercase() }
         }
+        if (settings.capitalizeFirstLetter) {
+            result = AFTER_LINE_BREAK.replace(result) { it.groupValues[1] + it.groupValues[2].uppercase() }
+        }
         return result
     }
 }
 
 /**
  * spec: dictation.md SS7.6: a leading space if the frozen context ends in a letter (digits and
- * punctuation do not count), and always a trailing space. Reading [UtteranceContext] rather than
- * the live field is what removes the leading-space quirk SS7.6 itself documents ("the 10-character
+ * punctuation do not count), and a trailing space. Reading [UtteranceContext] rather than the
+ * live field is what removes the leading-space quirk SS7.6 itself documents ("the 10-character
  * read before the cursor includes the composing partial, whose last character is a letter"): the
  * frozen snapshot never contains this utterance's own partial, so it cannot trigger that.
+ *
+ * spec SS7.7 adds the marks' edges: a text that opens with a mark that sits against the word
+ * before it gets no leading space and instead takes back what this session left after that
+ * word ([joinOver]); a text that ends with a line break or an opening mark gets no trailing space.
  */
 object DictationSpacing {
     private const val LOOKBACK = 10
 
+    /** The most characters a leading mark joins over: the engine's mark and the finisher's space, or a few of the user's own spaces. */
+    private const val MAX_JOIN = 4
+
     fun apply(text: String, context: UtteranceContext): String {
-        val leadingSpace = context.textBeforeUtterance?.takeLast(LOOKBACK)?.lastOrNull()?.isLetter() == true
-        return (if (leadingSpace) " " else "") + text + " "
+        val leadingSpace = !SpokenPunctuation.joinsToPrevious(text) && context.textBeforeUtterance?.takeLast(LOOKBACK)?.lastOrNull()?.isLetter() == true
+        val trailingSpace = !SpokenPunctuation.endsWithoutSpace(text)
+        return (if (leadingSpace) " " else "") + text + (if (trailingSpace) " " else "")
+    }
+
+    /**
+     * What a [text] opening with a spoken mark takes back from the end of the field (spec SS7.7):
+     * the trailing spaces, and, when the end of the field is this session's own writing, the
+     * engine's mark before them ("appear. " then "period" is "appear. ", not "appear. . "). The
+     * user's own mark before the session is never touched. Empty when nothing is to be joined.
+     */
+    fun joinOver(text: String, context: UtteranceContext): String {
+        if (!SpokenPunctuation.joinsToPrevious(text)) return ""
+        val before = context.textBeforeUtterance ?: return ""
+        val spaces = before.takeLastWhile { it == ' ' }.take(MAX_JOIN)
+        if (text.startsWith("\n")) return spaces // a line break takes the spaces, keeps the mark
+        val own = context.writtenBySession
+        if (own.isEmpty() || !before.endsWith(own)) return spaces
+        // The engine's mark sits alone on a word ("appear."); a run of spoken marks ("Wow!!!") is the user's and stays.
+        val written = own.dropLast(spaces.length)
+        val mark = written.lastOrNull()?.takeIf { it in SpokenPunctuation.ENGINE_MARKS } ?: return spaces
+        if (written.getOrNull(written.length - 2)?.isLetterOrDigit() != true) return spaces
+        return mark + spaces
     }
 }
 
 /**
- * spec: dictation.md SS7.3, "Finishing the utterance with text T": capitalise, then space, then
- * write. The punctuation-word table (SS7.4) is dropped for 3.0 per rebuild-from-scratch.md SS17
- * ("Google punctuates itself; the table is substring-based and English-less").
+ * spec: dictation.md SS7.3, "Finishing the utterance with text T": convert the spoken words
+ * (SS7.7, SS7.8), capitalise, then space, then write. 3.0 to 3.5 had dropped 2.x's punctuation
+ * table on the belief that the engine's formatting covers spoken marks; it does not (D29).
  */
 object UtteranceFinisher {
-    /** [plainText] is the transformed text with no ops attached, carried forward so the next utterance's [UtteranceContext] can be computed by simple append rather than a fresh read. */
-    data class Finished(val ops: List<DictationTextOp>, val plainText: String?)
+    /**
+     * [plainText] is the written text with no ops attached, carried forward so the next
+     * utterance's [UtteranceContext] can be computed by simple append rather than a fresh read.
+     * [spokenWords] is what the engine said, before conversion, which is what [SessionEcho] must
+     * compare against. [joinedOver] is what a leading spoken mark deleted from the end of the
+     * field before [plainText] was written (SS7.7).
+     */
+    data class Finished(val ops: List<DictationTextOp>, val plainText: String?, val spokenWords: String? = plainText, val joinedOver: String = "")
 
-    val NOTHING = Finished(emptyList(), null)
+    val NOTHING = Finished(emptyList(), null, null)
 
     fun finish(rawText: String, context: UtteranceContext, settings: DictationTextSettings): Finished {
-        val capitalized = DictationCapitalization.apply(rawText, context, settings)
+        val converted = spokenWordsToText(rawText, settings)
+        val capitalized = DictationCapitalization.apply(converted, context, settings)
         val spaced = DictationSpacing.apply(capitalized, context)
-        return Finished(ops = listOf(DictationTextOp.SetComposingText(spaced), DictationTextOp.FinishComposing), plainText = spaced)
+        val joinedOver = DictationSpacing.joinOver(capitalized, context)
+        val ops = buildList {
+            if (joinedOver.isNotEmpty()) {
+                // The partial of this utterance may still be composing, and on an editor the
+                // composing text sits before the cursor: it would be what the join reads and
+                // deletes. The region is emptied and closed first, then the field's end is checked.
+                add(DictationTextOp.SetComposingText(""))
+                add(DictationTextOp.FinishComposing)
+                add(DictationTextOp.DeleteBeforeCursorIfText(joinedOver))
+            }
+            add(DictationTextOp.SetComposingText(spaced))
+            add(DictationTextOp.FinishComposing)
+        }
+        return Finished(ops, plainText = spaced, spokenWords = rawText, joinedOver = joinedOver)
     }
 }
 

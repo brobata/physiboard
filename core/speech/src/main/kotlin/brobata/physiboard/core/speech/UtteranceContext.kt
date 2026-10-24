@@ -19,4 +19,14 @@ package brobata.physiboard.core.speech
  * produced (see [DictationSession] carrying [UtteranceContext] forward by simple append, never by
  * asking the caller to read anything again).
  */
-data class UtteranceContext(val textBeforeUtterance: String?)
+data class UtteranceContext(
+    val textBeforeUtterance: String?,
+    /**
+     * The text this session itself wrote last, which is the end of [textBeforeUtterance] when it
+     * is not empty. An utterance that begins with a spoken mark (spec SS7.7) may take back the
+     * trailing space, and the engine's own mark, from this and from nothing else: before it is
+     * the user's text, of which only whitespace is ever joined over. Cleared when the user edits
+     * the field under an utterance (SS7.4), since the field's end is then no longer this text.
+     */
+    val writtenBySession: String = "",
+)

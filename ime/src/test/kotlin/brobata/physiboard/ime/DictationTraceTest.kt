@@ -128,6 +128,7 @@ class DictationTraceTest {
         assertEquals("finish", DictationTrace.opLabel(DictationTextOp.FinishComposing))
         assertEquals("commit5", DictationTrace.opLabel(DictationTextOp.CommitText("hello")))
         assertEquals("del3", DictationTrace.opLabel(DictationTextOp.DeleteBeforeCursor(3)))
+        assertEquals("the text itself never reaches the log", "join2", DictationTrace.opLabel(DictationTextOp.DeleteBeforeCursorIfText(". ")))
 
         val request = RecognizerRequest(segmented = true, preferOffline = false, enableFormatting = true, maskOffensive = false, minimumLengthMs = 300_000)
         val effects = mapOf(

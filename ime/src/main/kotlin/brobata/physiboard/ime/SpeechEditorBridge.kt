@@ -21,6 +21,12 @@ internal fun InputConnection.applyDictationTextOps(ops: List<DictationTextOp>) {
                 // Both end the region and keep its words; they differ only for DirectCommit.
                 DictationTextOp.FinishComposing, DictationTextOp.ReleaseComposing -> finishComposingText()
                 is DictationTextOp.DeleteBeforeCursor -> deleteSurroundingText(op.count, 0)
+                // dictation.md SS7.7: the join is checked against the field first, so a cursor the
+                // user moved between utterances costs nothing; the region was closed by the op before.
+                is DictationTextOp.DeleteBeforeCursorIfText -> {
+                    val before = getTextBeforeCursor(op.expected.length, 0)
+                    if (before != null && before.toString() == op.expected) deleteSurroundingText(op.expected.length, 0)
+                }
                 is DictationTextOp.CommitText -> commitText(op.text, 1)
             }
         }

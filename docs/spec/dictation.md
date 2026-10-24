@@ -12,7 +12,9 @@ Sections 1 to 9 and 13 to 17 describe 3.0 as built on 2026-10-07, after the root
 maintainer's "it cuts me off" report was found in the phone's log (section 14, D14 to D18), and
 amended on 2026-10-22 for the "still spotty, cuts me off a lot" report on 3.4.0 (D27, D28: the
 request now has the shape of Google's own continuous client, a partial flagged final is a
-segment, the silence limit is 10 s by default, and no ending deletes words from a field).
+segment, the silence limit is 10 s by default, and no ending deletes words from a field), and on
+2026-10-23 for the "it just wrote the word comma" report on 3.5.0 (7.7, 7.8, D29: the keyboard
+converts spoken punctuation itself, since the engine does not).
 Sections 10 to 12 carry the 2.x behaviour that 3.0 kept. Where a 2.x rule was dropped, section 17
 says why.
 
@@ -672,11 +674,14 @@ there is no input connection at the moment of a write, the write is silently ski
 
 A non-empty partial is placed in the field as **composing text with the cursor after it**.
 Composing text replaces the previous composing region, so successive partials overwrite each
-other in place. Before it is shown, a partial gets **first-letter capitalisation only**, decided
+other in place. Before it is shown, a partial gets its spoken words converted (7.7, 7.8), so the
+preview shows the marks the finish will land, and **first-letter capitalisation only**, decided
 against the utterance's frozen context (7.5): if capitalisation is allowed for this field and
 `auto_capitalize_first_letter` is on and the context says "capitalise here", the first character
 is title-cased. No after-sentence capitalisation is applied to partials; with automatic
-punctuation on, Google's engine capitalises the hypothesis itself.
+punctuation on, Google's engine capitalises the hypothesis itself. A partial that opens with a
+spoken mark is shown where the composing text is, after the space the last utterance left; the
+join onto the word before (7.7) comes with the finish.
 
 Results are trimmed of surrounding whitespace before anything else, so an engine result that
 begins or ends with a space never doubles the spacing of 7.6. Empty partials are ignored. A
@@ -687,8 +692,9 @@ non-empty partial marks the session as having heard speech and refreshes the sil
 Google's segmented session reports the whole session's transcript so far in every partial and
 every segment (D21). Before anything is composed or committed, the words this session has already
 finished into the field are stripped from the front of the result, comparing word by word,
-ignoring case and the punctuation the finisher added. A result that only repeats the committed
-words writes nothing. A user who deliberately repeats the exact words just dictated loses the
+ignoring case and the punctuation the finisher added. The words remembered are the engine's own
+("three exclamation points"), not the marks the keyboard made of them (7.7), since the engine
+repeats its transcript. A result that only repeats the committed words writes nothing. A user who deliberately repeats the exact words just dictated loses the
 repeat; accepted, since the alternative duplicated every segment.
 
 ### 7.3 Finishing an utterance
@@ -721,11 +727,15 @@ is new speech. A send, the case such a late final came from, ends the session on
 
 "Finishing the utterance" with text T:
 
-1. T is capitalised (7.5).
-2. Spacing is applied (7.6) and the result is set as the composing text with the cursor after
-   it, then the composing state is finished so it becomes ordinary text.
-3. The next utterance's frozen context is this one's context plus the text just written (never a
-   fresh read), and the written words are remembered for 7.2.
+1. The spoken words that are not words are converted: spoken punctuation (7.7), then the
+   texting spellings (7.8).
+2. T is capitalised (7.5).
+3. Spacing is applied (7.6); if T opens with a spoken mark, the composing region is emptied and
+   closed and the field's end is joined over (7.7); the result is set as the composing text with
+   the cursor after it, then the composing state is finished so it becomes ordinary text.
+4. The next utterance's frozen context is this one's context, less what was joined over, plus
+   the text just written (never a fresh read), and the words as the engine spoke them are
+   remembered for 7.2.
 
 In a field that cannot be trusted with a composing region (a web terminal that drew the staged
 sentence inverted and adopted none of it, 2026-09-26; a field that asks for no suggestions), the
@@ -789,7 +799,12 @@ Otherwise:
    nothing can tell it from the engine's. Partials get the same treatment (7.1). Off for German
    and Luxembourgish (the keyboard language), whose nouns carry a capital of their own.
 2. **After sentence end**: if `auto_capitalize_after_period` is on, every `.`, `!` or `?`
-   followed by whitespace and an ASCII lowercase letter has that letter upper-cased.
+   followed by whitespace and an ASCII lowercase letter has that letter upper-cased. A spoken
+   "period", "question mark" or "exclamation point" (7.7) is such a mark; a spoken "comma",
+   "colon" or "semicolon" is not, and the word after it keeps its case.
+3. **After a line break**: if `auto_capitalize_first_letter` is on, an ASCII lowercase letter
+   right after a spoken "new line" or "new paragraph" (7.7) is upper-cased, the same boundary
+   step 1 sees when the next utterance starts after a newline.
 
 The frozen context is the text before the cursor captured once at the session start (a 240
 character window), extended by what this session itself wrote. It is never re-read from the
@@ -799,10 +814,120 @@ capital on the second partial).
 ### 7.6 Spacing of a final
 
 A leading space if the frozen context ends in a letter (digits and punctuation do not count),
-and always a trailing space. So dictating "world" after "Hello" gives "Hello world "; after
+and a trailing space. So dictating "world" after "Hello" gives "Hello world "; after
 "Hello " gives "Hello world "; after "5" gives "5world "; at the start of an empty field gives
 "World " with no leading space (the 2.x leading-space quirk came from reading the live field,
 whose last character was the partial's own).
+
+The marks of 7.7 have edges of their own. A text that opens with a mark that sits against the
+word before it (`, . ? ! : ;`, a closing quote or parenthesis, an apostrophe, a hyphen) or with a
+line break gets no leading space, and instead **joins over** the end of the field: the trailing
+spaces there and, when the end of the field is this session's own writing and the character
+before the spaces is the engine's single mark on a word, that mark as well (the spoken mark
+wins: "I went home. " then "exclamation point" is "I went home! "). A run of spoken marks
+("Wow!!! ") and the user's own text before the session are never joined over beyond their
+spaces; a line break takes only the spaces. The join is a verified delete: `:ime` reads that many
+characters before the cursor and deletes them only when they are exactly the expected ones, so
+a cursor the user moved between utterances can never cost a letter. In a direct-commit field
+(7.3) nothing is ever deleted, and the mark lands after the space. A text that ends with a line
+break, an opening quote or an opening parenthesis gets no trailing space.
+
+### 7.7 Spoken punctuation
+
+With `dictation_spoken_punctuation` on (default), the words that name a mark become the mark.
+The engine does not do this itself: through the public API Google's recognizer writes "comma"
+and "period" out as words, and its formatting (`EXTRA_ENABLE_FORMATTING`) adds only the marks it
+infers from the speech (D29). The maintainer's own dictated report of 2026-10-23 is the symptom:
+"then a period" came back as "then appear. Period", the word written out, the engine's own full
+stop before it, and a capital on it as a new sentence.
+
+The English table (the only one; see below):
+
+| Said | Mark | Sits |
+|---|---|---|
+| comma | `,` | against the word before, a space after |
+| period, full stop | `.` | same |
+| question mark | `?` | same |
+| exclamation point, exclamation mark | `!` | same |
+| colon | `:` | same |
+| semicolon, semi colon | `;` | same |
+| ellipsis, dot dot dot | `...` | same |
+| close quote, close quotes, end quote, unquote, close quotation mark | `"` | same |
+| close paren, close parenthesis, right paren, right parenthesis | `)` | same |
+| open quote, open quotes, begin quote, open quotation mark | `"` | a space before, none after |
+| open paren, open parenthesis, left paren, left parenthesis | `(` | same |
+| hyphen | `-` | no space either side |
+| apostrophe | `'` | same |
+| dash | `-` | a space either side |
+| new line, newline | line break | takes the spaces before it; nothing follows on the line |
+| new paragraph | two line breaks | same |
+
+Rules, applied to the words of one result in order:
+
+- **Multiples.** A count word ("two" to "ten") or digits before the plural repeat the mark:
+  "three exclamation points" is `!!!`, "2 question marks" is `??`; at most ten. Phrases in a row
+  join with no space: "question mark exclamation point" is `?!`, "exclamation point exclamation
+  point" is `!!`.
+- **The ambiguity rule.** A phrase said directly after a determiner (a, an, the, this, that,
+  these, those, each, every, another, any, some, no, my, your, his, her, its, our, their) is the
+  noun and stays a word: "a period of time", "the comma in that sentence", "that question mark".
+  So does a plural with no count ("too many commas"). Nothing else protects the word: "the word
+  comma" is "the word," as it is on a Pixel, and the way to keep the word is one determiner
+  before it. Gboard converts every time; this one rule is the whole of the difference, and it
+  is chosen because the two phrases the maintainer wrote about ("a period", "the comma") both
+  carry one. A determiner the engine ended its sentence on ("I like that. Period") is not the
+  phrase's determiner.
+- **The spoken mark wins.** The engine's own mark attached to the phrase ("comma," / "Period.")
+  or to the word before it ("appear. Period") is dropped and the spoken mark stands alone. When
+  the dropped mark ended a sentence and the spoken one does not, the capital the engine put on
+  the next word is lowered by the rule of 7.5 step 1 ("comma. Then" reads ", then"); a spoken
+  sentence end keeps it. Anything else the engine attached to the phrase (a closing quote) is
+  kept after the mark. The engine mishearing the phrase itself ("period" as another word) is a
+  word error of the engine's and is not corrected here; the maintainer's "appear" for "a period"
+  stays as heard.
+- **Capitalisation and spacing** are 7.5's and 7.6's: after `.`, `?`, `!` and a line break the
+  next word is capitalised, never after a comma; no space before a closing mark, one after.
+- **At the start of an utterance** ("period" said after a pause, which the engine finalizes on
+  its own) the mark joins over the field's end as 7.6 describes.
+- **The echo** (7.2) is compared in the engine's words, not the marks, so a converted result is
+  still recognised when the engine repeats it, and D28's repeat of an utterance still writes
+  nothing.
+
+English only. The table is looked up by the dictation language (5.1); a tag whose language is
+not `en` passes through untouched, since the words of another language are a table to be written
+from that language, not guessed from this one. A missing tag is English, the one bundled
+language. The switch is "Spoken punctuation" (12.1). Off, the words land as the engine gave
+them.
+
+### 7.8 Texting style for laughs and aww
+
+With `dictation_texting_style` on (default), two spellings people text are applied after 7.7, to
+partials and finals alike, line by line so a spoken line break survives:
+
+- **Laughs.** A run of two or more laugh syllables, with no mark between them, is joined: "ha ha
+  ha" is "hahaha", "Ha ha" is "Haha", "heh heh" is "hehheh"; the last syllable's mark stays
+  ("ha ha ha." is "hahaha."). The syllables are `ha`, `hah`, `heh`, `hee`, and `haha` or `hehe`
+  with any number of repeats, matched whatever their case; never `he`, a pronoun. One syllable
+  alone, "lol" and anything already joined are left as they are.
+- **Sighs.** "aw" and "aww" (with any number of w's; not words otherwise) are spelled "aww"
+  wherever they stand, in the case they came in. "awe" and "daw", which are words, become "aww"
+  and "daww" only as an interjection: first in the sentence (the start of the result or of a
+  line, or after `.`, `!`, `?`) or standing alone, **and** followed by nothing, by a mark, by a
+  capitalised word (a name) or by one of the words such a sigh leads into ("that's", "that",
+  "this", "so", "poor", "thanks", "thank", "you", "how", "what", "he's", "she's", "it's",
+  "they're", "look", "bless", "sweet", "cute", "man", "shucks", "no", "yes", "yeah", "well",
+  "come", "okay", "ok", "babe", "baby", "honey", "I"). "In awe of", "awe inspires", "a daw is a
+  bird" and "the dog barked" are never touched.
+
+One fixed spelling each. The transcript carries no durations, so how long a vowel was held
+cannot be known: "aww" and "daww" are the texting spellings and no heuristic guesses longer.
+What Google's recognizer emits for a laugh or a drawn-out "aww" is not documented anywhere
+public and cannot be read off the phone (the trace logs lengths and hashes, never words, 6.9);
+the syllables above are the shapes a recognizer can produce, and the real-word negatives are
+the guard. English only, by the same language rule as 7.7. The switch is "Texting style for
+laughs and aww" (12.1), its own row rather than part of "Spoken punctuation": spoken marks are
+what every dictation does and the user expects, while respelling words the engine actually
+heard is a matter of taste a user may want off while keeping the marks.
 
 ## 8. Cues
 
@@ -968,7 +1093,10 @@ name; a row carrying either name reads as bound.
 Section **Triggers**: switch "Long-press Fn for speech input".
 
 Section **Transcription**: navigation row "Speech engine" with the current engine's label;
-switch "Automatic punctuation"; switch "Block offensive words"; chips "Stop after silence" with
+switch "Automatic punctuation"; switch "Spoken punctuation" ("Say comma, period, question mark,
+new line or new paragraph to type the mark. Say "a comma" or "the period" to keep the word.
+English only."); switch "Texting style for laughs and aww" (""Ha ha ha" lands as hahaha, and an
+"aw" or "awe" said as a sigh as aww. English only."); switch "Block offensive words"; chips "Stop after silence" with
 a typed number of seconds (1 to 60, decimals allowed) under a "Stop when I go quiet" switch (off = Never) (a stored value between two choices shows the nearer); switch "Typing stops dictation" ("Any key except a modifier ends the session, keeps
 the words on screen, then does its usual job. Hold Fn again stops it either way."); switch "Keep
 speech on the phone" ("Use the engine's on-device recognizer: faster, works with no signal, and
@@ -1003,6 +1131,8 @@ buttons screen places or removes the `microphone` slot (status-bar document).
 | `fn_speech_scan_code` | int | 251 | scancode treated as the Fn key for the burst | none (preference only) | none |
 | `dictation_engine` | string | empty | which recognizer: empty = system default, `ondevice`, or `package/class` | Voice > Transcription | Speech engine |
 | `dictation_auto_punctuation` | boolean | true | asks the engine to punctuate and capitalise (Android 13+) | Voice > Transcription | Automatic punctuation |
+| `dictation_spoken_punctuation` | boolean | true | the keyboard's own spoken-word pass (7.7); English only | Voice > Transcription | Spoken punctuation |
+| `dictation_texting_style` | boolean | true | laugh runs joined, a sighed "aw" spelled "aww" (7.8); English only | Voice > Transcription | Texting style for laughs and aww |
 | `dictation_mask_offensive` | boolean | false | per-request profanity masking | Voice > Transcription | Block offensive words |
 | `dictation_stop_after_silence_ms` | int | 10000 (2500 in 3.1 to 3.4); stored clamped to 0..60000 | the silence limit; 0 = the session runs until stopped (60 s safety) | Voice > Transcription | Stop after silence |
 | `dictation_stop_on_typing` | boolean | true | any key other than a modifier ends the session before doing its work | Voice > Transcription | Typing stops dictation |
@@ -1059,6 +1189,7 @@ trackpad trigger key (trackpad document); the strip slots and `status_bar_visibi
 | D26 | AOSP's audio policy routes `AUDIO_SOURCE_VOICE_RECOGNITION` to a Bluetooth SCO microphone only while the communication route is SCO (`AudioDeviceBroker` sets the record force-use with it); otherwise the built-in microphone, a wired or USB headset. Telecom's ringtone and call focus is transient. `AudioRecordingConfiguration` for another app's recording keeps its input device and `isClientSilenced` while anonymising the app. Not yet observed in the truck: the first in-car trace settles which microphone the recognizer gets there and how Android Auto treats the keyboard's focus. | Android reference (`AudioManager`, `AudioRecordingConfiguration`, `AudioDeviceInfo`); AOSP `AudioDeviceBroker`, audio policy `Engine::getDeviceForInputSource` |
 | D27 | 2026-10-22, release 3.4.0, the maintainer's own sessions as `dumpsys audio`'s focus log recorded them: five sessions between 18:52 and 19:23 of 5.0, 8.3, 11.5, 6.6 and 12.3 s. In each the keyboard took focus (`req=4`, media/speech), Google's recognizer (`com.google.android.tts`) took its own 40 to 130 ms later and **once only**: the continuous session held across the whole session, no per-breath restart. Four ended with Google's abandon and the keyboard's 40 to 70 ms after it (the graceful stop: the keyboard's silence timer, then the engine's last words); one ended with the keyboard's abandon first (an immediate end: a key, or a field change). `appops get brobata.physiboard RECORD_AUDIO`: `allow`, last used 19:23 for 12.2 s, last `rejectTime` 27 days earlier, so the release package's microphone has not been silenced (D22) since 2026-09-25. Gboard (`com.google.android.inputmethod.latin`) is installed but not the current keyboard; the Google app runs a software hotword capture (`AUDIO_SOURCE_HOTWORD`, uid 99003) at all times, which Android allows beside any other recording. The main log buffer is 1 MiB and held five minutes, so no `PhysiBoardDictationTrace` line of those sessions survived. | `dumpsys audio` (MediaFocusControl event log, lines 63 to 102), `appops get`, `dumpsys input_method`, `dumpsys media.audio_policy`, `logcat -g`, read-only over adb 22:37 |
 | D28 | Chromium's `SpeechRecognitionImpl.java` (content/public/android, main branch, 2026-10-22), the one public continuous client Google maintains against its own recognizer: in continuous mode it sends `EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS` = 5 minutes ("Maximum value accepted by the Google recognition service ... In continuous mode, this keeps the session open across pauses between utterances while each utterance is finalized and delivered via onSegmentResults() (or onPartialResults() with EXTRA_FINAL_RESULT before Android T)"), on Android 13+ `EXTRA_SEGMENTED_SESSION` = `EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS`, `android.speech.extra.DICTATION_MODE` ("Older Google recognizers used this extra for continuous recognition; current ones ignore it"), partial results, and no silence length. It reads two Google-private extras off partial bundles: `final_result` (boolean; "the recognizer delivers the finalized utterances of a continuous session through onPartialResults() flagged as final, instead of through onSegmentResults(), and ends the session with an empty onResults()") and `android.speech.extra.UNSTABLE_TEXT` (a provisional hypothesis is "stable text and low-confidence text ... formatted so that concatenating them gives the complete hypothesis so far"). It ignores `onEndOfSpeech` and `onRmsChanged` in continuous mode, treats an empty result list as metadata, and stops with `stopListening`. | the file itself, fetched read-only; `RecognizerIntent.java` and `RecognitionService.java` of AOSP main for the extras' documentation and `dispatchStartListening` |
+| D29 | No public lever makes Google's recognizer convert spoken punctuation. AOSP `RecognizerIntent.java` (main, 2026-10-23): `EXTRA_ENABLE_FORMATTING` is an "Optional string to enable text formatting (e.g. unspoken punctuation (examples: question mark, comma, period, etc.), capitalization, etc.)"; `FORMATTING_OPTIMIZE_QUALITY` and `FORMATTING_OPTIMIZE_LATENCY` trade "punctuation quality" against latency; `EXTRA_HIDE_PARTIAL_TRAILING_PUNCTUATION` only stops "the recognizer adding punctuation after the last word of the partial results". Those four are every public constant naming punctuation or formatting; none names spoken punctuation, commands or dictation, and nothing documents converting "comma" or "period" or turning that off. Chromium's `SpeechRecognitionImpl.java` (the one public continuous client) sets no formatting extra and has no punctuation handling of its own. Gboard's help ("Type with your voice") lists the spoken phrases period, comma, exclamation point, question mark, new line and new paragraph, with "punctuation might not be available in all languages": Gboard's own feature, not the service's. 3.0 to 3.5 had dropped 2.x's punctuation table on the belief that the engine's formatting covers spoken marks (SS17 "the engine punctuates"); the maintainer's dictated report of 2026-10-23 ("it just wrote the word comma, then appear. Period, then started a new sentence") shows it does not: the word written out, the engine's own full stop placed before it (a pause before "period" reads to the formatter as a sentence end), the word capitalised as the next sentence, and the keyboard's 7.5 step 2 keeping that capital. The trace (6.9) logs lengths and hashes of results, so the phone itself cannot show the words. | `developer.android.com/reference/android/speech/RecognizerIntent`; `android.googlesource.com/platform/frameworks/base/+/refs/heads/main/core/java/android/speech/RecognizerIntent.java`; `chromium.googlesource.com/chromium/src/+/main/content/public/android/java/src/org/chromium/content/browser/SpeechRecognitionImpl.java`; `support.google.com/gboard/answer/2781851`; the maintainer's message; `UtteranceText.kt` as of 3.5.0 |
 | D29 | 2026-10-22, release 3.4.0 on the maintainer's Titan 2 (Android 16): `settings get system func1_long_press_activity` = `brobata.physiboard.inputmethod.AssistantTriggerActivity`, the 2.x line's class, with the package row `brobata.physiboard`; `cmd package resolve-activity` on that component: "No activity found". A long press at 22:38:03 logged `A85ShortcutFunction: shortcutInterceptKeyInternal >> prefix = func1_ keyCode=401`, `openApp pkg=brobata.physiboard cls=brobata.physiboard.inputmethod.AssistantTriggerActivity`, `ActivityTaskManager: START ... cmp=brobata.physiboard/.inputmethod.AssistantTriggerActivity ... from uid 1000 result code=-92`, and `dumpsys vibrator_manager` a CLICK from uid 1000 at 22:38:03.937: the "short vibrate, then nothing" the maintainer reported, inside and outside text fields alike. `Generic.kl` maps `key 249 FUNC1`; `KeyNormalizer` has no `KeyId` for 401, so the accessibility relay passes the key. | the phone's settings, logcat and dumpsys, read-only |
 | D22 | 2026-10-07 16:30, PersaLink (Chrome WebAPK, strip collapsed to a 0 by 0 window, `InputDispatcher ... info.frame: (2, 1200, 2, 1200)`): at each PhysiBoard request (16:30:27.548, 37.330, 48.977, 58.759) audioserver logged `App op 27 missing, silencing record AttributionSourceState{... packageName: com.google.android.tts ... next: ...}` within ~15 ms, the engine heard nothing, and `appops get brobata.physiboard.dev3 RECORD_AUDIO` showed `Uid mode: foreground` with a fresh `rejectTime`. `dumpsys input_method` read `mVisibleBound=false`, `dumpsys activity processes` `curProcState=16 curCapability=--------` with one IME connection (`!FG IMPB SLTA !VIS`, flags 0x40880005); later, with Chrome having shown the keyboard, `mVisibleBound=true`, `curProcState=5` and a second connection `FGS LACT UI CAPS` (flags 0x2c001001). The 16:28:43 session in Messages (Messages had sent `SHOW_SOFT_INPUT fromUser true`) was not silenced and reached `#onResults withSpeech: true`; the 16:31:11 session was Chrome's own Web Speech, not the keyboard's. | scratchpad `dictation-evidence-2.log`; the read-only `dumpsys`/`appops` queries of the same day; AOSP `InputMethodBindingController.IME_VISIBLE_BIND_FLAGS`, `InputMethodManagerService.showCurrentInputLocked`/`hideCurrentInputLocked`, `AppOpsUidStateTrackerImpl.evalModeInternal` |
 
@@ -1174,6 +1305,14 @@ region (`DictationHarness`). Numbered here; the test names cite the row.
 | release | a partial composing; the field read as emptied | ops = [release]; never a replace |
 | no op | a partial composing; another app's field, or the field gone 500 ms | the session ends with no text op |
 | partial | `RecognizerPartial`: flagged -> segment; stable + unstable tail -> partial of the whole; no words -> nothing (`RecognizerPartialTest`) |
+| D29 | partials "right now it just wrote the word", "... comma then", "... comma then appear period then started"; segment "Right now it just wrote the word comma, then appear. Period, then started a new sentence." | the preview shows ", then" and ". then"; the field ends "Right now it just wrote the word, then appear. Then started a new sentence. " |
+| D29 !!! | partial "that is great three exclamation points"; segment "... three exclamation points."; the same as a final; partial "that is great three exclamation points see you"; segment "See you then period" | "That is great!!! " once; the repeat writes nothing; the echo strips; "That is great!!! See you then. " |
+| D29 pause | segment "I went home"; partial "period"; segment "Period."; partial "then I"; segment "then I slept" | the preview "I went home ."; the finish joins over the space: "I went home. "; then "I went home. Then I slept " |
+| D29 wins | segment "I went home."; segment "Exclamation point."; partial of the whole transcript "I went home exclamation point and then" | "I went home! "; the echo strips; "I went home! And then" |
+| D29 off | `dictation_spoken_punctuation` off; segment "hello comma world period" | "Hello comma world period " |
+| D29 edit | stop-on-typing off; a segment; a partial; a key and the user's edit; then "Exclamation point." | the invalidated utterance writes nothing; the mark joins over at most a space, never the mark before the user's edit |
+| D29 laughs | segments "Ha ha ha that was great.", "Aw, thank you."; a partial echoing both plus "I stood in awe of the dog" | "Hahaha that was great. Aww, thank you. I stood in awe of the dog" |
+| 7.7, 7.8 | every row of the tables and rules of 7.7 and 7.8 (`SpokenPunctuationTest`) | as the rows say, including the real-word negatives |
 
 Plus the text tests kept from before (capitalisation, spacing, the frozen context, the session
 echo, direct commit, deleted words never typed back) and the cue table.
@@ -1213,7 +1352,10 @@ echo, direct commit, deleted words never typed back) and the cue table.
 | Partials as composing text with the cursor after | keep | D3 |
 | Direct commit for untrusted fields | keep | the web terminal |
 | Frozen utterance context | keep | the lost-capital and leading-space bugs |
-| Italian punctuation words | drop | the engine punctuates |
+| Italian punctuation words | drop | the engine punctuates itself, but see the next row: it does not convert the words |
+| Spoken punctuation, the keyboard's own English table (7.7) | new 2026-10-23 | the engine writes "comma" and "period" out (D29); the maintainer's report; a Pixel does this by default, so does this, with one ambiguity rule (a determiner keeps the word) |
+| Texting style for laughs and aww (7.8) | new 2026-10-23 | the maintainer's ask; two conservative spellings, its own switch |
+| A spoken mark opening an utterance joins over the field's end, by a verified delete | new 2026-10-23 | "period" said after a pause arrives as its own utterance; nothing is deleted that the field does not show exactly |
 | Alt+Ctrl chord, keycode 667 | drop | keys document |
 | Engine picker | keep | plus the `<queries>` declaration (D18) |
 | Microphone permission trampoline activity and broadcasts | keep | a keyboard still cannot ask directly |
@@ -1224,7 +1366,8 @@ echo, direct commit, deleted words never typed back) and the cue table.
 ## 18. Provenance
 
 - core/speech/src/main/kotlin/brobata/physiboard/core/speech/DictationEngine.kt and its
-  companions (settings, session, events, effects, timing, error codes, text)
+  companions (settings, session, events, effects, timing, error codes, text, the spoken
+  punctuation and texting-style tables in SpokenPunctuation.kt)
 - core/speech/src/test/kotlin/brobata/physiboard/core/speech/LoggedRecognizerScenariosTest.kt,
   DictationEngineLifecycleTest.kt, DictationEngineRequiredScenariosTest.kt, DictationEndingsTest.kt
 - ime/src/main/kotlin/brobata/physiboard/ime/DictationController.kt (recognizer, request, audio

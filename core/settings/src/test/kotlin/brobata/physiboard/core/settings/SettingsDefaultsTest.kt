@@ -37,6 +37,8 @@ class SettingsDefaultsTest {
         assertTrue(d.dictation.preferOffline)
         assertTrue(d.dictation.pauseMedia)
         assertTrue(d.dictation.stopOnTyping)
+        assertTrue(d.dictation.spokenPunctuation, "dictation.md SS7.7: a Pixel converts spoken marks by default, and so does this")
+        assertTrue(d.dictation.textingStyle, "dictation.md SS7.8")
         assertFalse(d.dictation.sideKeyAssistant, "not set without the binding")
         assertEquals("", d.dictation.engine)
     }

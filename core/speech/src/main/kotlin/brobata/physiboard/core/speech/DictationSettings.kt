@@ -86,7 +86,21 @@ data class DictationTextSettings(
     val capitalizationAllowed: Boolean = true,
     /** spec SS7.5: undo the engine's capital on a mid-sentence first word; off for languages that capitalise nouns (German, Luxembourgish), where it cannot be told from formatting. */
     val undoEngineSegmentCapitals: Boolean = true,
+    /** `dictation_spoken_punctuation` (spec SS7.7): "comma", "period", "new line" and their kin become the marks they name. */
+    val spokenPunctuation: Boolean = true,
+    /** `dictation_texting_style` (spec SS7.8): laugh runs joined, "aw"/"awe" said as a sigh spelled "aww". */
+    val textingStyle: Boolean = true,
+    /** spec SS5.1's dictation language; the spoken-word tables are per language and English is the only one (SS7.7). */
+    val languageTag: String? = null,
 ) {
+    /** The spoken-punctuation table in force, or `null` when the setting is off or the language has none. */
+    val spokenPunctuationVocabulary: SpokenPunctuation.Vocabulary?
+        get() = if (spokenPunctuation) SpokenPunctuation.vocabularyFor(languageTag) else null
+
+    /** spec SS7.8: the texting spellings are English ones; the switch is read only for English. */
+    val textingStyleInForce: Boolean
+        get() = textingStyle && SpokenPunctuation.vocabularyFor(languageTag) != null
+
     companion object {
         /** spec SS7.5: the languages whose nouns carry a capital of their own. */
         fun undoEngineCapitalsFor(languageTag: String?): Boolean {

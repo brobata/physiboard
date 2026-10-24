@@ -82,6 +82,24 @@ fun VoiceScreen(onBack: () -> Unit) {
                 SwitchRow("Automatic punctuation", checked = dictation.autoPunctuation, onCheckedChange = { set { p -> p.copy(autoPunctuation = it) } })
             }
             item {
+                // dictation.md SS7.7: the keyboard's own pass; the engine writes these words out.
+                SwitchRow(
+                    "Spoken punctuation",
+                    description = "Say comma, period, question mark, new line or new paragraph to type the mark. Say \"a comma\" or \"the period\" to keep the word. English only.",
+                    checked = dictation.spokenPunctuation,
+                    onCheckedChange = { set { p -> p.copy(spokenPunctuation = it) } },
+                )
+            }
+            item {
+                // dictation.md SS7.8.
+                SwitchRow(
+                    "Texting style for laughs and aww",
+                    description = "\"Ha ha ha\" lands as hahaha, and an \"aw\" or \"awe\" said as a sigh as aww. English only.",
+                    checked = dictation.textingStyle,
+                    onCheckedChange = { set { p -> p.copy(textingStyle = it) } },
+                )
+            }
+            item {
                 SwitchRow("Block offensive words", checked = dictation.maskOffensive, onCheckedChange = { set { p -> p.copy(maskOffensive = it) } })
             }
             item {

@@ -268,6 +268,8 @@ restore or the baseline). Value ranges are clamped on read and on write unless n
 | `dictation_mask_offensive` | boolean | false | false | Engine masks profanity | Voice > "Block offensive words" |
 | `dictation_engine` | string: `""` system default, `ondevice`, or a flattened component name | `""` | `com.google.android.tts/com.google.android.apps.speech.tts.googletts.service.GoogleTTSRecognitionService` (D4) | Which recognizer | Voice > "Speech engine" |
 | `dictation_auto_punctuation` | boolean | true | | Engine punctuates | Voice > "Automatic punctuation" |
+| `dictation_spoken_punctuation` | boolean | true | | "comma", "period", "new line" said while dictating become the marks (dictation.md 7.7); English only | Voice > "Spoken punctuation" |
+| `dictation_texting_style` | boolean | true | | Laugh runs joined, a sighed "aw" spelled "aww" (dictation.md 7.8); English only | Voice > "Texting style for laughs and aww" |
 | `sym_long_press_assistant` | boolean | false | | Hold Sym opens the assistant | Voice > Voice assistant > "Hold Sym for the assistant" |
 | `side_key_assistant` | boolean | false | true | Orange side key long press opens the assistant | Voice > "Orange key opens the assistant" |
 | `assistant_action` | string `auto`, `voice_command`, `hands_free`, `assist` | `auto` | | Which intent opens it | Voice > "How the assistant opens" |
@@ -847,6 +849,8 @@ description is the screen title.
 | How the assistant opens | Voice | Voice | assistant action intent listening gemini voice command hands free assist |
 | Speech engine | Voice | Voice | engine recognizer speech service google on-device offline dictation voice |
 | Automatic punctuation | Voice | Voice | punctuation comma period capitalization formatting dictation voice |
+| Spoken punctuation | Voice | Voice | spoken punctuation say comma period question mark exclamation new line paragraph dictation voice |
+| Texting style for laughs and aww | Voice | Voice | texting haha hahaha laugh aww aw awe dictation voice |
 | Capitalize at text start | Smart Features | Smart Features | capital uppercase sentence autocap |
 | Double Space inserts period | Smart Features | Smart Features | period full stop double space |
 | Text expansion | Smart Features | Smart Features (not Extras, where the page actually lives) | snippet abbreviation expand shortcut |
@@ -1047,7 +1051,8 @@ control; ">" means the row navigates.
   - "Voice" > "Hold Fn to dictate, and the assistant triggers"
     - intro; header "Triggers": "Long-press Fn for speech input"
     - header "Transcription": "Speech engine" picker (system default, on-device, each installed
-      service); "Automatic punctuation"; "Block offensive words"; "Stop after silence" chips
+      service); "Automatic punctuation"; "Spoken punctuation"; "Texting style for laughs and
+      aww"; "Block offensive words"; "Stop after silence" chips
       (switch "Stop when I go quiet" + typed seconds, 1 to 60, decimals); "Typing stops dictation";
       "Keep speech on the phone"; "Pause music while dictating"
     - header "Voice assistant": "Orange key opens the assistant"; "Hold Sym for the assistant";
