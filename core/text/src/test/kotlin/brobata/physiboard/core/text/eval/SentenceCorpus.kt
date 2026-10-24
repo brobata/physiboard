@@ -137,6 +137,26 @@ object SentenceCorpus {
         return cases
     }
 
+    /**
+     * The over-reach set (§12.1): `typed<TAB>intended<TAB>kind` rows, each a whole sentence, the
+     * two differing in at most one token. [SentenceCase.label] is the row's kind.
+     */
+    fun sentencePairs(text: String): List<SentenceCase> = text.lineSequence()
+        .drop(1)
+        .filter { it.isNotBlank() && !it.startsWith("#") }
+        .mapIndexed { i, line ->
+            val parts = line.split('\t')
+            val typed = parts[0].trim()
+            val intended = parts[1].trim()
+            val typedTokens = tokenize(typed)
+            val intendedTokens = tokenize(intended)
+            require(typedTokens.size == intendedTokens.size) { "row ${i + 1}: '$typed' and '$intended' differ in word count" }
+            val differing = typedTokens.indices.filter { typedTokens[it].word != intendedTokens[it].word }
+            require(differing.size <= 1) { "row ${i + 1}: '$typed' and '$intended' differ in more than one word" }
+            SentenceCase(i, typed, intended, errorToken = differing.firstOrNull() ?: -1, label = parts.getOrNull(2)?.trim().orEmpty())
+        }
+        .toList()
+
     /** Corpus c: `typed<TAB>intended` rows typed as a one-word sentence, which is how a lone word in an empty field reaches the engine. */
     fun standalone(text: String, label: String): List<SentenceCase> = text.lineSequence()
         .drop(1)

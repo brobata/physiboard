@@ -3,10 +3,12 @@ package brobata.physiboard.core.text
 import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictNormalization
 import brobata.physiboard.core.dict.DictionaryIndex
+import brobata.physiboard.core.dict.EditDistance
 import brobata.physiboard.core.dict.RuleSet
 import brobata.physiboard.core.dict.SubstitutionMatcher
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordFrequency
+import java.util.Locale
 
 /**
  * The measured constants of the context-aware path, bundled so the evaluation harness (SS12) can
@@ -71,6 +73,12 @@ data class BoundaryDebugInfo(
      */
     val previousWordBefore: String? = null,
     val previousWordAfter: String? = null,
+    /**
+     * The numbers behind a commit, for the correction log and the harness (SS9, "The correction
+     * log"): `share=0.93 cost=0.45` on the context path, `confidence=0.31` on the path without a
+     * table. Empty for an attempt.
+     */
+    val detail: String = "",
 ) {
     companion object {
         /** spec app-shell.md SS11: `space`, `enter`, `suggestion_tap`, `other`; a boundary evaluation is never `suggestion_tap`. */
@@ -154,9 +162,9 @@ object BoundaryEngine {
             BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "not_applicable", reason = reason, before = before, boundaryChar = boundaryChar)
         fun skipped(reason: String, distance: Int? = null) =
             BoundaryDebugInfo(type = "attempt", trigger = trigger, outcome = "skipped", reason = reason, before = trackedWord, distance = distance, boundaryChar = boundaryChar)
-        fun applied(source: String, after: String, distance: Int? = null) = BoundaryDebugInfo(
+        fun applied(source: String, after: String, distance: Int? = null, detail: String = "") = BoundaryDebugInfo(
             type = "commit", trigger = trigger, outcome = "applied", reason = "", before = trackedWord, after = after,
-            source = source, distance = distance, boundaryChar = boundaryChar,
+            source = source, distance = distance, boundaryChar = boundaryChar, detail = detail,
         )
 
         // spec: SS7.5, "the undo memory is cleared ... when a boundary passes without a
@@ -224,7 +232,9 @@ object BoundaryEngine {
                     val ops = listOf(EditorOp.DeleteSurrounding(trackedWord.length, 0), EditorOp.CommitText(decision.recased), EditorOp.Haptic)
                     val candidate = decision.recased.takeIf { !isKnown(it) }
                     val newMemory = memory.afterReplacement(trackedWord, decision.recased)
-                    return BoundaryEvaluation(newMemory, BoundaryOutcome.Replaced(ops, trackedWord, decision.recased, candidate), applied(top.source.name, decision.recased, top.distance))
+                    val confidence = Confidence.compute(facts.topScore, facts.runnerUpScore, facts.runnerUpIsCurrentWordCandidate)
+                    val detail = String.format(Locale.ROOT, "confidence=%.2f", confidence)
+                    return BoundaryEvaluation(newMemory, BoundaryOutcome.Replaced(ops, trackedWord, decision.recased, candidate), applied(top.source.name, decision.recased, top.distance, detail))
                 }
                 AutocorrectOutcome.SameReplacement -> {
                     return BoundaryEvaluation(memory.afterBoundaryWithoutReplacement(), BoundaryOutcome.CommitPlain, attempt("same_replacement"))
@@ -266,7 +276,7 @@ object BoundaryEngine {
         model: ContextModel,
         tuning: ContextTuning,
         skipped: (String, Int?) -> BoundaryDebugInfo,
-        applied: (String, String, Int?) -> BoundaryDebugInfo,
+        applied: (String, String, Int?, String) -> BoundaryDebugInfo,
     ): BoundaryEvaluation {
         // A window as long as the caller was asked for was cut from a longer text: its first word may be cut too.
         val truncated = textBeforeCursor.length >= trackedWord.length + CONTEXT_WINDOW
@@ -275,6 +285,8 @@ object BoundaryEngine {
         var settled = trackedWord
         var source: String? = null
         var reason: String
+        var distance: Int? = null
+        var detail = ""
         when {
             memory.isRejected(trackedWord) -> reason = "rejected_by_user"
             else -> {
@@ -283,7 +295,13 @@ object BoundaryEngine {
                     repaired != null -> { settled = repaired; source = "PRIMARY_CASE"; reason = "" }
                     ContextCorrection.isExactlyKnown(trackedWord, dictionaries, userWords) -> reason = "known_word"
                     else -> when (val decision = ContextCorrection.decide(trackedWord, previous, model, dictionaries, userWords, settings, lengthChangeAllowance, tuning.correction)) {
-                        is ContextCorrection.Result.Commit -> { settled = decision.replacement; source = "CONTEXT"; reason = "" }
+                        is ContextCorrection.Result.Commit -> {
+                            settled = decision.replacement
+                            source = "CONTEXT"
+                            reason = ""
+                            distance = EditDistance.osaDistance(DictNormalization.normalizedKey(trackedWord), DictNormalization.normalizedKey(settled))
+                            detail = String.format(Locale.ROOT, "share=%.2f cost=%.2f", decision.share, decision.cost)
+                        }
                         is ContextCorrection.Result.Leave -> reason = decision.reason
                     }
                 }
@@ -340,7 +358,7 @@ object BoundaryEngine {
         // is named in the reason.
         val mixupOriginal = if (mixupStart >= 0) textBeforeCursor.substring(mixupStart, mixupStart + (original.length - trackedWord.length - 1)) else null
         val mixupNote = if (mixupOriginal != null) "previous $mixupOriginal -> $mixupReplacement" else ""
-        val debug = applied(label, settled, null).copy(
+        val debug = applied(label, settled, distance, detail).copy(
             reason = mixupNote,
             previousWordBefore = mixupOriginal,
             previousWordAfter = mixupReplacement.takeIf { mixupOriginal != null },

@@ -29,6 +29,21 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
 - An ending that found the field emptied (a send) lets the words go instead of deleting them,
   so an app that misreports its text can no longer take a sentence you can see; moving to
   another app's field mid-dictation touches nothing in that field.
+- Autocorrect reaches less far. How far a fix may go now depends on the word: a word of four
+  letters or fewer is changed only when the sentence makes the fix clear, a correction may add or
+  drop one letter but never two (a doubled letter aside), and a fix two edits away is made only
+  in a word of seven letters or more, only when both edits are the kind a thumb makes on the
+  Titan's keys (a neighbouring key, two letters swapped, a doubled or dropped letter), and only
+  when the word before has been seen with it. On the sentence harness this halves the wrong
+  fixes (one commit in 48 was wrong; now one in 90) and leaves a few more correct words alone,
+  for a drop in fixed typos of under one percentage point; a handful of classic spelling errors
+  typed into an empty field (`restaraunt`, `dissapear`) are no longer fixed. The same reach
+  applies to languages without a word-pair table.
+- A private correction log. Every automatic correction the keyboard makes (what was typed, what
+  replaced it, why) and whether you took it back with Backspace is written to a small file on
+  the phone, bounded to the last 500, never sent anywhere, and not written at all in private
+  mode, in a field that asks for no learning or in a password field. Advanced > Diagnostics
+  includes it in the debug export when "incl. autocorrections" is on, and "Clear" deletes it.
 
 ## 3.4.0 (2026-10-11)
 

@@ -676,6 +676,14 @@ internal class KeyboardSession(
      */
     private val ngramLoader = UserNgramLoader(service, handler)
 
+    /**
+     * autocorrect-suggestions.md SS9, "The correction log": every correction the boundary engine
+     * commits, and the Backspace that takes one back, written to the keyboard's own file off this
+     * thread. Nothing is written while learning is off (app-shell.md SS31.1) or in a password
+     * field ([recordCorrection]).
+     */
+    private val correctionLog = CorrectionLogWriter(service)
+
 
     /**
      * spec: expansion-clipboard-pickers-launcher.md SS6.2/SS6.4: "when the sheet was opened by a
@@ -1956,6 +1964,19 @@ internal class KeyboardSession(
     }
 
     /**
+     * autocorrect-suggestions.md SS9, "The correction log": a committed correction goes to the
+     * on-disk log, with the engine's own numbers, so a wrong fix can be read back later from the
+     * Diagnostics export. The same privacy rule as every other record of typed text
+     * (app-shell.md SS31.1), and never from a password field, whatever learning says.
+     */
+    private fun recordCorrection(debug: BoundaryDebugInfo) {
+        if (!correctionLogAllowed()) return
+        correctionLog.record(debug, System.currentTimeMillis())
+    }
+
+    private fun correctionLogAllowed(): Boolean = privacy.learningAllowed && currentFieldKind != FieldKind.PASSWORD
+
+    /**
      * spec app-shell.md SS10.2, SS10.3: reports the raw event, under origin `ime_service`, to
      * whichever screen is registered (the Diagnostics screen; a no-op the rest of the time,
      * [DebugCaptureSink.report] costs nothing while unregistered). SPEC GAP: the four other
@@ -2201,7 +2222,12 @@ internal class KeyboardSession(
         scheduleLauncherHold()
         // spec app-shell.md SS11, autocorrect-suggestions.md SS7.2: "each attempt is recorded in
         // the debug capture with its outcome", regardless of whether Diagnostics is open.
-        result.autocorrectDebug?.let(::reportAutocorrectionDebug)
+        result.autocorrectDebug?.let { debug ->
+            reportAutocorrectionDebug(debug)
+            recordCorrection(debug)
+        }
+        // autocorrect-suggestions.md SS7.5, SS9: the undo is the one signal that a correction was wrong.
+        result.autocorrectUndone?.let { undone -> if (correctionLogAllowed()) correctionLog.markUndone(undone) }
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
         result.launcherKey?.let(::performLauncherKey)
         // spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on; none when it turns off."

@@ -1,8 +1,8 @@
 # Autocorrect that reads the sentence
 
 Status: built, measured on the desktop harness, **not yet verified on the Titan**. Spec:
-`docs/spec/autocorrect-suggestions.md` §10 (the mix-up exception), §12 (the sentence harness),
-§16 (W2 and W5).
+`docs/spec/autocorrect-suggestions.md` §9 (the decision and, from 2026-10-23, the edit reach and
+the correction log), §10 (the mix-up exception), §12 (the sentence harness), §16 (W2 and W5).
 
 ## Why
 
@@ -248,6 +248,91 @@ many near-duplicate sentences (the same sentence with another name), so the tabl
 likely seen most held-out pairs in a sibling sentence. Real chat text will read worse to the
 table than Tatoeba does, especially for the mix-up fix. That is the strongest reason the mix-up
 fix ships off.
+
+## 2026-10-23: the edit reach scales with the word
+
+The maintainer, after two weeks on 3.4: "Sometimes the fix is well beyond the word I am actually
+going for. How can we harden that?" With the bar gone, a wrong fix costs a Backspace and a retype,
+and the word is corrected again the next time (the rejection lasts one word).
+
+### What let it through
+
+The harness was taught to print every commit's reach (edit distance, length change, first letter
+changed) and its share. On corpus b, every distance-2 commit was wrong (12 of 12: a one-slip typo
+never needs two edits, and a long unknown word's "as typed" weight, 1.5 nats less per letter past
+three, left it defenceless against any dictionary word two edits away: `accompli` -> `accomplish`,
+`valour` -> `value` on clean text). On words of four letters or fewer, a commit with a share
+between 0.70 and 0.85 was wrong one time in three (37 wrong and 2 correct words changed against
+92 right), while above 0.95 it was wrong one in 140: the 0.7 share that is right for a long word is
+a coin toss for `hort`, `ome`, `ary`. And the English length allowance of 2 was never used by a
+right fix of a one-slip typo.
+
+A new corpus e, `en_overreach.tsv`, holds 88 sentences from the maintainer's own vocabulary
+(the Titan's tooling, the catering kitchen) and the clean-text words the engine had changed:
+unknown words that must stay, slips whose tempting fix is a word of another length, two slips in
+one word. The shipped engine changed 10 of its 57 unknown controls and fixed 10 of its 31 typos
+wrongly.
+
+### What changed
+
+`EditReach` (one place, both paths) and `ContextCorrection.Tuning`: two edits only from seven
+letters; two edits only as a pair of thumb slips (`ChannelCost` ≤ 1.0); two edits need a share
+of 0.9 (context path) or a confidence of 0.10 (path without a table), and, on the context path,
+the table must have seen the candidate after the word before at least once; a word of four letters
+or fewer needs a share of 0.85; English's length allowance is 1 (a doubled letter still passes).
+The spec's section 9 has the decision rows. Swept on the dev half (`SentenceSweepTest`, axes
+`d2min`, `d2cost`, `d2share`, `d2ctx`, `allow`, `shortShare`), then checked on all 6,000.
+
+| Corpus | | fixed | missed | wrong | correct words changed | recall | over-reach | changed per words |
+|---|---|---|---|---|---|---|---|---|
+| a clean | BEFORE | | | | 10 | | | 1 per 4,564 |
+| a clean | AFTER | | | | 8 | | | **1 per 5,705** |
+| b Titan typos | BEFORE | 4,502 | 1,407 | 90 | 6 | 0.750 | 0.021 (1 in 48) | 1 per 6,606 |
+| b Titan typos | AFTER | 4,465 | 1,490 | 44 | 6 | 0.744 | **0.011 (1 in 90)** | 1 per 6,606 |
+| c misspellings, typed alone | BEFORE | 138 | 25 | 3 | 0 | 0.831 | 0.021 | |
+| c misspellings, typed alone | AFTER | 129 | 34 | 3 | 0 | 0.777 | 0.023 | |
+| e over-reach set | BEFORE | 14 | 7 | 10 | 10 of 57 | 0.452 | 0.588 | |
+| e over-reach set | AFTER | 14 | 9 | 8 | 6 of 57 | 0.452 | **0.500** | |
+
+The trade: wrong fixes on Titan typos halved for 0.6 points of recall (37 fewer fixes in 5,999);
+two fewer correct words changed on clean text; nine classic spelling errors typed into an empty
+field no longer fixed (`basicly`, `carribean`, `dissapear`, `dissapoint`, `greatful`,
+`maintainance`, `mischevious`, `publically`, `restaraunt`: two edits each with no sentence before
+them to vouch for the word; `publically` 1.2, `restaraunt` 1.4 and `maintainance` 1.7 are not
+thumb slips by cost either, the other six price under 1.0; and `wich`, four letters at a share
+under 0.85). The geometry cost is cheaper than intuition says: `definetly` -> `definitely` is a
+dropped `i` and an `et`/`te` swap (0.9), `valour` -> `value` a dropped `o` and `r` for `e`, keys
+that touch (0.8); both are stopped by the sentence's agreement, not the cost. Of the four distance-2
+gates, the minimum length and the share did the measurable work on b; the thumb-slip cost and the
+sentence's agreement are what cost the nine classic cases (0.9 and 1.0 for the cost were identical
+on every corpus once the agreement was required) and are kept because the maintainer asked for
+them by name and the harness has no two-slip corpus of its own to argue otherwise (corpus e's
+`restsurajt`, `keyboatf`, `cintrsct` are still fixed; `catwrihg` is not, "the catering" being a
+pair Tatoeba never saw).
+
+What corpus e still gets wrong is not reach: `texting`, `texted`, `gif`, `brining`, `mise`,
+`leant` are real words the list lacks, one slip from a common word, committed at shares of 0.84
+to 0.99; and `hort`, `ome`, `ood`, `nto`, `ast`, `orse`, `sruck`, `appl` are dropped first letters
+(or an extra one) where the only word in reach keeps the first letter. The first group is
+dictionary coverage (add the words to the list or the defaults); the second is the price of
+"the first letter is right" and is what the correction log is for. A durable rejection memory
+(W6: remember `texting` once it has been undone) is the next lever, not a reach rule.
+
+### The correction log
+
+`CorrectionLog` (`:core:shell`, file format, bound, undo matching, JVM tests), `CorrectionLogWriter`
+(`:ime`, the file and a single writer thread), hooks in `KeyboardSession` next to the debug
+capture (nothing while learning is off or in a password field), `TextInputResult.autocorrectUndone`
+from the pipeline's Backspace undo, and the `[correction_log]` block of the Diagnostics export under
+the autocorrections chip; "Clear" deletes the file. Spec: autocorrect-suggestions.md section 9,
+app-shell.md sections 10.4, 10.6, 11, 31.1.
+
+### Not verified
+
+Nothing here has been typed on the Titan. To try: a two-slip long word in a sentence
+(`We ate at the restsurajt`), a four-letter slip with and without a sentence before it, a word
+the list lacks (`texting`), Backspace after a fix, then Advanced > Diagnostics > "incl.
+autocorrections" > View, and read `[correction_log]`.
 
 ## Speed
 

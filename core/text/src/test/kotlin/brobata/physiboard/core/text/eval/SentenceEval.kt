@@ -2,6 +2,7 @@ package brobata.physiboard.core.text.eval
 
 import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictionaryIndex
+import brobata.physiboard.core.dict.EditDistance
 import brobata.physiboard.core.dict.UserWordFileCodec
 import brobata.physiboard.core.dict.UserWordStore
 import brobata.physiboard.core.dict.WordFrequency
@@ -10,6 +11,7 @@ import brobata.physiboard.core.text.AutocorrectSettings
 import brobata.physiboard.core.text.BoundaryOutcome
 import brobata.physiboard.core.text.ContextTuning
 import brobata.physiboard.core.text.CurrentWordTracker
+import brobata.physiboard.core.text.LengthChangeAllowance
 import brobata.physiboard.core.text.RankingOptions
 import brobata.physiboard.core.text.WordChars
 import java.io.File
@@ -29,9 +31,23 @@ data class WordResult(
     val label: String,
     /** The engine's own reason at this word's boundary (applied, or why it was left). */
     val reason: String = "",
+    /** The commit's numbers (`share=`, `cost=` or `confidence=`), empty when nothing was committed. */
+    val detail: String = "",
 ) {
     val isControl: Boolean get() = typed == intended
     val typedKnown: Boolean get() = kind == WordKind.KNOWN
+    val committed: Boolean get() = outcome == CaseOutcome.FIXED || outcome == CaseOutcome.WRONG || outcome == CaseOutcome.CLOBBERED
+
+    /** The edit distance the commit actually travelled, typed to final (0 when nothing was committed). */
+    val distance: Int get() = if (committed) EditDistance.osaDistance(SentenceEval.key(typed), SentenceEval.key(final)) else 0
+    val lengthChange: Int get() = if (committed) final.length - typed.length else 0
+    val firstLetterChanged: Boolean get() = committed && SentenceEval.key(typed).firstOrNull() != SentenceEval.key(final).firstOrNull()
+
+    /** One label per commit for the facet tables: how far it reached and in what way. */
+    val reach: String get() = when {
+        !committed -> ""
+        else -> "d$distance len${if (lengthChange > 0) "+" else ""}$lengthChange${if (firstLetterChanged) " first" else ""}"
+    }
 }
 
 /** The replay's totals for one corpus; the per-word rows are kept so a regression can be read, not just counted. */
@@ -57,6 +73,28 @@ class SentenceSummary(val words: List<WordResult>, private val boundaryNanos: Lo
     /** Correct words changed, as "one per N words"; the headline for clean text. */
     val wordsPerClobber: String get() = if (clobbered == 0) "none in $controls" else "1 per ${controls / clobbered}"
 
+    /** Every word the engine replaced, whatever the result. */
+    val committed: Int get() = fixed + wrong + clobbered
+
+    /**
+     * Over-reach: the share of commits whose result is not the word intended (a wrong fix or a
+     * correct word changed). The maintainer's complaint of 2026-10-23 ("the fix is well beyond the
+     * word I am going for") is this number, so it is held alongside recall.
+     */
+    val overReach: Double get() = if (committed == 0) 0.0 else (wrong + clobbered).toDouble() / committed
+
+    /**
+     * The commits split by how far they reached (`d1 len0`, `d2 len+1 first`, ...), each with its
+     * fixed / wrong / clobbered counts, the reaches with the most misses first: which gate let a
+     * wrong fix through is read straight off this table.
+     */
+    fun reachTable(): String = words.filter { it.committed }.groupBy { it.reach }.entries
+        .sortedByDescending { (_, rows) -> rows.count { it.outcome != CaseOutcome.FIXED } }
+        .joinToString("\n") { (reach, rows) ->
+            val misses = rows.count { it.outcome != CaseOutcome.FIXED }
+            "  ${reach.padEnd(16)} commits=${rows.size} fixed=${rows.count { it.outcome == CaseOutcome.FIXED }} wrong=${rows.count { it.outcome == CaseOutcome.WRONG }} clobbered=${rows.count { it.outcome == CaseOutcome.CLOBBERED }} over-reach=${"%.3f".format(if (rows.isEmpty()) 0.0 else misses.toDouble() / rows.size)}"
+        }
+
     val boundaries: Int get() = boundaryNanos.size
     val meanMicros: Double get() = if (boundaryNanos.isEmpty()) 0.0 else boundaryNanos.average() / 1000.0
     fun percentileMicros(p: Int): Double = if (boundaryNanos.isEmpty()) 0.0 else boundaryNanos.sorted()[minOf(boundaryNanos.size - 1, boundaryNanos.size * p / 100)] / 1000.0
@@ -64,7 +102,7 @@ class SentenceSummary(val words: List<WordResult>, private val boundaryNanos: Lo
 
     fun report(label: String): String =
         "$label: words=${words.size} typos=$typos fixed=$fixed missed=$missed wrong=$wrong recall=${"%.3f".format(recall)} " +
-            "(non-word ${"%.3f".format(nonWordRecall)}, real-word typos $realWordTypos) controls=$controls clobbered=$clobbered " +
+            "(non-word ${"%.3f".format(nonWordRecall)}, real-word typos $realWordTypos) over-reach=${"%.3f".format(overReach)} of $committed commits controls=$controls clobbered=$clobbered " +
             "[known=${clobberedOf(WordKind.KNOWN)} lower=${clobberedOf(WordKind.UNKNOWN_LOWER)}/${controlsOf(WordKind.UNKNOWN_LOWER)} " +
             "capStart=${clobberedOf(WordKind.UNKNOWN_CAPITAL_START)}/${controlsOf(WordKind.UNKNOWN_CAPITAL_START)} " +
             "capMid=${clobberedOf(WordKind.UNKNOWN_CAPITAL_MID)}/${controlsOf(WordKind.UNKNOWN_CAPITAL_MID)}] ($wordsPerClobber) " +
@@ -85,6 +123,8 @@ class SentenceEval(
     private val settings: AutocorrectSettings = SHIPPED,
     private val tuning: ContextTuning = ContextTuning.DEFAULT,
     private val userWords: UserWordStore = UserWordStore.empty(),
+    /** §9's per-language allowance, English's unless a sweep says otherwise. */
+    private val lengthChangeAllowance: Int = LengthChangeAllowance.ENGLISH,
 ) {
     private val rankingOptions = RankingOptions(useKeyboardProximity = settings.useKeyboardProximity, accentMatchingEnabled = settings.accentMatchingEnabled)
 
@@ -102,6 +142,7 @@ class SentenceEval(
             val text = StringBuilder()
             var consumed = 0
             val reasons = HashMap<Int, String>()
+            val details = HashMap<Int, String>()
             // Carried from boundary to boundary as TextInputPipeline carries it, so the mix-up fix
             // sees the previous word as typed here, in sequence; each sentence is a fresh field.
             var memory = AutocorrectMemory().afterWordStarted(fresh = true)
@@ -114,11 +155,12 @@ class SentenceEval(
                 val tracked = CurrentWordTracker.empty().syncedFrom(text.toString()).word
                 val window = text.takeLast(tracked.length + EngineCall.CONTEXT_CHARS).toString()
                 val started = System.nanoTime()
-                val evaluation = EngineCall.boundary(tracked, window, boundary, dictionary, userWords, settings, rankingOptions, memory, contextModel, tuning)
+                val evaluation = EngineCall.boundary(tracked, window, boundary, dictionary, userWords, settings, rankingOptions, memory, contextModel, tuning, lengthChangeAllowance)
                 durations.add(System.nanoTime() - started)
                 // The next word's first letter, as TextInputPipeline.handleLetter applies it.
                 memory = evaluation.memory.afterAnyCharacterTyped().afterLetterOrDigitTyped().afterWordStarted(fresh = true)
                 reasons[tokenIndex] = evaluation.debug.reason.ifEmpty { evaluation.debug.source ?: "" }
+                details[tokenIndex] = evaluation.debug.detail
                 val outcome = evaluation.outcome
                 if (outcome is BoundaryOutcome.Replaced) {
                     // The pipeline deletes by length; the engine must only ever ask to delete what the field holds.
@@ -149,7 +191,7 @@ class SentenceEval(
                     final == typed -> CaseOutcome.MISSED
                     else -> CaseOutcome.WRONG
                 }
-                words.add(WordResult(case.id, i, typed, intended, final, outcome, kindOf(typed, case.typed, typedTokens[i]), case.label, reasons[i] ?: ""))
+                words.add(WordResult(case.id, i, typed, intended, final, outcome, kindOf(typed, case.typed, typedTokens[i]), case.label, reasons[i] ?: "", details[i] ?: ""))
             }
         }
         return SentenceSummary(words, durations.toLongArray())
@@ -197,7 +239,7 @@ class SentenceEval(
 
         /** Rows formatted for a failure message or the plan's tables. */
         fun describe(rows: List<WordResult>, limit: Int = 40): String =
-            rows.take(limit).joinToString("\n") { "  ${it.outcome} '${it.typed}' -> '${it.final}' (wanted '${it.intended}', ${it.kind}, ${it.reason}) [${it.label}] #${it.sentence}" }
+            rows.take(limit).joinToString("\n") { "  ${it.outcome} '${it.typed}' -> '${it.final}' (wanted '${it.intended}', ${it.kind}, ${it.reason}${if (it.committed) ", ${it.reach}, ${it.detail}" else ""}) [${it.label}] #${it.sentence}" }
 
         /** Lowercase, straight-apostrophe spelling, the form the context table and the confusion sets use. */
         fun key(word: String): String = WordChars.straightenAll(word).lowercase()

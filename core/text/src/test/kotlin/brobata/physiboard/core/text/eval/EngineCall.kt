@@ -8,6 +8,7 @@ import brobata.physiboard.core.text.AutocorrectSettings
 import brobata.physiboard.core.text.BoundaryEngine
 import brobata.physiboard.core.text.BoundaryEvaluation
 import brobata.physiboard.core.text.ContextTuning
+import brobata.physiboard.core.text.LengthChangeAllowance
 import brobata.physiboard.core.text.RankingOptions
 
 /**
@@ -27,6 +28,7 @@ internal object EngineCall {
         memory: AutocorrectMemory,
         model: ContextModel?,
         tuning: ContextTuning,
+        lengthChangeAllowance: Int = LengthChangeAllowance.ENGLISH,
     ): BoundaryEvaluation = BoundaryEngine.evaluate(
         trackedWord = trackedWord,
         textBeforeCursor = window,
@@ -36,7 +38,7 @@ internal object EngineCall {
         userWords = userWords,
         settings = settings,
         rankingOptions = rankingOptions,
-        lengthChangeAllowance = 2,
+        lengthChangeAllowance = lengthChangeAllowance,
         memory = memory,
         contextModel = model,
         contextTuning = tuning,

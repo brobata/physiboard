@@ -596,7 +596,8 @@ The candidate is committed only when **all** of these hold:
 |---|---|
 | Known word | The word is not known; or it is a case variant and no active dictionary or word store has an entry in the typed case; or it is an orthographic variant and no entry is spelled exactly as typed |
 | Not rejected | The word is not in the rejected set |
-| Confidence | confidence ≥ 0.02 |
+| Confidence | confidence ≥ 0.02 for a candidate one edit away, ≥ 0.10 two edits away |
+| Edit reach | A candidate two edits away is considered only for a word of 7 or more letters, and only when the two edits are thumb slips (the Titan key-geometry cost of section 16, at most 1.0: neighbouring keys, two letters swapped, a doubled or dropped letter, an extra key beside one pressed); any other word reaches one edit, whatever `max_auto_replace_distance` says |
 | Safe shape | See below |
 | Minimum length | Lookup word ≥ 3 characters (≥ 2 for an orthographic variant) |
 | Length ratio | Candidate length ≤ floor(word length × 1.25), or the candidate is the word with one letter doubled |
@@ -613,8 +614,8 @@ The candidate is committed only when **all** of these hold:
 6. Same length: accept if orthographic, or a case variant, or the first letter is unchanged
    (`ding` never becomes `fing`; `fihg` may become `fing`).
 7. One longer and the extra letter doubles a neighbour (`wil -> will`): accept.
-8. Per-language length allowance: English allows a length change of up to 2; every other
-   language allows 0. Accept when the change is within the allowance, the candidate is not a pure
+8. Per-language length allowance: English allows a length change of up to 1 (2 until
+   2026-10-23); every other language allows 0. Accept when the change is within the allowance, the candidate is not a pure
    prefix or suffix extension or truncation of the word (`work` never becomes `works`, `behavio`
    never becomes `behavior`, `kaputte` never becomes `kaputt`), and the first letter is unchanged.
 9. Otherwise accept only if orthographic and the candidate has the lookup word's length.
@@ -638,6 +639,48 @@ imposed.
 Amended 2026-09-24: "exact primary case" and the case-variant leg of the Known Word gate now check
 every loaded dictionary and both word stores, not only the primary list, so a lowercase word the
 user added no longer looks like a case mismatch worth correcting.
+
+Amended 2026-10-23, **edit reach** ("sometimes the fix is well beyond the word I am actually going
+for", the maintainer). How far a correction may reach now scales with the word, on both paths:
+
+| Decision | Rule | Why |
+|---|---|---|
+| Two edits need a long word | A candidate two edits away is considered only for a word of 7 or more letters; a shorter word reaches one edit (it was 5 on the context path, any length on the path without a table) | On the Titan-typo corpus every distance-2 commit in a word under 7 letters was wrong (12 of 12) |
+| Two edits must be thumb slips | Both edits together may cost at most 1.0 on section 16's key-geometry scale: neighbouring keys, swapped letters, doubled or dropped letters, an extra key beside one pressed. A far key, a changed first letter, a vowel for a vowel or a stray extra letter paired with anything is a different word, not a slip | `restaraunt` -> `restaurant` (1.4), `maintainance` -> `maintenance` (1.7) are spelling differences, not Titan slips; `keyboatf` -> `keyboard` (0.7) is two slips. The harness could not tell 0.9 from 1.0 once the sentence's agreement was required, and two dropped letters are the commonest slip |
+| Two edits need a clear margin | Context path: the candidate's share of the whole must reach 0.9 (0.7 for one edit). Path without a table: confidence ≥ 0.10 (0.02 for one edit), the one threshold above 0.02 that section 12 ever measured | Backspace is the only way back; a fix two edits away with a thin margin is a guess |
+| Two edits need the sentence's agreement | Context path: the word-pair table must have seen the candidate after the word before (or at the sentence start) at least once. In an empty field that is the sentence start, so a classic misspelling typed alone (`restaraunt`, `dissapear`) is left | Two edits that only a plausible word supports are how `accompli` became `accomplish` and `valour` `value` (0.8 by cost: a thumb pair on paper) |
+| A short word needs a clearer sentence | Context path: a word of 4 letters or fewer is replaced only at a share of 0.85 (0.7 for longer words) | Measured on the harness: at a share of 0.70 to 0.85 a short word's fix was wrong one time in three (37 wrong, 2 correct words changed, 92 right); above 0.95, one in 140 |
+| One letter of length change | English's allowance is 1, not 2; a doubled letter still passes on its own (step 7) and the 1.25 length ratio stays (it only bites a 3-letter word, which may not grow except by doubling) | A one-slip typo never needs two letters of length; on clean text the two-letter changes were wrong (`accompli` -> `accomplish`, `sensitivy` -> `sensitive` took a one-letter path to the wrong word) |
+
+Measured on section 12.1's harness (all 6,000 held-out sentences; before -> after): Titan typos
+fixed 4,502 -> 4,465 (recall 0.750 -> 0.744), wrong 90 -> 44, correct words changed 6 -> 6,
+over-reach (the share of commits that were not the word intended) 0.021 -> 0.011; clean text
+changed 10 -> 8 in 45,645 words (1 per 4,564 -> 1 per 5,705); classic misspellings typed alone
+138 -> 129 of 166 fixed (the nine: `basicly`, `carribean`, `dissapear`, `dissapoint`,
+`greatful`, `maintainance`, `mischevious`, `publically`, `restaraunt`, two edits each with no
+sentence before them, three of them not thumb slips by cost either; plus `wich`, four letters
+at a share under 0.85), 3 wrong unchanged; the over-reach set (corpus e) 14 fixed, wrong
+10 -> 8, unknown controls changed 10 -> 6 of 57, over-reach 0.588 -> 0.500. What the over-reach
+set still gets wrong is dictionary coverage (`texting`, `texted`, `gif`, `brining`, `mise`,
+`leant`: real words the list lacks, one slip from a common word, share 0.84 to 0.99) and dropped
+first letters (`hort`, `ome`, `ood`): no reach rule can tell either from a slip. The Tatoeba
+numbers run optimistic (section 12.1). `docs/plans/autocorrect-context.md` has the sweep.
+
+**The correction log** (2026-10-23). Every correction the boundary engine commits is appended to
+a private file on the phone, `correction-log.tsv` in the app's files directory: the time, the word
+as typed, the word committed, the source (`CONTEXT`, `PRIMARY_CASE`, `WORD_MIXUP`, or the
+dictionary source on the path without a table), the decision's own numbers (`share=0.93
+cost=0.45` on the context path, `confidence=0.31` on the other) and whether Backspace undid it
+(section 7.5: the undo marks the newest entries whose typed and committed words are in the pair
+taken back; a mix-up fix is logged as two entries, one per word, and an undo of it marks both).
+Text replacements are the user's own rules and are not logged. The file is bounded (500 entries;
+trimmed to the newest 400 when full), written off the main thread one entry at a time through a
+temporary file, never sent anywhere, and nothing is written while learning is off (private mode,
+a field that asks for no personalized learning: app-shell.md section 31.1) or in a password
+field. It is readable only from Advanced > Diagnostics, in the debug export's `[correction_log]`
+block when "incl. autocorrections" is on, and that screen's "Clear" deletes it (app-shell.md
+sections 10.4, 10.6, 11). It is not a setting. Its purpose is to let the maintainer read back
+which fixes were wrong on the Titan instead of guessing from memory.
 
 ## 10. The rule: a correctly spelled word is never overwritten
 
@@ -820,13 +863,19 @@ Corpora, from the 6,000 Tatoeba sentences held out of the word-pair counts
 | b, Titan typos | one seeded slip per sentence in a word of three or more letters: adjacent-key substitution, dropped letter, doubled letter, transposition, extra adjacent key, in equal measure | fixed / missed / wrong / clobbered, recall (overall and on typos that are not real words) |
 | c, misspellings | `en_cases.tsv` and `en_misspellings.tsv`, each word typed alone into an empty field | fixed / missed / wrong |
 | d, mix-ups | sentences using a confusion-set word, flipped to a twin, replayed to the word after it | per set: flips fixed, and correct words changed on corpus a with the set on |
+| e, over-reach (2026-10-23) | `en_overreach.tsv`: plausible sentences where a fix would go too far, written from the maintainer's own vocabulary and held out of every sweep: short and jargon words the list lacks that must stay as typed (`adb`, `beo`, `brining`, `tailscale`), slips whose tempting fix is a word of another length (`hort` for `short`), and two slips in one word (`restsurajt`) | fixed / wrong / unknown controls changed, over-reach |
 
 Outcomes are section 12's FIXED / MISSED / WRONG / CLOBBERED / UNTOUCHED; "known" means spelled
-this way (ignoring case) in the dictionary or a word store. It also reports the cost of each
-boundary (mean, median, 99th percentile). Invariants asserted: no known word changed on a or b
+this way (ignoring case) in the dictionary or a word store. **Over-reach** (2026-10-23) is the
+share of commits whose result is not the word intended, (WRONG + CLOBBERED) / commits; each
+corpus also prints its commits split by reach (edit distance, length change, first letter
+changed), so the gate that let a wrong fix through is read off the table. It also reports the cost of each
+boundary (mean, median, 99th percentile). Invariants asserted: no known word changed on a, b or e
 with the mix-up fix off; the shipped confusion sets change no word on a. Ratchets, measured
-2026-10-06 (tighten when earned, never loosen): a ≤ 10 changed; b recall ≥ 0.75, wrong ≤ 88,
-clobbered ≤ 6; c fixed ≥ 138, wrong ≤ 3; d shipped sets fixed ≥ 1,414 of 1,773; a boundary's
+2026-10-06 and re-measured 2026-10-23 when the edit reach scaled with the word (tighten when
+earned, never loosen): a ≤ 8 changed; b recall ≥ 0.74, wrong ≤ 44, clobbered ≤ 6, over-reach
+≤ 0.012; c fixed ≥ 129, wrong ≤ 3; e fixed ≥ 14, wrong ≤ 8, clobbered ≤ 6, over-reach ≤ 0.50;
+d shipped sets fixed ≥ 1,414 of 1,773; a boundary's
 median on clean text under 200 µs and its 99th percentile on b's typo text under 1.5 ms (desktop
 JVM; about 0.9 ms measured). The replay carries the autocorrect memory from one boundary to the
 next within a sentence, as the keyboard does, so the mix-up fix sees the word before as typed in
@@ -852,7 +901,7 @@ engine's path without a word-pair table.
 | `suggestions_enabled` | boolean | true | Suggestions on the strip, next-word predictions, add-word candidate, and the whole boundary engine (off routes boundaries to the legacy path) | Auto-correction | "Suggestions while typing" |
 | `accent_matching_enabled` | boolean | true | Second fuzzy lookup on the accent-stripped word; passed into every suggestion request. With a word-pair table (section 16) it gates the repair that adds an apostrophe or accent (`dont` -> `don't`, `cafe` -> `café`): off, the typed word's other spellings are not candidates | Auto-correction | "Accent & spelling marks" (subtitle: Lets a correction add a missing apostrophe or accent, so dont can become don't.) |
 | `auto_replace_on_space_enter` | boolean | code default false; shipped Titan baseline true | Automatic correction and case repair at boundaries; Backspace undo | Auto-correction | "Automatic correction" (subtitle: Use dictionary suggestions to fix likely typos when pressing Space or Enter.) |
-| `max_auto_replace_distance` | int 0..3 | code default 1; shipped Titan baseline 2 | Largest edit distance a correction may have; 0 shows "Off" and blocks every fuzzy correction (accent and case repairs at distance 0 still pass, on both paths). With a word-pair table the distance is further capped at 2, and at 1 for a word of four letters or fewer | Auto-correction, shown only while automatic correction is on; slider with 3 steps | "Maximum correction distance" |
+| `max_auto_replace_distance` | int 0..3 | code default 1; shipped Titan baseline 2 | Largest edit distance a correction may have; 0 shows "Off" and blocks every fuzzy correction (accent and case repairs at distance 0 still pass, on both paths). On both paths the distance is further capped at 2, and at 1 for a word of six letters or fewer (section 9, "edit reach"); a slider value of 3 therefore reaches 2 | Auto-correction, shown only while automatic correction is on; slider with 3 steps | "Maximum correction distance" |
 | `use_keyboard_proximity` | boolean | code default false; shipped Titan baseline true | Drops same-length candidates that need a far-key substitution; adjacent-key bonus in edit-type ranking. No effect when the language has a word-pair table (English): that path's slip costs are the key geometry itself (section 16), so it always weighs key distance, and the 2.5-key veto and the nudges are not used there | Auto-correction | "Keyboard Proximity Ranking" (subtitle: Ranks corrections by how close the keys are. English, which reads the sentence, always weighs the Titan's key distances; this switch is for the other languages.) |
 | `use_edit_type_ranking` | boolean | false | The edit-type score term (insert 0.5 > substitute 0.4/0.2 > delete 0.3/0.1/0) | Auto-correction | "Edit Type Ranking" |
 | `fix_word_mixups` | boolean | true (baseline 10; false in 3.0 and 3.1) | The mix-up fix of the previous word (section 10's exception); needs the word-pair table | Auto-correction | "Fix mixed-up words" (subtitle: Fixes a real word typed for its twin — its/it's, your/you're, their/there, then/than — by reading the words on both sides. Backspace right after puts back what you typed.) |
@@ -860,9 +909,10 @@ engine's path without a word-pair table.
 | `trackpad_gesture_add_word_enabled` | boolean | true | Whether the left-third trackpad gesture adds the add-word candidate | none (no UI; backed up) | "Add words with gestures" (string exists, unused) |
 | `trackpad_gesture_add_word_full_width_enabled` | boolean | true | Whether any third adds the candidate when it is alone on the strip | none (no UI) | "Full-width add-word swipe" (string exists, unused) |
 
-Not settings: the confidence threshold (0.02), the suggestion count (3), the per-language length
-allowance (English 2, all others 0), the primary-dictionary merge bonus (0.35), the cursor
-debounce (120 ms).
+Not settings: the confidence threshold (0.02; 0.10 two edits away), the suggestion count (3), the per-language length
+allowance (English 1, all others 0), the edit reach (two edits from 7 letters, thumb slips only;
+section 9), the primary-dictionary merge bonus (0.35), the cursor debounce (120 ms), the
+correction log (section 9).
 
 Related settings owned by other documents and read here: `comma_space`,
 `french_punctuation_spacing`, the auto-space punctuation set (`text-input.md`), the additional
@@ -971,7 +1021,9 @@ QWERTZ or AZERTY the letters those layouts move are priced at their QWERTY posit
 the physically adjacent key reads as a far one), unlike section 3.5's grid, which is remapped per
 layout. Only English has a table, so only English typed on those layouts is affected. `definately` now becomes `definitely` after `I`. Measured:
 recall on synthetic Titan typos 0.304 -> 0.750, classic misspellings 0.729 -> 0.831, correct words
-changed on clean text 1 per 143 -> 1 per 4,564. The learned user bigrams are not used as the prior;
+changed on clean text 1 per 143 -> 1 per 4,564. Amended 2026-10-23: the edit reach now scales
+with the word (section 9, "edit reach"): 0.744, 0.777 and 1 per 5,705, with the wrong fixes on
+Titan typos halved (90 -> 44). The learned user bigrams are not used as the prior;
 the shipped table is, loaded off the main thread with the dictionary, so the boundary does no I/O.
 
 - W2: geometry into scoring. Replace the uniform-cost retrieval-then-veto with a rescoring pass

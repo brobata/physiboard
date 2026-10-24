@@ -9,6 +9,9 @@ import brobata.physiboard.core.keys.EditEffect
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Whole-sequence tests for [TextInputPipeline]. Every rule chained inside it already has its own
@@ -78,6 +81,9 @@ class TextInputPipelineTest {
         /** The ops the last request produced, for a test that needs to assert what the pipeline asked for rather than only the text. */
         var lastOps: List<EditorOp> = emptyList()
 
+        /** The whole last result, for the signals `:ime` reads off it (the debug record, the undo). */
+        var lastResult: TextInputResult? = null
+
         /**
          * The wall clock [DoubleSpaceTimer] measures Space key-downs against. Real Space presses
          * always advance it (see [space]'s own call below); a test that also needs to simulate the
@@ -139,6 +145,7 @@ class TextInputPipelineTest {
 
         private fun apply(result: TextInputResult) {
             lastOps = result.ops
+            lastResult = result
             virtualField.apply(result.ops)
             state = result.state
             when (result.capDecision) {
@@ -223,6 +230,30 @@ class TextInputPipelineTest {
 
         session.space() // rejected: committed as typed, not corrected a second time
         assertEquals("teh ", session.virtualField.text)
+    }
+
+    @Test
+    fun `SS9 a correction reports its commit and its undo, so the correction log can record both`() {
+        val dictionary = dict("the" to 220)
+        val resources = TextInputResources(dictionaries = listOf(dictionary))
+        val settings = TextInputSettingsBundle(autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1))
+        val session = Session(settings = settings, resources = resources)
+
+        session.type("teh")
+        session.space()
+        val commit = assertNotNull(session.lastResult?.autocorrectDebug)
+        assertEquals("commit", commit.type)
+        assertEquals("teh", commit.before)
+        assertEquals("the", commit.after)
+        assertTrue(commit.detail.startsWith("confidence="), commit.detail)
+        assertNull(session.lastResult?.autocorrectUndone)
+
+        session.backspace()
+        assertEquals(LastReplacement("teh", "the"), session.lastResult?.autocorrectUndone)
+        assertNull(session.lastResult?.autocorrectDebug)
+
+        session.backspace() // a plain Backspace now: nothing to report
+        assertNull(session.lastResult?.autocorrectUndone)
     }
 
     @Test

@@ -180,6 +180,57 @@ class AutocorrectDecisionTest {
         assertEquals(AutocorrectOutcome.Refuse(AutocorrectRefusalReason.TOO_CLOSE_TO_CALL), outcome)
     }
 
+    // ---- Edit reach (SS9, 2026-10-23): two edits only in a long word, only as thumb slips, only with a clear margin ----
+
+    private fun unknownWordFacts(word: String, candidate: String, distance: Int, topScore: Double = 10.0, runnerUpScore: Double? = 1.0) = AutocorrectCandidateFacts(
+        word = word, candidate = candidate, distance = distance, isCurrentWordCandidate = true,
+        isOrthographicVariant = false, isCaseVariant = false, isKnown = false,
+        exactKnownExists = false, exactPrimaryCaseExists = false, isRejected = false,
+        topScore = topScore, runnerUpScore = runnerUpScore,
+    )
+
+    @Test
+    fun `reach - a word under seven letters reaches one edit, whatever the setting says`() {
+        assertEquals(1, EditReach.maxDistance(letters = 4, settingCap = 2))
+        assertEquals(1, EditReach.maxDistance(letters = 6, settingCap = 2))
+        assertEquals(2, EditReach.maxDistance(letters = 7, settingCap = 2))
+        assertEquals(0, EditReach.maxDistance(letters = 9, settingCap = 0))
+        // `ckiemt` is two adjacent-key slips from `client`, and six letters: out of reach.
+        assertEquals(AutocorrectOutcome.Refuse(AutocorrectRefusalReason.DISTANCE_TOO_HIGH), AutocorrectDecision.evaluate(unknownWordFacts("ckiemt", "client", distance = 2), maxAutoReplaceDistance = 2, lengthChangeAllowance = 1))
+        // One slip in the same word is in reach.
+        assertEquals(AutocorrectOutcome.Commit("client"), AutocorrectDecision.evaluate(unknownWordFacts("ckient", "client", distance = 1), maxAutoReplaceDistance = 2, lengthChangeAllowance = 1))
+    }
+
+    @Test
+    fun `reach - two edits in a long word pass only as a pair of thumb slips`() {
+        assertEquals(true, EditReach.isThumbSlipPair("keyboatf", "keyboard")) // r->t and d->f, keys that touch: 0.70
+        assertEquals(true, EditReach.isThumbSlipPair("restsurajt", "restaurant")) // a->s and n->j: 0.70
+        assertEquals(true, EditReach.isThumbSlipPair("sensitivy", "sensitivity")) // two dropped letters: 1.00
+        assertEquals(true, EditReach.isThumbSlipPair("definetly", "definitely")) // a dropped i and an et/te swap: 0.90 (the sentence's agreement is what stops this one on the context path)
+        assertFalse(EditReach.isThumbSlipPair("restaraunt", "restaurant")) // a letter moved three places: 1.40
+        assertFalse(EditReach.isThumbSlipPair("maintainance", "maintenance")) // 1.70
+        assertFalse(EditReach.isThumbSlipPair("kitcpem", "kitchen")) // a far key and a neighbouring one: 1.75
+        assertEquals(AutocorrectOutcome.Commit("keyboard"), AutocorrectDecision.evaluate(unknownWordFacts("keyboatf", "keyboard", distance = 2), maxAutoReplaceDistance = 2, lengthChangeAllowance = 1))
+        assertEquals(AutocorrectOutcome.Refuse(AutocorrectRefusalReason.DISTANCE_TOO_HIGH), AutocorrectDecision.evaluate(unknownWordFacts("restaraunt", "restaurant", distance = 2), maxAutoReplaceDistance = 2, lengthChangeAllowance = 1))
+    }
+
+    @Test
+    fun `reach - two edits need a margin of 0,10, one edit still 0,02`() {
+        assertEquals(0.02, Confidence.thresholdFor(1), absoluteTolerance = 1e-9)
+        assertEquals(0.10, Confidence.thresholdFor(2), absoluteTolerance = 1e-9)
+        // A 5% margin commits one edit and refuses two.
+        assertEquals(AutocorrectOutcome.Commit("client"), AutocorrectDecision.evaluate(unknownWordFacts("ckient", "client", distance = 1, topScore = 1.0, runnerUpScore = 0.95), maxAutoReplaceDistance = 2, lengthChangeAllowance = 1))
+        assertEquals(AutocorrectOutcome.Refuse(AutocorrectRefusalReason.TOO_CLOSE_TO_CALL), AutocorrectDecision.evaluate(unknownWordFacts("keyboatf", "keyboard", distance = 2, topScore = 1.0, runnerUpScore = 0.95), maxAutoReplaceDistance = 2, lengthChangeAllowance = 1))
+    }
+
+    @Test
+    fun `reach - English allows a length change of one, a doubled letter aside`() {
+        assertFalse(safe("accompli", "accomplish", distance = 2, allowance = LengthChangeAllowance.ENGLISH))
+        assertFalse(safe("sensitivy", "sensitivity", distance = 2, allowance = LengthChangeAllowance.ENGLISH))
+        assertEquals(true, safe("postr", "poster", distance = 1, allowance = LengthChangeAllowance.ENGLISH))
+        assertEquals(true, safe("wil", "will", distance = 1, allowance = LengthChangeAllowance.ENGLISH))
+    }
+
     // ---- The invariant, adversarially, through the paths that reach the decision ----
 
     private val en = LanguageCode.of("en")!!

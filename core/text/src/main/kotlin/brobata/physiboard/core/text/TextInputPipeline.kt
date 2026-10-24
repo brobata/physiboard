@@ -180,6 +180,11 @@ data class TextInputResult(
      * decision's own facts.
      */
     val autocorrectDebug: BoundaryDebugInfo? = null,
+    /**
+     * Non-null only when this Backspace undid a replacement (autocorrect-suggestions.md SS7.5):
+     * the pair taken back, so `:ime` can mark it in the correction log (SS9).
+     */
+    val autocorrectUndone: LastReplacement? = null,
 )
 
 /**
@@ -907,6 +912,7 @@ object TextInputPipeline {
             is Backspace.Decision.Undo -> TextInputResult(
                 decision.result.ops,
                 baseState.copy(autocorrectMemory = decision.result.memory, currentWord = CurrentWordTracker.empty().syncedFrom(decision.result.addWordCandidate)),
+                autocorrectUndone = decision.result.undone,
             )
             Backspace.Decision.FallThrough -> TextInputResult(
                 listOf(EditorOp.PassThroughKey),

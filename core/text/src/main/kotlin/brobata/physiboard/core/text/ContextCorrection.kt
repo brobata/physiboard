@@ -64,6 +64,27 @@ object ContextCorrection {
         /** Leave a word that is a known word plus an inflection ending ([isInflectionOf]). */
         val keepInflections: Boolean = true,
         val weights: ChannelCost.Weights = ChannelCost.DEFAULT,
+        /** How many letters a word needs before a candidate two edits away is weighed at all; a shorter word reaches one edit ([EditReach]). */
+        val distance2MinLetters: Int = EditReach.DISTANCE_2_MIN_LETTERS,
+        /** The most a two-edit slip may cost ([ChannelCost]) and still be weighed: two thumb slips, nothing dearer ([EditReach.DISTANCE_2_MAX_COST]). */
+        val distance2MaxCost: Double = EditReach.DISTANCE_2_MAX_COST,
+        /** The share a two-edit candidate needs to replace the word, in place of [commitShare]: two edits need a clear margin. */
+        val distance2CommitShare: Double = 0.9,
+        /**
+         * Whether a two-edit candidate must have been seen after the word before (or at the
+         * sentence start) in the table at least once: two edits need the sentence's agreement,
+         * not just a plausible word. In an empty field that is the sentence start, so a classic
+         * misspelling typed alone (`basicly`, `restaraunt`) is left; the harness records the cost.
+         */
+        val distance2NeedsContext: Boolean = true,
+        /**
+         * The share a candidate needs for a word of [shortWordMaxLetters] letters or fewer. A
+         * short word has many real words one edit away, so the sentence must speak more clearly
+         * before one of them replaces it: at 0.70 to 0.85 a short word's fix was wrong one time
+         * in three on the harness; above 0.95, one in 140.
+         */
+        val shortWordCommitShare: Double = 0.85,
+        val shortWordMaxLetters: Int = 4,
     )
 
     val DEFAULT_TUNING: Tuning = Tuning()
@@ -76,8 +97,8 @@ object ContextCorrection {
     /** Contraction and possessive endings: a known word with one of these after an apostrophe is a word, not a typo (`must've`, `Sami's`). */
     private val CLITICS = setOf("s", "d", "ll", "re", "ve", "m", "t")
 
-    /** One candidate [rank] weighed: its dictionary spelling, its share of the whole (as-typed included), its slip cost. */
-    data class Weighed(val spelling: String, val share: Double, val cost: Double)
+    /** One candidate [rank] weighed: its dictionary spelling, its share of the whole (as-typed included), its slip cost and its edit distance from the typed key. */
+    data class Weighed(val spelling: String, val share: Double, val cost: Double, val distance: Int = 1)
 
     /**
      * Every candidate [decide] weighs for [typed], best first (ties in the order they were found),
@@ -134,7 +155,12 @@ object ContextCorrection {
      */
     fun verdict(typed: String, ranking: Ranking, tuning: Tuning = DEFAULT_TUNING): Result {
         val best = ranking.candidates.firstOrNull() ?: return Result.Leave("no_suggestion")
-        if (best.share < tuning.commitShare) return Result.Leave(if (best.share < ranking.keepShare) "kept_as_typed" else "too_close_to_call")
+        val needed = when {
+            best.distance >= 2 -> tuning.distance2CommitShare
+            typed.count { it.isLetter() } <= tuning.shortWordMaxLetters -> tuning.shortWordCommitShare
+            else -> tuning.commitShare
+        }
+        if (best.share < needed) return Result.Leave(if (best.share < ranking.keepShare) "kept_as_typed" else "too_close_to_call")
         if (RegionalSpelling.isVariant(typed, best.spelling)) return Result.Leave("regional_spelling")
         if (tuning.keepInflections && isInflectionOf(typed, best.spelling)) return Result.Leave("inflection_of_known_word")
         val recased = CasingRules.forTypedWord(typed, best.spelling)
@@ -166,7 +192,7 @@ object ContextCorrection {
         // `accent_matching_enabled` is on (§13: "Accent & spelling marks"), as on the path
         // without a table.
         val mayAddMarks = mayAddMarks(typed, settings)
-        val maxDistance = maxDistanceFor(letters, settings)
+        val maxDistance = maxDistanceFor(letters, settings, tuning)
 
         val typedCapitalised = letters.first().isUpperCase()
         val previousId = when (previous) {
@@ -194,6 +220,14 @@ object ContextCorrection {
             val cost = ChannelCost.cost(typed, spelling, tuning.weights)
             val key = WordChars.straightenAll(spelling).lowercase()
             val id = model.idOf(key)
+            // A repair of marks alone (`dont` -> `don't`) is distance 0; the fuzzy walk already capped the rest at [maxDistance].
+            val distance = EditDistance.osaDistance(typedKey, DictNormalization.normalizedKey(spelling), maxDistance)
+            if (distance >= 2) {
+                // Two edits are weighed only as a pair of thumb slips the sentence vouches for;
+                // anything else is out of reach, exactly as a short word's two-edit neighbours are.
+                if (cost > tuning.distance2MaxCost) continue
+                if (tuning.distance2NeedsContext && model.pairCount(previousId, id) < 1) continue
+            }
             var prior = if (tuning.unigramMix <= 0.0) {
                 model.logProbability(previousId, id)
             } else {
@@ -203,7 +237,7 @@ object ContextCorrection {
             val score = prior - tuning.channelScale * cost
             trace?.invoke(spelling, prior, cost)
             total += exp(score)
-            scored.add(Weighed(spelling, 0.0, cost) to score)
+            scored.add(Weighed(spelling, 0.0, cost, distance) to score)
         }
         trace?.invoke("", keep, 0.0)
         // Stable: of two equal scores the one found first stays first, as the single best always did.
@@ -211,10 +245,10 @@ object ContextCorrection {
         return Ranking(ranked, exp(keep) / total)
     }
 
-    // Two edits in a word of four letters or fewer leave too little of it to say what was meant (`telo` is not `to`).
+    // The edit reach scales with the word ([Tuning.distance2MinLetters]): a short word reaches one edit.
     // `max_auto_replace_distance` 0 blocks every slip but not a repair of marks, which is distance 0 (§13).
-    private fun maxDistanceFor(letters: String, settings: AutocorrectSettings): Int =
-        minOf(if (letters.length <= 4) 1 else 2, settings.maxAutoReplaceDistance)
+    private fun maxDistanceFor(letters: String, settings: AutocorrectSettings, tuning: Tuning = DEFAULT_TUNING): Int =
+        minOf(if (letters.length < tuning.distance2MinLetters) 1 else 2, settings.maxAutoReplaceDistance)
 
     private fun mayAddMarks(typed: String, settings: AutocorrectSettings): Boolean =
         settings.accentMatchingEnabled && typed.none { WordChars.isApostrophe(it) || (it.isLetter() && it.code >= 0x80) }

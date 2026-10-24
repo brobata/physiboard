@@ -61,7 +61,7 @@ class ContextCorrectionTest {
             userWords = userWords,
             settings = settings,
             rankingOptions = RankingOptions(useKeyboardProximity = true),
-            lengthChangeAllowance = 2,
+            lengthChangeAllowance = LengthChangeAllowance.ENGLISH,
             memory = memory,
             contextModel = contextModel,
         )
@@ -264,6 +264,49 @@ class ContextCorrectionTest {
         assertIs<BoundaryOutcome.Replaced>(withTable.outcome)
         assertEquals("CONTEXT", withTable.debug.source)
         assertTrue(without.debug.source != "CONTEXT")
+    }
+
+    // ---- Edit reach (SS9, 2026-10-23): "the fix is well beyond the word I am going for" ----
+
+    @Test
+    fun `T-reach, a short word gets one edit and needs a clearer sentence before it is changed`() {
+        // One adjacent-key slip in a four-letter word, the sentence behind it: fixed.
+        assertEquals("Pass me the salt", applied("Pass me the sakt", boundary("Pass me the sakt")))
+        // Two slips in a four-letter word leave too little to go on: nothing is in reach.
+        val two = boundary("Pass me the sqkt")
+        assertIs<BoundaryOutcome.CommitPlain>(two.outcome)
+        assertEquals("no_suggestion", two.debug.reason)
+        // Short unknown words the maintainer types all day stay as typed.
+        for (text in listOf("I pushed the apk with adb", "Open the ime", "The beo", "Tell boh")) {
+            assertIs<BoundaryOutcome.CommitPlain>(boundary(text).outcome, text)
+        }
+    }
+
+    @Test
+    fun `T-reach, two edits only in a word of seven letters, only as thumb slips the sentence agrees with`() {
+        // Two adjacent-key slips in a long word after a word the table has seen it follow: fixed, at distance 2.
+        val fixed = boundary("We ate at the restsurajt")
+        assertEquals("We ate at the restaurant", applied("We ate at the restsurajt", fixed))
+        assertEquals(2, fixed.debug.distance)
+        assertTrue(fixed.debug.detail.startsWith("share="), fixed.debug.detail)
+        assertEquals("The keyboard", applied("The keyboatf", boundary("The keyboatf")))
+        // The same two slips in a six-letter word: out of reach.
+        assertIs<BoundaryOutcome.CommitPlain>(boundary("The ckiemt").outcome)
+        // A spelling error whose two edits happen to price as thumb slips (a dropped i and an et/te swap, 0.9)
+        // is fixed when the sentence vouches for it, and left when nothing does (typed alone: the start of a
+        // sentence has not seen "definitely" often enough).
+        assertEquals("I will definitely", applied("I will definetly", boundary("I will definetly")))
+        // Two edits that are not thumb slips (a letter moved three places, 1.4) are a different word, whatever the sentence says.
+        assertIs<BoundaryOutcome.CommitPlain>(boundary("We ate at the restaraunt").outcome)
+        // The same word with one slip is still fixed.
+        assertEquals("The client", applied("The ckient", boundary("The ckient")))
+    }
+
+    @Test
+    fun `T-reach, a length change of two is never a fix, a doubled letter still is`() {
+        // `accompli` is a French word the list lacks; before, it became `accomplish` (+2).
+        assertIs<BoundaryOutcome.CommitPlain>(boundary("It was a fait accompli").outcome)
+        assertEquals("Please accommodate", applied("Please accomodate", boundary("Please accomodate")))
     }
 }
 

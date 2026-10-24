@@ -525,8 +525,9 @@ recorded like any other.
 appended with a wall-clock timestamp derived from the event's uptime timestamp when it has one
 (now minus the uptime age), else now, and a delta in ms from the previous recorded event
 (clamped at 0). "Stop" stops without clearing. "Clear" empties the recorded list, clears the
-capture store (section 11), forgets the start time, stops recording, closes the viewer and
-blanks the panel. There is no cap on the number of recorded events.
+capture store (section 11), deletes the keyboard's correction log file (section 11; it holds
+typed words), forgets the start time, stops recording, closes the viewer and blanks the panel.
+There is no cap on the number of recorded events.
 
 ### 10.5 View, copy, share
 
@@ -589,6 +590,10 @@ exported_at, timezone_id, timezone_offset (seconds, suffixed s)
               share)" unless the chip is on; then "(no autocorrections recorded)" or rows
               <time> | type= trigger= source= outcome= before='' after='' reason='' [distance=]
               [kind=]
+[correction_log] the same exclusion line unless the autocorrections chip is on; then "(no
+              corrections logged)" or rows <time> | typed='' committed='' source= <detail>
+              undone=yes|no, oldest first, read from the keyboard's correction log file
+              (section 11; autocorrect-suggestions.md section 9, "The correction log")
 [suggestions] only with the chip: "(no suggestion snapshots recorded)" or rows
               <time> | cand{source/kind}, cand{...} [xN] where consecutive identical
               snapshots collapse into one row carrying the last timestamp and a repeat count,
@@ -606,8 +611,8 @@ sha256=<hex of everything above, including the trailing newline after the last e
 ```
 
 The `[settings_snapshot]` block includes every key in the preferences file, so it carries the
-user's substitutions, expansion snippets and personal dictionary keys. The autocorrection log
-is the only block gated for privacy.
+user's substitutions, expansion snippets and personal dictionary keys. The autocorrection
+buffer and the correction log are the only blocks gated for privacy.
 
 ### 10.7 The rule about the last text field
 
@@ -631,6 +636,7 @@ Diagnostics screen or by the process dying:
 | raw trackpad events | 200, oldest dropped | nothing | the trackpad (trackpad document) |
 | IME context, last field | 1 | replaced on every attach | the keyboard service |
 | IME context, last field from another app | 1 | replaced on every attach to a non-PhysiBoard field | same |
+| correction log (on disk, `correction-log.tsv` in the app's files directory; survives the process) | 500 entries, trimmed to the newest 400 when full | text replacements (the user's own rules); everything while learning is off or in a password field | the keyboard, at every committed correction and at the Backspace that undoes one (autocorrect-suggestions.md section 9, "The correction log") |
 
 Autocorrection rows carry type (`commit` or `attempt`), trigger (`space`, `enter`,
 `suggestion_tap`, `other`), a source string, outcome (`applied`, `skipped`,
@@ -1518,7 +1524,7 @@ While learning is off, nothing new is remembered:
 | Clipboard history capture (expansion-clipboard-pickers-launcher.md section 3.1) | a copy is not kept |
 | Recent emoji (expansion-clipboard-pickers-launcher.md section 4.4) | choosing an emoji leaves the recents as they were |
 | Remembered emoji tones (expansion-clipboard-pickers-launcher.md section 4.7, 3.4) | a pick from the tone popup is inserted but neither remembered nor, for the plain form, forgotten; tones already remembered are still shown |
-| Debug capture (sections 10 and 11) | no key event, no field attach and no autocorrection record reaches the store, whether Diagnostics is open or not; the developer log trail (`ime_overlay_debug_logging`) is silent too |
+| Debug capture (sections 10 and 11) | no key event, no field attach and no autocorrection record reaches the store, whether Diagnostics is open or not, and nothing is written to the correction log (not a commit, not an undo); the developer log trail (`ime_overlay_debug_logging`) is silent too |
 
 What is already known keeps working: the dictionaries, personal and default words, learned
 pairs, text replacements, autocorrect and the clipboard history already stored. Deleting (a

@@ -74,6 +74,7 @@ import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.ExtraSendShortcut
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
+import brobata.physiboard.core.text.LastReplacement
 import brobata.physiboard.core.text.LengthChangeAllowance
 import brobata.physiboard.core.text.NextWordSuggestions
 import brobata.physiboard.core.text.RankedSuggestion
@@ -212,6 +213,11 @@ data class PipelineResult(
      * ran a word-boundary evaluation, so [KeyboardSession] can forward it to the debug capture.
      */
     val autocorrectDebug: BoundaryDebugInfo? = null,
+    /**
+     * autocorrect-suggestions.md SS7.5, SS9: non-null only when this Backspace undid a replacement,
+     * so [KeyboardSession] can mark it in the correction log.
+     */
+    val autocorrectUndone: LastReplacement? = null,
     /**
      * spec trackpad-caret-nav.md SS5.5's `native_ctrl` row, non-null only for the "with no field"
      * case: [key]'s down and up should be synthesized with Ctrl meta and sent through the input
@@ -1540,7 +1546,7 @@ internal class KeyboardPipeline(
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)
         result.autocorrectDebug?.let(::learnNextWord)
-        return toPipelineResult(result.ops, result.enterDelivery, result.autocorrectDebug)
+        return toPipelineResult(result.ops, result.enterDelivery, result.autocorrectDebug, result.autocorrectUndone)
     }
 
     /**
@@ -1609,10 +1615,10 @@ internal class KeyboardPipeline(
     }
 
     /** spec: text-input.md EditorOp.PassThroughKey KDoc: as the sole op it means "no text change; the caller decides", which for every producer in `:core:text` means "let the physical key through". [enterDelivery] carries per-app-behavior.md SS3.4's real `InputConnection` call forward to [KeyboardSession], which alone knows whether it was actually delivered; [consumed] is provisional in that case (see [PipelineResult]'s own KDoc). */
-    private fun toPipelineResult(ops: List<EditorOp>, enterDelivery: EnterIntent?, autocorrectDebug: BoundaryDebugInfo? = null): PipelineResult = when {
-        enterDelivery != null -> PipelineResult(ops, consumed = true, enterDelivery = enterDelivery, autocorrectDebug = autocorrectDebug)
-        ops.size == 1 && ops[0] == EditorOp.PassThroughKey -> PipelineResult.NOT_CONSUMED.copy(autocorrectDebug = autocorrectDebug)
-        else -> PipelineResult(ops, consumed = true, autocorrectDebug = autocorrectDebug)
+    private fun toPipelineResult(ops: List<EditorOp>, enterDelivery: EnterIntent?, autocorrectDebug: BoundaryDebugInfo? = null, autocorrectUndone: LastReplacement? = null): PipelineResult = when {
+        enterDelivery != null -> PipelineResult(ops, consumed = true, enterDelivery = enterDelivery, autocorrectDebug = autocorrectDebug, autocorrectUndone = autocorrectUndone)
+        ops.size == 1 && ops[0] == EditorOp.PassThroughKey -> PipelineResult.NOT_CONSUMED.copy(autocorrectDebug = autocorrectDebug, autocorrectUndone = autocorrectUndone)
+        else -> PipelineResult(ops, consumed = true, autocorrectDebug = autocorrectDebug, autocorrectUndone = autocorrectUndone)
     }
 
     /**

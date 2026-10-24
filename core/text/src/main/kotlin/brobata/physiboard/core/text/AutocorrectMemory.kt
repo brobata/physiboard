@@ -100,8 +100,12 @@ data class AutocorrectMemory(
  */
 object AutocorrectUndo {
 
-    /** [ops] restores the original word; [memory] has the undo memory cleared and the rejection recorded; [addWordCandidate] is the original word, per step 4. */
-    data class Result(val ops: List<EditorOp>, val memory: AutocorrectMemory, val addWordCandidate: String)
+    /**
+     * [ops] restores the original word; [memory] has the undo memory cleared and the rejection
+     * recorded; [addWordCandidate] is the original word, per step 4; [undone] is the replacement
+     * taken back, for the correction log (SS9).
+     */
+    data class Result(val ops: List<EditorOp>, val memory: AutocorrectMemory, val addWordCandidate: String, val undone: LastReplacement)
 
     /**
      * [textBeforeCursor] should be sized to the replacement's length plus 2 characters, per SS7.5
@@ -128,6 +132,6 @@ object AutocorrectUndo {
         // fix cannot redo what this undo just took back once the rejection empties (SS10's exception).
         val newMemory = memory.copy(lastReplacement = null).withRejected(rejected)
             .afterTrackingLost().withPinned(words)
-        return Result(ops, newMemory, addWordCandidate = last.original)
+        return Result(ops, newMemory, addWordCandidate = last.original, undone = last)
     }
 }

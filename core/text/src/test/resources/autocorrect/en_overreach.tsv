@@ -1,0 +1,95 @@
+typed	intended	kind
+# The over-reach set (autocorrect-suggestions.md section 12.1): plausible sentences where a fix would go too far. Held out of every
+# sweep. A control row (typed = intended) is a word the dictionary lacks that must stay as typed; a typo row names the fix that is
+# right, and any other replacement counts as over-reach. Written 2026-10-23 from the maintainer's own vocabulary (the Titan's
+# tooling, the catering kitchen) and the clean-text words the engine had changed. Kinds: short_control (short unknown words),
+# jargon_control (longer unknown words with a same-first-letter dictionary neighbour), length_jump (a slip whose tempting fix is
+# another word of a different length), two_slips (two edits in one word: fixed when long and both are thumb slips, left otherwise).
+I pushed the apk with adb last night	I pushed the apk with adb last night	short_control
+Run npm install and then restart tmux	Run npm install and then restart tmux	short_control
+The kcm file maps every key	The kcm file maps every key	short_control
+Open the ime settings on the phone	Open the ime settings on the phone	short_control
+The beo for Saturday is in the folder	The beo for Saturday is in the folder	short_control
+Tell boh the salads are plated	Tell boh the salads are plated	short_control
+Ask foh to reset the room	Ask foh to reset the room	short_control
+Use sudo to grep the json file	Use sudo to grep the json file	short_control
+The cron job runs at nine	The cron job runs at nine	short_control
+The wifi drops in the truck	The wifi drops in the truck	short_control
+brb grabbing coffee	brb grabbing coffee	short_control
+omw to the kitchen now	omw to the kitchen now	short_control
+Most ppl leave early	Most ppl leave early	short_control
+See you tmrw at the shop	See you tmrw at the shop	short_control
+Happy bday to the whole fam	Happy bday to the whole fam	short_control
+That looks sus to me	That looks sus to me	short_control
+The pbd file is the dictionary	The pbd file is the dictionary	short_control
+Pull the logcat and the dumpsys output	Pull the logcat and the dumpsys output	short_control
+Set the oven to 425 and wait	Set the oven to 425 and wait	short_control
+I rewrote the kotlin module last week	I rewrote the kotlin module last week	jargon_control
+The gradle build takes a minute	The gradle build takes a minute	jargon_control
+The jetpack library handles it	The jetpack library handles it	jargon_control
+Each coroutine runs on its own thread	Each coroutine runs on its own thread	jargon_control
+The kdoc explains the gate	The kdoc explains the gate	jargon_control
+We spent the morning refactoring the pipeline	We spent the morning refactoring the pipeline	jargon_control
+The phone is on tailscale now	The phone is on tailscale now	jargon_control
+Brobata ships the keyboard	Brobata ships the keyboard	jargon_control
+The unihertz phone has real keys	The unihertz phone has real keys	jargon_control
+Amy tests it on testflight	Amy tests it on testflight	jargon_control
+I sideloaded the build this morning	I sideloaded the build this morning	jargon_control
+The autocorrect reached too far	The autocorrect reached too far	jargon_control
+The bigrams come from tatoeba	The bigrams come from tatoeba	jargon_control
+Pick an emoji from the page	Pick an emoji from the page	jargon_control
+Send a gif instead	Send a gif instead	jargon_control
+Start brining the chicken tonight	Start brining the chicken tonight	jargon_control
+Spatchcock the birds before service	Spatchcock the birds before service	jargon_control
+Set up your mise before the rush	Set up your mise before the rush	jargon_control
+Stack the chafers by the door	Stack the chafers by the door	jargon_control
+Run the dough through the sheeter	Run the dough through the sheeter	jargon_control
+Label every cambro in the walk in	Label every cambro in the walk in	jargon_control
+The lexans go on the top shelf	The lexans go on the top shelf	jargon_control
+Finish the sauce with the demi	Finish the sauce with the demi	jargon_control
+Make a gastrique for the duck	Make a gastrique for the duck	jargon_control
+Spoon the beurre blanc over the fish	Spoon the beurre blanc over the fish	jargon_control
+The crudo needs more acid	The crudo needs more acid	jargon_control
+Whisk the aioli by hand	Whisk the aioli by hand	jargon_control
+Check tripleseat for the head count	Check tripleseat for the head count	jargon_control
+We passed apps for an hour	We passed apps for an hour	jargon_control
+The canapes are on tray three	The canapes are on tray three	jargon_control
+She was texting me about the order	She was texting me about the order	jargon_control
+I texted the client back	I texted the client back	jargon_control
+It was a fait accompli	It was a fait accompli	jargon_control
+He showed real valour	He showed real valour	jargon_control
+She leant on the counter	She leant on the counter	jargon_control
+The millennials ordered the tasting menu	The millennials ordered the tasting menu	jargon_control
+The whatsapp group has the schedule	The whatsapp group has the schedule	jargon_control
+Are yall coming to the tasting	Are yall coming to the tasting	jargon_control
+We ran out of hort ribs	We ran out of short ribs	length_jump
+Send me the ord doc	Send me the word doc	length_jump
+Please ome early tomorrow	Please come early tomorrow	length_jump
+It was a ood night	It was a good night	length_jump
+Walk nto the kitchen	Walk into the kitchen	length_jump
+Set the ast tray down	Set the last tray down	length_jump
+The orse is in the barn	The horse is in the barn	length_jump
+He sruck the match	He struck the match	length_jump
+Drive fater next time	Drive faster next time	length_jump
+The mnokey escaped	The monkey escaped	length_jump
+Open the appl on your phone	Open the app on your phone	length_jump
+Bring the ramekns to the pass	Bring the ramekins to the pass	length_jump
+The ary was closed	The bar was closed	length_jump
+We ate at the restsurajt downtown	We ate at the restaurant downtown	two_slips
+The catwrihg truck is here	The catering truck is here	two_slips
+Check the schedulw tomorrow	Check the schedule tomorrow	two_slips
+The keyboatd feels great	The keyboard feels great	two_slips
+The keyboatf feels great	The keyboard feels great	two_slips
+I will be there tommorow	I will be there tomorrow	two_slips
+Please accomodate the change	Please accommodate the change	two_slips
+We have enoguh plates	We have enough plates	two_slips
+It was definately late	It was definitely late	two_slips
+The ckient called twice	The client called twice	two_slips
+The ckiemt called twice	The client called twice	two_slips
+Bring the imvoices to the office	Bring the invoices to the office	two_slips
+Bring the imvoixes to the office	Bring the invoices to the office	two_slips
+The venue cancelled the cintract	The venue cancelled the contract	two_slips
+The venue cancelled the cintrsct	The venue cancelled the contract	two_slips
+Pass me the sakt	Pass me the salt	two_slips
+Pass me the aslt	Pass me the salt	two_slips
+Pass me the sqkt	Pass me the salt	two_slips

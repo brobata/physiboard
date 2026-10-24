@@ -22,8 +22,11 @@ import kotlin.test.assertTrue
  * - c: `en_cases.tsv` and `en_misspellings.tsv`, each word typed alone into an empty field;
  * - d: sentences using a confusion-set word, flipped to its twin ([SentenceCorpus.mixupFlips]).
  *
- * The ratchets are the numbers measured when the context-aware correction landed: tighten when
- * earned, never loosen.
+ * - e: `en_overreach.tsv`, plausible sentences where a fix would go too far (short and jargon
+ *   words the list lacks, length jumps, two slips in one word), held out of every sweep.
+ *
+ * The ratchets are the numbers measured when the context-aware correction landed, re-measured
+ * when the edit reach scaled with the word (2026-10-23): tighten when earned, never loosen.
  */
 class SentenceEvalTest {
 
@@ -55,11 +58,13 @@ class SentenceEvalTest {
         println(row("a clean (all 6,000)", summary))
         println(row("a clean (test half)", replay().run(SentenceCorpus.clean(testHalf))))
         println(SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.CLOBBERED }, limit = 60))
+        println("  a commits by reach:\n" + summary.reachTable())
         assertEquals(0, summary.clobberedOf(WordKind.KNOWN), "§10: a correctly spelled word was overwritten:\n" + SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.CLOBBERED && it.typedKnown }))
         assertTrue(summary.controls >= 45_000, "the held-out corpus shrank: ${summary.controls} words")
         // Ratchet: 10 in 45,645 words when this landed (1 per 4,564); three of the ten "correct"
-        // words are typos in Tatoeba's own text (presidenf, albumn, and Mery for Mary).
-        assertTrue(summary.clobbered <= 10, summary.report("a clean"))
+        // words are typos in Tatoeba's own text (presidenf, albumn, and Mery for Mary). 8 once the
+        // edit reach scaled with the word (2026-10-23): `accompli` and `valour` are out of reach.
+        assertTrue(summary.clobbered <= 8, summary.report("a clean"))
 
         val mixed = replay(withMixups).run(SentenceCorpus.clean(sentences))
         println(mixed.report("a clean, fix_word_mixups on"))
@@ -78,14 +83,19 @@ class SentenceEvalTest {
         println(row("b Titan typos (all)", summary))
         println(row("b Titan typos (test half)", replay().run(SentenceCorpus.withTitanTypos(testHalf))))
         for ((kind, part) in summary.byLabel().toSortedMap()) println("  " + part.report(kind))
-        println(SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.WRONG || it.outcome == CaseOutcome.CLOBBERED }, limit = 40))
+        println("  b commits by reach:\n" + summary.reachTable())
+        println(SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.WRONG || it.outcome == CaseOutcome.CLOBBERED }, limit = 100))
         println("  missed non-word typos by reason: " + summary.words.filter { it.outcome == CaseOutcome.MISSED && !it.typedKnown }.groupingBy { it.reason }.eachCount())
         assertEquals(0, summary.clobberedOf(WordKind.KNOWN), SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.CLOBBERED && it.typedKnown }))
         // Ratchets: recall 0.750 (0.858 of the typos that are not themselves real words), 88 wrong, 6 clobbered, when this landed;
         // 90 wrong once the mix-up fix shipped on (3.2), since it now runs in the shipped settings too.
-        assertTrue(summary.recall >= 0.75, summary.report("b"))
-        assertTrue(summary.wrong <= 90, summary.report("b"))
+        // 2026-10-23, the edit reach scaled with the word: recall 0.744, 44 wrong, over-reach 0.011
+        // (one commit in 90 misses, against one in 48 before). Recall may not fall further; wrong
+        // and over-reach may not rise.
+        assertTrue(summary.recall >= 0.74, summary.report("b"))
+        assertTrue(summary.wrong <= 44, summary.report("b"))
         assertTrue(summary.clobbered <= 6, summary.report("b"))
+        assertTrue(summary.overReach <= 0.012, summary.report("b"))
     }
 
     @Test
@@ -95,11 +105,34 @@ class SentenceEvalTest {
         println(summary.report("c misspellings"))
         println(row("c misspellings", summary))
         for ((label, part) in summary.byLabel().toSortedMap()) println("  " + part.report(label))
+        println("  c commits by reach:\n" + summary.reachTable())
         println(SentenceEval.describe(summary.words.filter { it.outcome != CaseOutcome.FIXED && it.outcome != CaseOutcome.UNTOUCHED }, limit = 60))
         assertEquals(0, summary.clobbered, SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.CLOBBERED }))
-        // Ratchets: 138 of 166 fixed, 3 wrong, when this landed.
-        assertTrue(summary.fixed >= 138, summary.report("c"))
+        // Ratchets: 138 of 166 fixed, 3 wrong, when this landed. 129 since the edit reach scaled
+        // with the word (2026-10-23): nine classic spelling errors two edits from the word, typed
+        // alone (`basicly`, `restaraunt`, `dissapear`), are no longer reached, by decision; the
+        // plan has the list.
+        assertTrue(summary.fixed >= 129, summary.report("c"))
         assertTrue(summary.wrong <= 3, summary.report("c"))
+    }
+
+    @Test
+    fun `e - the over-reach set, fixes that would go too far`() {
+        val summary = replay().run(SentenceCorpus.sentencePairs(resource("en_overreach.tsv")))
+        println(summary.report("e over-reach"))
+        for ((kind, part) in summary.byLabel().toSortedMap()) println("  " + part.report(kind))
+        println("  e commits by reach:\n" + summary.reachTable())
+        println(SentenceEval.describe(summary.words.filter { it.outcome != CaseOutcome.UNTOUCHED }, limit = 120))
+        assertEquals(0, summary.clobberedOf(WordKind.KNOWN), SentenceEval.describe(summary.words.filter { it.outcome == CaseOutcome.CLOBBERED && it.typedKnown }))
+        // Ratchets, 2026-10-23: the engine before this set existed changed 10 of its 57 unknown
+        // controls and fixed 10 of its 31 typos wrongly (over-reach 0.588); with the edit reach
+        // scaled with the word, 6 and 8 (0.500). What is left is dictionary coverage (`texting`,
+        // `gif`, `brining`: real words the list lacks, one slip from a common word) and dropped
+        // first letters (`hort`, `ome`), which no reach gate can tell from a slip.
+        assertTrue(summary.fixed >= 14, summary.report("e"))
+        assertTrue(summary.wrong <= 8, summary.report("e"))
+        assertTrue(summary.clobbered <= 6, summary.report("e"))
+        assertTrue(summary.overReach <= 0.50, summary.report("e"))
     }
 
     @Test

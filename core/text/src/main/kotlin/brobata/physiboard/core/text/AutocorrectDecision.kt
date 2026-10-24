@@ -9,6 +9,17 @@ object Confidence {
     const val THRESHOLD: Double = 0.02
 
     /**
+     * spec: SS9, "Edit reach" (2026-10-23): a candidate two edits away needs a clear margin, not
+     * the 0.02 that serves one edit. 0.10 is the value SS12's measured history records for the old
+     * list ("threshold 0.10: fcr 0.014, one real word overruled"), the one threshold that was
+     * ever measured above 0.02.
+     */
+    const val THRESHOLD_DISTANCE_2: Double = 0.10
+
+    /** The margin a candidate at [distance] needs. */
+    fun thresholdFor(distance: Int): Double = if (distance >= 2) THRESHOLD_DISTANCE_2 else THRESHOLD
+
+    /**
      * `(top - runnerUp) / top`, clamped to 0..1. 1.0 when there is no runner-up or it is not a
      * current-word candidate (nothing to be unsure against); 0.0 when [topScore] is not positive.
      */
@@ -22,7 +33,8 @@ object Confidence {
 /**
  * The nine-step "safe shape" test, run in order with the first applicable decision winning. spec:
  * autocorrect-suggestions.md SS9. [lengthChangeAllowance] is the per-language allowance (English
- * 2, every other language 0 per SS9 step 8 and the settings table).
+ * 1, every other language 0 per SS9 step 8 and the settings table; a doubled letter is allowed
+ * past it by step 7).
  *
  * // SPEC GAP: step 9's fallback ("accept only if orthographic and the candidate has the
  * // lookup word's length") can only be reached once steps 6-8 have already excluded every case
@@ -93,6 +105,36 @@ object SafeShape {
 }
 
 /**
+ * How far a correction may reach, by the word's length and the kind of slip. spec: SS9, "Edit
+ * reach" (2026-10-23, after "the fix is well beyond the word I am going for"). Two edits are a
+ * pair of thumb slips in a long word, or nothing: a short word loses too much of itself to two
+ * edits, and two edits that are not thumb slips (a far key, a changed first letter, a vowel for a
+ * vowel) are a different word, not a slip. Both paths apply the same numbers: the context path
+ * through [ContextCorrection.Tuning]'s defaults, the path without a table through
+ * [AutocorrectDecision]. The sentence harness (SS12.1) chose them; the plan has the sweep.
+ */
+object EditReach {
+    /** Letters a word needs before a candidate two edits away is considered at all. */
+    const val DISTANCE_2_MIN_LETTERS: Int = 7
+
+    /**
+     * The most a two-edit slip may cost ([ChannelCost]): 1.0 admits any two thumb slips (adjacent
+     * key 0.35, transposition 0.4, doubled or half-dropped letter 0.3, extra key beside one
+     * pressed 0.45, dropped letter 0.5, two dropped letters included) and refuses a far key
+     * (1.6), a changed first letter (+0.8), a vowel for a vowel (0.9) or an extra letter beside
+     * nothing (0.9) paired with anything. The harness could not tell 0.9 from 1.0 once the
+     * sentence's agreement is required; two dropped letters are the Titan's commonest slip.
+     */
+    const val DISTANCE_2_MAX_COST: Double = 1.0
+
+    /** The largest distance a word of [letters] letters reaches, under the setting's own cap. */
+    fun maxDistance(letters: Int, settingCap: Int): Int = minOf(if (letters < DISTANCE_2_MIN_LETTERS) 1 else 2, settingCap)
+
+    /** Whether the slip from [candidate] to [typed] is cheap enough to be two thumb slips. */
+    fun isThumbSlipPair(typed: String, candidate: String): Boolean = ChannelCost.cost(typed, candidate) <= DISTANCE_2_MAX_COST
+}
+
+/**
  * The gate behind autocorrect-suggestions.md SS10 ("a correctly spelled word is never
  * overwritten"): the only replacements a known word can still receive are a case repair or an
  * accent (orthographic) repair, and only when no entry already covers the typed form. spec: SS9,
@@ -159,10 +201,15 @@ object AutocorrectDecision {
             if (isRejected) return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.REJECTED_BY_USER)
 
             val confidence = Confidence.compute(topScore, runnerUpScore, runnerUpIsCurrentWordCandidate)
-            if (confidence < Confidence.THRESHOLD) return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.TOO_CLOSE_TO_CALL)
+            if (confidence < Confidence.thresholdFor(distance)) return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.TOO_CLOSE_TO_CALL)
 
             if (!isCurrentWordCandidate) return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.NOT_CURRENT_WORD)
             if (distance > maxAutoReplaceDistance) return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.DISTANCE_TOO_HIGH)
+            // spec: SS9, "Edit reach": two edits only in a word long enough, and only as a pair of thumb slips.
+            val letters = word.count { it.isLetter() }
+            if (distance > EditReach.maxDistance(letters, maxAutoReplaceDistance) || (distance >= 2 && !EditReach.isThumbSlipPair(word, candidate))) {
+                return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.DISTANCE_TOO_HIGH)
+            }
             val safe = SafeShape.evaluate(
                 word, candidate, distance, isCurrentWordCandidate, isOrthographicVariant, isCaseVariant,
                 maxAutoReplaceDistance, lengthChangeAllowance,

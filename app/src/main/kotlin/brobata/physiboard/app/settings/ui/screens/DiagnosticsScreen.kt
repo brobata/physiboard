@@ -51,6 +51,7 @@ import brobata.physiboard.app.shell.AppDebugCaptureStore
 import brobata.physiboard.app.shell.ImeComponent
 import brobata.physiboard.app.shell.ImeProbeAndroid
 import brobata.physiboard.core.settings.SettingsCodec
+import brobata.physiboard.core.shell.CorrectionLog
 import brobata.physiboard.core.shell.DebugExportPolicy
 import brobata.physiboard.core.shell.DebugShareMethod
 import brobata.physiboard.core.shell.DiagnosticsReport
@@ -87,6 +88,8 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val controller = LocalSettingsController.current
     val store = AppDebugCaptureStore.instance
+    /** The keyboard's correction log (autocorrect-suggestions.md SS9); the service and this screen share one files directory. */
+    val correctionLogFile = File(context.filesDir, CorrectionLog.FILE_NAME)
 
     var fieldText by remember { mutableStateOf("") }
     var recording by remember { mutableStateOf(false) }
@@ -199,8 +202,12 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 "autocorrections",
                 if (rows.isEmpty()) listOf("(no autocorrections recorded)") else rows.map { "${timeFormat.format(Date(it.atMs))} | type=${it.type} trigger=${it.trigger} source=${it.source} outcome=${it.outcome} before='${it.before}' after='${it.after}' reason='${it.reason}'" },
             )
+            // autocorrect-suggestions.md SS9, "The correction log": the keyboard's on-disk log of
+            // committed corrections and their undos, under the same privacy chip as the ring buffer.
+            sections += ReportSection("correction_log", CorrectionLog.exportLines(CorrectionLog.read(correctionLogFile)) { timeFormat.format(Date(it)) })
         } else {
             sections += ReportSection("autocorrections", listOf("(excluded - contains typed words; enable \"Include autocorrections\" to share)"))
+            sections += ReportSection("correction_log", listOf("(excluded - contains typed words; enable \"Include autocorrections\" to share)"))
         }
         if (includeSuggestions) {
             val collapsed = SuggestionExport.collapse(store.suggestionSnapshots())
@@ -257,6 +264,8 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 }) { Text(if (recording) "Stop" else "Record") }
                 TextButton(onClick = {
                     store.clear()
+                    // SS10.4 "Clear" wipes every buffer; the correction log holds typed words too.
+                    correctionLogFile.delete()
                     recordedEvents.clear()
                     lastRecordedAtMs = null
                     startedAt = null
