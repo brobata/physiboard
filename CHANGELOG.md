@@ -3,7 +3,12 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
-## 3.6.0 (unreleased)
+## 3.6.0 (2026-10-23)
+
+Say "comma", "period" or "three exclamation points" and dictation types the marks, and laughs
+come out the way you'd text them.
+
+<!-- /card -->
 
 - Dictation types the punctuation you say. "Comma", "period" (or "full stop"), "question mark",
   "exclamation point", "colon", "semicolon", "dash", "hyphen", "apostrophe", "open quote" and
