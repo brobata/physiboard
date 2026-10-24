@@ -265,7 +265,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     store.clear()
                     // SS10.4 "Clear" wipes every buffer; the correction log holds typed words too.
-                    correctionLogFile.delete()
+                    CorrectionLog.clear(correctionLogFile)
                     recordedEvents.clear()
                     lastRecordedAtMs = null
                     startedAt = null

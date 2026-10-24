@@ -90,7 +90,7 @@ object ContextCorrection {
     val DEFAULT_TUNING: Tuning = Tuning()
 
     sealed class Result {
-        data class Commit(val replacement: String, val share: Double, val cost: Double) : Result()
+        data class Commit(val replacement: String, val share: Double, val cost: Double, val distance: Int) : Result()
         data class Leave(val reason: String) : Result()
     }
 
@@ -165,7 +165,7 @@ object ContextCorrection {
         if (tuning.keepInflections && isInflectionOf(typed, best.spelling)) return Result.Leave("inflection_of_known_word")
         val recased = CasingRules.forTypedWord(typed, best.spelling)
         if (recased == typed) return Result.Leave("same_replacement")
-        return Result.Commit(recased, best.share, best.cost)
+        return Result.Commit(recased, best.share, best.cost, best.distance)
     }
 
     /**
@@ -335,7 +335,7 @@ object ContextCorrection {
         if (!typedCapitalised && candidateLetters.first().isUpperCase()) return false
         if (candidateLetters.length >= 2 && candidateLetters.all { it.isUpperCase() }) return false
         val lengthChange = kotlin.math.abs(candidate.length - typed.length)
-        if (lengthChange > lengthChangeAllowance && !SafeShape.extraLetterDoublesNeighbour(typed, candidate)) return false
+        if (lengthChange > lengthChangeAllowance && !SafeShape.extraLettersDoubleNeighbours(typed, candidate)) return false
         return true
     }
 }

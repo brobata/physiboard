@@ -224,11 +224,24 @@ class AutocorrectDecisionTest {
     }
 
     @Test
-    fun `reach - English allows a length change of one, a doubled letter aside`() {
+    fun `reach - English allows a length change of one, doubled letters aside`() {
         assertFalse(safe("accompli", "accomplish", distance = 2, allowance = LengthChangeAllowance.ENGLISH))
         assertFalse(safe("sensitivy", "sensitivity", distance = 2, allowance = LengthChangeAllowance.ENGLISH))
         assertEquals(true, safe("postr", "poster", distance = 1, allowance = LengthChangeAllowance.ENGLISH))
         assertEquals(true, safe("wil", "will", distance = 1, allowance = LengthChangeAllowance.ENGLISH))
+        // Two missing halves of doubles are two letters of length, and still the one slip allowed past the allowance.
+        assertEquals(true, safe("acomodate", "accommodate", distance = 2, allowance = LengthChangeAllowance.ENGLISH))
+        assertEquals(true, SafeShape.extraLettersDoubleNeighbours("ocurence", "occurrence"))
+        assertFalse(SafeShape.extraLettersDoubleNeighbours("accompli", "accomplish"))
+        assertFalse(SafeShape.extraLettersDoubleNeighbours("sensitivy", "sensitivity"))
+        assertFalse(SafeShape.extraLettersDoubleNeighbours("will", "will"))
+    }
+
+    @Test
+    fun `reach - a word with letters off the Titan's grid is not judged by the geometry`() {
+        // Cyrillic (ru, uk ship): the key geometry has nothing to say, so the length and margin gates alone decide.
+        assertEquals(true, EditReach.isThumbSlipPair("привет", "превед"))
+        assertEquals(AutocorrectOutcome.Commit("преведик"), AutocorrectDecision.evaluate(unknownWordFacts("приветик", "преведик", distance = 2), maxAutoReplaceDistance = 2, lengthChangeAllowance = 0))
     }
 
     // ---- The invariant, adversarially, through the paths that reach the decision ----

@@ -613,7 +613,8 @@ The candidate is committed only when **all** of these hold:
    variant (`hallo` never becomes `Halle`).
 6. Same length: accept if orthographic, or a case variant, or the first letter is unchanged
    (`ding` never becomes `fing`; `fihg` may become `fing`).
-7. One longer and the extra letter doubles a neighbour (`wil -> will`): accept.
+7. One or two longer and every extra letter doubles a neighbour (`wil -> will`,
+   `acomodate -> accommodate`; two since 2026-10-23, when the allowance fell to 1): accept.
 8. Per-language length allowance: English allows a length change of up to 1 (2 until
    2026-10-23); every other language allows 0. Accept when the change is within the allowance, the candidate is not a pure
    prefix or suffix extension or truncation of the word (`work` never becomes `works`, `behavio`
@@ -646,11 +647,11 @@ for", the maintainer). How far a correction may reach now scales with the word, 
 | Decision | Rule | Why |
 |---|---|---|
 | Two edits need a long word | A candidate two edits away is considered only for a word of 7 or more letters; a shorter word reaches one edit (it was 5 on the context path, any length on the path without a table) | On the Titan-typo corpus every distance-2 commit in a word under 7 letters was wrong (12 of 12) |
-| Two edits must be thumb slips | Both edits together may cost at most 1.0 on section 16's key-geometry scale: neighbouring keys, swapped letters, doubled or dropped letters, an extra key beside one pressed. A far key, a changed first letter, a vowel for a vowel or a stray extra letter paired with anything is a different word, not a slip | `restaraunt` -> `restaurant` (1.4), `maintainance` -> `maintenance` (1.7) are spelling differences, not Titan slips; `keyboatf` -> `keyboard` (0.7) is two slips. The harness could not tell 0.9 from 1.0 once the sentence's agreement was required, and two dropped letters are the commonest slip |
+| Two edits must be thumb slips | Both edits together may cost at most 1.0 on section 16's key-geometry scale: neighbouring keys, swapped letters, doubled or dropped letters, an extra key beside one pressed. A far key, a changed first letter, a vowel for a vowel or a stray extra letter paired with anything is a different word, not a slip | `restaraunt` -> `restaurant` (1.4), `maintainance` -> `maintenance` (1.7) are spelling differences, not Titan slips; `keyboatf` -> `keyboard` (0.7) is two slips. The harness could not tell 0.9 from 1.0 once the sentence's agreement was required; 1.0 admits a dropped letter beside a stray neighbouring key (0.95). The geometry is the Titan's QWERTY rows: a word with a letter off them (Cyrillic, Greek) is not judged by this rule, and on QWERTZ or AZERTY the moved letters are priced where QWERTY has them (the plan's known limit) |
 | Two edits need a clear margin | Context path: the candidate's share of the whole must reach 0.9 (0.7 for one edit). Path without a table: confidence ≥ 0.10 (0.02 for one edit), the one threshold above 0.02 that section 12 ever measured | Backspace is the only way back; a fix two edits away with a thin margin is a guess |
 | Two edits need the sentence's agreement | Context path: the word-pair table must have seen the candidate after the word before (or at the sentence start) at least once. In an empty field that is the sentence start, so a classic misspelling typed alone (`restaraunt`, `dissapear`) is left | Two edits that only a plausible word supports are how `accompli` became `accomplish` and `valour` `value` (0.8 by cost: a thumb pair on paper) |
 | A short word needs a clearer sentence | Context path: a word of 4 letters or fewer is replaced only at a share of 0.85 (0.7 for longer words) | Measured on the harness: at a share of 0.70 to 0.85 a short word's fix was wrong one time in three (37 wrong, 2 correct words changed, 92 right); above 0.95, one in 140 |
-| One letter of length change | English's allowance is 1, not 2; a doubled letter still passes on its own (step 7) and the 1.25 length ratio stays (it only bites a 3-letter word, which may not grow except by doubling) | A one-slip typo never needs two letters of length; on clean text the two-letter changes were wrong (`accompli` -> `accomplish`, `sensitivy` -> `sensitive` took a one-letter path to the wrong word) |
+| One letter of length change | English's allowance is 1, not 2; one or two missing halves of doubles still pass on their own (step 7, `acomodate` -> `accommodate`) and the 1.25 length ratio stays (it only bites a 3-letter word, which may not grow except by doubling) | A one-slip typo never needs two letters of length; on clean text the two-letter changes were wrong (`accompli` -> `accomplish`, `sensitivy` -> `sensitive` took a one-letter path to the wrong word) |
 
 Measured on section 12.1's harness (all 6,000 held-out sentences; before -> after): Titan typos
 fixed 4,502 -> 4,465 (recall 0.750 -> 0.744), wrong 90 -> 44, correct words changed 6 -> 6,
@@ -875,7 +876,10 @@ with the mix-up fix off; the shipped confusion sets change no word on a. Ratchet
 2026-10-06 and re-measured 2026-10-23 when the edit reach scaled with the word (tighten when
 earned, never loosen): a ≤ 8 changed; b recall ≥ 0.74, wrong ≤ 44, clobbered ≤ 6, over-reach
 ≤ 0.012; c fixed ≥ 129, wrong ≤ 3; e fixed ≥ 14, wrong ≤ 8, clobbered ≤ 6, over-reach ≤ 0.50;
-d shipped sets fixed ≥ 1,414 of 1,773; a boundary's
+d shipped sets fixed ≥ 1,414 of 1,773 (b's recall and c's fixed count were re-baselined
+downward on 2026-10-23 by the decision in section 9, the one time a ratchet has moved that way;
+`en_misspellings.tsv` also gained `acomodate` and `ocurence`, two missing halves of doubles, which
+typed alone are left for want of a sentence); a boundary's
 median on clean text under 200 µs and its 99th percentile on b's typo text under 1.5 ms (desktop
 JVM; about 0.9 ms measured). The replay carries the autocorrect memory from one boundary to the
 next within a sentence, as the keyboard does, so the mix-up fix sees the word before as typed in
@@ -1159,8 +1163,8 @@ the text the app sent counts as a sentence start):
 | All capitals (two letters or more), or a capital after the first letter | Not judged |
 | Unknown, fewer than three letters | Not flagged |
 | Unknown, the language has no dictionary loaded | Not flagged |
-| Unknown lowercase, with a word-pair table | A typo, suggestions ranked by section 16's noisy channel (distance 2, 1 for four letters or fewer; a missing apostrophe or accent always offered, whatever `max_auto_replace_distance` and `accent_matching_enabled` say), cased as typed. Not flagged when the best candidate is the other regional spelling or the word is the best candidate plus an inflection ending |
-| Unknown capitalised, with a word-pair table | Flagged only when the best candidate holds the 70% share automatic correction needs (a name otherwise) |
+| Unknown lowercase, with a word-pair table | A typo, suggestions ranked by section 16's noisy channel (distance 2, 1 for four letters or fewer, any kind of slip, no sentence needed: a list the user picks from keeps the walk's full reach, and section 9's edit reach of 2026-10-23 gates only what the keyboard commits; a missing apostrophe or accent always offered, whatever `max_auto_replace_distance` and `accent_matching_enabled` say), cased as typed. Not flagged when the best candidate is the other regional spelling or the word is the best candidate plus an inflection ending |
+| Unknown capitalised, with a word-pair table | Flagged only when automatic correction itself would commit the best candidate, section 9's reach and shares included (a name otherwise) |
 | Unknown lowercase, no table | A typo, with the section 3 ranking's fuzzy candidates (completions left out) |
 | Unknown capitalised, no table | Not flagged |
 | A word of a shipped confusion set (section 10), standing alone, exactly one space before the next word | A grammar error with its twin, only when section 10's mix-up judgement clears its bar with the next word as typed; independent of `fix_word_mixups` |

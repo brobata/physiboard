@@ -279,7 +279,11 @@ wrongly.
 letters; two edits only as a pair of thumb slips (`ChannelCost` ≤ 1.0); two edits need a share
 of 0.9 (context path) or a confidence of 0.10 (path without a table), and, on the context path,
 the table must have seen the candidate after the word before at least once; a word of four letters
-or fewer needs a share of 0.85; English's length allowance is 1 (a doubled letter still passes).
+or fewer needs a share of 0.85; English's length allowance is 1 (one or two missing halves of
+doubles still pass: `acomodate` -> `accommodate`, found by review, since the old exception knew
+one doubled letter only). The thumb-slip rule is the Titan's QWERTY geometry and does not judge a
+word with letters off it (Cyrillic, Greek: the length and margin gates alone apply), also found
+by review: it had been refusing every two-edit fix for `ru` and `uk`.
 The spec's section 9 has the decision rows. Swept on the dev half (`SentenceSweepTest`, axes
 `d2min`, `d2cost`, `d2share`, `d2ctx`, `allow`, `shortShare`), then checked on all 6,000.
 

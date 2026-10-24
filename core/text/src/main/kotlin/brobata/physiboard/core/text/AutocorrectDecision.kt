@@ -1,5 +1,7 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.dict.DictNormalization
+
 /**
  * The relative-margin confidence between the top candidate and the runner-up. spec: autocorrect-
  * suggestions.md SS9.
@@ -65,7 +67,7 @@ object SafeShape {
         if (lengthDiff == 0) {
             return isOrthographicVariant || isCaseVariant || firstLetterUnchanged(word, candidate)
         }
-        if (lengthDiff == 1 && extraLetterDoublesNeighbour(word, candidate)) return true
+        if (lengthDiff in 1..2 && extraLettersDoubleNeighbours(word, candidate)) return true
         if (lengthDiff != 0 && lengthDiff in -lengthChangeAllowance..lengthChangeAllowance) {
             return !isPureAffixChange(word, candidate) && firstLetterUnchanged(word, candidate)
         }
@@ -88,14 +90,28 @@ object SafeShape {
         return w != null && c != null && w.lowercaseChar() == c.lowercaseChar()
     }
 
-    /** Whether [candidate], one character longer than [word], is [word] with one letter doubled. spec: SS9 step 7, SS "Length ratio" gate. */
-    internal fun extraLetterDoublesNeighbour(word: String, candidate: String): Boolean {
-        if (candidate.length != word.length + 1) return false
+    /**
+     * Whether [candidate], one or two characters longer than [word], is [word] with letters
+     * doubled (`wil` -> `will`, `acomodate` -> `accommodate`): every extra letter equals the letter
+     * beside it in the candidate. spec: SS9 step 7, SS "Length ratio" gate. A missing half of a
+     * double is the one slip allowed past the length allowance, since it is the one a thumb makes
+     * twice in a word without the word changing.
+     */
+    internal fun extraLettersDoubleNeighbours(word: String, candidate: String): Boolean {
+        if (candidate.length - word.length !in 1..2) return false
         var i = 0
-        while (i < word.length && i < candidate.length && word[i] == candidate[i]) i++
-        if (i >= candidate.length) return false
-        val inserted = candidate[i]
-        return inserted == candidate.getOrNull(i - 1) || inserted == candidate.getOrNull(i + 1)
+        var j = 0
+        while (j < candidate.length) {
+            if (i < word.length && word[i] == candidate[j]) {
+                i++
+                j++
+                continue
+            }
+            val extra = candidate[j]
+            if (extra != candidate.getOrNull(j - 1) && extra != candidate.getOrNull(j + 1)) return false
+            j++
+        }
+        return i == word.length
     }
 
     private fun isPureAffixChange(word: String, candidate: String): Boolean {
@@ -120,18 +136,31 @@ object EditReach {
     /**
      * The most a two-edit slip may cost ([ChannelCost]): 1.0 admits any two thumb slips (adjacent
      * key 0.35, transposition 0.4, doubled or half-dropped letter 0.3, extra key beside one
-     * pressed 0.45, dropped letter 0.5, two dropped letters included) and refuses a far key
-     * (1.6), a changed first letter (+0.8), a vowel for a vowel (0.9) or an extra letter beside
-     * nothing (0.9) paired with anything. The harness could not tell 0.9 from 1.0 once the
-     * sentence's agreement is required; two dropped letters are the Titan's commonest slip.
+     * pressed 0.45, dropped letter 0.5; a dropped letter and a stray key beside one pressed is
+     * 0.95) and refuses a far key (1.6), a changed first letter (+0.8), a vowel for a vowel (0.9)
+     * or an extra letter beside nothing (0.9) paired with anything. The harness could not tell
+     * 0.9 from 1.0 once the sentence's agreement is required. (Two plain dropped letters also
+     * price at 1.0 but change the length by two, which the allowance stops first; two missing
+     * halves of doubles, 0.6, pass through step 7.)
      */
     const val DISTANCE_2_MAX_COST: Double = 1.0
 
     /** The largest distance a word of [letters] letters reaches, under the setting's own cap. */
     fun maxDistance(letters: Int, settingCap: Int): Int = minOf(if (letters < DISTANCE_2_MIN_LETTERS) 1 else 2, settingCap)
 
-    /** Whether the slip from [candidate] to [typed] is cheap enough to be two thumb slips. */
-    fun isThumbSlipPair(typed: String, candidate: String): Boolean = ChannelCost.cost(typed, candidate) <= DISTANCE_2_MAX_COST
+    /**
+     * Whether the slip from [candidate] to [typed] is cheap enough to be two thumb slips. The
+     * geometry knows the Titan's QWERTY letters only ([TitanKeyGeometry]); a word with a letter
+     * off that grid (Cyrillic, Greek) is not judged by it and passes, leaving the length and
+     * margin gates to do the work. On QWERTZ or AZERTY the moved letters are priced where QWERTY
+     * has them, the known limit docs/plans/autocorrect-context.md records.
+     */
+    fun isThumbSlipPair(typed: String, candidate: String): Boolean {
+        if (!onGrid(typed) || !onGrid(candidate)) return true
+        return ChannelCost.cost(typed, candidate) <= DISTANCE_2_MAX_COST
+    }
+
+    private fun onGrid(word: String): Boolean = DictNormalization.stripAccents(word.lowercase()).all { !it.isLetter() || it in 'a'..'z' }
 }
 
 /**
@@ -220,7 +249,7 @@ object AutocorrectDecision {
             if (word.length < minimumLength) return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.WORD_TOO_SHORT)
 
             val maxCandidateLength = kotlin.math.floor(word.length * 1.25).toInt()
-            val isDoubledLetterCandidate = SafeShape.extraLetterDoublesNeighbour(word, candidate)
+            val isDoubledLetterCandidate = SafeShape.extraLettersDoubleNeighbours(word, candidate)
             if (candidate.length > maxCandidateLength && !isDoubledLetterCandidate) {
                 return AutocorrectOutcome.Refuse(AutocorrectRefusalReason.CANDIDATE_TOO_LONG)
             }

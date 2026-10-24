@@ -31,7 +31,7 @@ This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line'
   another app's field mid-dictation touches nothing in that field.
 - Autocorrect reaches less far. How far a fix may go now depends on the word: a word of four
   letters or fewer is changed only when the sentence makes the fix clear, a correction may add or
-  drop one letter but never two (a doubled letter aside), and a fix two edits away is made only
+  drop one letter but never two (missing halves of doubled letters aside), and a fix two edits away is made only
   in a word of seven letters or more, only when both edits are the kind a thumb makes on the
   Titan's keys (a neighbouring key, two letters swapped, a doubled or dropped letter), and only
   when the word before has been seen with it. On the sentence harness this halves the wrong

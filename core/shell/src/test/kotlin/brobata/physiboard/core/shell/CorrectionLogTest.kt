@@ -50,10 +50,10 @@ class CorrectionLogTest {
         CorrectionLog.append(file, entry(1, "teh", "the"))
         CorrectionLog.append(file, entry(2, "adn", "and"))
         CorrectionLog.append(file, entry(3, "teh", "the"))
-        assertTrue(CorrectionLog.markUndone(file, "teh", "the"))
+        assertTrue(CorrectionLog.markUndone(file, "teh", "the", nowMs = 10))
         assertEquals(listOf(false, false, true), CorrectionLog.read(file).map { it.undone })
         // Nothing left to mark for a pair that was never logged, and the file is left as it was.
-        assertFalse(CorrectionLog.markUndone(file, "xyz", "abc"))
+        assertFalse(CorrectionLog.markUndone(file, "xyz", "abc", nowMs = 10))
     }
 
     @Test
@@ -62,7 +62,7 @@ class CorrectionLogTest {
         // "wagged it's taill" -> "wagged its tail": two entries for one replacement of the span.
         CorrectionLog.append(file, entry(1, "it's", "its", source = "WORD_MIXUP", detail = ""))
         CorrectionLog.append(file, entry(1, "taill", "tail"))
-        assertTrue(CorrectionLog.markUndone(file, "it's taill", "its tail"))
+        assertTrue(CorrectionLog.markUndone(file, "it's taill", "its tail", nowMs = 10))
         assertEquals(listOf(true, true), CorrectionLog.read(file).map { it.undone })
     }
 
@@ -71,8 +71,28 @@ class CorrectionLogTest {
         val file = tempFile()
         CorrectionLog.append(file, entry(1, "teh", "the"))
         repeat(5) { i -> CorrectionLog.append(file, entry(10L + i, "adn$i", "and$i")) }
-        assertFalse(CorrectionLog.markUndone(file, "teh", "the"))
+        assertFalse(CorrectionLog.markUndone(file, "teh", "the", nowMs = 20))
         assertFalse(CorrectionLog.read(file).first().undone)
+    }
+
+    @Test
+    fun `an undo marks nothing older than a minute, so a text replacement undone leaves yesterday's entry`() {
+        val file = tempFile()
+        CorrectionLog.append(file, entry(1_000, "teh", "the"))
+        assertFalse(CorrectionLog.markUndone(file, "teh", "the", nowMs = 1_000 + CorrectionLog.UNDO_WINDOW_MS + 1))
+        assertTrue(CorrectionLog.markUndone(file, "teh", "the", nowMs = 1_000 + CorrectionLog.UNDO_WINDOW_MS))
+    }
+
+    @Test
+    fun `clear removes the log and a temporary file a crash left behind`() {
+        val file = tempFile()
+        CorrectionLog.append(file, entry(1, "teh", "the"))
+        val tmp = File(file.parentFile, file.name + ".tmp")
+        tmp.writeText("leftover")
+        CorrectionLog.clear(file)
+        assertFalse(file.exists())
+        assertFalse(tmp.exists())
+        assertEquals(emptyList(), CorrectionLog.read(file))
     }
 
     @Test

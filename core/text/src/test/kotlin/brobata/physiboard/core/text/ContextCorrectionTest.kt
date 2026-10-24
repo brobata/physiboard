@@ -307,6 +307,16 @@ class ContextCorrectionTest {
         // `accompli` is a French word the list lacks; before, it became `accomplish` (+2).
         assertIs<BoundaryOutcome.CommitPlain>(boundary("It was a fait accompli").outcome)
         assertEquals("Please accommodate", applied("Please accomodate", boundary("Please accomodate")))
+        // Two missing halves of doubles: two letters of length, still a doubled-letter slip the shape gate
+        // lets through (the sentence's agreement then decides as for any two-edit candidate: "the
+        // occurrence" the table has seen, "please accommodate" it has not).
+        assertEquals("The occurrence", applied("The ocurence", boundary("The ocurence")))
+        val offered = ContextCorrection.rank(
+            "acomodate", Preceding.SentenceStart, model, listOf(dictionary), defaults, shipped, LengthChangeAllowance.ENGLISH,
+            ContextCorrection.DEFAULT_TUNING.copy(distance2NeedsContext = false),
+        )
+        assertEquals("accommodate", offered.candidates.first().spelling)
+        assertEquals(2, offered.candidates.first().distance)
     }
 }
 

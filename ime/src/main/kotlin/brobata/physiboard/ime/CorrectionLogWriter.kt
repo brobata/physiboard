@@ -49,8 +49,13 @@ internal class CorrectionLogWriter(context: Context) {
     }
 
     /** Backspace put [undone]'s original back: the entries that logged it are marked undone. */
-    fun markUndone(undone: LastReplacement) {
-        writes.execute { CorrectionLog.markUndone(file, undone.original, undone.replacement) }
+    fun markUndone(undone: LastReplacement, nowMs: Long) {
+        writes.execute { CorrectionLog.markUndone(file, undone.original, undone.replacement, nowMs) }
+    }
+
+    /** The session is over: queued writes drain, then the thread ends. */
+    fun shutdown() {
+        writes.shutdown()
     }
 
     private companion object {

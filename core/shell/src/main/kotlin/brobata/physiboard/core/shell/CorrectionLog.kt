@@ -41,6 +41,9 @@ object CorrectionLog {
     /** How many of the newest entries [markUndone] looks back through: a mix-up fix writes two, an undo follows at once. */
     private const val UNDO_LOOKBACK = 4
 
+    /** An undo follows its correction within a keystroke or two; an entry older than this is another correction (a text replacement undone is not logged, and must not mark yesterday's). */
+    const val UNDO_WINDOW_MS: Long = 60_000
+
     fun encode(entry: CorrectionLogEntry): String = listOf(
         entry.atMs.toString(), clean(entry.typed), clean(entry.committed), clean(entry.source), clean(entry.detail), if (entry.undone) "1" else "0",
     ).joinToString("\t")
@@ -59,6 +62,7 @@ object CorrectionLog {
     }
 
     /** Appends [entry], trimming the oldest entries once the log holds more than [CAPACITY]; false when the write failed. */
+    @Synchronized
     fun append(file: File, entry: CorrectionLogEntry): Boolean {
         val entries = read(file) + entry
         return write(file, if (entries.size > CAPACITY) entries.takeLast(TRIM_TO) else entries)
@@ -69,10 +73,12 @@ object CorrectionLog {
      * [UNDO_LOOKBACK] entries not already undone, the newest one for each typed -> committed pair
      * whose typed word is one of [original]'s words and whose committed word is one of
      * [replacement]'s (a mix-up fix is one replacement of two words, logged as two entries, so an
-     * undo of it marks two). An earlier entry for the same pair is a different correction and
-     * stays. True when at least one entry was marked.
+     * undo of it marks two), and no older than [UNDO_WINDOW_MS] before [nowMs]. An earlier entry
+     * for the same pair is a different correction and stays. True when at least one entry was
+     * marked.
      */
-    fun markUndone(file: File, original: String, replacement: String): Boolean {
+    @Synchronized
+    fun markUndone(file: File, original: String, replacement: String, nowMs: Long): Boolean {
         val originals = original.split(' ').filter { it.isNotEmpty() }.toSet()
         val replacements = replacement.split(' ').filter { it.isNotEmpty() }.toSet()
         val entries = read(file).toMutableList()
@@ -81,11 +87,23 @@ object CorrectionLog {
         for (i in entries.indices.reversed()) {
             if (looked++ >= UNDO_LOOKBACK) break
             val entry = entries[i]
+            if (nowMs - entry.atMs > UNDO_WINDOW_MS) break
             if (entry.undone || entry.typed !in originals || entry.committed !in replacements) continue
             if (!markedPairs.add(entry.typed to entry.committed)) continue
             entries[i] = entry.copy(undone = true)
         }
         return markedPairs.isNotEmpty() && write(file, entries)
+    }
+
+    /**
+     * Deletes the log and any temporary file a write left behind: the Diagnostics screen's
+     * "Clear" (app-shell.md SS10.4). Synchronized with the writes, so a write in flight finishes
+     * before the delete and cannot bring the log back.
+     */
+    @Synchronized
+    fun clear(file: File) {
+        file.delete()
+        File(file.parentFile, file.name + ".tmp").delete()
     }
 
     /** The `[correction_log]` export rows, oldest first. [timeFormat] renders the wall-clock time the way the rest of the report does. */

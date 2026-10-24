@@ -3,7 +3,6 @@ package brobata.physiboard.core.text
 import brobata.physiboard.core.dict.ContextModel
 import brobata.physiboard.core.dict.DictNormalization
 import brobata.physiboard.core.dict.DictionaryIndex
-import brobata.physiboard.core.dict.EditDistance
 import brobata.physiboard.core.dict.RuleSet
 import brobata.physiboard.core.dict.SubstitutionMatcher
 import brobata.physiboard.core.dict.UserWordStore
@@ -299,7 +298,7 @@ object BoundaryEngine {
                             settled = decision.replacement
                             source = "CONTEXT"
                             reason = ""
-                            distance = EditDistance.osaDistance(DictNormalization.normalizedKey(trackedWord), DictNormalization.normalizedKey(settled))
+                            distance = decision.distance
                             detail = String.format(Locale.ROOT, "share=%.2f cost=%.2f", decision.share, decision.cost)
                         }
                         is ContextCorrection.Result.Leave -> reason = decision.reason

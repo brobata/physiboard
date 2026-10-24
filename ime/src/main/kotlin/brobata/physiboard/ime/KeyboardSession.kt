@@ -628,6 +628,7 @@ internal class KeyboardSession(
         BottomOverlay.teardown = false
         clipboard.onServiceDestroyed()
         runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
+        runCatching { correctionLog.shutdown() }.onFailure { error -> Log.e(TAG, "correction log teardown crashed", error) }
         launcherKeys.onServiceDestroyed()
         // spec: expansion-clipboard-pickers-launcher.md SS9.1: "released when the service is destroyed".
         runCatching { typingSoundPlayer?.release() }.onFailure { error -> Log.e(TAG, "typing sound player teardown crashed", error) }
@@ -2227,7 +2228,7 @@ internal class KeyboardSession(
             recordCorrection(debug)
         }
         // autocorrect-suggestions.md SS7.5, SS9: the undo is the one signal that a correction was wrong.
-        result.autocorrectUndone?.let { undone -> if (correctionLogAllowed()) correctionLog.markUndone(undone) }
+        result.autocorrectUndone?.let { undone -> if (correctionLogAllowed()) correctionLog.markUndone(undone, System.currentTimeMillis()) }
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
         result.launcherKey?.let(::performLauncherKey)
         // spec: trackpad-caret-nav.md SS5.2, SS5.7: "70 ms haptic when nav mode turns on; none when it turns off."

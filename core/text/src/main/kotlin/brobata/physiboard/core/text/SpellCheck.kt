@@ -172,6 +172,16 @@ object SpellCheck {
      */
     private val OFFERING = AutocorrectSettings(maxAutoReplaceDistance = 2, accentMatchingEnabled = true)
 
+    /**
+     * What is offered reaches as far as the fuzzy walk does (two edits from five letters, any
+     * kind of slip, no sentence needed): a list the user picks from costs nothing when it is
+     * wrong. The keyboard's own edit reach (§9, 2026-10-23) gates what it commits, not what the
+     * system spell checker shows; `confident` below is still the keyboard's own decision.
+     */
+    private val OFFERING_TUNING = ContextCorrection.DEFAULT_TUNING.copy(
+        distance2MinLetters = 5, distance2MaxCost = Double.POSITIVE_INFINITY, distance2NeedsContext = false,
+    )
+
     /** The most suggestions any app shows for one word. */
     const val MAX_SUGGESTIONS = 5
 
@@ -250,12 +260,13 @@ object SpellCheck {
                 .map { CasingRules.forTypedWord(word, it.word) }
             return finding(SpellKind.TYPO, distinctSuggestions(word, ranked, limit))
         }
-        val ranking = ContextCorrection.rank(word, previous, model, dictionaries, r.userWords, OFFERING, r.lengthChangeAllowance)
+        val ranking = ContextCorrection.rank(word, previous, model, dictionaries, r.userWords, OFFERING, r.lengthChangeAllowance, OFFERING_TUNING)
         val best = ranking.candidates.firstOrNull()
         if (best != null && (RegionalSpelling.isVariant(word, best.spelling) || ContextCorrection.isInflectionOf(word, best.spelling))) {
             return finding(SpellKind.UNFLAGGED)
         }
-        val confident = ContextCorrection.verdict(word, ranking) is ContextCorrection.Result.Commit
+        // Would the keyboard itself have corrected this word? Decided with its own reach, not the offer's.
+        val confident = ContextCorrection.decide(word, previous, model, dictionaries, r.userWords, OFFERING, r.lengthChangeAllowance) is ContextCorrection.Result.Commit
         // A capitalised word the engine would not correct is most likely a name.
         if (capitalised && !confident) return finding(SpellKind.UNFLAGGED)
         val suggestions = distinctSuggestions(word, ranking.candidates.map { CasingRules.forTypedWord(word, it.spelling) }, limit)
