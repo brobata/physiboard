@@ -78,8 +78,8 @@ object ContextCorrection {
          */
         val distance2NeedsContext: Boolean = true,
         /**
-         * The share a candidate needs for a word of [shortWordMaxLetters] letters or fewer. A
-         * short word has many real words one edit away, so the sentence must speak more clearly
+         * The share a candidate one edit away needs for a word of [shortWordMaxLetters] letters or
+         * fewer. A short word has many real words one edit away, so the sentence must speak more clearly
          * before one of them replaces it: at 0.70 to 0.85 a short word's fix was wrong one time
          * in three on the harness; above 0.95, one in 140.
          */
@@ -157,7 +157,8 @@ object ContextCorrection {
         val best = ranking.candidates.firstOrNull() ?: return Result.Leave("no_suggestion")
         val needed = when {
             best.distance >= 2 -> tuning.distance2CommitShare
-            typed.count { it.isLetter() } <= tuning.shortWordMaxLetters -> tuning.shortWordCommitShare
+            // A repair of marks alone (`ive` -> `I've`) is distance 0 and has no rival words to be unsure against.
+            best.distance == 1 && typed.count { it.isLetter() } <= tuning.shortWordMaxLetters -> tuning.shortWordCommitShare
             else -> tuning.commitShare
         }
         if (best.share < needed) return Result.Leave(if (best.share < ranking.keepShare) "kept_as_typed" else "too_close_to_call")

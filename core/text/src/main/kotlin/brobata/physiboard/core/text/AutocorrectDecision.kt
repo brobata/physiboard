@@ -99,19 +99,29 @@ object SafeShape {
      */
     internal fun extraLettersDoubleNeighbours(word: String, candidate: String): Boolean {
         if (candidate.length - word.length !in 1..2) return false
+        // Case-blind: the candidate is the dictionary's spelling, the word is as typed (`Acomodate`).
+        val w = word.lowercase()
+        val c = candidate.lowercase()
+        // First the greedy walk, which marks the candidate's letters the word accounts for; doubling
+        // only lengthens a run of one letter, so the walk always finds the match when there is one.
+        val matched = BooleanArray(c.length)
         var i = 0
-        var j = 0
-        while (j < candidate.length) {
-            if (i < word.length && word[i] == candidate[j]) {
+        for (j in c.indices) {
+            if (i < w.length && w[i] == c[j]) {
+                matched[j] = true
                 i++
-                j++
-                continue
             }
-            val extra = candidate[j]
-            if (extra != candidate.getOrNull(j - 1) && extra != candidate.getOrNull(j + 1)) return false
-            j++
         }
-        return i == word.length
+        if (i != w.length) return false
+        // Then every extra letter must double a letter the word has (`wil` -> `will`), not pair up
+        // with another extra (`mi` -> `miss` is a dropped pair, not a doubled letter).
+        for (j in c.indices) {
+            if (matched[j]) continue
+            val doublesBefore = j > 0 && matched[j - 1] && c[j - 1] == c[j]
+            val doublesAfter = j + 1 < c.length && matched[j + 1] && c[j + 1] == c[j]
+            if (!doublesBefore && !doublesAfter) return false
+        }
+        return true
     }
 
     private fun isPureAffixChange(word: String, candidate: String): Boolean {

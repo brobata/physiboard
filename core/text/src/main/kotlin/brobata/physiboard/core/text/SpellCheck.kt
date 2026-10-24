@@ -265,11 +265,15 @@ object SpellCheck {
         if (best != null && (RegionalSpelling.isVariant(word, best.spelling) || ContextCorrection.isInflectionOf(word, best.spelling))) {
             return finding(SpellKind.UNFLAGGED)
         }
-        // Would the keyboard itself have corrected this word? Decided with its own reach, not the offer's.
-        val confident = ContextCorrection.decide(word, previous, model, dictionaries, r.userWords, OFFERING, r.lengthChangeAllowance) is ContextCorrection.Result.Commit
+        // Would the keyboard itself have corrected this word? Decided with its own reach, not the
+        // offer's; its pick heads the list, since "recommended" means the first suggestion.
+        val decision = ContextCorrection.decide(word, previous, model, dictionaries, r.userWords, OFFERING, r.lengthChangeAllowance)
+        val confident = decision is ContextCorrection.Result.Commit
         // A capitalised word the engine would not correct is most likely a name.
         if (capitalised && !confident) return finding(SpellKind.UNFLAGGED)
-        val suggestions = distinctSuggestions(word, ranking.candidates.map { CasingRules.forTypedWord(word, it.spelling) }, limit)
+        val offered = ranking.candidates.map { CasingRules.forTypedWord(word, it.spelling) }
+        val ordered = if (decision is ContextCorrection.Result.Commit) listOf(decision.replacement) + offered else offered
+        val suggestions = distinctSuggestions(word, ordered, limit)
         return finding(SpellKind.TYPO, suggestions, confident && suggestions.isNotEmpty())
     }
 

@@ -600,7 +600,7 @@ The candidate is committed only when **all** of these hold:
 | Edit reach | A candidate two edits away is considered only for a word of 7 or more letters, and only when the two edits are thumb slips (the Titan key-geometry cost of section 16, at most 1.0: neighbouring keys, two letters swapped, a doubled or dropped letter, an extra key beside one pressed); any other word reaches one edit, whatever `max_auto_replace_distance` says |
 | Safe shape | See below |
 | Minimum length | Lookup word ≥ 3 characters (≥ 2 for an orthographic variant) |
-| Length ratio | Candidate length ≤ floor(word length × 1.25), or the candidate is the word with one letter doubled |
+| Length ratio | Candidate length ≤ floor(word length × 1.25), or the candidate is the word with one or two letters doubled (step 7) |
 
 **Safe shape**, evaluated in order, first decision wins:
 
@@ -613,8 +613,9 @@ The candidate is committed only when **all** of these hold:
    variant (`hallo` never becomes `Halle`).
 6. Same length: accept if orthographic, or a case variant, or the first letter is unchanged
    (`ding` never becomes `fing`; `fihg` may become `fing`).
-7. One or two longer and every extra letter doubles a neighbour (`wil -> will`,
-   `acomodate -> accommodate`; two since 2026-10-23, when the allowance fell to 1): accept.
+7. One or two longer and every extra letter doubles a letter the word has (`wil -> will`,
+   `acomodate -> accommodate`, case ignored; never a whole new pair, `mi -> miss`; two since
+   2026-10-23, when the allowance fell to 1): accept.
 8. Per-language length allowance: English allows a length change of up to 1 (2 until
    2026-10-23); every other language allows 0. Accept when the change is within the allowance, the candidate is not a pure
    prefix or suffix extension or truncation of the word (`work` never becomes `works`, `behavio`
@@ -650,7 +651,7 @@ for", the maintainer). How far a correction may reach now scales with the word, 
 | Two edits must be thumb slips | Both edits together may cost at most 1.0 on section 16's key-geometry scale: neighbouring keys, swapped letters, doubled or dropped letters, an extra key beside one pressed. A far key, a changed first letter, a vowel for a vowel or a stray extra letter paired with anything is a different word, not a slip | `restaraunt` -> `restaurant` (1.4), `maintainance` -> `maintenance` (1.7) are spelling differences, not Titan slips; `keyboatf` -> `keyboard` (0.7) is two slips. The harness could not tell 0.9 from 1.0 once the sentence's agreement was required; 1.0 admits a dropped letter beside a stray neighbouring key (0.95). The geometry is the Titan's QWERTY rows: a word with a letter off them (Cyrillic, Greek) is not judged by this rule, and on QWERTZ or AZERTY the moved letters are priced where QWERTY has them (the plan's known limit) |
 | Two edits need a clear margin | Context path: the candidate's share of the whole must reach 0.9 (0.7 for one edit). Path without a table: confidence ≥ 0.10 (0.02 for one edit), the one threshold above 0.02 that section 12 ever measured | Backspace is the only way back; a fix two edits away with a thin margin is a guess |
 | Two edits need the sentence's agreement | Context path: the word-pair table must have seen the candidate after the word before (or at the sentence start) at least once. In an empty field that is the sentence start, so a classic misspelling typed alone (`restaraunt`, `dissapear`) is left | Two edits that only a plausible word supports are how `accompli` became `accomplish` and `valour` `value` (0.8 by cost: a thumb pair on paper) |
-| A short word needs a clearer sentence | Context path: a word of 4 letters or fewer is replaced only at a share of 0.85 (0.7 for longer words) | Measured on the harness: at a share of 0.70 to 0.85 a short word's fix was wrong one time in three (37 wrong, 2 correct words changed, 92 right); above 0.95, one in 140 |
+| A short word needs a clearer sentence | Context path: a word of 4 letters or fewer is replaced by a candidate one edit away only at a share of 0.85 (0.7 for longer words; a repair of marks alone, `ive` -> `I've`, is distance 0 and keeps 0.7) | Measured on the harness: at a share of 0.70 to 0.85 a short word's fix was wrong one time in three (37 wrong, 2 correct words changed, 92 right); above 0.95, one in 140 |
 | One letter of length change | English's allowance is 1, not 2; one or two missing halves of doubles still pass on their own (step 7, `acomodate` -> `accommodate`) and the 1.25 length ratio stays (it only bites a 3-letter word, which may not grow except by doubling) | A one-slip typo never needs two letters of length; on clean text the two-letter changes were wrong (`accompli` -> `accomplish`, `sensitivy` -> `sensitive` took a one-letter path to the wrong word) |
 
 Measured on section 12.1's harness (all 6,000 held-out sentences; before -> after): Titan typos
@@ -672,8 +673,10 @@ a private file on the phone, `correction-log.tsv` in the app's files directory: 
 as typed, the word committed, the source (`CONTEXT`, `PRIMARY_CASE`, `WORD_MIXUP`, or the
 dictionary source on the path without a table), the decision's own numbers (`share=0.93
 cost=0.45` on the context path, `confidence=0.31` on the other) and whether Backspace undid it
-(section 7.5: the undo marks the newest entries whose typed and committed words are in the pair
-taken back; a mix-up fix is logged as two entries, one per word, and an undo of it marks both).
+(section 7.5: the undo marks, among the newest four entries no older than a minute, the newest
+one per typed -> committed pair whose words are in the pair taken back; a mix-up fix is logged
+as two entries, one per word, and an undo of it marks both; a text replacement undone, never
+logged, marks nothing).
 Text replacements are the user's own rules and are not logged. The file is bounded (500 entries;
 trimmed to the newest 400 when full), written off the main thread one entry at a time through a
 temporary file, never sent anywhere, and nothing is written while learning is off (private mode,

@@ -231,7 +231,13 @@ class AutocorrectDecisionTest {
         assertEquals(true, safe("wil", "will", distance = 1, allowance = LengthChangeAllowance.ENGLISH))
         // Two missing halves of doubles are two letters of length, and still the one slip allowed past the allowance.
         assertEquals(true, safe("acomodate", "accommodate", distance = 2, allowance = LengthChangeAllowance.ENGLISH))
+        // As typed at the start of a sentence, against the dictionary's lowercase spelling.
+        assertEquals(true, safe("Acomodate", "accommodate", distance = 2, allowance = LengthChangeAllowance.ENGLISH))
+        assertEquals(true, safe("Komen", "kommen", distance = 1, allowance = 0))
         assertEquals(true, SafeShape.extraLettersDoubleNeighbours("ocurence", "occurrence"))
+        // A dropped pair is not a doubled letter: the extras must double a letter the word has.
+        assertFalse(SafeShape.extraLettersDoubleNeighbours("mi", "miss"))
+        assertFalse(SafeShape.extraLettersDoubleNeighbours("ab", "accb"))
         assertFalse(SafeShape.extraLettersDoubleNeighbours("accompli", "accomplish"))
         assertFalse(SafeShape.extraLettersDoubleNeighbours("sensitivy", "sensitivity"))
         assertFalse(SafeShape.extraLettersDoubleNeighbours("will", "will"))
