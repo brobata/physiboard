@@ -687,6 +687,84 @@ class LoggedRecognizerScenariosTest {
         assertEquals("Thanks. , Wow!!? ", h.field.text, "the user's full stop is kept; only the mark lands")
     }
 
+    /**
+     * The Titan's trace of 2026-10-26: "That is great." dictated and stopped with the trigger,
+     * then a second press and "three exclamation points". The second session read the field
+     * afresh, took the full stop for the user's own, and wrote "That is great.!!! ".
+     */
+    private fun DictationHarness.firstSessionThatIsGreat(): DictationOutcome {
+        start()
+        send(DictationEvent.PartialResult("that is great"), now = 1_000L)
+        send(DictationEvent.Trigger("app", null), now = 5_000L)
+        send(DictationEvent.SegmentResult("That is great."), now = 5_100L)
+        val ended = send(DictationEvent.SegmentedSessionEnded, now = 5_101L)
+        assertNull(session, "the engine's own ending closes the stopping session, as the trace shows")
+        assertEquals("That is great. ", field.text)
+        return ended
+    }
+
+    private fun DictationHarness.secondSession(previous: UtteranceContext?, now: Long = 7_000L) {
+        send(DictationEvent.Trigger("app", field.text, previousSession = previous), now)
+        send(DictationEvent.ReadyForSpeech, now + 10)
+        send(DictationEvent.FirstAudio, now + 40)
+    }
+
+    @Test
+    fun `D30 - a mark that opens the next session replaces the full stop the last one wrote`() {
+        val h = harness()
+        val ended = h.firstSessionThatIsGreat()
+        assertEquals(UtteranceContext("That is great. ", writtenBySession = "That is great. "), ended.leftBehind)
+        h.secondSession(ended.leftBehind)
+        h.send(DictationEvent.PartialResult("three exclamation points"), now = 9_000L)
+        h.send(DictationEvent.SegmentResult("Three exclamation points."), now = 9_500L)
+        assertEquals("That is great!!! ", h.field.text)
+    }
+
+    @Test
+    fun `D30 - with nothing left behind, or a field that changed since, the full stop is the user's and is kept`() {
+        val lost = harness()
+        lost.firstSessionThatIsGreat()
+        lost.secondSession(previous = null)
+        lost.send(DictationEvent.SegmentResult("Three exclamation points."), now = 9_500L)
+        assertEquals("That is great.!!! ", lost.field.text)
+
+        val typed = harness()
+        val ended = typed.firstSessionThatIsGreat()
+        typed.field.preset("That is great. Ok. ") // the user typed after the session
+        typed.secondSession(ended.leftBehind)
+        typed.send(DictationEvent.SegmentResult("Three exclamation points."), now = 9_500L)
+        assertEquals("That is great. Ok.!!! ", typed.field.text, "the user's own full stop is never replaced")
+    }
+
+    @Test
+    fun `D30 - a session that ends without writing hands on what it was given`() {
+        val h = harness()
+        val first = h.firstSessionThatIsGreat()
+        h.secondSession(first.leftBehind)
+        h.send(DictationEvent.Trigger("app", null), now = 8_000L)
+        val silent = h.send(DictationEvent.SegmentedSessionEnded, now = 8_100L)
+        assertNull(h.session)
+        assertEquals(first.leftBehind, silent.leftBehind, "a session that heard nothing leaves the field as the last one did")
+        h.secondSession(silent.leftBehind, now = 10_000L)
+        h.send(DictationEvent.SegmentResult("Three exclamation points."), now = 12_000L)
+        assertEquals("That is great!!! ", h.field.text)
+
+        val fresh = harness().start()
+        fresh.send(DictationEvent.Trigger("app", null), now = 2_000L)
+        assertEquals(UtteranceContext(""), fresh.send(DictationEvent.SegmentedSessionEnded, now = 2_100L).leftBehind, "nothing of its own to hand on")
+    }
+
+    @Test
+    fun `D30 - a real error that commits the composing words hands them on`() {
+        val h = harness().start()
+        h.send(DictationEvent.PartialResult("that is great"), now = 1_000L)
+        val ended = h.send(DictationEvent.Error(DictationErrorCode.SERVER), now = 2_000L)
+        assertNull(h.session)
+        assertEquals("That is great", h.field.text.trimEnd())
+        assertEquals(h.field.text, ended.leftBehind?.textBeforeUtterance)
+        assertEquals(h.field.text, ended.leftBehind?.writtenBySession)
+    }
+
     @Test
     fun `D29 - laughs and sighs land the way people text them`() {
         val h = harness().start()

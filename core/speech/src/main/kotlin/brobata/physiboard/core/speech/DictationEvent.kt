@@ -18,6 +18,8 @@ sealed class DictationEvent {
         val textBeforeSession: String?,
         /** spec SS6.10: the audio route at the start; a car or Bluetooth route gets a longer wait for the first words. */
         val audioRoute: SessionAudioRoute = SessionAudioRoute.LOCAL,
+        /** spec SS7.7: what the previous session in this field left behind ([DictationOutcome.leftBehind]), or `null`. */
+        val previousSession: UtteranceContext? = null,
     ) : DictationEvent()
 
     /** spec SS6.1: the engine is ready for speech. */

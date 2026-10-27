@@ -109,7 +109,7 @@ object DictationEngine {
             return if (state.phase == DictationPhase.LISTENING) requestStop(state, now) else endNow(state, textSettings)
         }
         val request = RecognizerRequestPlanner.plan(settings, segmentedRefusalLatch)
-        val fresh = DictationSession.fresh(event.ownerPackage, now, request, settings, event.textBeforeSession, event.audioRoute)
+        val fresh = DictationSession.fresh(event.ownerPackage, now, request, settings, event.textBeforeSession, event.audioRoute, event.previousSession)
         val effects = buildList {
             // spec SS6.8: the keyboard must count as shown before the microphone opens, or the
             // recording is silenced (D22); `:ime` waits for that grant before issuing the request.
@@ -148,8 +148,15 @@ object DictationEngine {
      */
     private fun endNow(session: DictationSession, textSettings: DictationTextSettings): DictationOutcome {
         val finished = finishPendingIfAny(session.utterance, textSettings)
-        return DictationOutcome(null, endEffects(session, cancelRecognizer = true), finished.ops)
+        return ended(session, finished, endEffects(session, cancelRecognizer = true))
     }
+
+    /**
+     * A session ending with this transition's [finished] words as its last: the outcome carries
+     * the context they leave behind (spec SS7.7), so the next session can join over them.
+     */
+    private fun ended(session: DictationSession, finished: UtteranceFinisher.Finished, effects: List<DictationEffect>): DictationOutcome =
+        DictationOutcome(null, effects, finished.ops, leftBehind = extendContext(session.utterance.context, finished))
 
     /** spec SS6.1, SS8.1: "ready" opens the session to speech; the cue waits for the first audio report, or this fallback. */
     private fun handleReady(session: DictationSession, now: Long): DictationOutcome {
@@ -276,7 +283,7 @@ object DictationEngine {
         val finished = finishFromResult(text, session.utterance, textSettings)
         val heard = session.heardSpeech || finished.plainText != null
         if (session.phase == DictationPhase.STOPPING) {
-            return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+            return ended(session, finished, endEffects(session, cancelRecognizer = false))
         }
         val next = session.copy(
             heardSpeech = heard,
@@ -316,7 +323,7 @@ object DictationEngine {
         val fast = finished.plainText == null && now - session.requestStartMs < DictationTiming.FAST_FAILURE_WINDOW_MS
         val failures = if (fast) session.consecutiveFailures + 1 else 0
         if (failures >= DictationTiming.MAX_CONSECUTIVE_FAILURES) {
-            return DictationOutcome(null, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR), finished.ops)
+            return ended(session, finished, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR))
         }
         val next = session.copy(
             requestStartMs = now,
@@ -369,7 +376,7 @@ object DictationEngine {
     private fun handleSegmentedSessionEnded(session: DictationSession, now: Long, textSettings: DictationTextSettings): DictationOutcome {
         val finished = finishPendingIfAny(session.utterance, textSettings)
         if (session.phase == DictationPhase.STOPPING) {
-            return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+            return ended(session, finished, endEffects(session, cancelRecognizer = false))
         }
         return relistenAfterEngineEnding(session, finished, now, textSettings)
     }
@@ -463,7 +470,7 @@ object DictationEngine {
         // the microphone to close, and a "no speech" answer to that request is the normal case.
         if (session.phase == DictationPhase.STOPPING) {
             val finished = finishPendingIfAny(session.utterance, textSettings)
-            return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+            return ended(session, finished, endEffects(session, cancelRecognizer = false))
         }
 
         // Rule 2: segmented refusal (SS6.3): the same session goes on with one request per utterance.
@@ -495,7 +502,7 @@ object DictationEngine {
             val failures = session.consecutiveFailures + 1
             if (failures >= DictationTiming.MAX_CONSECUTIVE_FAILURES) {
                 val finished = finishPendingIfAny(session.utterance, textSettings)
-                return DictationOutcome(null, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR), finished.ops)
+                return ended(session, finished, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR))
             }
             return DictationOutcome(session.copy(consecutiveFailures = failures, busyRetryDeadlineMs = now + DictationTiming.BUSY_RETRY_DELAY_MS))
         }
@@ -508,7 +515,7 @@ object DictationEngine {
             val finished = finishPendingIfAny(session.utterance, textSettings)
             val failures = session.consecutiveFailures + 1
             if (failures >= DictationTiming.MAX_CONSECUTIVE_FAILURES) {
-                return DictationOutcome(null, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR), finished.ops)
+                return ended(session, finished, endEffects(session, cancelRecognizer = false, message = DictationMessage.SPEECH_RECOGNITION_ERROR))
             }
             val next = session.copy(
                 consecutiveFailures = failures,
@@ -533,17 +540,13 @@ object DictationEngine {
                 )
             }
             val message = if (settings.privateMode) DictationMessage.PRIVATE_MODE_NEEDS_OFFLINE_LANGUAGE else DictationMessage.OFFLINE_LANGUAGE_MISSING
-            return DictationOutcome(null, endEffects(session, cancelRecognizer = false, message = message), finished.ops)
+            return ended(session, finished, endEffects(session, cancelRecognizer = false, message = message))
         }
 
         // Rule 6: anything else is a real error: the session ends with a message, and whatever was
         // already heard is committed rather than thrown away.
         val finished = finishPendingIfAny(session.utterance, textSettings)
-        return DictationOutcome(
-            null,
-            endEffects(session, cancelRecognizer = false, message = DictationErrorClassifier.toastFor(code)),
-            finished.ops,
-        )
+        return ended(session, finished, endEffects(session, cancelRecognizer = false, message = DictationErrorClassifier.toastFor(code)))
     }
 
     /** spec SS3's ending table: the rows that end the session with no words worth keeping clear the composing partial rather than committing it. */
