@@ -82,6 +82,27 @@ RAW_FREQUENCY_MAX = 222
 SHAPE_PATTERN = re.compile(r"^[a-z]+(?:'[a-z]+)?$")
 SINGLE_LETTER_ALLOWED = {"a", "i"}
 
+# Every other language keeps step 2's intent (lowercase letters, at most one internal apostrophe)
+# but in its own alphabet: `[^\W\d_]` is any Unicode letter, so ą, ß, ж and λ survive.
+UNICODE_SHAPE_PATTERN = re.compile(r"^[^\W\d_]+(?:'[^\W\d_]+)?$")
+
+# Step 2's single-letter rule outside English, where the real one-letter words differ (Polish
+# `w`, `z`, `o`; Russian `в`, `с`, `я`): a lone letter is kept only if it is this common.
+SINGLE_LETTER_MIN_ZIPF = 5.0
+
+# wordfreq's code for a language whose PhysiBoard code differs (Norwegian is `no` on the
+# keyboard, `nb` Bokmål in wordfreq).
+WORDFREQ_CODE = {"no": "nb"}
+
+
+def has_word_shape(word: str, lang: str, zipf: float) -> bool:
+    """Step 2. English is unchanged from the shipped `en.pbd` recipe."""
+    if lang == "en":
+        return bool(SHAPE_PATTERN.match(word)) and (len(word) > 1 or word in SINGLE_LETTER_ALLOWED)
+    if word != word.lower() or not UNICODE_SHAPE_PATTERN.match(word):
+        return False
+    return len(word) > 1 or zipf >= SINGLE_LETTER_MIN_ZIPF
+
 # Every language `pyspellchecker` ships a bundled dictionary for, as of this writing. A language
 # not in this set has no lexicon this script can intersect with, so it is refused unless the
 # caller explicitly overrides that with --allow-missing-lexicon.
@@ -237,16 +258,15 @@ def build_word_list(lang: str, size: int, multiplier: int, allow_missing_lexicon
             file=sys.stderr,
         )
 
-    candidate_pool = top_n_list(lang, multiplier * size, wordlist="best")
+    source_lang = WORDFREQ_CODE.get(lang, lang)
+    candidate_pool = top_n_list(source_lang, multiplier * size, wordlist="best")
     blocked = load_blocklist(lang)
 
     survivors: list[str] = []
     for word in candidate_pool:
         if len(survivors) >= size:
             break
-        if not SHAPE_PATTERN.match(word):
-            continue
-        if len(word) == 1 and word not in SINGLE_LETTER_ALLOWED:
+        if not has_word_shape(word, lang, zipf_frequency(word, source_lang, wordlist="best") if len(word) == 1 else 0.0):
             continue
         if lexicon_words is not None and word not in lexicon_words:
             continue
@@ -261,7 +281,7 @@ def build_word_list(lang: str, size: int, multiplier: int, allow_missing_lexicon
             file=sys.stderr,
         )
 
-    zipf_scores = {w: zipf_frequency(w, lang, wordlist="best") for w in survivors}
+    zipf_scores = {w: zipf_frequency(w, source_lang, wordlist="best") for w in survivors}
     lo = min(zipf_scores.values())
     hi = max(zipf_scores.values())
     span = hi - lo
