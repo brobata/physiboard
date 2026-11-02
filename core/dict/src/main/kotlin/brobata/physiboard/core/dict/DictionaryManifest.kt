@@ -9,7 +9,7 @@ import kotlinx.serialization.json.longOrNull
 
 /**
  * The hosted dictionary manifest. spec: dictionaries-languages.md SS5.1 ("Manifest contract").
- * Fetching the manifest URL (`https://brobata.github.io/physiboard-dict/dicts-manifest.json`)
+ * Fetching the manifest URL (`https://brobata.github.io/physiboard-dict/dicts-manifest-pbd.json`)
  * and the file download itself are network I/O and belong to `:app` (rebuild-from-scratch.md,
  * "Downloading is network glue"); parsing the body and deciding install state is pure and lives
  * here so it is a JVM test, not a device test.

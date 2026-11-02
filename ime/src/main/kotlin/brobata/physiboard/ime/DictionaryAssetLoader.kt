@@ -138,6 +138,13 @@ internal class DictionaryAssetLoader(
         return model
     }
 
+    /** Whether any tier holds a dictionary for [language]: two file checks and an asset listing, cheap enough for the main thread at keyboard start. */
+    fun hasDictionary(language: LanguageCode): Boolean = DictionaryTierResolver.hasDictionary(
+        imported = File(importedDir, "$language.pbd").let { it.isFile && it.length() > 0L },
+        downloaded = File(downloadedDir, "$language.pbd").let { it.isFile && it.length() > 0L },
+        bundled = runCatching { context.assets.list("dictionaries")?.contains("$language.pbd") == true }.getOrDefault(false),
+    )
+
     /** spec SS3's resolution, decided by [DictionaryTierResolver] and then read from wherever it points. */
     private fun readResolvedBytes(language: LanguageCode): ByteArray? {
         val importedFile = File(importedDir, "$language.pbd")

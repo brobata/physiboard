@@ -101,6 +101,43 @@ class InputStyleCatalogTest {
     }
 
     @Test
+    fun `a subtype-picked style with no row joins the list, so current keeps it and the cycle returns to it`() {
+        val styles = listOf(InputStyle("en_US", "qwerty", true), InputStyle("de_DE", "qwertz", true))
+        val polish = InputStyle("pl_PL", "qwerty", true)
+        val withPolish = InputStyleCatalog.withSubtypeStyle(styles, polish)
+        assertEquals(styles + polish, withPolish)
+        assertEquals("pl_PL:qwerty", InputStyleCatalog.current(withPolish, "pl_PL:qwerty")?.key)
+        assertEquals("en_US:qwerty", InputStyleCatalog.next(withPolish, "pl_PL:qwerty")?.key)
+        assertEquals("pl_PL:qwerty", InputStyleCatalog.next(withPolish, "de_DE:qwertz")?.key)
+        // Without it, the old fallback: straight back to the first row.
+        assertEquals("en_US:qwerty", InputStyleCatalog.current(styles, "pl_PL:qwerty")?.key)
+    }
+
+    @Test
+    fun `a subtype style that already has a row is not added twice`() {
+        val styles = listOf(InputStyle("en_US", "qwerty", true), InputStyle("pl_PL", "qwerty", false))
+        assertEquals(styles, InputStyleCatalog.withSubtypeStyle(styles, InputStyle("pl_PL", "qwerty", true)))
+        assertEquals(styles, InputStyleCatalog.withSubtypeStyle(styles, null))
+    }
+
+    @Test
+    fun `startup style takes the current subtype when its language has no row`() {
+        val styles = listOf(InputStyle("en_US", "qwerty", true), InputStyle("de_DE", "qwertz", true))
+        val polish = InputStyle("pl_PL", "qwerty", true)
+        assertEquals("pl_PL:qwerty", InputStyleCatalog.startupStyle(styles, "en_US", autoByLocale = false, subtypeStyle = polish)?.key)
+        // The session passes the list with the subtype style already appended; that row is not a rival.
+        assertEquals("pl_PL:qwerty", InputStyleCatalog.startupStyle(styles + polish, "en_US", autoByLocale = true, subtypeStyle = polish)?.key)
+    }
+
+    @Test
+    fun `startup style ignores the current subtype when its language already has a row`() {
+        val styles = listOf(InputStyle("en_US", "qwerty", true), InputStyle("de_DE", "qwertz", true))
+        val germanQwerty = InputStyle("de_DE", "qwerty", true)
+        assertEquals("en_US:qwerty", InputStyleCatalog.startupStyle(styles, "de_DE", autoByLocale = false, subtypeStyle = germanQwerty)?.key)
+        assertEquals("de_DE:qwertz", InputStyleCatalog.startupStyle(styles, "de_DE", autoByLocale = true, subtypeStyle = germanQwerty)?.key)
+    }
+
+    @Test
     fun `another style is available only with a second row (the 2026-09-24 amendment)`() {
         val one = listOf(InputStyle("en", "qwerty", true))
         val two = one + InputStyle("es", "qwerty", false)

@@ -209,6 +209,9 @@ internal class KeyboardSession(
     // app-shell.md SS10.2, SS10.7: the Diagnostics screen's capture store, owned by `:app`; a null
     // sink (a JVM test, or a host without the wiring) leaves this session silent, same as [settingsSource].
     rawDebugCaptureSink: DebugCaptureSink? = null,
+    // dictionaries-languages.md SS9.4: the subtype Android has current when the keyboard starts.
+    // A parameter only so a JVM test can name one; Robolectric's InputMethodManager has none.
+    readCurrentSubtype: (InputMethodService) -> InputMethodSubtype? = { it.getSystemService(InputMethodManager::class.java)?.currentInputMethodSubtype },
 ) {
 
     /** Collects [settingsSource] on the main looper for the session's lifetime; cancelled in [onServiceDestroyed]. */
@@ -233,6 +236,26 @@ internal class KeyboardSession(
 
     /** spec dictionaries-languages.md SS10: `keyboard_layout_auto_by_locale` picks the starting style once, at the first settings emission; every later emission keeps [currentStyle] if it still exists in the (possibly changed) available list instead of re-picking it from the system locale. */
     private var startupStyleChosen = false
+
+    /**
+     * dictionaries-languages.md SS9.4: a style Android's current subtype resolved to that has no
+     * row of its own in [InputStyleCatalog.availableStyles] (a base subtype such as `pl_PL` the
+     * user never added a style for). It joins the list through [InputStyleCatalog.withSubtypeStyle]
+     * so a settings emission keeps it and the in-app cycle can come back to it. Never a custom
+     * style: those have rows, so deleting one still drops it.
+     */
+    private var subtypeStyle: InputStyle? = null
+
+    /**
+     * A no-row style Android's subtype named at startup whose dictionary was not on the phone
+     * yet. It is held back rather than dropped: the moment that dictionary lands (the user
+     * downloads it), [sharedListener] switches to it, since Android already says it is current
+     * and will not call back to say so again.
+     */
+    private var pendingSubtypeStyle: InputStyle? = null
+
+    /** The subtype Android reported as current before the first settings emission, resolved by [applySettings]'s startup pick against the real settings rather than the defaults. */
+    private var startupSubtype: InputMethodSubtype? = null
 
     /** The last [Settings] [applySettings] received, kept so [switchToNextInputStyle] can reapply everything a switch changes without waiting for the store to re-emit. */
     private var lastSettings: Settings = Settings()
@@ -654,6 +677,12 @@ internal class KeyboardSession(
      * Android's user dictionary), since a refresh also closes an open quick-actions overlay.
      */
     private val sharedListener: () -> Unit = {
+        // SS9.4: the dictionary a held-back startup subtype was waiting for has just arrived.
+        pendingSubtypeStyle?.takeIf(::subtypeDictionaryPresent)?.let { arrived ->
+            pendingSubtypeStyle = null
+            subtypeStyle = arrived
+            if (arrived.key != currentStyle.key) switchToInputStyle(arrived, announceSwitch = true)
+        }
         loadDictionary(primaryLanguage)
         extraLanguages.forEach(::loadDictionary)
         val before = pipeline.resources
@@ -795,6 +824,11 @@ internal class KeyboardSession(
         // the shipped defaults hold until the store's first emission (an empty array still
         // replaces Android's previous additional set, per SS8.3's own note).
         registerAdditionalSubtypes(Settings().languages.inputStyles)
+        // dictionaries-languages.md SS9.4: Android only calls back on a *change*, so the subtype
+        // already current when the keyboard starts (Polish, say) is read here, once, and
+        // resolved at the first settings emission.
+        runCatching { startupSubtype = readCurrentSubtype(service) }
+            .onFailure { error -> Log.e(TAG, "startup subtype read crashed", error) }
         ContextCompat.registerReceiver(
             service, runCommandNowReceiver, IntentFilter(AssignmentSheet.ACTION_RUN_COMMAND_NOW), ContextCompat.RECEIVER_NOT_EXPORTED,
         )
@@ -936,10 +970,25 @@ internal class KeyboardSession(
         // are both recomputed from the store on every emission; SS10's
         // `keyboard_layout_auto_by_locale` only ever picks the starting style, at the very first
         // emission ([startupStyleChosen]); a later one keeps [currentStyle] if it still exists.
-        val styles = InputStyleCatalog.availableStyles(shippedLayouts, settings.languages)
+        val listed = InputStyleCatalog.availableStyles(shippedLayouts, settings.languages)
+        if (!startupStyleChosen) {
+            // SS9.4 at startup: a language that only Android's subtype names is taken only when
+            // its dictionary is on the phone. Android enables subtypes matching the system
+            // language on its own, so without this a Spanish-system phone typing English would
+            // start in a Spanish with no dictionary, and lose its suggestions.
+            // A style the user hid stays hidden: the subtype may be one Android enabled on its own.
+            val candidate = startupSubtype?.let { resolveSubtype(it, listed) }
+                ?.takeIf { candidate -> listed.none { it.key == candidate.key } }
+                ?.takeIf { candidate -> !InputStyleCatalog.isHidden(candidate, settings.languages) }
+            val ready = candidate != null && subtypeDictionaryPresent(candidate)
+            subtypeStyle = candidate.takeIf { ready }
+            pendingSubtypeStyle = candidate.takeUnless { ready }
+            startupSubtype = null
+        }
+        val styles = InputStyleCatalog.withSubtypeStyle(listed, subtypeStyle)
         currentStyle = if (!startupStyleChosen) {
             startupStyleChosen = true
-            InputStyleCatalog.startupStyle(styles, java.util.Locale.getDefault().toString(), settings.languages.layoutAutoByLocale) ?: currentStyle
+            InputStyleCatalog.startupStyle(styles, java.util.Locale.getDefault().toString(), settings.languages.layoutAutoByLocale, subtypeStyle) ?: currentStyle
         } else {
             InputStyleCatalog.current(styles, currentStyle.key) ?: currentStyle
         }
@@ -1065,7 +1114,7 @@ internal class KeyboardSession(
      * changes.
      */
     private fun switchToNextInputStyle() {
-        val styles = InputStyleCatalog.availableStyles(shippedLayouts, lastSettings.languages)
+        val styles = InputStyleCatalog.withSubtypeStyle(InputStyleCatalog.availableStyles(shippedLayouts, lastSettings.languages), subtypeStyle)
         val next = InputStyleCatalog.next(styles, currentStyle.key) ?: return
         switchToInputStyle(next, announceSwitch = true)
     }
@@ -1092,28 +1141,49 @@ internal class KeyboardSession(
      */
     fun onCurrentInputMethodSubtypeChanged(subtype: InputMethodSubtype?) {
         runCatching {
-            val locale = subtype?.locale?.takeIf { it.isNotBlank() } ?: return@runCatching
-            val styles = InputStyleCatalog.availableStyles(shippedLayouts, lastSettings.languages)
-            // spec SS8.3 step 3: an additional subtype's extra value carries `KeyboardLayoutSet=<id>`.
-            val layoutFromExtra = subtype.extraValue.orEmpty().split(',')
-                .firstOrNull { it.startsWith("KeyboardLayoutSet=") }
-                ?.substringAfter('=')
-            val target = if (layoutFromExtra != null) {
-                styles.firstOrNull { normalizedLocale(it.locale) == normalizedLocale(locale) && it.layoutId == layoutFromExtra }
-            } else {
-                // One of the twelve base subtypes declared in method.xml: no PhysiBoard-authored
-                // extra value to read a layout id from, so this resolves it exactly the way the
-                // Input Languages screen's "System" row does (SS10), honoring the on-device
-                // override that row writes to `locale_layout_mapping.json` -- previously read by
-                // nothing under `:ime` at all, so a saved override never reached the keyboard.
-                val resolvedLayoutId = LocaleLayoutMapping.resolve(locale, override = localeLayoutOverrideLoader.load())
-                InputStyle(locale = locale, layoutId = resolvedLayoutId, shipped = true)
-                    .takeIf { shippedLayouts.any { shipped -> shipped.layoutId == resolvedLayoutId } }
+            // Before the first settings emission the custom styles are not known yet: the
+            // startup pick in [applySettings] resolves it instead. (No store at all, a JVM test
+            // host, has no first emission to wait for.)
+            if (!startupStyleChosen && settingsSource != null) {
+                startupSubtype = subtype
+                return@runCatching
             }
-            val resolved = target ?: styles.firstOrNull { normalizedLocale(it.locale) == normalizedLocale(locale) } ?: return@runCatching
+            val styles = InputStyleCatalog.availableStyles(shippedLayouts, lastSettings.languages)
+            val resolved = resolveSubtype(subtype ?: return@runCatching, styles) ?: return@runCatching
+            subtypeStyle = resolved.takeIf { styles.none { it.key == resolved.key } }
+            pendingSubtypeStyle = null
             if (resolved.key == currentStyle.key) return@runCatching
             switchToInputStyle(resolved, announceSwitch = false)
         }.onFailure { error -> Log.e(TAG, "subtype-changed resync crashed", error) }
+    }
+
+    /** The `locale:layout` key of the style the keyboard types with now. */
+    @VisibleForTesting
+    internal val activeStyleKey: String get() = currentStyle.key
+
+    private fun subtypeDictionaryPresent(style: InputStyle): Boolean =
+        LanguageCode.fromLocale(style.locale)?.let(shared::hasDictionary) == true
+
+    /** The [InputStyle] Android's [subtype] stands for, or null when it names none this keyboard can type with. */
+    private fun resolveSubtype(subtype: InputMethodSubtype, styles: List<InputStyle>): InputStyle? {
+        val locale = subtype.locale?.takeIf { it.isNotBlank() } ?: return null
+        // spec SS8.3 step 3: an additional subtype's extra value carries `KeyboardLayoutSet=<id>`.
+        val layoutFromExtra = subtype.extraValue.orEmpty().split(',')
+            .firstOrNull { it.startsWith("KeyboardLayoutSet=") }
+            ?.substringAfter('=')
+        val target = if (layoutFromExtra != null) {
+            styles.firstOrNull { normalizedLocale(it.locale) == normalizedLocale(locale) && it.layoutId == layoutFromExtra }
+        } else {
+            // One of the twelve base subtypes declared in method.xml: no PhysiBoard-authored
+            // extra value to read a layout id from, so this resolves it exactly the way the
+            // Input Languages screen's "System" row does (SS10), honoring the on-device
+            // override that row writes to `locale_layout_mapping.json` -- previously read by
+            // nothing under `:ime` at all, so a saved override never reached the keyboard.
+            val resolvedLayoutId = LocaleLayoutMapping.resolve(locale, override = localeLayoutOverrideLoader.load())
+            InputStyle(locale = locale, layoutId = resolvedLayoutId, shipped = true)
+                .takeIf { shippedLayouts.any { shipped -> shipped.layoutId == resolvedLayoutId } }
+        }
+        return target ?: styles.firstOrNull { normalizedLocale(it.locale) == normalizedLocale(locale) }
     }
 
     private fun normalizedLocale(locale: String): String = locale.replace('_', '-').lowercase()

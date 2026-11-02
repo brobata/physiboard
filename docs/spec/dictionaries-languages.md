@@ -318,9 +318,9 @@ the raw bytes and the decoded indexes at the same moment during the load.
 
 ### 5.1 Hosting and the manifest
 
-Manifest URL: `https://brobata.github.io/physiboard-dict/dicts-manifest.json`.
+Manifest URL: `https://brobata.github.io/physiboard-dict/dicts-manifest-pbd.json` (3.x, `.pbd` files; `dicts-manifest.json` beside it stays the 2.x list).
 File URL pattern: `https://github.com/brobata/physiboard-dict/releases/download/<releaseTag>/<lang>_base.dict`,
-currently with `releaseTag` `1`. The app never composes a URL: it downloads exactly the `url`
+currently with `releaseTag` `pbd-1` (the 2.x manifest: `1`). The app never composes a URL: it downloads exactly the `url`
 each manifest item carries.
 
 Manifest contract:
