@@ -83,6 +83,7 @@ data class DictationSession(
             settings: DictationSettings,
             textBeforeSession: String?,
             audioRoute: SessionAudioRoute = SessionAudioRoute.LOCAL,
+            previousSession: UtteranceContext? = null,
         ): DictationSession = DictationSession(
             ownerPackage = ownerPackage,
             sessionStartMs = now,
@@ -95,7 +96,7 @@ data class DictationSession(
             lastSpeechMs = now,
             silenceLimitMs = DictationTiming.silenceLimitMs(settings.stopAfterSilenceMs),
             consecutiveFailures = 0,
-            utterance = UtteranceState(UtteranceContext(textBeforeSession), PendingUtterance.None),
+            utterance = UtteranceState(UtteranceContext.atSessionStart(textBeforeSession, previousSession), PendingUtterance.None),
             firstWordsGraceMs = if (audioRoute.isRemote) DictationTiming.REMOTE_ROUTE_FIRST_WORDS_GRACE_MS else 0L,
         )
     }

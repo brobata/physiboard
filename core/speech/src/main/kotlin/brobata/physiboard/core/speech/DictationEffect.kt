@@ -51,10 +51,16 @@ sealed class DictationEffect {
  * changes)". The caller stores it per engine and passes it back into the next
  * [DictationEngine.handle] call as `segmentedRefusalLatch`; `null` here means this transition has
  * no opinion and the caller's stored value is unchanged.
+ *
+ * [leftBehind] is set only by a transition that ends a session after writing to the field: the
+ * session's context with this transition's own finish appended, which the caller hands to the
+ * next [DictationEvent.Trigger] so a spoken mark opening that session can still join over this
+ * one's words (SS7.7). `null` means the ending leaves nothing of its own to join over.
  */
 data class DictationOutcome(
     val session: DictationSession?,
     val effects: List<DictationEffect> = emptyList(),
     val textOps: List<DictationTextOp> = emptyList(),
     val newSegmentedRefusalLatch: Boolean? = null,
+    val leftBehind: UtteranceContext? = null,
 )

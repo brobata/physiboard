@@ -31,4 +31,22 @@ data class UtteranceContext(
     val writtenBySession: String = "",
     /** [writtenBySession] ends on a mark the user spoke (SS7.7); the next spoken mark joins onto it rather than replacing it, as "Wow!!!" is built. */
     val sessionTailIsSpokenMark: Boolean = false,
-)
+) {
+    companion object {
+        /**
+         * spec SS7.7: a session's opening context. The words the previous session in this field
+         * wrote count as this session's own (so "That is great." then, in a new session, "three
+         * exclamation points" is "That is great!!! ") only while the field still ends exactly as
+         * that session left it; otherwise, or with nothing left behind, the field's text is the
+         * user's and only its spaces are ever joined over.
+         */
+        fun atSessionStart(textBeforeSession: String?, previous: UtteranceContext?): UtteranceContext {
+            val before = textBeforeSession ?: return UtteranceContext(null)
+            val left = previous?.textBeforeUtterance
+            if (left == null || previous.writtenBySession.isEmpty()) return UtteranceContext(before)
+            val shared = minOf(before.length, left.length)
+            if (shared < previous.writtenBySession.length || before.takeLast(shared) != left.takeLast(shared)) return UtteranceContext(before)
+            return UtteranceContext(before, previous.writtenBySession, previous.sessionTailIsSpokenMark)
+        }
+    }
+}

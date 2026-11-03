@@ -1231,7 +1231,7 @@ internal class KeyboardSession(
                 dictationFieldSeenNonEmpty = false
                 dictationController.onFieldClearedByApp()
             }
-            dictationController.onEditorFieldOpened(reportedPackage)
+            dictationController.onEditorFieldOpened(reportedPackage, restarting)
         } finally {
             fieldChangeInProgress = false
         }
@@ -3313,9 +3313,13 @@ internal class KeyboardSession(
         return if (atCaret) FieldVerdict.INTACT else FieldVerdict.CHANGED
     }
 
-    /** Reachable with `dictation_stop_on_typing` off (with it on, the key down already ended the session before its edit) and from the swipe deletes, which are not keys. */
+    /**
+     * Reachable with `dictation_stop_on_typing` off (with it on, the key down already ended the
+     * session before its edit) and from the swipe deletes, which are not keys. Between sessions
+     * the edit makes the field's end the user's, so the next session has nothing to join over (SS7.7).
+     */
     private fun noteFieldEditedDuringDictation() {
-        if (dictationController.isActive) dictationController.onUserEditedComposingText()
+        if (dictationController.isActive) dictationController.onUserEditedComposingText() else dictationController.onFieldEditedBetweenSessions()
     }
 
     /**

@@ -48,6 +48,7 @@ import brobata.physiboard.core.speech.PendingUtterance
 import brobata.physiboard.core.speech.RecognizerPartial
 import brobata.physiboard.core.speech.RecognizerRequest
 import brobata.physiboard.core.speech.SessionAudioRoute
+import brobata.physiboard.core.speech.UtteranceContext
 import brobata.physiboard.core.speech.RecognizerResolution
 import brobata.physiboard.core.speech.RecognizerTarget
 import java.util.Locale
@@ -179,7 +180,8 @@ internal class DictationController(
     fun trigger(ownerPackage: String?) {
         if (session != null || hasMicPermission()) {
             val route = if (session == null) audioWatch.currentRoute().also { sessionRoute = it } else SessionAudioRoute.LOCAL
-            dispatch(DictationEvent.Trigger(ownerPackage, currentTextBeforeCursor(), route))
+            val previous = leftBehind?.takeIf { session == null && it.first == ownerPackage }?.second
+            dispatch(DictationEvent.Trigger(ownerPackage, currentTextBeforeCursor(), route, previous))
             return
         }
         // spec SS2.6 step 1 / SS10: remember the pending start, open the permission activity, and
@@ -198,6 +200,22 @@ internal class DictationController(
      */
     fun onKeyDown() {
         if (session != null) dispatch(DictationEvent.KeyDown)
+    }
+
+    /**
+     * spec SS7.7: what the last session wrote, for the app it wrote into, so a spoken mark opening
+     * the next session in the same field joins over it. The engine accepts it only while the field
+     * still ends as that session left it. Another field opening ([onEditorFieldOpened]) drops it,
+     * since a short context ("Thanks. ") can match the end of some other text the user typed; so
+     * does an edit the keyboard made in between ([onFieldEditedBetweenSessions]), since the field's
+     * end is then the user's. It lives in memory only and is never logged, like the session's own
+     * frozen context.
+     */
+    private var leftBehind: Pair<String?, UtteranceContext>? = null
+
+    /** spec SS7.7: the keyboard edited the field while no session runs; the field's end is the user's now. */
+    fun onFieldEditedBetweenSessions() {
+        if (session == null) leftBehind = null
     }
 
     /**
@@ -231,8 +249,9 @@ internal class DictationController(
 
     private var directCommit = DirectCommitState()
 
-    fun onEditorFieldOpened(ownerPackage: String?) {
-        if (session != null) dispatch(DictationEvent.EditorFieldOpened(ownerPackage))
+    /** [restarting] is the system's flag: the same field again, which web fields report on every change. */
+    fun onEditorFieldOpened(ownerPackage: String?, restarting: Boolean) {
+        if (session != null) dispatch(DictationEvent.EditorFieldOpened(ownerPackage)) else if (!restarting) leftBehind = null
     }
 
     /**
@@ -258,6 +277,7 @@ internal class DictationController(
         runCatching { recognizer?.destroy() }
         recognizer = null
         session = null
+        leftBehind = null
         KeyboardActivity.dictationActive = false
         abandonAudioFocus()
         audioWatch.stop()
@@ -290,7 +310,10 @@ internal class DictationController(
             segmentedRefusalLatch = false
         }
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
+        val endedOwner = session?.ownerPackage
         session = outcome.session
+        if (wasActive && session == null) leftBehind = outcome.leftBehind?.let { endedOwner to it }
+        if (!wasActive && session != null) leftBehind = null
         KeyboardActivity.dictationActive = isActive
         if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
         if (wasActive && session == null && event == DictationEvent.FieldClearedByApp) runCatching { onEndedByApp?.invoke() }
