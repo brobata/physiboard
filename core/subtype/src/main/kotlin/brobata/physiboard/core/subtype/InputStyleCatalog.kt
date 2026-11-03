@@ -41,6 +41,10 @@ object InputStyleCatalog {
         return InputStyle(locale = locale, layoutId = layoutId, shipped = false)
     }
 
+    /** Whether the user hid [style] (`hidden_system_input_styles`, SS8.2). */
+    fun isHidden(style: InputStyle, prefs: LanguagePrefs): Boolean =
+        prefs.hiddenSystemInputStyles.any { normalizedKey(it) == normalizedKey(style.key) }
+
     private fun normalizedKey(key: String): String = key.replace('_', '-').lowercase()
 
     /**
@@ -62,6 +66,15 @@ object InputStyleCatalog {
         styles.firstOrNull { normalizedKey(it.key) == normalizedKey(currentKey) } ?: styles.firstOrNull()
 
     /**
+     * SS9.4: [styles] with [subtypeStyle] appended when it has no row of its own. A base subtype
+     * such as `pl_PL`, picked in Android's own language settings, has no row unless the user
+     * added one; without it, the next settings emission fell back to the first row and the
+     * keyboard went straight back to English, and the in-app cycle could never return to it.
+     */
+    fun withSubtypeStyle(styles: List<InputStyle>, subtypeStyle: InputStyle?): List<InputStyle> =
+        if (subtypeStyle == null || styles.any { normalizedKey(it.key) == normalizedKey(subtypeStyle.key) }) styles else styles + subtypeStyle
+
+    /**
      * spec keys-and-modifiers.md SS7.5's 2026-09-24 amendment ("with a single layout there is
      * nothing to switch"): true whenever a second row exists to land on. `:ime` feeds this
      * straight to [brobata.physiboard.core.keys.LayerResolver.Context.canSwitchLayout] (by way of
@@ -78,8 +91,12 @@ object InputStyleCatalog {
      * that keeps the running style in sync with Android's own choice after startup; this function
      * only decides the one-time starting point.
      */
-    fun startupStyle(styles: List<InputStyle>, systemLocale: String, autoByLocale: Boolean): InputStyle? {
+    fun startupStyle(styles: List<InputStyle>, systemLocale: String, autoByLocale: Boolean, subtypeStyle: InputStyle? = null): InputStyle? {
         if (styles.isEmpty()) return null
+        // SS9.4: a subtype Android says is current whose language has no row here (Polish, picked
+        // from Android's own language list) is the only place that language can come from, so
+        // it wins over both rules below. A language that does have a row keeps the rules as they were.
+        if (subtypeStyle != null && styles.none { it != subtypeStyle && normalizedLanguage(it.locale) == normalizedLanguage(subtypeStyle.locale) }) return subtypeStyle
         if (!autoByLocale) return styles.first()
         val language = normalizedLanguage(systemLocale)
         return styles.firstOrNull { normalizedLanguage(it.locale) == language } ?: styles.first()

@@ -149,3 +149,28 @@ dictionary.
 A changed blocklist is applied to the shipped list with
 `python3 scripts/build_dictionary.py --lang en --apply-blocklist app/src/main/assets/dictionaries/en.pbd`,
 then the word-pair table is rebuilt with `scripts/build_bigrams.py`.
+
+## Downloadable languages (decided 2026-11-02)
+
+The maintainer resolved the open decision above for downloads, not for the APK: seventeen
+languages are published as `.pbd` files on `brobata/physiboard-dict` release `pbd-1`, listed by
+`dicts-manifest-pbd.json`, and none of them is bundled.
+
+- **Spell-checked** (frequency intersected with `pyspellchecker`): de, es, fr, it, nl, pt, ru.
+- **Basic** (frequency only, `--allow-missing-lexicon`): cs, da, el, hu, no, pl, sv, tr, uk, vi.
+  These knowingly carry common misspellings as known words (Polish `napewno`, `wogóle`, and
+  unaccented spellings such as `dziekuje`), which autocorrect then leaves alone. The manifest
+  labels them "(Basic) · not spell-checked". Shipping them was judged better than shipping
+  nothing: 2.x shipped the same kind of list.
+- Scottish Gaelic (gd) has no `wordfreq` data and is not published.
+
+Sizes are capped by the sources, not the script: es 42k, it 64k and ru 20k words are what
+survives the lexicon; da 29k, el 46k, hu 46k, tr 63k and vi 10k are the whole `wordfreq` list.
+A Polish lexicon that would lift Polish to spell-checked exists (SJP, multi-licensed including
+Apache-2.0 and CC BY 4.0) and is the natural next step if Polish users ask for better.
+
+Rebuild one with:
+
+```
+./dictenv/bin/python scripts/build_dictionary.py --lang pl --size 80000 --allow-missing-lexicon --out pl.pbd
+```

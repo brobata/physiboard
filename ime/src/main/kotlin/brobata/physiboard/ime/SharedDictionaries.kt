@@ -118,6 +118,9 @@ internal class SharedDictionaries private constructor(context: Context) {
 
     fun removeListener(listener: () -> Unit) = onMain { listeners -= listener }
 
+    /** Whether a dictionary for [language] is on the device at all, in any tier. */
+    fun hasDictionary(language: LanguageCode): Boolean = loader.hasDictionary(language)
+
     /** Loads [language] unless it is loaded, loading or failed in this generation. Any thread. */
     fun request(language: LanguageCode) = onMain {
         val current = snapshot

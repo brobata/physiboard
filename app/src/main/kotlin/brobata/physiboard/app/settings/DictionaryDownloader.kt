@@ -36,17 +36,11 @@ import brobata.physiboard.core.shell.NetworkPurpose
  *
  * FORMAT NOTE: this build's dictionaries are `:core:dict`'s headered `.pbd` format
  * (`DictionaryIndex.fromPbdBytes`/`PbdReader`), the same format the bundled `en.pbd` asset uses
- * (docs/dictionaries.md). The manifest at [MANIFEST_URL] (fetched 2026-09-26 to verify this) still
- * serves the *old* headerless format for every one of its 19 items, including `en_base.dict`
- * (21,491,827 bytes, sha `19138c21...`, matching dictionaries-languages.md SS2.2's *old-format*
- * shipped-file table, not the ~1.2 MB `.pbd` this app bundles): downloading any of them will pass
- * SHA-256 verification and then fail [DictionaryFileStore.decodesAsDictionary]'s PBD1 check with
- * "Invalid dictionary format", exactly as the old CBOR/JSON decoder was dropped to do (SS17: "Two
- * accepted encodings by first byte | Drop | One format, one decoder"). That is the correct
- * behavior, not a bug here: this class deliberately does not add a second decoder for the old
- * format. A real download will start working only once `github.com/brobata/physiboard-dict`
- * publishes `.pbd`-format releases; import already accepts exactly that format today (a `<lang>.pbd`
- * file, PBD1 bytes), so it is the only way to add a non-English dictionary until then.
+ * (docs/dictionaries.md). [MANIFEST_URL] is the `.pbd` manifest, published 2026-11-02 beside the
+ * 2.x one: `dicts-manifest.json` still lists the old headerless files for 2.x installs, and every
+ * one of those failed here with "Invalid dictionary format" after a full download (the bug a
+ * Polish user reported). Items keep the `<lang>_base.dict` filename contract
+ * ([DictionaryManifestItem.languageCode]); only the bytes behind them changed format.
  */
 class DictionaryDownloader {
 
@@ -143,7 +137,7 @@ class DictionaryDownloader {
     }
 
     companion object {
-        const val MANIFEST_URL: String = "https://brobata.github.io/physiboard-dict/dicts-manifest.json"
+        const val MANIFEST_URL: String = "https://brobata.github.io/physiboard-dict/dicts-manifest-pbd.json"
         private const val TIMEOUT_MS = 10_000
         private const val MANIFEST_DEADLINE_MS = 20_000L
         private const val MANIFEST_MAX_BYTES = 2L shl 20 // 2 MB; the real manifest is a few KB.
