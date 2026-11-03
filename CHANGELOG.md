@@ -3,6 +3,28 @@
 This file starts with 3.0, a clean-room rewrite; it does not carry the 2.x line's history. See
 `legacy-2.x` for that.
 
+## 3.7.0 (2026-11-02)
+
+Dictionaries for seventeen more languages download again, and a language picked in Android's own
+list stays picked.
+
+<!-- /card -->
+
+- Downloading a dictionary under Dictionaries works again. The 3.x builds asked for files in the
+  2.x line's format, could not read them, and showed a failure for every language. A new set in
+  3.x's own format now serves German, Spanish, French, Italian, Dutch, Portuguese and Russian
+  (spell-checked), and Czech, Danish, Greek, Hungarian, Norwegian, Polish, Swedish, Turkish,
+  Ukrainian and Vietnamese as "Basic" lists built from how often words are used, which still
+  carry some common misspellings. Words keep their own letters, so Polish offers "żółw" for
+  "zolw". Russian and Vietnamese lists are small for now (about 20,000 and 10,000 words).
+- A language picked in Android's keyboard-language settings, Polish for example, no longer
+  flips straight back to English, and the keyboard's own language switch can return to it. At
+  start the keyboard only moves to that language when its dictionary is on the phone, so
+  suggestions are never lost, and it moves the moment the dictionary finishes downloading.
+- "That is great." dictated and stopped, then "three exclamation points" in a second session,
+  now gives "That is great!!!" instead of "That is great.!!!". A full stop you typed yourself is
+  never replaced.
+
 ## 3.6.0 (2026-10-23)
 
 Say "comma", "period" or "three exclamation points" and dictation types the marks, and laughs
